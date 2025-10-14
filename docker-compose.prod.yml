@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  # Next.js Frontend - Production
+  frontend:
+    build:
+      context: ./novel-editor-demo/apps/web
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_PDF_SERVICE_URL=http://pdf-service:8000
+    depends_on:
+      - pdf-service
+    restart: unless-stopped
+    networks:
+      - sow-network
+
+  # Python PDF Service - Production
+  pdf-service:
+    build:
+      context: ./pdf-service
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONPATH=/app
+      - WORKERS=4
+    restart: unless-stopped
+    networks:
+      - sow-network
+
+  # Nginx Reverse Proxy (Optional - for production)
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/ssl/certs:ro
+    depends_on:
+      - frontend
+      - pdf-service
+    restart: unless-stopped
+    networks:
+      - sow-network
+
+networks:
+  sow-network:
+    driver: bridge
