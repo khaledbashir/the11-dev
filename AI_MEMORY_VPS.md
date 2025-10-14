@@ -1,6 +1,6 @@
 # AI Memory Document - Social Garden SOW Generator VPS
 
-**Last Updated:** October 14, 2025 - 16:30 UTC  
+**Last Updated:** October 14, 2025 - 18:15 UTC  
 **VPS:** srv848342.hstgr.cloud  
 **Project Location:** ~/the11  
 **Repository:** https://github.com/khaledbashir/the11.git
@@ -10,13 +10,18 @@
 ## 🎨 SOCIAL GARDEN BRANDING - CRITICAL
 
 ### Logos
-- **Dark Logo (for light backgrounds):** https://ibb.co/1J0rTVGs
-- **Light Logo (for dark backgrounds):** https://ibb.co/r29WN2mb (has white in it, cannot use on white background)
+- **Source:** `/root/thespace11/Logo Dark-Green.png` (366x44 horizontal)
+- **Locations:** 
+  - PDF Service: `pdf-service/social-garden-logo-dark.png`
+  - Frontend: `novel-editor-demo/apps/web/public/social-garden-logo.png`
+- **Status:** ✅ Correct logo now in use (fixed Oct 14)
 
-### Colors (MUST USE EVERYWHERE)
-- **Primary Dark:** `#0e2e33`
-- **Accent Green:** `#20e28f`
-- **Supporting:** White (#FFFFFF) and Black (#000000)
+### Colors - ACCENT ONLY (Not Background!)
+- **Primary Dark:** `#0e2e33` - Use for buttons, accents, NOT backgrounds
+- **Accent Green:** `#20e28f` - Use for highlights, accents, links
+- **Dark Mode:** Pitch black (#000000) background with brand colors as accents
+- **Light Mode:** Clean white (#FFFFFF) background with brand colors as accents
+- **Key Learning:** Brand colors look best as accents, not full backgrounds!
 
 ### Typography
 - **Font Family:** Jakarta Sans (use everywhere - app, PDF, CSV, Excel)
@@ -37,22 +42,30 @@ Run the Social Garden SOW Generator INDEPENDENTLY on this VPS. NO MORE CODESPACE
 
 ## 📊 CURRENT STATUS - FULLY FUNCTIONAL ✅
 
-### ✅ ALL FEATURES WORKING
-- App running on port **3333** (Frontend)
-- PDF service on port **8000**
+### ✅ ALL FEATURES WORKING (Updated Oct 14, 18:15 UTC)
+- App running on port **3333** (Frontend) - **Pitch black dark mode with brand accents** ✨
+- PDF service on port **8000** - **Perfect logo, includes tables** ✅
 - Docker setup with docker-compose
-- OpenRouter API key configured
+- OpenRouter API key configured (needs migration from OpenAI)
 - Insert SOW button working (shows for SOW content)
-- PDF Export WORKING (weasyprint API fixed)
-- AI Selector popup WORKING (stays open on text selection)
+- **PDF Export with correct 366x44 logo** (fixed!)
+- **Table insertion via /table command** (3x3 with header) - **NEW!**
+- **Divider insertion via /divider command** - **NEW!**
 - CSV Export working
+- Beautiful branding applied (Jakarta Sans font, correct colors)
 
-### ⚠️ Current Issues to Fix
+### 🚨 HIGH PRIORITY FIXES NEEDED
+1. **AI Selector popup disappears before user can click** - Critical UX issue, needs modal approach
+2. **Switch AI from OpenAI to OpenRouter** - API key ready but not used yet
+3. **PDF download shows security warning** - Scary for clients, needs header fix
+4. **Slash command sometimes needs 2 clicks** - Usability issue
+5. **YouTube/Twitter embeds show localhost** - Needs UI modal fix
+
+### ℹ️ Known Limitations
 - Port 3000, 3001, 3002 already in use on VPS (hence 3333)
 - localStorage-based (no database yet - planned for Phase 2)
-- **AI Selector popup disappears before user can click it** (needs better Tippy config)
-- **PDF export missing tables and not consistent with editor** (needs full HTML serialization)
-- **Branding not applied** (needs Social Garden colors, fonts, logos)
+- No shareable links yet (Phase 2)
+- No version history yet (Phase 2)
 
 ### 🚨 CRITICAL LESSON LEARNED
 **BE PROACTIVE, NOT REACTIVE**
