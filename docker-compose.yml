@@ -11,6 +11,7 @@ services:
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_PDF_SERVICE_URL=http://pdf-service:8000
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
     depends_on:
       - pdf-service
     networks:
