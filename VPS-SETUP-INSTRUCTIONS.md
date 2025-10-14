@@ -8,12 +8,7 @@ git clone https://github.com/khaledbashir/the11.git
 cd the11
 ```
 
-2. **Initialize the submodule (this downloads all the novel-editor-demo code):**
-```bash
-git submodule update --init --recursive
-```
-
-3. **Start with Docker:**
+2. **Start with Docker (default port 3000):**
 ```bash
 docker-compose up --build
 ```
@@ -22,23 +17,47 @@ That's it! The app will be available at `http://your-vps-ip:3000`
 
 ---
 
-## Alternative: Use the Setup Script
+## Using a Custom Port (e.g., 3333)
+
+If port 3000 is already in use on your VPS:
+
+**Option 1: Using environment variable**
+```bash
+git clone https://github.com/khaledbashir/the11.git
+cd the11
+FRONTEND_PORT=3333 docker-compose up --build
+```
+
+**Option 2: Using .env file**
+```bash
+git clone https://github.com/khaledbashir/the11.git
+cd the11
+echo "FRONTEND_PORT=3333" > .env
+docker-compose up --build
+```
+
+The app will be available at `http://your-vps-ip:3333`
+
+---
+
+## Use the Setup Script for Port Checking
+
+The setup script will check if port 3000 is available and guide you:
 
 ```bash
 git clone https://github.com/khaledbashir/the11.git
 cd the11
 ./setup.sh
-docker-compose up --build
 ```
 
 ---
 
 ## Troubleshooting
 
-**If the novel-editor-demo folder is empty:**
+**If you get "port already in use" errors:**
 ```bash
-cd the11
-git submodule update --init --recursive
+# Use a different port
+FRONTEND_PORT=3333 docker-compose up --build
 ```
 
 **To stop the services:**

@@ -12,16 +12,21 @@ A professional, branded Scope of Work generator for Social Garden's marketing au
 ```bash
 git clone https://github.com/khaledbashir/the11.git
 cd the11
-./setup.sh
 docker-compose up --build
 ```
 
-**Or the manual way:**
+**If port 3000 is already in use:**
 ```bash
 git clone https://github.com/khaledbashir/the11.git
 cd the11
-git submodule update --init --recursive
-docker-compose up --build
+FRONTEND_PORT=3333 docker-compose up --build
+```
+
+**Or run the setup script for port checking:**
+```bash
+git clone https://github.com/khaledbashir/the11.git
+cd the11
+./setup.sh
 ```
 
 That's it! The application will be available at:
@@ -61,12 +66,13 @@ If you prefer not to use Docker:
 
 ### Frontend Setup
 ```bash
-# Make sure submodules are initialized first
-git submodule update --init --recursive
+# Install pnpm if not already installed
+npm install -g pnpm
 
-cd novel-editor-demo/apps/web
-npm install
-npm run dev
+cd novel-editor-demo
+pnpm install
+cd apps/web
+pnpm run dev
 ```
 
 ### PDF Service Setup
