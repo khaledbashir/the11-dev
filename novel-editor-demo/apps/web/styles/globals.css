@@ -4,39 +4,42 @@
 
 @layer base {
   :root {
-    /* Social Garden Brand Colors */
+    /* Social Garden Brand Colors - used as accents */
     --sg-dark: 185 56% 13%;        /* #0e2e33 */
     --sg-green: 159 75% 51%;       /* #20e28f */
     --sg-gray: 210 11% 15%;
     --sg-gray-light: 210 11% 25%;
     --sg-gray-lighter: 210 11% 95%;
 
+    /* Clean light mode with brand colors as accents */
     --background: 0 0% 100%;
-    --foreground: var(--sg-dark);
+    --foreground: 0 0% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: var(--sg-dark);
+    --card-foreground: 0 0% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: var(--sg-dark);
+    --popover-foreground: 0 0% 10%;
 
+    /* Brand dark as primary for buttons */
     --primary: var(--sg-dark);
     --primary-foreground: 0 0% 100%;
 
-    --secondary: var(--sg-gray-lighter);
-    --secondary-foreground: var(--sg-dark);
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 10%;
 
-    --muted: var(--sg-gray-lighter);
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
 
+    /* Brand green as accent */
     --accent: var(--sg-green);
     --accent-foreground: var(--sg-dark);
 
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
     --ring: var(--sg-green);
 
     --radius: 0.5rem;
@@ -53,32 +56,36 @@
   }
 
   .dark {
-    --background: var(--sg-dark);
-    --foreground: 0 0% 100%;
+    /* Pitch black background for clean dark mode */
+    --background: 0 0% 0%;
+    --foreground: 0 0% 98%;
 
-    --card: var(--sg-dark);
-    --card-foreground: 0 0% 100%;
+    --card: 0 0% 4%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: var(--sg-dark);
-    --popover-foreground: 0 0% 100%;
+    --popover: 0 0% 4%;
+    --popover-foreground: 0 0% 98%;
 
+    /* Social Garden green as primary accent */
     --primary: var(--sg-green);
-    --primary-foreground: var(--sg-dark);
+    --primary-foreground: 0 0% 0%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 60%;
 
+    /* Brand green as accent color */
     --accent: var(--sg-green);
-    --accent-foreground: var(--sg-dark);
+    --accent-foreground: 0 0% 0%;
 
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
+    /* Subtle borders in dark mode */
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
     --ring: var(--sg-green);
   }
 }
