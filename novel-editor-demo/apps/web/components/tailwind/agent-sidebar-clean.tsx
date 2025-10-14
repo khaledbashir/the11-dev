@@ -619,7 +619,14 @@ export default function AgentSidebar({
                               </div>
                             )}
                           </div>
-                          {msg.role === 'assistant' && onInsertToEditor && msg.content.includes('Statement of Work') && (
+                          {msg.role === 'assistant' && onInsertToEditor && (
+                            msg.content.includes('Statement of Work') || 
+                            msg.content.includes('Scope of Work') ||
+                            msg.content.includes('Total Hours') ||
+                            msg.content.includes('Total Investment') ||
+                            msg.content.includes('Ready to insert') ||
+                            msg.content.length > 200
+                          ) && (
                             <Button
                               size="sm"
                               onClick={onInsertToEditor}

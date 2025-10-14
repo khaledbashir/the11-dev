@@ -96,6 +96,7 @@ const starterKit = StarterKit.configure({
     width: 4,
   },
   gapcursor: false,
+  strike: false, // Disable if using TiptapUnderline separately
 });
 
 const codeBlockLowlight = CodeBlockLowlight.configure({

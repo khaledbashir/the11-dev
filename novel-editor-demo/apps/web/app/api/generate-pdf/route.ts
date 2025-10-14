@@ -4,8 +4,11 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     
+    // Use Docker service name for internal communication
+    const pdfServiceUrl = process.env.NEXT_PUBLIC_PDF_SERVICE_URL || 'http://pdf-service:8000';
+    
     // Forward request to PDF service
-    const response = await fetch('http://localhost:8000/generate-pdf', {
+    const response = await fetch(`${pdfServiceUrl}/generate-pdf`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
