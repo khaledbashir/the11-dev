@@ -284,10 +284,13 @@ async def generate_pdf(request: PDFRequest):
             logo_base64=logo_base64
         )
 
-        # Generate PDF
+        # Generate PDF using updated weasyprint API
         html_doc = HTML(string=full_html)
+        pdf_bytes = html_doc.write_pdf()
         
-        html_doc.write_pdf(pdf_path)
+        # Write to file
+        with open(pdf_path, 'wb') as f:
+            f.write(pdf_bytes)
 
         # Return PDF file
         return FileResponse(

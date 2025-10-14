@@ -21,9 +21,16 @@ const GenerativeMenuSwitch = ({ children, open, onOpenChange }: GenerativeMenuSw
       tippyOptions={{
         placement: open ? "bottom-start" : "top",
         onHidden: () => {
-          onOpenChange(false);
-          editor.chain().unsetHighlight().run();
+          // Only close if not already open - prevents auto-closing when selecting text
+          if (!open) {
+            onOpenChange(false);
+            editor.chain().unsetHighlight().run();
+          }
         },
+        // Keep popup visible when open
+        hideOnClick: !open,
+        interactive: true,
+        appendTo: () => document.body,
       }}
       className="flex w-fit max-w-[90vw] overflow-hidden rounded-md border border-muted bg-background shadow-xl"
     >
