@@ -10,8 +10,17 @@ A professional, branded Scope of Work generator for Social Garden's marketing au
 
 ### One-Command Deployment
 ```bash
-git clone <repository-url>
-cd social-garden-sow-generator
+git clone https://github.com/khaledbashir/the11.git
+cd the11
+./setup.sh
+docker-compose up --build
+```
+
+**Or the manual way:**
+```bash
+git clone https://github.com/khaledbashir/the11.git
+cd the11
+git submodule update --init --recursive
 docker-compose up --build
 ```
 
@@ -52,6 +61,9 @@ If you prefer not to use Docker:
 
 ### Frontend Setup
 ```bash
+# Make sure submodules are initialized first
+git submodule update --init --recursive
+
 cd novel-editor-demo/apps/web
 npm install
 npm run dev
