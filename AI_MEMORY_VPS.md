@@ -1,9 +1,32 @@
 # AI Memory Document - Social Garden SOW Generator VPS
 
-**Last Updated:** October 14, 2025 - 15:45 UTC  
+**Last Updated:** October 14, 2025 - 16:30 UTC  
 **VPS:** srv848342.hstgr.cloud  
 **Project Location:** ~/the11  
 **Repository:** https://github.com/khaledbashir/the11.git
+
+---
+
+## 🎨 SOCIAL GARDEN BRANDING - CRITICAL
+
+### Logos
+- **Dark Logo (for light backgrounds):** https://ibb.co/1J0rTVGs
+- **Light Logo (for dark backgrounds):** https://ibb.co/r29WN2mb (has white in it, cannot use on white background)
+
+### Colors (MUST USE EVERYWHERE)
+- **Primary Dark:** `#0e2e33`
+- **Accent Green:** `#20e28f`
+- **Supporting:** White (#FFFFFF) and Black (#000000)
+
+### Typography
+- **Font Family:** Jakarta Sans (use everywhere - app, PDF, CSV, Excel)
+
+### Where to Apply
+- ✅ Main application UI
+- ✅ PDF exports (header, footer, styling)
+- ✅ CSV exports (if applicable)
+- ✅ Excel exports (if applicable)
+- ✅ All client-facing materials
 
 ---
 
@@ -24,9 +47,12 @@ Run the Social Garden SOW Generator INDEPENDENTLY on this VPS. NO MORE CODESPACE
 - AI Selector popup WORKING (stays open on text selection)
 - CSV Export working
 
-### ⚠️ Known Issues
+### ⚠️ Current Issues to Fix
 - Port 3000, 3001, 3002 already in use on VPS (hence 3333)
 - localStorage-based (no database yet - planned for Phase 2)
+- **AI Selector popup disappears before user can click it** (needs better Tippy config)
+- **PDF export missing tables and not consistent with editor** (needs full HTML serialization)
+- **Branding not applied** (needs Social Garden colors, fonts, logos)
 
 ### 🚨 CRITICAL LESSON LEARNED
 **BE PROACTIVE, NOT REACTIVE**

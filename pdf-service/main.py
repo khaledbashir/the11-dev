@@ -1,28 +1,27 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from weasyprint import HTML, CSS
+import weasyprint
 from jinja2 import Template
+import base64
 import os
-import uuid
-from typing import Optional
+from pathlib import Path
 
-app = FastAPI(title="Social Garden PDF Service", version="1.0.0")
+app = FastAPI(title="Social Garden PDF Service")
 
 class PDFRequest(BaseModel):
     html_content: str
-    css_content: Optional[str] = None
-    filename: Optional[str] = "social_garden_sow"
+    filename: str = "document"
 
-# Professional Social Garden HTML template
+# HTML template with Social Garden branding
 SOW_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Social Garden - Scope of Work</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>Social Garden - Statement of Work</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         {{ css_content }}
     </style>
@@ -30,9 +29,11 @@ SOW_TEMPLATE = """
 <body>
     <div class="sow-document">
         <div class="sow-header">
+            {% if logo_base64 %}
             <img src="data:image/png;base64,{{ logo_base64 }}" alt="Social Garden Logo" class="sow-logo">
+            {% endif %}
             <h1>Social Garden</h1>
-            <p>Marketing Automation & CRM Specialists</p>
+            <p>Marketing Automation & Growth Specialists</p>
         </div>
 
         <div class="sow-content">
@@ -40,23 +41,24 @@ SOW_TEMPLATE = """
         </div>
 
         <div class="sow-footer">
-            <hr style="border: 1px solid #8e4c24; margin: 2rem 0;">
-            <p style="text-align: center; color: #666; font-size: 0.875rem;">
-                This document is confidential and intended solely for the addressee.
-                Social Garden Pty Ltd | marketing@socailgarden.com.au | www.socialgarden.com.au
-            </p>
+            <hr>
+            <p><strong>Social Garden Pty Ltd</strong></p>
+            <p>marketing@socialgarden.com.au | www.socialgarden.com.au</p>
+            <p>This document is confidential and intended solely for the addressee.</p>
         </div>
     </div>
 </body>
 </html>
 """
 
-# Professional CSS for PDF generation
+# Professional CSS for PDF generation with Social Garden Branding
 DEFAULT_CSS = """
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
 body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     line-height: 1.6;
-    color: #1a1a1a;
+    color: #0e2e33;
     margin: 0;
     padding: 0;
     background: white;
@@ -72,53 +74,54 @@ body {
 .sow-header {
     text-align: center;
     margin-bottom: 2rem;
-    padding-bottom: 1rem;
-    border-bottom: 3px solid #8e4c24;
+    padding-bottom: 1.5rem;
+    border-bottom: 3px solid #20e28f;
 }
 
 .sow-logo {
-    max-width: 200px;
+    max-width: 180px;
     height: auto;
     margin-bottom: 1rem;
 }
 
 .sow-header h1 {
-    font-family: 'Playfair Display', serif;
+    font-family: 'Plus Jakarta Sans', sans-serif;
     font-size: 2.5rem;
     font-weight: 700;
-    color: #8e4c24;
+    color: #0e2e33;
     margin: 0.5rem 0;
 }
 
 .sow-header p {
-    color: #666;
+    color: #0e2e33;
     font-size: 1.1rem;
     margin: 0;
+    font-weight: 500;
 }
 
 h1, h2, h3, h4, h5, h6 {
-    font-family: 'Playfair Display', serif;
-    font-weight: 600;
-    line-height: 1.2;
-    color: #1a1a1a;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 700;
+    line-height: 1.3;
+    color: #0e2e33;
     page-break-after: avoid;
 }
 
 h1 {
     font-size: 2rem;
-    font-weight: 700;
+    font-weight: 800;
     margin-bottom: 1.5rem;
-    border-bottom: 2px solid #8e4c24;
+    border-bottom: 3px solid #20e28f;
     padding-bottom: 0.5rem;
     page-break-after: avoid;
 }
 
 h2 {
     font-size: 1.75rem;
-    font-weight: 600;
+    font-weight: 700;
     margin-top: 2rem;
     margin-bottom: 1rem;
-    color: #8e4c24;
+    color: #0e2e33;
     page-break-after: avoid;
 }
 
@@ -130,52 +133,93 @@ h3 {
     page-break-after: avoid;
 }
 
+h4 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+}
+
 p {
     margin-bottom: 1rem;
-    text-align: justify;
+    line-height: 1.7;
+}
+
+strong, b {
+    font-weight: 700;
+    color: #0e2e33;
+}
+
+em, i {
+    font-style: italic;
 }
 
 ul, ol {
     margin-bottom: 1rem;
     padding-left: 1.5rem;
+    line-height: 1.8;
 }
 
 li {
     margin-bottom: 0.5rem;
 }
 
-/* Professional table styling */
+/* Professional table styling with Social Garden colors */
 table {
     width: 100%;
     border-collapse: collapse;
     margin: 1.5rem 0;
-    font-size: 0.875rem;
-    page-break-inside: avoid;
+    font-size: 0.9rem;
+    page-break-inside: auto;
+    border: 2px solid #0e2e33;
+}
+
+thead {
+    display: table-header-group;
+}
+
+tbody {
+    display: table-row-group;
 }
 
 th {
-    background-color: #8e4c24;
+    background-color: #0e2e33;
     color: white;
-    padding: 0.75rem 1rem;
+    padding: 0.875rem 1rem;
     text-align: left;
-    font-weight: 600;
-    border: 1px solid #6b3a1e;
+    font-weight: 700;
+    border: 1px solid #0e2e33;
+    font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 td {
-    padding: 0.75rem 1rem;
-    border: 1px solid #e5e5e5;
-    color: #1a1a1a;
+    padding: 0.875rem 1rem;
+    border: 1px solid #d1d5db;
+    color: #0e2e33;
+    vertical-align: top;
 }
 
 tbody tr:nth-child(even) {
-    background-color: #f9f9f9;
+    background-color: #f9fafb;
+}
+
+tbody tr:nth-child(odd) {
+    background-color: white;
+}
+
+tbody tr:hover {
+    background-color: #f0fdf4;
+}
+
+/* Ensure tables don't break mid-row */
+tr {
+    page-break-inside: avoid;
 }
 
 /* Code blocks */
 pre {
-    background: #f8f8f8;
-    border: 1px solid #e5e5e5;
+    background: #f8f9fa;
+    border: 1px solid #e5e7eb;
     border-radius: 0.375rem;
     padding: 1rem;
     overflow-x: auto;
@@ -186,30 +230,43 @@ pre {
 }
 
 code {
-    background: #f1f1f1;
-    padding: 0.125rem 0.25rem;
+    background: #f3f4f6;
+    padding: 0.125rem 0.375rem;
     border-radius: 0.25rem;
     font-family: 'JetBrains Mono', 'Fira Code', monospace;
     font-size: 0.875rem;
+    color: #0e2e33;
+}
+
+pre code {
+    background: transparent;
+    padding: 0;
 }
 
 /* Blockquotes */
 blockquote {
-    border-left: 4px solid #8e4c24;
+    border-left: 4px solid #20e28f;
     padding-left: 1rem;
     margin: 1.5rem 0;
     font-style: italic;
-    color: #666;
+    color: #4b5563;
 }
 
 /* Links */
 a {
-    color: #8e4c24;
+    color: #20e28f;
     text-decoration: underline;
 }
 
 a:hover {
-    color: #6b3a1e;
+    color: #0e2e33;
+}
+
+/* Horizontal rules */
+hr {
+    border: none;
+    border-top: 2px solid #20e28f;
+    margin: 2rem 0;
 }
 
 /* Page breaks */
@@ -224,21 +281,21 @@ a:hover {
 /* Footer */
 .sow-footer {
     margin-top: 3rem;
-    text-align: center;
-    border-top: 1px solid #e5e5e5;
-    padding-top: 1rem;
+    padding-top: 1.5rem;
+    border-top: 2px solid #20e28f;
 }
 
 .sow-footer p {
-    color: #666;
-    font-size: 0.75rem;
-    margin: 0;
+    color: #6b7280;
+    font-size: 0.8rem;
+    margin: 0.5rem 0;
+    text-align: center;
 }
 
 /* Print-specific styles */
 @media print {
     body {
-        font-size: 12pt;
+        font-size: 11pt;
     }
 
     .sow-document {
@@ -247,7 +304,7 @@ a:hover {
     }
 
     h1 {
-        font-size: 24pt;
+        font-size: 22pt;
     }
 
     h2 {
@@ -259,33 +316,53 @@ a:hover {
     }
 
     table {
-        font-size: 10pt;
+        font-size: 9pt;
     }
+}
+
+/* Ensure content readability */
+.sow-content {
+    font-size: 0.95rem;
+}
+
+/* Special styling for important sections */
+.highlight {
+    background-color: #ecfdf5;
+    border-left: 4px solid #20e28f;
+    padding: 1rem;
+    margin: 1rem 0;
 }
 """
 
 @app.post("/generate-pdf")
 async def generate_pdf(request: PDFRequest):
     try:
-        # Create unique filename
-        pdf_filename = f"{request.filename}_{uuid.uuid4().hex[:8]}.pdf"
-        pdf_path = f"/tmp/{pdf_filename}"
-
-        # Get logo as base64 (you would replace this with actual logo)
-        logo_base64 = ""  # Placeholder - would load actual logo
-
-        # Combine HTML content with template
+        # Load and encode the Social Garden logo
+        logo_base64 = ""
+        logo_path = Path(__file__).parent / "social-garden-logo-dark.png"
+        if logo_path.exists():
+            with open(logo_path, "rb") as logo_file:
+                logo_base64 = base64.b64encode(logo_file.read()).decode('utf-8')
+        
+        # Render the HTML template with Jinja2
         template = Template(SOW_TEMPLATE)
-        css_content = request.css_content or DEFAULT_CSS
-
         full_html = template.render(
             html_content=request.html_content,
-            css_content=css_content,
+            css_content=DEFAULT_CSS,
             logo_base64=logo_base64
         )
-
-        # Generate PDF using updated weasyprint API
-        html_doc = HTML(string=full_html)
+        
+        # Generate PDF with WeasyPrint
+        html_doc = weasyprint.HTML(string=full_html)
+        
+        # Create output directory if it doesn't exist
+        output_dir = Path("/tmp/pdfs")
+        output_dir.mkdir(exist_ok=True)
+        
+        # Generate PDF
+        pdf_path = output_dir / f"{request.filename}.pdf"
+        
+        # Write PDF to bytes then to file
         pdf_bytes = html_doc.write_pdf()
         
         # Write to file

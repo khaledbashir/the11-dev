@@ -19,7 +19,15 @@ const config = {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['var(--font-jakarta)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        jakarta: ['var(--font-jakarta)', 'sans-serif'],
+      },
       colors: {
+        // Social Garden Brand Colors
+        'sg-dark': '#0e2e33',
+        'sg-green': '#20e28f',
+        
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
