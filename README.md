@@ -2,110 +2,194 @@
 
 > **Beautiful, AI-powered Statement of Work generator with professional PDF export**
 
-Clone anywhere. Run instantly. Deploy everywhere. 🚀
+**Location:** `/root/the11/` (You are here!)
 
 ---
 
-## ⚡ Quick Start
+## ⚡ QUICK START
 
 ```bash
-# 1. Clone
-git clone https://github.com/khaledbashir/the11.git
-cd the11
-git checkout production-ready
-
-# 2. Configure
-cp .env.example .env
-nano .env  # Add your OpenRouter API key
-
-# 3. Run
-docker-compose up -d
-
-# 4. Open http://localhost:3333
+./dev.sh
 ```
 
-**That's it!** The app is running with full AI features and PDF export.
+**That's it!** This ONE command starts everything with hot reload.
+
+- Frontend: http://localhost:3333
+- PDF API: http://localhost:8000
+- Changes appear INSTANTLY!
+
+Press `Ctrl+C` to stop.
 
 ---
 
-## ✨ Features
+## 📚 DOCUMENTATION
 
-- 📝 **Rich text editor** with slash commands (`/table`, `/divider`, `/heading`, etc.)
-- 🤖 **AI writing assistant** (improve, shorten, lengthen, simplify, fix spelling)
+**👉 START HERE:** [`docs/MASTER_GUIDE.md`](docs/MASTER_GUIDE.md)
+
+Everything you need in one organized document!
+
+### Other Guides:
+
+| Doc | What's Inside |
+|-----|---------------|
+| [`MASTER_GUIDE.md`](docs/MASTER_GUIDE.md) | 🎯 **START HERE!** Complete guide, everything in one place |
+| [`quick-start.md`](docs/quick-start.md) | ⚡ Get running in 30 seconds |
+| [`development.md`](docs/development.md) | 🔨 Dev vs Production workflows |
+| [`deployment.md`](docs/deployment.md) | 🚀 Deploy to VPS, client, or anywhere |
+| [`quick-reference.md`](docs/quick-reference.md) | 📖 Simple truth, direct answers |
+| [`visual-guide.md`](docs/visual-guide.md) | 🖼️ Visual diagrams and explanations |
+| [`understanding-setup.md`](docs/understanding-setup.md) | 🧠 VPS, GitHub, Docker explained |
+| [`ai-development-guide.md`](docs/ai-development-guide.md) | 🤖 For AI assistants editing this project |
+| [`session-summary.md`](docs/session-summary.md) | 📝 What we fixed in last session |
+
+---
+
+## 🎯 COMMON TASKS
+
+### Daily Coding:
+```bash
+./dev.sh              # Start dev server
+# Edit files, see changes instantly!
+git add -A            # Stage changes
+git commit -m "..."   # Commit
+git push              # Push to GitHub
+```
+
+### Deploy to Production:
+```bash
+docker-compose build  # Build once
+docker-compose up -d  # Run forever
+```
+
+### Check Status:
+```bash
+docker-compose ps     # See running containers
+docker-compose logs   # View logs
+```
+
+---
+
+## 🔥 KEY FEATURES
+
+- 📝 **Rich text editor** with slash commands (`/table`, `/divider`, `/heading`)
+- 🤖 **AI writing assistant** (improve, shorten, lengthen, simplify, fix)
 - 📄 **Professional PDF export** with Social Garden branding
-- 🎨 **Beautiful dark mode** with brand color accents
+- 🎨 **Beautiful dark mode** (pitch black with brand accents)
 - 💾 **Auto-save** to localStorage
 - 🖼️ **Image uploads** and embeds
-- �� **Tables** with proper formatting
+- 📊 **Tables** with proper formatting
 
 ---
 
-## 🔧 Quick Configuration
-
-Edit `.env`:
-
-```bash
-OPENROUTER_API_KEY=your_api_key_here  # Get free at https://openrouter.ai/keys
-FRONTEND_PORT=3333                     # Change if port in use
-```
-
----
-
-## 🐳 Docker Commands
-
-```bash
-docker-compose up -d      # Start
-docker-compose down       # Stop
-docker-compose logs -f    # View logs
-docker-compose build      # Rebuild after changes
-```
-
----
-
-## 🚀 Deploy Anywhere
-
-Works on any system with Docker:
-- ✅ Local machine (Mac/Windows/Linux)
-- ✅ VPS (DigitalOcean, Linode, etc.)
-- ✅ Cloud (AWS, GCP, Azure)
-- ✅ Self-hosted servers
-
-See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
-
----
-
-## 📁 Project Structure
+## 📁 PROJECT STRUCTURE
 
 ```
 the11/
-├── docker-compose.yml       # Orchestration
-├── novel-editor-demo/       # Next.js frontend (port 3333)
-└── pdf-service/            # Python PDF service (port 8000)
+├── docs/                 ← All documentation
+├── novel-editor-demo/    ← Frontend (Next.js)
+│   └── apps/web/         ← Main app
+│       ├── components/   ← React components
+│       ├── styles/       ← CSS (dark mode, colors)
+│       └── public/       ← Logo, assets
+├── pdf-service/          ← Backend (Python/FastAPI)
+│   ├── main.py          ← PDF generation
+│   └── requirements.txt  ← Dependencies
+├── dev.sh               ← 🔥 Run everything!
+├── docker-compose.yml   ← Production deployment
+└── .env                 ← API keys (never commit!)
 ```
 
 ---
 
-## 🐛 Troubleshooting
+## 🆘 TROUBLESHOOTING
+
+**Port already in use?**
+```bash
+pkill -f next-server
+pkill -f uvicorn
+```
+
+**Changes not appearing?**
+- Use `./dev.sh` for development (NOT Docker!)
+- Docker is only for production
+
+**Lost?**
+- Read `docs/MASTER_GUIDE.md` - has everything!
+
+---
+
+## 🔒 ENVIRONMENT VARIABLES
+
+Copy `.env.example` to `.env` and add your API key:
 
 ```bash
-# Port already in use?
-netstat -tulpn | grep 3333
-# Change FRONTEND_PORT in .env
+cp .env.example .env
+nano .env
+```
 
-# Check logs
-docker-compose logs
+Required:
+- `OPENROUTER_API_KEY` - Get free at https://openrouter.ai/keys
 
-# Rebuild from scratch
-docker-compose build --no-cache
+---
+
+## 🚀 DEPLOYMENT
+
+**VPS/Cloud:**
+```bash
+git clone https://github.com/khaledbashir/the11.git
+cd the11
+cp .env.example .env
+nano .env  # Add API key
 docker-compose up -d
 ```
 
+**Client Delivery:**
+Send them the repo link + above instructions!
+
 ---
 
-## 🔒 Security Note
+## 📝 GIT WORKFLOW
 
-Never commit `.env` file - it contains your API key!
+```bash
+git status           # Check changes
+git add -A           # Stage all
+git commit -m "..."  # Commit
+git push             # Push to GitHub
+```
+
+**Current branch:** `production-ready`
+
+---
+
+## 🎨 BRANDING
+
+**Social Garden Colors:**
+- Dark: `#0e2e33` (accents)
+- Green: `#20e28f` (highlights)
+- Dark mode: Pitch black backgrounds
+
+**Logo:** 366x44 horizontal (Jakarta Sans font)
+
+---
+
+## 🎯 CURRENT STATUS
+
+**✅ Working:**
+- Logo in PDFs (366x44 horizontal)
+- Table command (`/table`)
+- Divider command (`/divider`)
+- Ask AI popup (with extensive logging)
+- Pitch black dark mode
+- Development script (`./dev.sh`)
+
+**🔥 High Priority:**
+- Switch to OpenRouter API
+- Fix PDF security warning
+- Fix slash command disappearing
+- Fix YouTube/Twitter embeds
 
 ---
 
 **Made with ❤️ for Social Garden**
+
+🌐 Need help? Check `docs/MASTER_GUIDE.md`!
