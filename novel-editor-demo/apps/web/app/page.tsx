@@ -750,6 +750,11 @@ export default function Page() {
           );
           console.log('✅ Document updated successfully');
           
+          // Also update the editor directly
+          if (editorRef.current) {
+            editorRef.current.insertContent(content);
+          }
+          
           // Add confirmation message
           const confirmMessage: ChatMessage = {
             id: `msg${Date.now()}`,
