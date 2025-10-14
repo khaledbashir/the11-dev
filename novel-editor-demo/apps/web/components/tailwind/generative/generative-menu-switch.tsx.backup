@@ -28,31 +28,17 @@ const GenerativeMenuSwitch = ({ children, open, onOpenChange }: GenerativeMenuSw
           }
         },
         // Keep popup visible when open
-        hideOnClick: false, // Always prevent hiding on click
+        hideOnClick: !open,
         interactive: true,
         appendTo: () => document.body,
         // Add delay to prevent popup from closing when moving mouse
-        delay: [0, 500], // [show delay, hide delay] - increased to 500ms
+        delay: [0, 300], // [show delay, hide delay] - 300ms before hiding
         // Ensure popup stays visible when hovering over it
-        interactiveBorder: 20, // Increased border for better interaction
+        interactiveBorder: 10,
         // Prevent auto-hide when moving to popup
         trigger: 'manual mouseenter focus',
         // Keep popup visible
         sticky: true,
-        // Add these options to improve popup behavior
-        popperOptions: {
-          modifiers: [
-            {
-              name: 'preventOverflow',
-              enabled: true,
-              options: {
-                altAxis: false,
-                altBoundary: false,
-                tether: false
-              }
-            }
-          ]
-        }
       }}
       className="flex w-fit max-w-[90vw] overflow-hidden rounded-md border border-muted bg-background shadow-xl"
     >
