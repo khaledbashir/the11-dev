@@ -1,0 +1,3 @@
+[submodule "novel-editor-demo"]
+	path = novel-editor-demo
+	url = https://github.com/khaledbashir/novel.git
