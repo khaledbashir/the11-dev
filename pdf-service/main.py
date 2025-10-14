@@ -337,6 +337,10 @@ hr {
 @app.post("/generate-pdf")
 async def generate_pdf(request: PDFRequest):
     try:
+        print("=== DEBUG: Received HTML Content ===")
+        print(request.html_content[:500] if len(request.html_content) > 500 else request.html_content)
+        print("=== Has table tag:", "<table" in request.html_content.lower(), "===")
+        
         # Load and encode the Social Garden logo
         logo_base64 = ""
         logo_path = Path(__file__).parent / "social-garden-logo-dark.png"
