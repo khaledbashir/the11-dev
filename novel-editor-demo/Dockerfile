@@ -40,9 +40,12 @@ COPY apps/web ./apps/web
 WORKDIR /app/apps/web
 RUN pnpm run build
 
-FROM base AS runner
+FROM node:18-alpine AS runner
 
 WORKDIR /app
+
+# Install pnpm in runner stage
+RUN npm install -g pnpm
 
 ENV NODE_ENV=production
 ENV PORT=3000
@@ -51,11 +54,17 @@ ENV PORT=3000
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy built app
+# Copy workspace config
+COPY --from=builder --chown=nextjs:nodejs /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
+
+# Copy built app and dependencies
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next ./apps/web/.next
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/package.json ./apps/web/package.json
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/next.config.js ./apps/web/next.config.js
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/node_modules ./apps/web/node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/packages ./packages
 
 USER nextjs
@@ -64,4 +73,4 @@ WORKDIR /app/apps/web
 
 EXPOSE 3000
 
-CMD ["pnpm", "start"]
+CMD ["node_modules/.bin/next", "start"]
