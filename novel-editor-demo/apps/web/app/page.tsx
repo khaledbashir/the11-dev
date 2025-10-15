@@ -8,7 +8,7 @@ import PricingTableBuilder from "@/components/tailwind/pricing-table-builder";
 import Menu from "@/components/tailwind/ui/menu";
 import { Button } from "@/components/tailwind/ui/button";
 import { toast } from "sonner";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Info, ExternalLink } from "lucide-react";
 import { defaultEditorContent } from "@/lib/content";
 import { THE_ARCHITECT_SYSTEM_PROMPT } from "@/lib/knowledge-base";
 import { 
@@ -1005,7 +1005,35 @@ export default function Page() {
         onMoveDoc={handleMoveDoc}
       />
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-0'} ${agentSidebarOpen ? 'mr-[480px]' : 'mr-0'}`}>
-        <div className="flex w-full max-w-screen-lg items-center gap-2 px-4 sm:mb-[calc(20vh)] mx-auto">
+        {/* Workflow Info Banner */}
+        <div className="w-full bg-gradient-to-r from-[#0e2e33] to-[#0a2328] text-white px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="bg-white/10 px-2 py-1 rounded">1. AnythingLLM Login</span>
+              <span className="text-[#20e28f]">→</span>
+              <span className="bg-[#20e28f]/20 px-2 py-1 rounded border border-[#20e28f]">2. SOW Generator (You are here)</span>
+              <span className="text-[#20e28f]">→</span>
+              <span className="bg-white/10 px-2 py-1 rounded">3. Share Portal Link</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-white/70">
+            <Info className="w-3 h-3" />
+            <span>Logged in as Sam (Admin)</span>
+          </div>
+        </div>
+        
+        <div className="flex w-full max-w-screen-lg items-center gap-2 px-4 sm:mb-[calc(20vh)] mx-auto mt-4">
+          {/* Back to AnythingLLM button */}
+          <Button
+            onClick={() => window.open('https://ahmad-anything-llm.840tjq.easypanel.host', '_blank')}
+            variant="ghost"
+            size="sm"
+            className="gap-2 text-slate-600 hover:text-slate-900"
+            title="Return to AnythingLLM"
+          >
+            ← Back to AI Hub
+          </Button>
+          
           <div className="ml-auto flex gap-2">
             <Button
               onClick={handleEmbedToAI}
@@ -1026,6 +1054,25 @@ export default function Page() {
             >
               <Sparkles className="h-4 w-4" />
               Ask AI
+            </Button>
+            <Button
+              onClick={() => {
+                if (currentDocId) {
+                  const portalUrl = `http://168.231.115.219:3333/portal/sow/${currentDocId}`;
+                  navigator.clipboard.writeText(portalUrl);
+                  toast.success('Portal link copied to clipboard!', {
+                    description: 'Share this link with your client',
+                  });
+                } else {
+                  toast.error('Please select a document first');
+                }
+              }}
+              variant="outline"
+              size="sm"
+              className="gap-2 border-blue-500 text-blue-600 hover:bg-blue-50"
+              title="Copy client portal link"
+            >
+              🔗 Share Portal Link
             </Button>
             <Menu 
               onExportPDF={handleExportPDF}
