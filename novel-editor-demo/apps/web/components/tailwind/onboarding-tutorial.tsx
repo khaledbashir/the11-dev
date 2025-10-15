@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { X, Folder, FileText, Plus, MousePointerClick } from "lucide-react";
 import { Button } from "./ui/button";
+import { toast } from "sonner";
 
 interface TutorialStep {
   id: string;
