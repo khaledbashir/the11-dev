@@ -1,28 +1,38 @@
-import { ArrowDownWideNarrow, CheckCheck, RefreshCcwDot, StepForward, WrapText } from "lucide-react";
+import { ArrowDownWideNarrow, CheckCheck, RefreshCcwDot, StepForward, WrapText, Sparkles } from "lucide-react";
 import { useEditor } from "novel";
 import { getPrevText } from "novel/utils";
-import { CommandGroup, CommandItem, CommandSeparator } from "../ui/command";
+import { Button } from "../ui/button";
 
 const options = [
   {
     value: "improve",
     label: "Improve writing",
     icon: RefreshCcwDot,
+    description: "Enhance clarity and flow",
   },
   {
     value: "fix",
     label: "Fix grammar",
     icon: CheckCheck,
+    description: "Correct grammar and spelling",
   },
   {
     value: "shorter",
     label: "Make shorter",
     icon: ArrowDownWideNarrow,
+    description: "Concise and to the point",
   },
   {
     value: "longer",
     label: "Make longer",
     icon: WrapText,
+    description: "Add more detail and context",
+  },
+  {
+    value: "continue",
+    label: "Continue writing",
+    icon: StepForward,
+    description: "Generate next paragraph",
   },
 ];
 
@@ -33,41 +43,39 @@ interface AISelectorCommandsProps {
 const AISelectorCommands = ({ onSelect }: AISelectorCommandsProps) => {
   const { editor } = useEditor();
 
+  const handleSelect = async (option: string) => {
+    try {
+      if (option === "continue") {
+        const pos = editor.state.selection.from;
+        const text = getPrevText(editor, pos);
+        onSelect(text, option);
+      } else {
+        const slice = editor.state.selection.content();
+        const text = editor.storage.markdown.serializer.serialize(slice.content);
+        onSelect(text, option);
+      }
+    } catch (error) {
+      console.error("Command error:", error);
+    }
+  };
+
   return (
-    <>
-      <CommandGroup heading="Edit or review selection">
-        {options.map((option) => (
-          <CommandItem
-            onSelect={(value) => {
-              const slice = editor.state.selection.content();
-              const text = editor.storage.markdown.serializer.serialize(slice.content);
-              onSelect(text, value);
-            }}
-            className="flex gap-2 px-4"
-            key={option.value}
-            value={option.value}
-          >
-            <option.icon className="h-4 w-4 text-purple-500" />
-            {option.label}
-          </CommandItem>
-        ))}
-      </CommandGroup>
-      <CommandSeparator />
-      <CommandGroup heading="Use AI to do more">
-        <CommandItem
-          onSelect={() => {
-            const pos = editor.state.selection.from;
-            const text = getPrevText(editor, pos);
-            onSelect(text, "continue");
-          }}
-          value="continue"
-          className="gap-2 px-4"
+    <div className="grid grid-cols-5 gap-2 mb-4">
+      {options.map((option) => (
+        <Button
+          key={option.value}
+          variant="ghost"
+          className="flex flex-col items-center gap-2 h-20 bg-gray-800 hover:bg-gray-700 border border-gray-600 hover:border-purple-500 transition-all"
+          onClick={() => handleSelect(option.value)}
         >
-          <StepForward className="h-4 w-4 text-purple-500" />
-          Continue writing
-        </CommandItem>
-      </CommandGroup>
-    </>
+          <option.icon className="h-4 w-4 text-purple-400" />
+          <div className="text-center">
+            <div className="text-sm font-medium text-white">{option.label}</div>
+            <div className="text-xs text-gray-400">{option.description}</div>
+          </div>
+        </Button>
+      ))}
+    </div>
   );
 };
 

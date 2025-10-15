@@ -14,7 +14,6 @@ import {
 } from "novel/extensions";
 
 import { Color } from "@tiptap/extension-color";
-import { Underline as TiptapUnderline } from "@tiptap/extension-underline";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { Table } from "@tiptap/extension-table";
 import { TableRow } from "@tiptap/extension-table-row";
@@ -25,6 +24,9 @@ import { EditablePricingTable } from "./extensions/editable-pricing-table";
 
 import { cx } from "class-variance-authority";
 import { common, createLowlight } from "lowlight";
+
+// Import Underline extension to avoid duplicate name issues
+import Underline from "@tiptap/extension-underline";
 
 //TODO I am using cx here to get tailwind autocomplete working, idk if someone else can write a regex to just capture the class key in objects
 const aiHighlight = AIHighlight;
@@ -96,7 +98,6 @@ const starterKit = StarterKit.configure({
     width: 4,
   },
   gapcursor: false,
-  strike: false, // Disable if using TiptapUnderline separately
 });
 
 const codeBlockLowlight = CodeBlockLowlight.configure({
@@ -146,6 +147,8 @@ const tableCell = TableCell.configure({
   },
 });
 
+const underline = Underline.configure();
+
 export const defaultExtensions = [
   starterKit,
   placeholder,
@@ -159,11 +162,11 @@ export const defaultExtensions = [
   youtube,
   twitter,
   characterCount,
-  TiptapUnderline,
   GlobalDragHandle,
   table,
   tableRow,
   tableHeader,
   tableCell,
   EditablePricingTable,
+  underline, // Add Underline extension after StarterKit to avoid conflicts
 ];

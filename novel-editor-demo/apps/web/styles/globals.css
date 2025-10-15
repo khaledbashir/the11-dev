@@ -76,9 +76,9 @@
     --muted: 0 0% 10%;
     --muted-foreground: 0 0% 60%;
 
-    /* Brand green as accent color */
-    --accent: var(--sg-green);
-    --accent-foreground: 0 0% 0%;
+    /* More subtle accent for dark mode - better contrast */
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 98%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;

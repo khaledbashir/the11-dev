@@ -25,6 +25,7 @@ import GenerativeMenuSwitch from "./generative/generative-menu-switch";
 import { uploadFn } from "./image-upload";
 import { TextButtons } from "./selectors/text-buttons";
 import { slashCommand, suggestionItems } from "./slash-command";
+import { TableMenu } from "./extensions/table-menu";
 
 const hljs = require("highlight.js");
 
@@ -177,6 +178,8 @@ const TailwindAdvancedEditor = forwardRef(({
             <Separator orientation="vertical" />
             <ColorSelector open={openColor} onOpenChange={setOpenColor} />
           </GenerativeMenuSwitch>
+          
+          {editor && <TableMenu editor={editor} />}
         </EditorContent>
       </EditorRoot>
     </div>

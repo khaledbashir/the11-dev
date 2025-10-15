@@ -7,6 +7,7 @@ import AgentSidebar from "@/components/tailwind/agent-sidebar-clean";
 import PricingTableBuilder from "@/components/tailwind/pricing-table-builder";
 import Menu from "@/components/tailwind/ui/menu";
 import { Button } from "@/components/tailwind/ui/button";
+import { toast } from "sonner";
 import { defaultEditorContent } from "@/lib/content";
 import { THE_ARCHITECT_SYSTEM_PROMPT } from "@/lib/knowledge-base";
 import { 
@@ -694,6 +695,59 @@ export default function Page() {
     localStorage.removeItem(`chatMessages_${id}`);
   };
 
+  const handleInsertContent = async (content: string) => {
+    console.log('📝 Inserting content into editor:', content.substring(0, 100));
+    console.log('📝 Editor ref exists:', !!editorRef.current);
+    console.log('📄 Current doc ID:', currentDocId);
+    
+    if (!content || !currentDocId) {
+      console.error('❌ Missing content or document ID');
+      return;
+    }
+
+    try {
+      // Convert markdown content to Novel editor JSON format
+      console.log('🔄 Converting markdown to JSON...');
+      const convertedContent = convertMarkdownToNovelJSON(content);
+      console.log('✅ Content converted');
+      
+      // Extract title from the content (first heading)
+      const titleMatch = content.match(/^#\s+(.+)$/m);
+      const clientMatch = content.match(/\*\*Client:\*\*\s+(.+)$/m);
+      const scopeMatch = content.match(/Scope of Work:\s+(.+)/);
+      
+      let docTitle = "New SOW";
+      if (titleMatch) {
+        docTitle = titleMatch[1];
+      } else if (scopeMatch) {
+        docTitle = scopeMatch[1];
+      } else if (clientMatch) {
+        docTitle = `SOW - ${clientMatch[1]}`;
+      }
+      
+      // Update the document with new content and title
+      console.log('📝 Updating document:', docTitle);
+      setDocuments(prev =>
+        prev.map(doc =>
+          doc.id === currentDocId
+            ? { ...doc, content: convertedContent, title: docTitle }
+            : doc
+        )
+      );
+      console.log('✅ Document updated successfully');
+      
+      // Also update the editor directly
+      if (editorRef.current) {
+        editorRef.current.insertContent(convertedContent);
+      }
+      
+      toast.success("✅ Content inserted into editor!");
+    } catch (error) {
+      console.error("Error inserting content:", error);
+      toast.error("❌ Failed to insert content. Please try again.");
+    }
+  };
+
   const handleSendMessage = async (message: string) => {
     if (!message.trim() || !currentAgentId) return;
 
@@ -705,7 +759,7 @@ export default function Page() {
         message.toLowerCase().includes('insert into editor') ||
         message.toLowerCase() === 'insert' ||
         message.toLowerCase().includes('add to editor')) {
-      console.log('📝 Insert command detected');
+      console.log('📝 Insert command detected!', { message });
       setIsChatLoading(false);
       
       // Find the last AI response in chat history (excluding confirmation messages)
@@ -715,8 +769,9 @@ export default function Page() {
         !msg.content.includes('Ready to insert')
       );
       
-      console.log('Found AI message:', lastAIMessage?.content.substring(0, 100));
-      console.log('Editor ref exists:', !!editorRef.current);
+      console.log('📋 Found AI message:', lastAIMessage?.content.substring(0, 100));
+      console.log('📝 Editor ref exists:', !!editorRef.current);
+      console.log('📄 Current doc ID:', currentDocId);
       
       if (lastAIMessage && currentDocId) {
         try {
@@ -793,9 +848,10 @@ export default function Page() {
 
     const currentAgent = agents.find(a => a.id === currentAgentId);
     if (currentAgent) {
-      // API key validation now handled server-side
+      try {
+        // API key validation now handled server-side
 
-      const response = await fetch("/api/chat", {
+        const response = await fetch("/api/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -847,8 +903,23 @@ export default function Page() {
         const updatedMessages = [...newMessages, aiMessage];
         setChatMessages(updatedMessages);
         localStorage.setItem(`chatMessages_${currentAgentId}`, JSON.stringify(updatedMessages));
+      } catch (error) {
+        console.error("❌ Chat API error:", error);
+        const errorMessage: ChatMessage = {
+          id: `msg${Date.now() + 1}`,
+          role: 'assistant',
+          content: "❌ Network error: Unable to reach AI service. Please check your connection and try again.",
+          timestamp: Date.now(),
+        };
+        const updatedMessages = [...newMessages, errorMessage];
+        setChatMessages(updatedMessages);
+        localStorage.setItem(`chatMessages_${currentAgentId}`, JSON.stringify(updatedMessages));
+      } finally {
+        setIsChatLoading(false);
+      }
+    } else {
+      setIsChatLoading(false);
     }
-    setIsChatLoading(false);
   };
 
   return (
@@ -901,7 +972,7 @@ export default function Page() {
         chatMessages={chatMessages}
         onSendMessage={handleSendMessage}
         isLoading={isChatLoading}
-        onInsertToEditor={() => handleSendMessage('insert')}
+        onInsertToEditor={(content) => handleInsertContent(content)}
       />
     </div>
   );

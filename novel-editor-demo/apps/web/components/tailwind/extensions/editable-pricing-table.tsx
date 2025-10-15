@@ -98,6 +98,7 @@ interface PricingRow {
 const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
   const [rows, setRows] = useState<PricingRow[]>(node.attrs.rows || []);
   const [discount, setDiscount] = useState(node.attrs.discount || 0);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   useEffect(() => {
     updateAttributes({ rows, discount });
@@ -128,6 +129,40 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
     }
   };
 
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    // Add a subtle opacity to the dragged row
+    (e.target as HTMLElement).style.opacity = '0.5';
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    setDraggedIndex(null);
+    (e.target as HTMLElement).style.opacity = '1';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault(); // Allow drop
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      return;
+    }
+
+    // Reorder the rows
+    const newRows = [...rows];
+    const [draggedRow] = newRows.splice(draggedIndex, 1);
+    newRows.splice(dropIndex, 0, draggedRow);
+    
+    setRows(newRows);
+    setDraggedIndex(null);
+  };
+
   const calculateSubtotal = () => {
     return rows.reduce((sum, row) => sum + (row.hours * row.rate), 0);
   };
@@ -150,12 +185,33 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
 
   return (
     <NodeViewWrapper className="editable-pricing-table my-6">
-      <div className="border border-gray-300 rounded-lg p-4 bg-white">
+      <style>
+        {`
+          .pricing-row-dragging {
+            opacity: 0.5;
+            background-color: #f3f4f6;
+          }
+          .pricing-row:hover .drag-handle {
+            opacity: 1;
+          }
+          .drag-handle {
+            opacity: 0.3;
+            transition: opacity 0.2s;
+          }
+          .pricing-row {
+            transition: background-color 0.15s ease;
+          }
+        `}
+      </style>
+      <div className="border border-border rounded-lg p-4 bg-background dark:bg-gray-900/50">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold text-gray-900">Project Pricing</h3>
+          <div>
+            <h3 className="text-lg font-bold text-foreground dark:text-gray-100">Project Pricing</h3>
+            <p className="text-xs text-gray-500 mt-0.5">💡 Tip: Drag rows to reorder</p>
+          </div>
           <button
             onClick={addRow}
-            className="px-3 py-1 bg-[#2C823D] text-white rounded text-sm hover:bg-[#25703A]"
+            className="px-3 py-1 bg-[#0e2e33] text-white rounded text-sm hover:bg-[#0a2328] transition-colors"
           >
             + Add Role
           </button>
@@ -165,44 +221,58 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
         <div className="overflow-x-auto mb-4">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-[#2C823D] text-white">
-                <th className="border border-gray-300 px-3 py-2 text-left text-sm">Role</th>
-                <th className="border border-gray-300 px-3 py-2 text-left text-sm">Description</th>
-                <th className="border border-gray-300 px-3 py-2 text-left text-sm w-24">Hours</th>
-                <th className="border border-gray-300 px-3 py-2 text-left text-sm w-24">Rate</th>
-                <th className="border border-gray-300 px-3 py-2 text-right text-sm w-32">Cost</th>
-                <th className="border border-gray-300 px-3 py-2 text-center text-sm w-16">Actions</th>
+              <tr className="bg-[#0e2e33] text-white">
+                <th className="border border-border px-3 py-2 text-left text-sm">Role</th>
+                <th className="border border-border px-3 py-2 text-left text-sm">Description</th>
+                <th className="border border-border px-3 py-2 text-left text-sm w-24">Hours</th>
+                <th className="border border-border px-3 py-2 text-left text-sm w-24">Rate</th>
+                <th className="border border-border px-3 py-2 text-right text-sm w-32">Cost</th>
+                <th className="border border-border px-3 py-2 text-center text-sm w-16">Actions</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((row, index) => (
-                <tr key={index} className="hover:bg-gray-50">
-                  <td className="border border-gray-300 p-2">
-                    <select
-                      value={row.role}
-                      onChange={(e) => updateRow(index, 'role', e.target.value)}
-                      style={{ color: '#111827', backgroundColor: '#f9fafb' }}
-                      className="w-full px-2 py-1 text-sm !text-gray-900 bg-gray-50 border border-gray-300 rounded focus:outline-none focus:border-[#2C823D]"
-                    >
-                      <option value="">Select role...</option>
-                      {ROLES.map((role) => (
-                        <option key={role.name} value={role.name}>
-                          {role.name} - ${role.rate}/hr
-                        </option>
-                      ))}
-                    </select>
+                <tr 
+                  key={index} 
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, index)}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDrop(e, index)}
+                  className={`pricing-row hover:bg-muted dark:bg-gray-800 cursor-move ${
+                    draggedIndex === index ? 'pricing-row-dragging' : ''
+                  }`}
+                  title="💡 Drag to reorder rows"
+                >
+                  <td className="border border-border p-2">
+                    <div className="flex items-center gap-2">
+                      <span className="drag-handle text-gray-400 cursor-grab active:cursor-grabbing select-none text-lg" title="Drag to reorder">⋮⋮</span>
+                      <select
+                        value={row.role}
+                        onChange={(e) => updateRow(index, 'role', e.target.value)}
+                        
+                        className="flex-1 px-2 py-1 text-sm !text-foreground dark:text-gray-100 bg-muted dark:bg-gray-800 border border-border rounded focus:outline-none focus:border-[#0e2e33]"
+                      >
+                        <option value="">Select role...</option>
+                        {ROLES.map((role) => (
+                          <option key={role.name} value={role.name}>
+                            {role.name} - ${role.rate}/hr
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </td>
-                  <td className="border border-gray-300 p-2">
+                  <td className="border border-border p-2">
                     <input
                       type="text"
                       value={row.description}
                       onChange={(e) => updateRow(index, 'description', e.target.value)}
                       placeholder="Description..."
-                      style={{ color: '#000000', backgroundColor: '#e5e7eb' }}
-                      className="w-full px-2 py-1 text-sm !text-black bg-gray-200 border border-gray-300 rounded focus:outline-none focus:border-[#2C823D] placeholder:text-gray-500"
+                      
+                      className="w-full px-2 py-1 text-sm !text-black bg-muted dark:bg-gray-700 border border-border rounded focus:outline-none focus:border-[#0e2e33] placeholder:text-gray-500"
                     />
                   </td>
-                  <td className="border border-gray-300 p-2">
+                  <td className="border border-border p-2">
                     <input
                       type="number"
                       value={row.hours || ''}
@@ -210,25 +280,25 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
                       placeholder="0"
                       min="0"
                       step="0.5"
-                      style={{ color: '#111827', backgroundColor: '#f9fafb' }}
-                      className="w-full px-2 py-1 text-sm !text-gray-900 bg-gray-50 border border-gray-300 rounded focus:outline-none focus:border-[#2C823D] placeholder:text-gray-400"
+                      
+                      className="w-full px-2 py-1 text-sm !text-foreground dark:text-gray-100 bg-muted dark:bg-gray-800 border border-border rounded focus:outline-none focus:border-[#0e2e33] placeholder:text-gray-400"
                     />
                   </td>
-                  <td className="border border-gray-300 p-2">
+                  <td className="border border-border p-2">
                     <input
                       type="number"
                       value={row.rate || ''}
                       onChange={(e) => updateRow(index, 'rate', parseFloat(e.target.value) || 0)}
                       placeholder="$0"
                       min="0"
-                      style={{ color: '#111827', backgroundColor: '#f9fafb' }}
-                      className="w-full px-2 py-1 text-sm !text-gray-900 bg-gray-50 border border-gray-300 rounded focus:outline-none focus:border-[#2C823D] placeholder:text-gray-400"
+                      
+                      className="w-full px-2 py-1 text-sm !text-foreground dark:text-gray-100 bg-muted dark:bg-gray-800 border border-border rounded focus:outline-none focus:border-[#0e2e33] placeholder:text-gray-400"
                     />
                   </td>
-                  <td className="border border-gray-300 px-3 py-2 text-right text-sm font-semibold" style={{ color: '#000000' }}>
+                  <td className="border border-border px-3 py-2 text-right text-sm font-semibold" >
                     ${(row.hours * row.rate).toFixed(2)}
                   </td>
-                  <td className="border border-gray-300 p-2 text-center">
+                  <td className="border border-border p-2 text-center">
                     <button
                       onClick={() => removeRow(index)}
                       disabled={rows.length === 1}
@@ -246,8 +316,8 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
         {/* Summary Section */}
         <div className="flex justify-end">
           <div className="w-full max-w-md">
-            <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-              <div className="flex justify-between items-center text-sm text-gray-900">
+            <div className="bg-muted dark:bg-gray-800 rounded-lg p-4 space-y-2">
+              <div className="flex justify-between items-center text-sm text-foreground dark:text-gray-100">
                 <span>Discount (%):</span>
                 <input
                   type="number"
@@ -255,11 +325,11 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
                   onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
                   min="0"
                   max="100"
-                  style={{ color: '#111827', backgroundColor: '#f9fafb' }}
-                  className="w-20 px-2 py-1 text-sm !text-gray-900 bg-gray-50 border border-gray-300 rounded focus:outline-none focus:border-[#2C823D] text-right placeholder:text-gray-400"
+                  
+                  className="w-20 px-2 py-1 text-sm !text-foreground dark:text-gray-100 bg-muted dark:bg-gray-800 border border-border rounded focus:outline-none focus:border-[#0e2e33] text-right placeholder:text-gray-400"
                 />
               </div>
-              <div className="flex justify-between text-sm text-gray-900">
+              <div className="flex justify-between text-sm text-foreground dark:text-gray-100">
                 <span>Subtotal:</span>
                 <span className="font-semibold">${calculateSubtotal().toFixed(2)}</span>
               </div>
@@ -269,19 +339,19 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
                     <span>Discount ({discount}%):</span>
                     <span>-${calculateDiscount().toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between text-sm text-gray-900">
+                  <div className="flex justify-between text-sm text-foreground dark:text-gray-100">
                     <span>After Discount:</span>
                     <span className="font-semibold">${calculateSubtotalAfterDiscount().toFixed(2)}</span>
                   </div>
                 </>
               )}
-              <div className="flex justify-between text-sm text-gray-900">
+              <div className="flex justify-between text-sm text-foreground dark:text-gray-100">
                 <span>GST (10%):</span>
                 <span>${calculateGST().toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-base font-bold text-gray-900 border-t border-gray-300 pt-2 mt-2">
+              <div className="flex justify-between text-base font-bold text-foreground dark:text-gray-100 border-t border-border pt-2 mt-2">
                 <span>Total Project Value:</span>
-                <span className="text-[#2C823D]">${calculateTotal().toFixed(2)}</span>
+                <span className="text-[#0e2e33]">${calculateTotal().toFixed(2)}</span>
               </div>
             </div>
           </div>
