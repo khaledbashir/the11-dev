@@ -220,7 +220,7 @@ Metadata:
 
       // Create new embed config
       console.log(`🆕 Creating new embed for workspace: ${workspaceSlug}`);
-      const response = await fetch(`${this.baseUrl}/api/v1/embed/new`, {
+      const response = await fetch(`${this.baseUrl}/api/v1/embeds/new`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify({
