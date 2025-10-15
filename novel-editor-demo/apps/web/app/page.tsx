@@ -214,12 +214,20 @@ interface Document {
   title: string;
   content: any;
   folderId?: string;
+  workspaceSlug?: string;
+  threadSlug?: string;
+  threadId?: string;
+  syncedAt?: string;
 }
 
 interface Folder {
   id: string;
   name: string;
   parentId?: string;
+  workspaceSlug?: string;
+  workspaceId?: string;
+  embedId?: string;
+  syncedAt?: string;
 }
 
 interface Agent {
@@ -345,13 +353,40 @@ export default function Page() {
     setCurrentDocId(id);
   };
 
-  const handleNewDoc = () => {
+  const handleNewDoc = async () => {
     const newId = `doc${Date.now()}`;
-    const newDoc: Document = {
+    const title = "New SOW";
+    
+    // Find workspace slug from current folder (if any)
+    const currentFolder = folders.find(f => f.id === currentDocId);
+    const workspaceSlug = currentFolder?.workspaceSlug;
+    
+    let newDoc: Document = {
       id: newId,
-      title: "New SOW",
+      title,
       content: defaultEditorContent,
+      workspaceSlug,
     };
+    
+    try {
+      // 🧵 Create AnythingLLM thread for this SOW (if workspace exists)
+      if (workspaceSlug) {
+        const thread = await anythingLLM.createThread(workspaceSlug, title);
+        if (thread) {
+          newDoc = {
+            ...newDoc,
+            threadSlug: thread.slug,
+            threadId: thread.id,
+            syncedAt: new Date().toISOString(),
+          };
+          toast.success(`✅ SOW created with chat thread`);
+        }
+      }
+    } catch (error) {
+      console.error('Error creating thread:', error);
+      toast.error('SOW created but thread sync failed');
+    }
+    
     setDocuments(prev => [...prev, newDoc]);
     setCurrentDocId(newId);
     
@@ -371,11 +406,38 @@ export default function Page() {
     }
   };
 
-  const handleRenameDoc = (id: string, title: string) => {
-    setDocuments(prev => prev.map(d => d.id === id ? { ...d, title } : d));
+  const handleRenameDoc = async (id: string, title: string) => {
+    const doc = documents.find(d => d.id === id);
+    
+    try {
+      // 🧵 Update AnythingLLM thread name if it exists
+      if (doc?.workspaceSlug && doc?.threadSlug) {
+        await anythingLLM.updateThread(doc.workspaceSlug, doc.threadSlug, title);
+        toast.success(`✅ SOW renamed to "${title}"`);
+      }
+      
+      setDocuments(prev => prev.map(d => d.id === id ? { ...d, title, syncedAt: new Date().toISOString() } : d));
+    } catch (error) {
+      console.error('Error renaming document:', error);
+      setDocuments(prev => prev.map(d => d.id === id ? { ...d, title } : d));
+      toast.error('SOW renamed locally but thread sync failed');
+    }
   };
 
-  const handleDeleteDoc = (id: string) => {
+  const handleDeleteDoc = async (id: string) => {
+    const doc = documents.find(d => d.id === id);
+    
+    try {
+      // 🧵 Delete AnythingLLM thread if it exists
+      if (doc?.workspaceSlug && doc?.threadSlug) {
+        await anythingLLM.deleteThread(doc.workspaceSlug, doc.threadSlug);
+        toast.success(`✅ SOW and thread deleted`);
+      }
+    } catch (error) {
+      console.error('Error deleting thread:', error);
+      toast.error('SOW deleted but thread cleanup failed');
+    }
+    
     setDocuments(prev => prev.filter(d => d.id !== id));
     if (currentDocId === id) {
       const remaining = documents.filter(d => d.id !== id);
@@ -383,20 +445,57 @@ export default function Page() {
     }
   };
 
-  const handleNewFolder = (name: string) => {
+  const handleNewFolder = async (name: string) => {
     const newId = `folder${Date.now()}`;
-    const newFolder: Folder = {
-      id: newId,
-      name,
-    };
-    setFolders(prev => [...prev, newFolder]);
+    
+    try {
+      // 🏢 Create AnythingLLM workspace for this folder
+      const workspaceSlug = await anythingLLM.createOrGetClientWorkspace(name);
+      const embedId = await anythingLLM.getOrCreateEmbedId(workspaceSlug);
+      
+      const newFolder: Folder = {
+        id: newId,
+        name,
+        workspaceSlug,
+        embedId,
+        syncedAt: new Date().toISOString(),
+      };
+      
+      setFolders(prev => [...prev, newFolder]);
+      toast.success(`✅ Folder "${name}" created with workspace`);
+    } catch (error) {
+      console.error('Error creating folder:', error);
+      // Fallback: create folder without workspace
+      const newFolder: Folder = {
+        id: newId,
+        name,
+      };
+      setFolders(prev => [...prev, newFolder]);
+      toast.error('Folder created but workspace sync failed');
+    }
   };
 
-  const handleRenameFolder = (id: string, name: string) => {
-    setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f));
+  const handleRenameFolder = async (id: string, name: string) => {
+    const folder = folders.find(f => f.id === id);
+    
+    try {
+      // 🏢 Update AnythingLLM workspace name if it exists
+      if (folder?.workspaceSlug) {
+        await anythingLLM.updateWorkspace(folder.workspaceSlug, name);
+      }
+      
+      setFolders(prev => prev.map(f => f.id === id ? { ...f, name, syncedAt: new Date().toISOString() } : f));
+      toast.success(`✅ Folder renamed to "${name}"`);
+    } catch (error) {
+      console.error('Error renaming folder:', error);
+      setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f));
+      toast.error('Folder renamed locally but workspace sync failed');
+    }
   };
 
-  const handleDeleteFolder = (id: string) => {
+  const handleDeleteFolder = async (id: string) => {
+    const folder = folders.find(f => f.id === id);
+    
     // Also delete subfolders and docs in folder
     const toDelete = [id];
     const deleteRecursive = (folderId: string) => {
@@ -406,6 +505,18 @@ export default function Page() {
       });
     };
     deleteRecursive(id);
+    
+    try {
+      // 🏢 Delete AnythingLLM workspace (cascades to all threads)
+      if (folder?.workspaceSlug) {
+        await anythingLLM.deleteWorkspace(folder.workspaceSlug);
+        toast.success(`✅ Folder and workspace deleted`);
+      }
+    } catch (error) {
+      console.error('Error deleting workspace:', error);
+      toast.error('Folder deleted but workspace cleanup failed');
+    }
+    
     setFolders(prev => prev.filter(f => !toDelete.includes(f.id)));
     setDocuments(prev => prev.filter(d => !d.folderId || !toDelete.includes(d.folderId)));
   };
