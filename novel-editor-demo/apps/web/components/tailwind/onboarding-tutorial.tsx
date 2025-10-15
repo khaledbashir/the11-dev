@@ -30,9 +30,9 @@ const tutorialSteps: TutorialStep[] = [
   },
   {
     id: "create-sow",
-    title: "Step 2: Create an SOW",
-    description: "Hover over your folder and click the green '+' button that appears. This creates a new SOW document inside that folder's workspace.",
-    icon: <Plus className="h-8 w-8 text-green-500" />,
+    title: "Step 2: Create a SOW",
+    description: "Look for the green '+' button next to your folder name (it's slightly visible and gets brighter on hover). Click it to create a new SOW document inside that folder's workspace.",
+    icon: <FileText className="h-8 w-8 text-purple-500" />,
     position: "sidebar"
   },
   {

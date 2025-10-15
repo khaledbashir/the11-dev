@@ -201,11 +201,11 @@ function DroppableFolder({
         ) : (
           <span className="text-sm font-medium flex-1">{folder.name}</span>
         )}
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
           <Button
             size="sm"
             variant="ghost"
-            className="h-6 w-6 p-0 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 dark:text-green-500"
+            className="h-6 w-6 p-0 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 dark:text-green-500 hover:scale-110 transition-transform"
             onClick={() => onNewDoc(folder.id)}
             title="New SOW in this folder"
           >
