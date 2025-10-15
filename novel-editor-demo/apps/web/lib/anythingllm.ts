@@ -1,6 +1,8 @@
 // AnythingLLM Integration Service
 // Handles workspace creation, document embedding, and chat integration
 
+import SOCIAL_GARDEN_KNOWLEDGE_BASE from './social-garden-knowledge-base';
+
 // Social Garden AnythingLLM Instance
 const ANYTHINGLLM_BASE_URL = 'https://socialgarden-anything-llm.vo0egb.easypanel.host';
 const ANYTHINGLLM_API_KEY = '0G0WTZ3-6ZX4D20-H35VBRG-9059WPA'; // Update with your Social Garden API key
@@ -75,7 +77,10 @@ export class AnythingLLMService {
       const data: WorkspaceResponse = await response.json();
       console.log(`✅ Workspace created: ${data.workspace.slug}`);
       
-      // Automatically set client-facing prompt for new workspace
+      // 🌱 STEP 1: Embed Social Garden company knowledge base
+      await this.embedCompanyKnowledgeBase(data.workspace.slug);
+      
+      // 🎯 STEP 2: Set client-facing prompt for new workspace
       await this.setWorkspacePrompt(data.workspace.slug, clientName);
       
       return data.workspace.slug;
@@ -285,6 +290,66 @@ Metadata:
   }
 
   /**
+   * Embed Social Garden company knowledge base into workspace
+   * This gives the AI context about Social Garden's services, case studies, and capabilities
+   */
+  async embedCompanyKnowledgeBase(workspaceSlug: string): Promise<boolean> {
+    try {
+      console.log(`📚 Embedding Social Garden knowledge base into workspace: ${workspaceSlug}`);
+
+      // Upload company knowledge base as raw text
+      const uploadResponse = await fetch(`${this.baseUrl}/api/v1/document/raw-text`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({
+          textContent: SOCIAL_GARDEN_KNOWLEDGE_BASE,
+          metadata: {
+            title: 'Social Garden - Company Knowledge Base',
+            source: 'Social Garden Internal Documentation',
+            type: 'Company Information',
+            priority: 'high', // Make this available for all queries
+          },
+        }),
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`Failed to upload knowledge base: ${uploadResponse.statusText}`);
+      }
+
+      const uploadData: DocumentResponse = await uploadResponse.json();
+      
+      if (!uploadData.success) {
+        throw new Error(uploadData.message || 'Knowledge base upload failed');
+      }
+
+      console.log(`✅ Company knowledge base uploaded: ${uploadData.documentId}`);
+
+      // Add knowledge base to workspace
+      const updateResponse = await fetch(
+        `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/update`,
+        {
+          method: 'POST',
+          headers: this.getHeaders(),
+          body: JSON.stringify({
+            adds: [uploadData.documentId],
+          }),
+        }
+      );
+
+      if (!updateResponse.ok) {
+        console.warn('⚠️ Knowledge base uploaded but failed to add to workspace');
+        return false;
+      }
+
+      console.log(`✅ Social Garden knowledge base added to workspace: ${workspaceSlug}`);
+      return true;
+    } catch (error) {
+      console.error('❌ Error embedding company knowledge base:', error);
+      return false;
+    }
+  }
+
+  /**
    * Convert HTML to plain text (simple implementation)
    */
   private htmlToText(html: string): string {
@@ -308,7 +373,7 @@ Metadata:
   async setWorkspacePrompt(workspaceSlug: string, clientName?: string): Promise<boolean> {
     const greeting = clientName ? `Hi! I'm the Social Garden AI assistant for ${clientName}.` : `Hi! I'm your Social Garden AI assistant.`;
     
-    const prompt = `${greeting} I have complete access to all your Statement of Work (SOW) documents and I'm here to help you understand every detail of your projects with us.
+    const prompt = `${greeting} I have complete access to all your Statement of Work (SOW) documents AND comprehensive knowledge about Social Garden's services, case studies, and capabilities.
 
 🎯 What I Can Help You With:
 - Project scope, deliverables, and timelines
@@ -325,12 +390,22 @@ Metadata:
 - If something isn't in your SOWs, I'll let you know honestly
 
 ✨ Example Questions You Can Ask:
+
+About Your SOW:
 - "What's my total investment for this project?"
 - "How many hours are allocated for social media management?"
 - "What deliverables am I getting with the HubSpot integration?"
 - "When does the project start and what are the key milestones?"
 - "Can you break down the pricing for the content creation services?"
 - "What's included in the monthly retainer?"
+
+About Social Garden:
+- "What other property clients has Social Garden worked with?"
+- "Tell me about Social Garden's CRM implementation services"
+- "What case studies do you have in education marketing?"
+- "Who are the founders and leadership team?"
+- "What marketing automation platforms does Social Garden specialize in?"
+- "Does Social Garden offer internships or career opportunities?"
 
 📊 Response Style:
 I'll always give you clear, accurate answers with specific details from your SOWs. For example:
