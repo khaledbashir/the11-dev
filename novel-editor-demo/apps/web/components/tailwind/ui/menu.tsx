@@ -38,10 +38,9 @@ const appearances = [
 interface MenuProps {
   onExportPDF?: () => void;
   onExportExcel?: () => void;
-  onExportCSV?: () => void;
 }
 
-export default function Menu({ onExportPDF, onExportExcel, onExportCSV }: MenuProps) {
+export default function Menu({ onExportPDF, onExportExcel }: MenuProps) {
   // const { font: currentFont, setFont } = useContext(AppContext);
   const { theme: currentTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -74,17 +73,6 @@ export default function Menu({ onExportPDF, onExportExcel, onExportCSV }: MenuPr
         >
           <FileSpreadsheet className="h-4 w-4 mr-2" />
           Export Excel
-        </Button>
-      )}
-      {onExportCSV && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onExportCSV}
-          className="sg-button"
-        >
-          <FileText className="h-4 w-4 mr-2" />
-          Export CSV
         </Button>
       )}
       <Popover>

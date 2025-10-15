@@ -13,7 +13,6 @@ import { defaultEditorContent } from "@/lib/content";
 import { THE_ARCHITECT_SYSTEM_PROMPT } from "@/lib/knowledge-base";
 import { 
   extractPricingFromContent, 
-  exportToCSV, 
   exportToExcel, 
   exportToPDF,
   parseSOWMarkdown
@@ -555,34 +554,6 @@ export default function Page() {
     }
   };
 
-  const handleExportCSV = () => {
-    if (!currentDoc) return;
-    
-    try {
-      // Extract pricing data from document
-      const pricingRows = extractPricingFromContent(currentDoc.content);
-      
-      if (pricingRows.length === 0) {
-        alert('No pricing table found in document. Please generate a SOW first.');
-        return;
-      }
-      
-      // Get last AI message for additional SOW data
-      const lastAIMessage = [...chatMessages].reverse().find(msg => msg.role === 'assistant');
-      const sowData = lastAIMessage ? parseSOWMarkdown(lastAIMessage.content) : {};
-      
-      const filename = `${currentDoc.title.replace(/[^a-z0-9]/gi, '_')}_pricing.csv`;
-      exportToCSV({
-        title: currentDoc.title,
-        pricingRows,
-        ...sowData,
-      }, filename);
-    } catch (error) {
-      console.error('Error exporting CSV:', error);
-      alert('Error exporting CSV. Please try again.');
-    }
-  };
-
   // Helper function to convert Novel JSON to HTML
   const convertNovelToHTML = (content: any) => {
     if (!content || !content.content) return '';
@@ -1077,7 +1048,6 @@ export default function Page() {
             <Menu 
               onExportPDF={handleExportPDF}
               onExportExcel={handleExportExcel}
-              onExportCSV={handleExportCSV}
             />
           </div>
         </div>
