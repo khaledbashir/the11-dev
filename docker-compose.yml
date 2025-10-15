@@ -7,11 +7,12 @@ services:
       context: ./novel-editor-demo
       dockerfile: Dockerfile
     ports:
-      - "${FRONTEND_PORT:-3000}:3000"
+      - "3333:3000"
+      - "3334:3000"
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_PDF_SERVICE_URL=http://pdf-service:8000
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+            - OPENROUTER_API_KEY=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
       - DB_HOST=168.231.115.219
       - DB_PORT=3306
       - DB_USER=sg_sow_user
