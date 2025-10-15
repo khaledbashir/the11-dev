@@ -205,7 +205,7 @@ Metadata:
   async getOrCreateEmbedId(workspaceSlug: string): Promise<string | null> {
     try {
       // First, check if embed already exists for this workspace
-      const listResponse = await fetch(`${this.baseUrl}/api/v1/embeds`, {
+      const listResponse = await fetch(`${this.baseUrl}/api/v1/embed`, {
         headers: this.getHeaders(),
       });
 
@@ -220,7 +220,7 @@ Metadata:
 
       // Create new embed config
       console.log(`🆕 Creating new embed for workspace: ${workspaceSlug}`);
-      const response = await fetch(`${this.baseUrl}/api/v1/embeds/new`, {
+      const response = await fetch(`${this.baseUrl}/api/v1/embed/new`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify({
