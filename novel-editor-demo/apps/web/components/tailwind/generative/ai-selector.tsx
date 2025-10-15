@@ -347,16 +347,26 @@ export function AISelector({ onOpenChange }: AISelectorProps) {
 
   return (
     <div className="w-[500px] bg-background border-2 border-border rounded-xl shadow-2xl overflow-hidden">
-      {/* Header with shortcuts */}
-            {/* Header with shortcuts */}
+      {/* Header with shortcuts and close button */}
       <div className="bg-[#0e2e33] px-4 py-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-white" />
           <span className="text-sm font-semibold text-white">AI Writing Assistant</span>
         </div>
-        <div className="flex items-center gap-2 text-xs text-white/90">
-          <kbd className="px-2 py-0.5 bg-white/20 rounded text-[10px]">Ctrl+Enter</kbd>
-          <span>to generate</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-xs text-white/90">
+            <kbd className="px-2 py-0.5 bg-white/20 rounded text-[10px]">Ctrl+Enter</kbd>
+            <span>to generate</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 hover:bg-white/20 text-white"
+            onClick={() => onOpenChange(false)}
+            title="Close (Esc)"
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
@@ -496,10 +506,11 @@ export function AISelector({ onOpenChange }: AISelectorProps) {
             <Button
               variant="outline"
               size="icon"
-              className="h-9 w-9"
+              className="h-9 w-9 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950"
               onClick={() => onOpenChange(false)}
+              title="Close AI Assistant (Esc)"
             >
-              <X className="h-4 w-4" />
+              <X className="h-4 w-4 text-red-600 dark:text-red-400" />
             </Button>
           </div>
 

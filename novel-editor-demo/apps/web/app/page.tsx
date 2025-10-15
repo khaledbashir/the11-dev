@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Sparkles, Info, ExternalLink } from "lucide-react";
 import { defaultEditorContent } from "@/lib/content";
 import { THE_ARCHITECT_SYSTEM_PROMPT } from "@/lib/knowledge-base";
+import { OnboardingTutorial } from "@/components/tailwind/onboarding-tutorial";
 import { 
   extractPricingFromContent, 
   exportToExcel, 
@@ -1074,6 +1075,9 @@ export default function Page() {
 
   return (
     <div className="flex min-h-screen">
+      {/* Onboarding Tutorial */}
+      <OnboardingTutorial />
+      
       <Sidebar
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
