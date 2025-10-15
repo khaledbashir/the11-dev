@@ -1,4 +1,4 @@
-import { CommandGroup, CommandItem, CommandSeparator } from "../ui/command";
+import { Command, CommandGroup, CommandItem, CommandSeparator } from "../ui/command";
 import { useEditor } from "novel";
 import { Check, TextQuote, TrashIcon } from "lucide-react";
 
@@ -10,8 +10,13 @@ const AICompletionCommands = ({
   onDiscard: () => void;
 }) => {
   const { editor } = useEditor();
+  
+  if (!editor) {
+    return null;
+  }
+  
   return (
-    <>
+    <Command className="border-t border-gray-200 dark:border-gray-700">
       <CommandGroup>
         <CommandItem
           className="gap-2 px-4"
@@ -59,7 +64,7 @@ const AICompletionCommands = ({
           Discard
         </CommandItem>
       </CommandGroup>
-    </>
+    </Command>
   );
 };
 

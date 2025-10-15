@@ -131,28 +131,63 @@ export async function POST(req: NextRequest): Promise<Response> {
         top_p: 1,
         frequency_penalty: 0,
         presence_penalty: 0,
+        stream: true, // Enable streaming
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`OpenRouter API error: ${response.status}`);
+      return new Response(await response.text(), { status: response.status });
     }
 
-    const data = await response.json();
-
-    // Convert OpenRouter response to AI SDK format for compatibility
+    // Transform OpenRouter SSE stream to AI SDK format
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+    
     const stream = new ReadableStream({
-      start(controller) {
-        const content = data.choices[0]?.message?.content || '';
-        controller.enqueue(`data: ${JSON.stringify({ content })}\n\n`);
-        controller.enqueue('data: [DONE]\n\n');
-        controller.close();
+      async start(controller) {
+        const reader = response.body?.getReader();
+        if (!reader) return;
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const data = line.slice(6);
+                if (data === '[DONE]') continue;
+                
+                try {
+                  const json = JSON.parse(data);
+                  const content = json.choices?.[0]?.delta?.content;
+                  if (content) {
+                    // Send in AI SDK format - raw text only
+                    controller.enqueue(encoder.encode(content));
+                  }
+                } catch (e) {
+                  // Skip malformed JSON - sometimes happens with preambles
+                  console.error('Stream parse error:', e, 'Data:', data);
+                }
+              }
+            }
+          }
+        } catch (error) {
+          controller.error(error);
+        } finally {
+          controller.close();
+        }
       },
     });
 
     return new Response(stream, {
       headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
       },
     });
   } catch (error) {

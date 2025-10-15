@@ -64,7 +64,7 @@ interface AgentSidebarProps {
   chatMessages: ChatMessage[];
   onSendMessage: (message: string) => void;
   isLoading?: boolean;
-  onInsertToEditor?: () => void;
+  onInsertToEditor?: (content: string) => void;
 }
 
 
@@ -629,7 +629,10 @@ export default function AgentSidebar({
                           ) && (
                             <Button
                               size="sm"
-                              onClick={onInsertToEditor}
+                              onClick={() => {
+                                console.log('🔘 Insert button clicked for message:', msg.content.substring(0, 100));
+                                onInsertToEditor?.(msg.content);
+                              }}
                               className="mt-2 bg-green-600 hover:bg-green-700 text-white"
                             >
                               📄 Insert SOW into Editor

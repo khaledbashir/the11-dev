@@ -13,26 +13,32 @@ interface GenerativeMenuSwitchProps {
 
 const GenerativeMenuSwitch = ({ children, open, onOpenChange }: GenerativeMenuSwitchProps) => {
   const { editor } = useEditor();
-  const preventCloseRef = useRef(false);
+  const hasCompletionRef = useRef(false);
 
   useEffect(() => {
     console.log("🔍 [ASK AI POPUP] State changed - open:", open);
     if (!open) {
       removeAIHighlight(editor);
-      preventCloseRef.current = false;
-    } else {
-      // When popup opens, prevent it from closing for 3 seconds
-      preventCloseRef.current = true;
-      setTimeout(() => {
-        console.log("⏰ [ASK AI POPUP] Auto-prevent timeout - allow manual close now");
-        preventCloseRef.current = false;
-      }, 3000);
+      hasCompletionRef.current = false;
     }
   }, [open, editor]);
 
   const handleOpenChange = (newOpen: boolean) => {
     console.log("🎯 [ASK AI POPUP] Open change requested - from:", open, "to:", newOpen);
     onOpenChange(newOpen);
+  };
+
+  const handleButtonClick = (e: React.MouseEvent) => {
+    console.log("🎨 [ASK AI BUTTON] Clicked!");
+    e.preventDefault();
+    e.stopPropagation();
+    handleOpenChange(!open);
+  };
+
+  const handleButtonMouseDown = (e: React.MouseEvent) => {
+    console.log("🎨 [ASK AI BUTTON] Mouse down");
+    e.preventDefault();
+    e.stopPropagation();
   };
 
   return (
@@ -45,17 +51,17 @@ const GenerativeMenuSwitch = ({ children, open, onOpenChange }: GenerativeMenuSw
         interactive: true,
         appendTo: () => document.body,
         
-        // VERY long delay before hiding
-        delay: [200, 3000], // Wait 3 seconds before hiding
+        // Reasonable delay before hiding
+        delay: [0, 300], // Shorter delay
         
-        // HUGE interaction area
-        interactiveBorder: 100,
+        // Large interaction area
+        interactiveBorder: 15,
         
-        // Manual control
-        trigger: 'manual mouseenter focus',
+        // Manual trigger
+        trigger: 'manual',
         
-        // Duration
-        duration: [300, 1000],
+        // Smooth animations
+        duration: [200, 150],
         
         // Better positioning
         popperOptions: {
@@ -63,7 +69,7 @@ const GenerativeMenuSwitch = ({ children, open, onOpenChange }: GenerativeMenuSw
             {
               name: 'preventOverflow',
               options: {
-                padding: 12,
+                padding: 8,
                 altAxis: true,
                 tether: false,
               },
@@ -71,29 +77,10 @@ const GenerativeMenuSwitch = ({ children, open, onOpenChange }: GenerativeMenuSw
           ],
         },
         
-        // EXTENSIVE LOGGING
-        onCreate: () => {
-          console.log("✨ [ASK AI POPUP] Created");
-        },
-        
-        onShow: () => {
-          console.log("👁️ [ASK AI POPUP] Showing");
-        },
-        
-        onMount: () => {
-          console.log("📌 [ASK AI POPUP] Mounted to DOM");
-        },
-        
-        onHide: () => {
-          const shouldPrevent = open || preventCloseRef.current;
-          console.log("🙈 [ASK AI POPUP] Hide attempt - open:", open, "preventClose:", preventCloseRef.current, "→", shouldPrevent ? "BLOCKED" : "ALLOWED");
-          
-          if (shouldPrevent) {
-            console.log("🚫 [ASK AI POPUP] ===== HIDE PREVENTED =====");
-            return false; // Block hide
-          }
-          
-          console.log("✅ [ASK AI POPUP] Hide allowed");
+        // Prevent unwanted hiding
+        onHide: (instance) => {
+          console.log("❌ [ASK AI POPUP] Hide attempt - preventClose:", instance.props.preventHide);
+          return false; // Never auto-hide
         },
         
         onHidden: () => {
@@ -106,17 +93,7 @@ const GenerativeMenuSwitch = ({ children, open, onOpenChange }: GenerativeMenuSw
       className="flex w-fit max-w-[90vw] overflow-hidden rounded-md border border-muted bg-background shadow-xl"
     >
       {open && (
-        <div 
-          onMouseDown={(e) => {
-            console.log("🖱️ [AI SELECTOR] Mouse down");
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-          onClick={(e) => {
-            console.log("🖱️ [AI SELECTOR] Clicked");
-            e.stopPropagation();
-          }}
-        >
+        <div>
           <AISelector open={open} onOpenChange={handleOpenChange} />
         </div>
       )}
@@ -125,17 +102,8 @@ const GenerativeMenuSwitch = ({ children, open, onOpenChange }: GenerativeMenuSw
           <Button
             className="gap-1 rounded-none text-purple-500"
             variant="ghost"
-            onClick={(e) => {
-              console.log("🎨 [ASK AI BUTTON] Clicked!");
-              e.preventDefault();
-              e.stopPropagation();
-              handleOpenChange(true);
-            }}
-            onMouseDown={(e) => {
-              console.log("🎨 [ASK AI BUTTON] Mouse down");
-              e.preventDefault();
-              e.stopPropagation();
-            }}
+            onClick={handleButtonClick}
+            onMouseDown={handleButtonMouseDown}
             size="sm"
           >
             <Magic className="h-5 w-5" />
