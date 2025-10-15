@@ -353,18 +353,19 @@ export default function Page() {
     setCurrentDocId(id);
   };
 
-  const handleNewDoc = async () => {
+  const handleNewDoc = async (folderId?: string) => {
     const newId = `doc${Date.now()}`;
     const title = "New SOW";
     
-    // Find workspace slug from current folder (if any)
-    const currentFolder = folders.find(f => f.id === currentDocId);
-    const workspaceSlug = currentFolder?.workspaceSlug;
+    // Find workspace slug from the folder this SOW belongs to
+    const parentFolder = folderId ? folders.find(f => f.id === folderId) : null;
+    const workspaceSlug = parentFolder?.workspaceSlug;
     
     let newDoc: Document = {
       id: newId,
       title,
       content: defaultEditorContent,
+      folderId,
       workspaceSlug,
     };
     
@@ -379,8 +380,10 @@ export default function Page() {
             threadId: thread.id,
             syncedAt: new Date().toISOString(),
           };
-          toast.success(`✅ SOW created with chat thread`);
+          toast.success(`✅ SOW created with chat thread in ${parentFolder?.name || 'workspace'}`);
         }
+      } else {
+        toast.warning('⚠️ SOW created without workspace. Please create it inside a folder.');
       }
     } catch (error) {
       console.error('Error creating thread:', error);
@@ -1087,25 +1090,9 @@ export default function Page() {
         onMoveDoc={handleMoveDoc}
       />
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-0'} ${agentSidebarOpen ? 'mr-[480px]' : 'mr-0'}`}>
-        {/* Workflow Info Banner */}
-        <div className="w-full bg-gradient-to-r from-[#0e2e33] to-[#0a2328] text-white px-4 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 text-sm">
-              <span className="bg-white/10 px-2 py-1 rounded">1. AnythingLLM Login</span>
-              <span className="text-[#20e28f]">→</span>
-              <span className="bg-[#20e28f]/20 px-2 py-1 rounded border border-[#20e28f]">2. SOW Generator (You are here)</span>
-              <span className="text-[#20e28f]">→</span>
-              <span className="bg-white/10 px-2 py-1 rounded">3. Share Portal Link</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-white/70">
-            <Info className="w-3 h-3" />
-            <span>Logged in as Sam (Admin)</span>
-          </div>
-        </div>
         
         <div className="flex w-full max-w-screen-lg items-center gap-2 px-4 sm:mb-[calc(20vh)] mx-auto mt-4">
-          {/* Back to AnythingLLM button */}
+          {/* Back to AI Hub button */}
           <Button
             onClick={() => window.open('https://ahmad-anything-llm.840tjq.easypanel.host', '_blank')}
             variant="ghost"
@@ -1120,21 +1107,21 @@ export default function Page() {
             <Button
               onClick={handleEmbedToAI}
               variant="outline"
-              size="sm"
-              className="gap-2 border-[#20e28f] text-[#0e2e33] hover:bg-[#20e28f]/10"
+              size="default"
+              className="gap-2 border-[#20e28f] text-[#0e2e33] hover:bg-[#20e28f]/10 font-semibold"
               title="Embed this SOW to AI knowledge base"
             >
-              <Sparkles className="h-4 w-4" />
+              <Sparkles className="h-5 w-5" />
               Embed to AI
             </Button>
             <Button
               onClick={handleOpenAIChat}
               variant="default"
-              size="sm"
-              className="gap-2 bg-[#0e2e33] hover:bg-[#0e2e33]/90"
+              size="default"
+              className="gap-2 bg-[#0e2e33] hover:bg-[#0e2e33]/90 text-white font-semibold"
               title="Ask AI about this SOW"
             >
-              <Sparkles className="h-4 w-4" />
+              <Sparkles className="h-5 w-5" />
               Ask AI
             </Button>
             <Button
@@ -1157,8 +1144,8 @@ export default function Page() {
                 }
               }}
               variant="outline"
-              size="sm"
-              className="gap-2 border-blue-500 text-blue-600 hover:bg-blue-50"
+              size="default"
+              className="gap-2 border-blue-500 text-blue-600 hover:bg-blue-50 font-semibold"
               title="Copy client portal link"
             >
               🔗 Share Portal Link

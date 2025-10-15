@@ -62,7 +62,7 @@ interface SidebarProps {
   folders: Folder[];
   currentDocId: string | null;
   onSelectDoc: (id: string) => void;
-  onNewDoc: () => void;
+  onNewDoc: (folderId?: string) => void;
   onRenameDoc: (id: string, title: string) => void;
   onDeleteDoc: (id: string) => void;
   onNewFolder: (name: string, parentId?: string) => void;
@@ -162,6 +162,7 @@ function DroppableFolder({
   renameValue,
   onRename,
   onDelete,
+  onNewDoc,
   setRenamingId,
   setRenameValue,
 }: {
@@ -171,6 +172,7 @@ function DroppableFolder({
   renameValue: string;
   onRename: (id: string) => void;
   onDelete: (id: string) => void;
+  onNewDoc: (folderId: string) => void;
   setRenamingId: (id: string | null) => void;
   setRenameValue: (value: string) => void;
 }) {
@@ -200,6 +202,15 @@ function DroppableFolder({
           <span className="text-sm font-medium flex-1">{folder.name}</span>
         )}
         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 w-6 p-0 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 dark:text-green-500"
+            onClick={() => onNewDoc(folder.id)}
+            title="New SOW in this folder"
+          >
+            <Plus className="h-3 w-3" />
+          </Button>
           <Button
             size="sm"
             variant="ghost"
@@ -386,6 +397,7 @@ export default function Sidebar({
                     renameValue={renameValue}
                     onRename={handleRename}
                     onDelete={onDeleteFolder}
+                    onNewDoc={onNewDoc}
                     setRenamingId={setRenamingId}
                     setRenameValue={setRenameValue}
                   >
