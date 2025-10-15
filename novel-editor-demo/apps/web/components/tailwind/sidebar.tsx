@@ -127,16 +127,14 @@ function DraggableDocument({
         <span className="text-sm flex-1 truncate">{doc.title}</span>
       )}
       <button
-        className="ml-2 p-1 rounded hover:bg-yellow-100 text-yellow-600 transition-colors"
-        style={{fontSize:'1.1em',lineHeight:1,border:'none',background:'none',cursor:'pointer'}}
+        className="ml-auto p-1 rounded hover:bg-yellow-100 dark:hover:bg-yellow-900/30 text-yellow-600 dark:text-yellow-500 transition-colors opacity-0 group-hover:opacity-100"
         onClick={(e)=>{e.stopPropagation();setRenamingId(doc.id);setRenameValue(doc.title);}}
         title="Rename document"
       >
         <Edit3 className="h-4 w-4" />
       </button>
       <button
-        className="ml-1 p-1 rounded hover:bg-red-100 text-red-600 transition-colors"
-        style={{fontSize:'1.1em',lineHeight:1,border:'none',background:'none',cursor:'pointer'}}
+        className="ml-1 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
         onClick={(e)=>{e.stopPropagation();onDelete(doc.id);}}
         title="Delete document"
       >
@@ -191,11 +189,11 @@ function DroppableFolder({
         ) : (
           <span className="text-sm font-medium flex-1">{folder.name}</span>
         )}
-        <div className="flex gap-1">
+        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <Button
             size="sm"
             variant="ghost"
-            className="h-6 w-6 p-0 hover:bg-muted"
+            className="h-6 w-6 p-0 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 text-yellow-600 dark:text-yellow-500"
             onClick={() => {
               setRenamingId(folder.id);
               setRenameValue(folder.name);
@@ -207,11 +205,11 @@ function DroppableFolder({
           <Button
             size="sm"
             variant="ghost"
-            className="h-6 w-6 p-0 hover:bg-muted"
+            className="h-6 w-6 p-0 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-500"
             onClick={() => onDelete(folder.id)}
             title="Delete folder"
           >
-            <Trash2 className="h-3 w-3 text-destructive" />
+            <Trash2 className="h-3 w-3" />
           </Button>
         </div>
       </div>
