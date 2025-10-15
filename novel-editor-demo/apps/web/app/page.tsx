@@ -446,10 +446,10 @@ export default function Page() {
       );
 
       if (success) {
-        // Set workspace prompt
-        await anythingLLM.setWorkspacePrompt(workspaceSlug);
+        // Set client-facing workspace prompt with client name
+        await anythingLLM.setWorkspacePrompt(workspaceSlug, clientName);
         
-        toast.success('SOW embedded successfully! AI is now ready to answer questions.');
+        toast.success(`✅ SOW embedded! ${clientName}'s AI assistant is ready to answer questions.`);
         
         // Store workspace slug in localStorage for quick access
         localStorage.setItem(`workspace_${currentDoc.id}`, workspaceSlug);
