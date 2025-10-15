@@ -8,10 +8,10 @@ import { query, queryOne, formatDateForMySQL } from '@/lib/db';
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const sowId = params.id;
+    const { id: sowId } = await params;
     const body = await req.json();
     
     const {
