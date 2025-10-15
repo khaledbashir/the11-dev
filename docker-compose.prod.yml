@@ -10,7 +10,8 @@ services:
       - "3333:3000"
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_PDF_SERVICE_URL=http://pdf-service:8000
+      - PDF_SERVICE_URL=http://pdf-service:8000
+      - NEXT_PUBLIC_PDF_SERVICE_URL=http://168.231.115.219:8000
     depends_on:
       - pdf-service
     restart: unless-stopped
