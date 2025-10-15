@@ -21,6 +21,15 @@ const dbConfig = {
   keepAliveInitialDelay: 0,
 };
 
+// Log database configuration (without password)
+console.log('🔧 [DB CONFIG]', {
+  host: dbConfig.host,
+  port: dbConfig.port,
+  user: dbConfig.user,
+  database: dbConfig.database,
+  password: dbConfig.password ? '***SET***' : '***NOT SET***',
+});
+
 // Create connection pool
 let pool: mysql.Pool | null = null;
 
@@ -29,8 +38,20 @@ let pool: mysql.Pool | null = null;
  */
 export function getPool(): mysql.Pool {
   if (!pool) {
+    console.log('🔄 [DB] Creating new connection pool...');
     pool = mysql.createPool(dbConfig);
-    console.log('✅ Database connection pool created');
+    console.log('✅ [DB] Connection pool created successfully');
+    
+    // Test connection immediately
+    pool.getConnection()
+      .then(conn => {
+        console.log('✅ [DB] Test connection successful');
+        conn.release();
+      })
+      .catch(err => {
+        console.error('❌ [DB] Test connection FAILED:', err.message);
+        console.error('❌ [DB] Full error:', err);
+      });
   }
   return pool;
 }
@@ -42,12 +63,17 @@ export async function query<T = any>(
   sql: string,
   params?: any[]
 ): Promise<T[]> {
+  console.log('🔍 [DB QUERY] Executing:', sql.substring(0, 100) + '...');
+  console.log('🔍 [DB QUERY] Params:', params);
+  
   try {
     const pool = getPool();
+    console.log('🔄 [DB QUERY] Pool obtained, executing...');
     const [rows] = await pool.execute(sql, params);
+    console.log('✅ [DB QUERY] Success, rows:', Array.isArray(rows) ? rows.length : 'N/A');
     return rows as T[];
   } catch (error) {
-    console.error('❌ Database query error:', error);
+    console.error('❌ [DB QUERY] ERROR:', error);
     throw error;
   }
 }
