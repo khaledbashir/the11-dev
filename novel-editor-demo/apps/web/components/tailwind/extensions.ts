@@ -93,6 +93,7 @@ const starterKit = StarterKit.configure({
     },
   },
   horizontalRule: false,
+  strike: false, // Disabled to avoid duplicate with explicit Underline extension
   dropcursor: {
     color: "#DBEAFE",
     width: 4,

@@ -438,6 +438,279 @@ Ready to explore your project details? Ask me anything!`;
       return false;
     }
   }
+
+  // ========================================
+  // 🧵 THREAD MANAGEMENT API METHODS
+  // ========================================
+
+  /**
+   * Create a new thread in a workspace
+   * Each SOW becomes a thread for isolated chat history
+   */
+  async createThread(workspaceSlug: string, threadName: string): Promise<{ slug: string; id: string } | null> {
+    try {
+      console.log(`🆕 Creating thread "${threadName}" in workspace: ${workspaceSlug}`);
+      
+      const response = await fetch(
+        `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/thread/new`,
+        {
+          method: 'POST',
+          headers: this.getHeaders(),
+          body: JSON.stringify({
+            name: threadName,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        console.error(`❌ Failed to create thread: ${response.statusText}`);
+        return null;
+      }
+
+      const data = await response.json();
+      console.log(`✅ Thread created: ${data.thread.slug} (ID: ${data.thread.id})`);
+      
+      return {
+        slug: data.thread.slug,
+        id: data.thread.id,
+      };
+    } catch (error) {
+      console.error('❌ Error creating thread:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Update/rename a thread
+   */
+  async updateThread(workspaceSlug: string, threadSlug: string, newName: string): Promise<boolean> {
+    try {
+      console.log(`✏️ Renaming thread ${threadSlug} to "${newName}"`);
+      
+      const response = await fetch(
+        `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/thread/${threadSlug}/update`,
+        {
+          method: 'POST',
+          headers: this.getHeaders(),
+          body: JSON.stringify({
+            name: newName,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        console.log(`✅ Thread renamed successfully`);
+        return true;
+      }
+
+      console.error(`❌ Failed to rename thread: ${response.statusText}`);
+      return false;
+    } catch (error) {
+      console.error('❌ Error updating thread:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Delete a thread
+   */
+  async deleteThread(workspaceSlug: string, threadSlug: string): Promise<boolean> {
+    try {
+      console.log(`🗑️ Deleting thread: ${threadSlug}`);
+      
+      const response = await fetch(
+        `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/thread/${threadSlug}`,
+        {
+          method: 'DELETE',
+          headers: this.getHeaders(),
+        }
+      );
+
+      if (response.ok) {
+        console.log(`✅ Thread deleted successfully`);
+        return true;
+      }
+
+      console.error(`❌ Failed to delete thread: ${response.statusText}`);
+      return false;
+    } catch (error) {
+      console.error('❌ Error deleting thread:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get chat history from a thread
+   */
+  async getThreadChats(workspaceSlug: string, threadSlug: string): Promise<any[]> {
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/thread/${threadSlug}/chats`,
+        {
+          method: 'GET',
+          headers: this.getHeaders(),
+        }
+      );
+
+      if (!response.ok) {
+        console.error(`❌ Failed to get thread chats: ${response.statusText}`);
+        return [];
+      }
+
+      const data = await response.json();
+      return data.history || [];
+    } catch (error) {
+      console.error('❌ Error getting thread chats:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Send a chat message to a thread
+   */
+  async chatWithThread(
+    workspaceSlug: string,
+    threadSlug: string,
+    message: string,
+    mode: 'query' | 'chat' = 'chat'
+  ): Promise<any> {
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/thread/${threadSlug}/chat`,
+        {
+          method: 'POST',
+          headers: this.getHeaders(),
+          body: JSON.stringify({
+            message,
+            mode,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        console.error(`❌ Failed to send chat message: ${response.statusText}`);
+        return null;
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('❌ Error sending chat message:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Stream chat with a thread (for real-time responses)
+   */
+  async streamChatWithThread(
+    workspaceSlug: string,
+    threadSlug: string,
+    message: string,
+    onChunk: (chunk: string) => void,
+    mode: 'query' | 'chat' = 'chat'
+  ): Promise<void> {
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/thread/${threadSlug}/stream-chat`,
+        {
+          method: 'POST',
+          headers: this.getHeaders(),
+          body: JSON.stringify({
+            message,
+            mode,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        console.error(`❌ Failed to stream chat: ${response.statusText}`);
+        return;
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) return;
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.trim()) {
+            onChunk(line);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error streaming chat:', error);
+    }
+  }
+
+  /**
+   * Delete a workspace and all its threads
+   */
+  async deleteWorkspace(workspaceSlug: string): Promise<boolean> {
+    try {
+      console.log(`🗑️ Deleting workspace: ${workspaceSlug}`);
+      
+      const response = await fetch(
+        `${this.baseUrl}/api/v1/workspace/${workspaceSlug}`,
+        {
+          method: 'DELETE',
+          headers: this.getHeaders(),
+        }
+      );
+
+      if (response.ok) {
+        console.log(`✅ Workspace deleted successfully (all threads cascaded)`);
+        return true;
+      }
+
+      console.error(`❌ Failed to delete workspace: ${response.statusText}`);
+      return false;
+    } catch (error) {
+      console.error('❌ Error deleting workspace:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Update/rename a workspace
+   */
+  async updateWorkspace(workspaceSlug: string, newName: string): Promise<boolean> {
+    try {
+      console.log(`✏️ Renaming workspace ${workspaceSlug} to "${newName}"`);
+      
+      const response = await fetch(
+        `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/update`,
+        {
+          method: 'POST',
+          headers: this.getHeaders(),
+          body: JSON.stringify({
+            name: newName,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        console.log(`✅ Workspace renamed successfully`);
+        return true;
+      }
+
+      console.error(`❌ Failed to rename workspace: ${response.statusText}`);
+      return false;
+    } catch (error) {
+      console.error('❌ Error updating workspace:', error);
+      return false;
+    }
+  }
 }
 
 // Export singleton instance
