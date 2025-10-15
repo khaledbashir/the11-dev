@@ -12,6 +12,12 @@ services:
       - NODE_ENV=production
       - NEXT_PUBLIC_PDF_SERVICE_URL=http://pdf-service:8000
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - DB_HOST=168.231.115.219
+      - DB_PORT=3306
+      - DB_USER=sg_sow_user
+      - DB_PASSWORD=SG_sow_2025_SecurePass!
+      - DB_NAME=socialgarden_sow
+      - NEXT_PUBLIC_BASE_URL=http://168.231.115.219:3333
     depends_on:
       - pdf-service
     networks:
