@@ -79,7 +79,7 @@ const GenerativeMenuSwitch = ({ children, open, onOpenChange }: GenerativeMenuSw
         
         // Prevent unwanted hiding
         onHide: (instance) => {
-          console.log("❌ [ASK AI POPUP] Hide attempt - preventClose:", instance.props.preventHide);
+          console.log("❌ [ASK AI POPUP] Hide attempt");
           return false; // Never auto-hide
         },
         
