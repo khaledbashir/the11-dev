@@ -132,22 +132,24 @@ function DraggableDocument({
           onClick={(e) => e.stopPropagation()}
         />
       ) : (
-        <span className="text-sm flex-1 truncate">{doc.title}</span>
+        <span className="text-sm flex-1 truncate min-w-0">{doc.title}</span>
       )}
-      <button
-        className="ml-auto p-1 rounded hover:bg-yellow-100 dark:hover:bg-yellow-900/30 text-yellow-600 dark:text-yellow-500 transition-colors opacity-0 group-hover:opacity-100"
-        onClick={(e)=>{e.stopPropagation();setRenamingId(doc.id);setRenameValue(doc.title);}}
-        title="Rename document"
-      >
-        <Edit3 className="h-4 w-4" />
-      </button>
-      <button
-        className="ml-1 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
-        onClick={(e)=>{e.stopPropagation();onDelete(doc.id);}}
-        title="Delete document"
-      >
-        <Trash2 className="h-4 w-4" />
-      </button>
+      <div className="flex gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button
+          className="p-1 rounded hover:bg-yellow-100 dark:hover:bg-yellow-900/30 text-yellow-600 dark:text-yellow-500 transition-colors"
+          onClick={(e)=>{e.stopPropagation();setRenamingId(doc.id);setRenameValue(doc.title);}}
+          title="Rename document"
+        >
+          <Edit3 className="h-4 w-4" />
+        </button>
+        <button
+          className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-500 transition-colors"
+          onClick={(e)=>{e.stopPropagation();onDelete(doc.id);}}
+          title="Delete document"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
     </div>
   );
 }
