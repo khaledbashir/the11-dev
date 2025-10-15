@@ -1141,10 +1141,17 @@ export default function Page() {
               onClick={() => {
                 if (currentDocId) {
                   const portalUrl = `http://168.231.115.219:3333/portal/sow/${currentDocId}`;
-                  navigator.clipboard.writeText(portalUrl);
-                  toast.success('Portal link copied to clipboard!', {
-                    description: 'Share this link with your client',
-                  });
+                  if (navigator?.clipboard?.writeText) {
+                    navigator.clipboard.writeText(portalUrl);
+                    toast.success('Portal link copied to clipboard!', {
+                      description: 'Share this link with your client',
+                    });
+                  } else {
+                    // Fallback for browsers without clipboard API
+                    toast.success('Portal link ready!', {
+                      description: portalUrl,
+                    });
+                  }
                 } else {
                   toast.error('Please select a document first');
                 }
