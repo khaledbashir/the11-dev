@@ -16,8 +16,12 @@ export interface Document {
   folderId?: string;
   createdAt: string;
   updatedAt: string;
-  workspaceSlug?: string;
-  embedId?: string;
+  // 🧵 Thread Integration (Folders=Workspaces, SOWs=Threads)
+  workspaceSlug?: string;  // Parent workspace (from folder)
+  threadSlug?: string;     // AnythingLLM thread slug for this SOW
+  threadId?: string;       // AnythingLLM thread ID
+  syncedAt?: string;       // Last sync timestamp
+  embedId?: string;        // Legacy: for old embed approach
 }
 
 export interface Folder {
@@ -25,6 +29,11 @@ export interface Folder {
   name: string;
   parentId?: string;
   createdAt: string;
+  // 🏢 Workspace Integration (Folders=Workspaces)
+  workspaceSlug?: string;  // AnythingLLM workspace slug
+  workspaceId?: string;    // AnythingLLM workspace ID
+  embedId?: string;        // Chat widget embed ID for this client
+  syncedAt?: string;       // Last sync timestamp
 }
 
 /**

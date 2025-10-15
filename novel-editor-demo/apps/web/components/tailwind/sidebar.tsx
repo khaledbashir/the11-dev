@@ -39,12 +39,20 @@ interface Document {
   title: string;
   content: any;
   folderId?: string;
+  workspaceSlug?: string;
+  threadSlug?: string;
+  threadId?: string;
+  syncedAt?: string;
 }
 
 interface Folder {
   id: string;
   name: string;
   parentId?: string;
+  workspaceSlug?: string;
+  workspaceId?: string;
+  embedId?: string;
+  syncedAt?: string;
 }
 
 interface SidebarProps {
