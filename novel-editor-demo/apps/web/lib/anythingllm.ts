@@ -3,9 +3,9 @@
 
 import SOCIAL_GARDEN_KNOWLEDGE_BASE from './social-garden-knowledge-base';
 
-// Social Garden AnythingLLM Instance
-const ANYTHINGLLM_BASE_URL = 'http://socialgarden-anything-llm.vo0egb.easypanel.host';
-const ANYTHINGLLM_API_KEY = '0G0WTZ3-6ZX4D20-H35VBRG-9059WPA'; // Update with your Social Garden API key
+// Ahmad's AnythingLLM Instance
+const ANYTHINGLLM_BASE_URL = 'https://ahmad-anything-llm.840tjq.easypanel.host';
+const ANYTHINGLLM_API_KEY = '0G0WTZ3-6ZX4D20-H35VBRG-9059WPA'; // Update with Ahmad's API key
 
 interface WorkspaceResponse {
   workspace: {
