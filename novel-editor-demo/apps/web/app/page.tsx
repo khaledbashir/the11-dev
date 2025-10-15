@@ -1002,7 +1002,11 @@ export default function Page() {
     const currentAgent = agents.find(a => a.id === currentAgentId);
     if (currentAgent) {
       try {
-        // API key validation now handled server-side
+        console.log('📤 Sending chat request:', {
+          model: currentAgent.model,
+          messageCount: newMessages.length,
+          endpoint: '/api/chat'
+        });
 
         const response = await fetch("/api/chat", {
         method: "POST",
@@ -1018,7 +1022,9 @@ export default function Page() {
         }),
       });
 
+        console.log('📥 Chat response status:', response.status, response.statusText);
         const data = await response.json();
+        console.log('📄 Chat response data:', data);
 
         if (!response.ok) {
           let errorMessage = "Sorry, there was an error processing your request.";

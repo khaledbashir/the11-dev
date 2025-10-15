@@ -242,16 +242,24 @@ Metadata:
         }),
       });
 
+      console.log(`📡 Create embed response status: ${response.status}`);
+      
       if (!response.ok) {
         const errorText = await response.text();
+        console.error(`❌ Failed to create embed: ${response.status} ${response.statusText}`);
+        console.error(`❌ Error details:`, errorText);
         throw new Error(`Failed to create embed: ${response.statusText} - ${errorText}`);
       }
 
-      const data = await response.json();
+      const responseText = await response.text();
+      console.log(`📄 Embed response body:`, responseText.substring(0, 200));
+      
+      const data = JSON.parse(responseText);
       console.log(`✅ Embed created:`, data);
       return data.embed?.uuid || null;
     } catch (error) {
       console.error('❌ Error getting/creating embed:', error);
+      console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       return null;
     }
   }

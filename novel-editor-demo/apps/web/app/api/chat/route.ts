@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
+  console.log('🔵 [API /api/chat] Request received');
+  
   const { messages, model } = await request.json();
+  console.log('🔵 [API /api/chat] Parsed request:', { 
+    model, 
+    messageCount: messages?.length,
+    hasApiKey: !!process.env.OPENROUTER_API_KEY 
+  });
 
   const apiKey = process.env.OPENROUTER_API_KEY;
 
   if (!apiKey) {
+    console.error('❌ [API /api/chat] No API key configured');
     return NextResponse.json(
       { error: 'OpenRouter API key not configured' },
       { status: 400 }
@@ -13,6 +21,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    console.log('🔵 [API /api/chat] Calling OpenRouter API...');
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
