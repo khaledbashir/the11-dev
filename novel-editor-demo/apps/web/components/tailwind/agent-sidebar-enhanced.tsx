@@ -78,7 +78,7 @@ interface AgentSidebarProps {
   onSendMessage: (message: string) => void;
 }
 
-const OPENROUTER_API_KEY = "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";
+const OPENROUTER_API_KEY = "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";
 
 export default function AgentSidebar({
   isOpen,
