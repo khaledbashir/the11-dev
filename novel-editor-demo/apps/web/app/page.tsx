@@ -7,8 +7,9 @@ import AgentSidebar from "@/components/tailwind/agent-sidebar-clean";
 import PricingTableBuilder from "@/components/tailwind/pricing-table-builder";
 import Menu from "@/components/tailwind/ui/menu";
 import { Button } from "@/components/tailwind/ui/button";
+import { SendToClientModal } from "@/components/tailwind/send-to-client-modal";
 import { toast } from "sonner";
-import { Sparkles, Info, ExternalLink } from "lucide-react";
+import { Sparkles, Info, ExternalLink, Send } from "lucide-react";
 import { defaultEditorContent } from "@/lib/content";
 import { THE_ARCHITECT_SYSTEM_PROMPT } from "@/lib/knowledge-base";
 import { OnboardingTutorial } from "@/components/tailwind/onboarding-tutorial";
@@ -255,6 +256,7 @@ export default function Page() {
   const [currentAgentId, setCurrentAgentId] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const [showSendModal, setShowSendModal] = useState(false);
   const editorRef = useRef<any>(null);
 
   useEffect(() => {
@@ -1131,28 +1133,18 @@ export default function Page() {
             <Button
               onClick={() => {
                 if (currentDocId) {
-                  const portalUrl = `http://168.231.115.219:3333/portal/sow/${currentDocId}`;
-                  if (navigator?.clipboard?.writeText) {
-                    navigator.clipboard.writeText(portalUrl);
-                    toast.success('Portal link copied to clipboard!', {
-                      description: 'Share this link with your client',
-                    });
-                  } else {
-                    // Fallback for browsers without clipboard API
-                    toast.success('Portal link ready!', {
-                      description: portalUrl,
-                    });
-                  }
+                  setShowSendModal(true);
                 } else {
                   toast.error('Please select a document first');
                 }
               }}
-              variant="outline"
+              variant="default"
               size="default"
-              className="gap-2 border-blue-500 text-blue-600 hover:bg-blue-50 font-semibold"
-              title="Copy client portal link"
+              className="gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+              title="Send SOW to client via secure portal"
             >
-              🔗 Share Portal Link
+              <Send className="h-4 w-4" />
+              Send to Client
             </Button>
             <Menu 
               onExportPDF={handleExportPDF}
@@ -1185,6 +1177,53 @@ export default function Page() {
         isLoading={isChatLoading}
         onInsertToEditor={(content) => handleInsertContent(content)}
       />
+
+      {/* Send to Client Modal */}
+      {currentDoc && (
+        <SendToClientModal
+          isOpen={showSendModal}
+          onClose={() => setShowSendModal(false)}
+          document={{
+            id: currentDoc.id,
+            title: currentDoc.title,
+            content: currentDoc.content,
+            totalInvestment: calculateTotalInvestment(currentDoc.content),
+          }}
+          onSuccess={(sowId, portalUrl) => {
+            toast.success('SOW sent successfully!', {
+              description: `Portal: ${portalUrl}`,
+              duration: 5000,
+            });
+          }}
+        />
+      )}
     </div>
   );
+}
+
+// Helper: Calculate total investment from pricing tables in content
+function calculateTotalInvestment(content: any): number {
+  try {
+    if (!content || !content.content) return 0;
+    
+    let total = 0;
+    const traverse = (node: any) => {
+      if (node.type === 'editablePricingTable' && node.attrs?.rows) {
+        const subtotal = node.attrs.rows.reduce((sum: number, row: any) => {
+          const hours = parseFloat(row.hours) || 0;
+          const rate = parseFloat(row.rate) || 0;
+          return sum + (hours * rate);
+        }, 0);
+        total += subtotal;
+      }
+      if (node.content && Array.isArray(node.content)) {
+        node.content.forEach(traverse);
+      }
+    };
+    traverse(content);
+    return total;
+  } catch (error) {
+    console.error('Error calculating total investment:', error);
+    return 0;
+  }
 }
