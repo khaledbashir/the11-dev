@@ -8,6 +8,7 @@ import PricingTableBuilder from "@/components/tailwind/pricing-table-builder";
 import Menu from "@/components/tailwind/ui/menu";
 import { Button } from "@/components/tailwind/ui/button";
 import { toast } from "sonner";
+import { Sparkles } from "lucide-react";
 import { defaultEditorContent } from "@/lib/content";
 import { THE_ARCHITECT_SYSTEM_PROMPT } from "@/lib/knowledge-base";
 import { 
@@ -17,6 +18,7 @@ import {
   exportToPDF,
   parseSOWMarkdown
 } from "@/lib/export-utils";
+import { anythingLLM } from "@/lib/anythingllm";
 
 // API key is now handled server-side in /api/chat route
 
@@ -411,6 +413,69 @@ export default function Page() {
 
   const handleMoveDoc = (docId: string, folderId?: string) => {
     setDocuments(prev => prev.map(d => d.id === docId ? { ...d, folderId } : d));
+  };
+
+  // AnythingLLM Integration
+  const handleEmbedToAI = async () => {
+    if (!currentDoc || !editorRef.current) {
+      toast.error('No document to embed');
+      return;
+    }
+
+    try {
+      toast.loading('Embedding SOW to AI knowledge base...');
+
+      // Extract client name from title (e.g., "SOW: AGGF - HubSpot" → "AGGF")
+      const clientName = currentDoc.title.split(':')[1]?.split('-')[0]?.trim() || 'Default Client';
+
+      // Create or get workspace
+      const workspaceSlug = await anythingLLM.createOrGetClientWorkspace(clientName);
+
+      // Get HTML content
+      const htmlContent = editorRef.current.getHTML();
+
+      // Embed document
+      const success = await anythingLLM.embedSOWDocument(
+        workspaceSlug,
+        currentDoc.title,
+        htmlContent,
+        {
+          docId: currentDoc.id,
+          createdAt: new Date().toISOString(),
+        }
+      );
+
+      if (success) {
+        // Set workspace prompt
+        await anythingLLM.setWorkspacePrompt(workspaceSlug);
+        
+        toast.success('SOW embedded successfully! AI is now ready to answer questions.');
+        
+        // Store workspace slug in localStorage for quick access
+        localStorage.setItem(`workspace_${currentDoc.id}`, workspaceSlug);
+      } else {
+        toast.error('Failed to embed SOW');
+      }
+    } catch (error: any) {
+      console.error('Error embedding to AI:', error);
+      toast.error(`Error: ${error.message}`);
+    }
+  };
+
+  const handleOpenAIChat = () => {
+    if (!currentDoc) {
+      toast.error('No document selected');
+      return;
+    }
+
+    // Get workspace slug from localStorage
+    const clientName = currentDoc.title.split(':')[1]?.split('-')[0]?.trim() || 'default-client';
+    const workspaceSlug = localStorage.getItem(`workspace_${currentDoc.id}`) || 
+      clientName.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
+
+    // Open AnythingLLM in new tab
+    const url = anythingLLM.getWorkspaceChatUrl(workspaceSlug);
+    window.open(url, '_blank');
   };
 
   const handleExportPDF = async () => {
@@ -942,6 +1007,26 @@ export default function Page() {
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-0'} ${agentSidebarOpen ? 'mr-[480px]' : 'mr-0'}`}>
         <div className="flex w-full max-w-screen-lg items-center gap-2 px-4 sm:mb-[calc(20vh)] mx-auto">
           <div className="ml-auto flex gap-2">
+            <Button
+              onClick={handleEmbedToAI}
+              variant="outline"
+              size="sm"
+              className="gap-2 border-[#20e28f] text-[#0e2e33] hover:bg-[#20e28f]/10"
+              title="Embed this SOW to AI knowledge base"
+            >
+              <Sparkles className="h-4 w-4" />
+              Embed to AI
+            </Button>
+            <Button
+              onClick={handleOpenAIChat}
+              variant="default"
+              size="sm"
+              className="gap-2 bg-[#0e2e33] hover:bg-[#0e2e33]/90"
+              title="Ask AI about this SOW"
+            >
+              <Sparkles className="h-4 w-4" />
+              Ask AI
+            </Button>
             <Menu 
               onExportPDF={handleExportPDF}
               onExportExcel={handleExportExcel}
