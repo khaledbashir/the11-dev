@@ -4,8 +4,8 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     
-    // Use 127.0.0.1 explicitly to avoid IPv6 issues (::1)
-    const pdfServiceUrl = process.env.NEXT_PUBLIC_PDF_SERVICE_URL || 'http://127.0.0.1:8000';
+    // In Docker, use the service name. In dev, use localhost
+    const pdfServiceUrl = process.env.PDF_SERVICE_URL || process.env.NEXT_PUBLIC_PDF_SERVICE_URL || 'http://pdf-service:8000';
     
     console.log('📄 Connecting to PDF service:', pdfServiceUrl);
     console.log('📦 Request body keys:', Object.keys(body));

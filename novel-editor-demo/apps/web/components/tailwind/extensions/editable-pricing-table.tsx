@@ -387,8 +387,91 @@ export const EditablePricingTable = Node.create({
     ];
   },
 
-  renderHTML({ HTMLAttributes }) {
-    return ['div', mergeAttributes(HTMLAttributes, { 'data-type': 'editable-pricing-table' })];
+  renderHTML({ node, HTMLAttributes }) {
+    const rows: PricingRow[] = node.attrs.rows || [];
+    const discount = node.attrs.discount || 0;
+    
+    // Calculate totals
+    const subtotal = rows.reduce((sum, row) => sum + (row.hours * row.rate), 0);
+    const discountAmount = (subtotal * discount) / 100;
+    const subtotalAfterDiscount = subtotal - discountAmount;
+    const gst = subtotalAfterDiscount * 0.10;
+    const total = subtotalAfterDiscount + gst;
+    
+    // Build proper DOM structure for rendering
+    const tableContent: any[] = [
+      'table',
+      { style: 'width:100%; border-collapse:collapse; margin:1.5rem 0; border:2px solid #0e2e33;' },
+      [
+        'thead',
+        {},
+        [
+          'tr',
+          {},
+          ['th', { style: 'background:#0e2e33; color:white; padding:0.875rem 1rem; text-align:left; border:1px solid #0e2e33;' }, 'Role'],
+          ['th', { style: 'background:#0e2e33; color:white; padding:0.875rem 1rem; text-align:left; border:1px solid #0e2e33;' }, 'Description'],
+          ['th', { style: 'background:#0e2e33; color:white; padding:0.875rem 1rem; text-align:right; border:1px solid #0e2e33;' }, 'Hours'],
+          ['th', { style: 'background:#0e2e33; color:white; padding:0.875rem 1rem; text-align:right; border:1px solid #0e2e33;' }, 'Rate'],
+          ['th', { style: 'background:#0e2e33; color:white; padding:0.875rem 1rem; text-align:right; border:1px solid #0e2e33;' }, 'Total'],
+        ]
+      ],
+      [
+        'tbody',
+        {},
+        ...rows.map((row, index) => {
+          const rowTotal = row.hours * row.rate;
+          const bgColor = index % 2 === 0 ? '#f9fafb' : 'white';
+          return [
+            'tr',
+            { style: `background:${bgColor};` },
+            ['td', { style: 'padding:0.875rem 1rem; border:1px solid #d1d5db;' }, row.role],
+            ['td', { style: 'padding:0.875rem 1rem; border:1px solid #d1d5db;' }, row.description || ''],
+            ['td', { style: 'padding:0.875rem 1rem; border:1px solid #d1d5db; text-align:right;' }, row.hours.toString()],
+            ['td', { style: 'padding:0.875rem 1rem; border:1px solid #d1d5db; text-align:right;' }, `$${row.rate.toFixed(2)}`],
+            ['td', { style: 'padding:0.875rem 1rem; border:1px solid #d1d5db; text-align:right; font-weight:600;' }, `$${rowTotal.toFixed(2)}`],
+          ];
+        })
+      ]
+    ];
+    
+    // Build totals section
+    const totalsSection: any[] = [
+      'div',
+      { style: 'margin-top:1.5rem; padding-top:1rem; border-top:2px solid #0e2e33;' },
+      [
+        'div',
+        { style: 'max-width:400px; margin-left:auto;' },
+        ['div', { style: 'display:flex; justify-content:space-between; padding:0.5rem 0;' },
+          ['span', { style: 'font-weight:600; color:#0e2e33;' }, 'Subtotal:'],
+          ['span', { style: 'font-weight:600; color:#0e2e33;' }, `$${subtotal.toFixed(2)}`]
+        ],
+        ...(discount > 0 ? [
+          ['div', { style: 'display:flex; justify-content:space-between; padding:0.5rem 0; color:#ef4444;' },
+            ['span', {}, `Discount (${discount}%):`],
+            ['span', {}, `-$${discountAmount.toFixed(2)}`]
+          ],
+          ['div', { style: 'display:flex; justify-content:space-between; padding:0.5rem 0;' },
+            ['span', { style: 'font-weight:600;' }, 'Subtotal After Discount:'],
+            ['span', { style: 'font-weight:600;' }, `$${subtotalAfterDiscount.toFixed(2)}`]
+          ]
+        ] : []),
+        ['div', { style: 'display:flex; justify-content:space-between; padding:0.5rem 0;' },
+          ['span', {}, 'GST (10%):'],
+          ['span', {}, `$${gst.toFixed(2)}`]
+        ],
+        ['div', { style: 'display:flex; justify-content:space-between; padding:0.75rem 0; border-top:2px solid #0e2e33; margin-top:0.5rem;' },
+          ['span', { style: 'font-size:1.25rem; font-weight:700; color:#0e2e33;' }, 'Total Investment:'],
+          ['span', { style: 'font-size:1.25rem; font-weight:700; color:#0e2e33;' }, `$${total.toFixed(2)}`]
+        ]
+      ]
+    ];
+    
+    return [
+      'div',
+      mergeAttributes(HTMLAttributes, { 'data-type': 'editable-pricing-table' }),
+      tableContent,
+      totalsSection
+    ];
   },
 
   addNodeView() {
