@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Folder, FileText, Plus, MousePointerClick } from "lucide-react";
+import { X, Folder, FileText, Plus, MousePointerClick, Info } from "lucide-react";
 import { Button } from "./ui/button";
 import { toast } from "sonner";
 
