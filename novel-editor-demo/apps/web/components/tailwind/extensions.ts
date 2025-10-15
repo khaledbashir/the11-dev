@@ -25,9 +25,6 @@ import { EditablePricingTable } from "./extensions/editable-pricing-table";
 import { cx } from "class-variance-authority";
 import { common, createLowlight } from "lowlight";
 
-// Import Underline extension to avoid duplicate name issues
-import Underline from "@tiptap/extension-underline";
-
 //TODO I am using cx here to get tailwind autocomplete working, idk if someone else can write a regex to just capture the class key in objects
 const aiHighlight = AIHighlight;
 //You can overwrite the placeholder with your own configuration
@@ -147,9 +144,7 @@ const tableCell = TableCell.configure({
   },
 });
 
-const underline = Underline.configure();
-
-export const defaultExtensions = [
+export const defaultExtensions: any[] = [
   starterKit,
   placeholder,
   tiptapLink,
@@ -168,5 +163,4 @@ export const defaultExtensions = [
   tableHeader,
   tableCell,
   EditablePricingTable,
-  underline, // Add Underline extension after StarterKit to avoid conflicts
 ];
