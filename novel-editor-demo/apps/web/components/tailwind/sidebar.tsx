@@ -373,7 +373,7 @@ export default function Sidebar({
                 <Button onClick={handleNewFolder}>Create</Button>
               </DialogContent>
             </Dialog>
-            <Button onClick={onNewDoc} size="sm" variant="ghost">
+            <Button onClick={() => onNewDoc()} size="sm" variant="ghost">
               <Plus className="h-4 w-4" />
             </Button>
           </div>
