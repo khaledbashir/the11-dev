@@ -18,6 +18,8 @@ export async function POST(request: NextRequest) {
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://socialgarden.com.au',
+        'X-Title': 'Social Garden SOW Generator',
       },
       body: JSON.stringify({
         model,
@@ -26,7 +28,15 @@ export async function POST(request: NextRequest) {
     });
 
     if (!response.ok) {
-      throw new Error(`OpenRouter API error: ${response.status}`);
+      const errorData = await response.json().catch(() => null);
+      console.error('OpenRouter API error:', response.status, errorData);
+      return NextResponse.json(
+        { 
+          error: `API error: ${response.status} ${response.statusText}`,
+          details: errorData 
+        },
+        { status: response.status }
+      );
     }
 
     const data = await response.json();
@@ -34,7 +44,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('OpenRouter API error:', error);
     return NextResponse.json(
-      { error: 'Failed to get response from OpenRouter' },
+      { error: 'Failed to get response from AI service. Please check your API key.' },
       { status: 500 }
     );
   }
