@@ -4,10 +4,10 @@ services:
   # Next.js Frontend - Production
   frontend:
     build:
-      context: ./novel-editor-demo/apps/web
-      dockerfile: Dockerfile
+      context: ./novel-editor-demo
+      dockerfile: apps/web/Dockerfile.frontend
     ports:
-      - "3000:3000"
+      - "3333:3000"
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_PDF_SERVICE_URL=http://pdf-service:8000

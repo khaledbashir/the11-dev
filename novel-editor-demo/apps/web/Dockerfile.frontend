@@ -5,20 +5,22 @@ RUN npm install -g pnpm
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json pnpm-lock.yaml* ./
+# Copy monorepo root files first
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages ./packages
 
-# Install dependencies
+# Copy web app files
+COPY apps/web ./apps/web
+
+# Install all dependencies at root level
 RUN pnpm install --frozen-lockfile
 
-# Copy source code
-COPY . .
-
-# Build the application
+# Build the web app
+WORKDIR /app/apps/web
 RUN pnpm build
 
 # Expose port
 EXPOSE 3000
 
 # Start the application
-CMD ["npm", "start"]
+CMD ["pnpm", "start"]
