@@ -335,3 +335,14 @@ export function parseSOWMarkdown(markdown: string): Partial<SOWData> {
   
   return data;
 }
+
+/**
+ * Clean SOW content by removing non-client-facing elements
+ */
+export function cleanSOWContent(content: string): string {
+  // Remove any internal comments, thinking tags, etc.
+  return content
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/<!-- .*? -->/gi, '')
+    .trim();
+}

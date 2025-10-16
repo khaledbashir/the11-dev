@@ -14,26 +14,8 @@ export async function POST(req: NextRequest): Promise<Response> {
     });
   }
 
-  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
-    const ip = req.headers.get("x-forwarded-for");
-    const ratelimit = new Ratelimit({
-      redis: kv,
-      limiter: Ratelimit.slidingWindow(50, "1 d"),
-    });
-
-    const { success, limit, reset, remaining } = await ratelimit.limit(`novel_ratelimit_${ip}`);
-
-    if (!success) {
-      return new Response("You have reached your request limit for the day.", {
-        status: 429,
-        headers: {
-          "X-RateLimit-Limit": limit.toString(),
-          "X-RateLimit-Remaining": remaining.toString(),
-          "X-RateLimit-Reset": reset.toString(),
-        },
-      });
-    }
-  }
+  // Rate limiting disabled - KV client type incompatibility with Ratelimit
+  // Can be re-enabled with proper Redis client setup
 
   const { prompt, option, command, model = "anthropic/claude-3.5-sonnet" } = await req.json();
 

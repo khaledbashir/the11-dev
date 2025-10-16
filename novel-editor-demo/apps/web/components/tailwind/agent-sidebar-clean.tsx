@@ -164,34 +164,7 @@ export default function AgentSidebar({
             <h2 className="text-base font-bold text-white">AI Agent Chat</h2>
           </div>
           
-          {currentAgent && (
-            <div className="mb-3 px-3 py-2 bg-[#0E2E33] rounded-lg space-y-1">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-400">Provider:</span>
-                <span className="text-white font-medium">
-                  {currentAgent.model === 'anythingllm' ? '🌐 AnythingLLM' : '🔗 OpenRouter'}
-                </span>
-              </div>
-              {currentAgent.model === 'anythingllm' && (
-                <>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-400">Workspace:</span>
-                    <span className="text-white font-mono">gen</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-400">Endpoint:</span>
-                    <span className="text-green-400 font-mono">/api/anythingllm/chat</span>
-                  </div>
-                </>
-              )}
-              {currentAgent.model !== 'anythingllm' && (
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-gray-400">Model:</span>
-                  <span className="text-white font-mono text-[10px]">{currentAgent.model}</span>
-                </div>
-              )}
-            </div>
-          )}
+
           
           <div className="flex items-center gap-3">
             <Select value={currentAgentId || undefined} onValueChange={onSelectAgent}>

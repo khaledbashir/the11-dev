@@ -14,7 +14,11 @@ import {
   Edit3,
   Folder,
   FolderPlus,
-  GripVertical
+  GripVertical,
+  ChevronDown,
+  ChevronUp,
+  BarChart3,
+  BookOpen
 } from "lucide-react";
 import {
   DndContext,
@@ -69,6 +73,7 @@ interface SidebarProps {
   onRenameFolder: (id: string, name: string) => void;
   onDeleteFolder: (id: string) => void;
   onMoveDoc: (docId: string, folderId?: string) => void;
+  onMoveFolder: (folderId: string, parentId?: string) => void;
   onDashboard?: () => void;
   onKnowledgeBase?: () => void;
 }

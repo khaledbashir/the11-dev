@@ -88,6 +88,8 @@ const ROLES = [
   { name: "Traffic Manager", rate: 130 },
 ];
 
+export { ROLES };
+
 interface PricingRow {
   role: string;
   description: string;

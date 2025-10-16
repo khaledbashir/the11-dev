@@ -4,8 +4,8 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     
-    // In Docker, use the internal service name
-    const pdfServiceUrl = 'http://pdf-service:8000';
+    // Use environment variable with fallback to localhost for local dev
+    const pdfServiceUrl = process.env.NEXT_PUBLIC_PDF_SERVICE_URL || 'http://localhost:8000';
     
     console.log('📄 Connecting to PDF service:', pdfServiceUrl);
     console.log('📦 Request body keys:', Object.keys(body));

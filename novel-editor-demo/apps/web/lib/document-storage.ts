@@ -265,14 +265,14 @@ export class DocumentStorageService {
         }
 
         // Create or get workspace
-        const workspaceSlug = await anythingLLM.createOrGetClientWorkspace(clientName);
+        const workspace = await anythingLLM.createOrGetClientWorkspace(clientName);
 
         // Convert TipTap JSON to HTML (simple conversion)
         const htmlContent = this.tiptapToHTML(doc.content);
 
         // Embed document
         const success = await anythingLLM.embedSOWDocument(
-          workspaceSlug,
+          workspace.slug,
           doc.title,
           htmlContent,
           {
@@ -285,7 +285,7 @@ export class DocumentStorageService {
         if (success) {
           // Update document with workspace info
           this.updateDocument(doc.id, {
-            workspaceSlug,
+            workspaceSlug: workspace.slug,
           });
           
           synced++;
