@@ -1,33 +1,46 @@
-# 🎉 YOU'RE ALL SET! - Read This First
+# 🚀 How to Run the App - START HERE!
 
-**Date:** October 14, 2025  
-**What Just Happened:** I organized EVERYTHING!
+**Date:** October 16, 2025  
+**Status:** ✅ Everything is ready to go!
 
 ---
 
-## ✅ WHAT I DID FOR YOU:
+## ⚡ SUPER QUICK START (30 seconds)
 
-### 1. Created ONE Master Document
-📄 **`docs/MASTER_GUIDE.md`** - Everything you need in one place!
-- Quick start
-- Project structure
-- Development workflow
-- Deployment instructions
-- Common issues
-- Summary of what we fixed
-- Where everything is
+```bash
+cd /root/the11
+./dev.sh
+```
 
-### 2. Organized All Docs
-Created `docs/` folder with 9 organized guides:
-- `MASTER_GUIDE.md` ← **START HERE!**
-- `quick-start.md` ← Run in 30 seconds
-- `development.md` ← Dev workflows
-- `deployment.md` ← Deploy anywhere
-- `quick-reference.md` ← Direct answers
-- `visual-guide.md` ← Diagrams
-- `understanding-setup.md` ← VPS explained
-- `ai-development-guide.md` ← For AI helpers
-- `session-summary.md` ← What we fixed today
+Then open: **http://localhost:3333**
+
+---
+
+## 📋 What Gets Started
+
+When you run `./dev.sh`:
+
+| Service | Port | Status |
+|---------|------|--------|
+| Frontend (Next.js) | 3333 | http://localhost:3333 ✨ |
+| Backend (FastAPI) | 8000 | http://localhost:8000 |
+| MySQL Database | 3306 | localhost:3306 (auto) |
+| AnythingLLM | 443 | ahmad-anything-llm.840tjq.easypanel.host |
+
+---
+
+## ✅ Verify Everything Works
+
+```bash
+# Frontend?
+curl http://localhost:3333
+
+# Backend?
+curl http://localhost:8000/api/agents
+
+# Database?
+mysql -u sg_sow_user -p -e "SELECT * FROM folders;" socialgarden_sow
+```
 
 ### 3. Created `dev.sh` Script
 **ONE command to run everything!**

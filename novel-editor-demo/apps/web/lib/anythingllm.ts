@@ -41,7 +41,7 @@ export class AnythingLLMService {
    * Create or get workspace for a client
    * One workspace per client (recommended approach)
    */
-  async createOrGetClientWorkspace(clientName: string): Promise<string> {
+  async createOrGetClientWorkspace(clientName: string): Promise<{id: string, slug: string}> {
     const slug = clientName
       .toLowerCase()
       .replace(/[^a-z0-9\s-]/g, '')
@@ -56,7 +56,7 @@ export class AnythingLLMService {
       
       if (existing) {
         console.log(`✅ Using existing workspace: ${slug}`);
-        return slug;
+        return { id: existing.id, slug: existing.slug };
       }
 
       // Create new workspace
@@ -66,12 +66,12 @@ export class AnythingLLMService {
         headers: this.getHeaders(),
         body: JSON.stringify({
           name: clientName,
-          slug: slug,
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to create workspace: ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`Failed to create workspace: ${response.statusText} - ${errorText}`);
       }
 
       const data: WorkspaceResponse = await response.json();
@@ -83,7 +83,7 @@ export class AnythingLLMService {
       // 🎯 STEP 2: Set client-facing prompt for new workspace
       await this.setWorkspacePrompt(data.workspace.slug, clientName);
       
-      return data.workspace.slug;
+      return { id: data.workspace.id, slug: data.workspace.slug };
     } catch (error) {
       console.error('❌ Error creating workspace:', error);
       throw error;
@@ -471,7 +471,9 @@ Ready to explore your project details? Ask me anything!`;
       );
 
       if (!response.ok) {
-        console.error(`❌ Failed to create thread: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error(`❌ Failed to create thread: ${response.status} ${response.statusText}`);
+        console.error(`📝 Response: ${errorText}`);
         return null;
       }
 
@@ -716,6 +718,150 @@ Ready to explore your project details? Ask me anything!`;
       return false;
     } catch (error) {
       console.error('❌ Error updating workspace:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get or create master dashboard workspace
+   * This is the main analytics/reporting workspace
+   */
+  async getOrCreateMasterDashboard(): Promise<string> {
+    const masterDashboardName = 'SOW Master Dashboard';
+    const masterDashboardSlug = 'sow-master-dashboard';
+
+    try {
+      // Check if master dashboard exists
+      const workspaces = await this.listWorkspaces();
+      const existing = workspaces.find((w: any) => w.slug === masterDashboardSlug);
+      
+      if (existing) {
+        console.log(`✅ Using existing master dashboard: ${masterDashboardSlug}`);
+        return masterDashboardSlug;
+      }
+
+      // Create master dashboard workspace
+      console.log(`🆕 Creating master dashboard workspace: ${masterDashboardSlug}`);
+      const response = await fetch(`${this.baseUrl}/api/v1/workspace/new`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({
+          name: masterDashboardName,
+          slug: masterDashboardSlug,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to create master dashboard: ${response.statusText}`);
+      }
+
+      const data: WorkspaceResponse = await response.json();
+      console.log(`✅ Master dashboard created: ${data.workspace.slug}`);
+      
+      // Embed company knowledge base into master dashboard
+      await this.embedCompanyKnowledgeBase(data.workspace.slug);
+      
+      // Set analytics-focused prompt
+      await this.setMasterDashboardPrompt(data.workspace.slug);
+      
+      return data.workspace.slug;
+    } catch (error) {
+      console.error('❌ Error creating master dashboard:', error);
+      // Return the slug anyway so app doesn't break
+      return masterDashboardSlug;
+    }
+  }
+
+  /**
+   * Set prompt for master dashboard workspace
+   */
+  private async setMasterDashboardPrompt(workspaceSlug: string): Promise<boolean> {
+    const systemPrompt = `You are the Master Dashboard Analytics Assistant for Social Garden's SOW management system.
+
+Your role is to:
+- Analyze SOW data across all clients
+- Provide business insights and trends
+- Answer questions about proposals, revenue, and client activity
+- Generate reports and summaries
+- Help with strategic decision-making
+
+You have access to the complete Social Garden knowledge base and can query the SOW database.
+
+When asked for analytics, provide clear, actionable insights with specific numbers and recommendations.`;
+
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/update`,
+        {
+          method: 'POST',
+          headers: this.getHeaders(),
+          body: JSON.stringify({
+            openAiPrompt: systemPrompt,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        console.log(`✅ Master dashboard prompt set for workspace: ${workspaceSlug}`);
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('❌ Error setting master dashboard prompt:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Embed a newly created SOW in BOTH client workspace AND master dashboard
+   * This ensures SOWs are tracked in the master dashboard for analytics
+   * @param sowTitle - The title of the SOW
+   * @param sowContent - The markdown content of the SOW
+   * @param clientWorkspaceSlug - The client's workspace slug
+   */
+  async embedSOWInBothWorkspaces(
+    sowTitle: string,
+    sowContent: string,
+    clientWorkspaceSlug: string
+  ): Promise<boolean> {
+    try {
+      console.log(`📊 Embedding SOW in both workspaces...`);
+      console.log(`   📁 Client workspace: ${clientWorkspaceSlug}`);
+      console.log(`   📈 Master dashboard: sow-master-dashboard`);
+
+      // Step 1: Embed in client workspace
+      const clientEmbed = await this.embedSOWDocument(clientWorkspaceSlug, sowTitle, sowContent);
+      
+      if (!clientEmbed) {
+        console.warn(`⚠️ Failed to embed SOW in client workspace: ${clientWorkspaceSlug}`);
+        return false;
+      }
+      
+      console.log(`✅ SOW embedded in client workspace: ${clientWorkspaceSlug}`);
+
+      // Step 2: Ensure master dashboard exists
+      const masterDashboardSlug = await this.getOrCreateMasterDashboard();
+      
+      // Step 3: Embed in master dashboard
+      const masterEmbed = await this.embedSOWDocument(
+        masterDashboardSlug,
+        `[${clientWorkspaceSlug.toUpperCase()}] ${sowTitle}`,
+        sowContent
+      );
+      
+      if (!masterEmbed) {
+        console.warn(`⚠️ Failed to embed SOW in master dashboard`);
+        // Don't fail completely - client workspace embed succeeded
+        return true;
+      }
+      
+      console.log(`✅ SOW embedded in master dashboard for analytics`);
+      console.log(`✅✅ SOW successfully embedded in BOTH workspaces!`);
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Error embedding SOW in both workspaces:', error);
       return false;
     }
   }
