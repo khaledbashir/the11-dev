@@ -8,18 +8,27 @@ import PricingTableBuilder from "@/components/tailwind/pricing-table-builder";
 import Menu from "@/components/tailwind/ui/menu";
 import { Button } from "@/components/tailwind/ui/button";
 import { SendToClientModal } from "@/components/tailwind/send-to-client-modal";
+import { ShareLinkModal } from "@/components/tailwind/share-link-modal";
 import { toast } from "sonner";
 import { Sparkles, Info, ExternalLink, Send } from "lucide-react";
 import { defaultEditorContent } from "@/lib/content";
 import { THE_ARCHITECT_SYSTEM_PROMPT } from "@/lib/knowledge-base";
-import { OnboardingTutorial } from "@/components/tailwind/onboarding-tutorial";
+import { InteractiveOnboarding } from "@/components/tailwind/interactive-onboarding";
+import { GuidedClientSetup } from "@/components/tailwind/guided-client-setup";
+import { EnhancedDashboard } from "@/components/tailwind/enhanced-dashboard";
+import { KnowledgeBase } from "@/components/tailwind/knowledge-base";
+import { FloatingDocumentActions } from "@/components/tailwind/document-toolbar";
+import { calculateTotalInvestment } from "@/lib/sow-utils";
 import { 
   extractPricingFromContent, 
   exportToExcel, 
   exportToPDF,
-  parseSOWMarkdown
+  parseSOWMarkdown,
+  cleanSOWContent
 } from "@/lib/export-utils";
 import { anythingLLM } from "@/lib/anythingllm";
+import { ROLES } from "@/components/tailwind/extensions/editable-pricing-table";
+import { getWorkspaceForAgent } from "@/lib/workspace-config";
 
 // API key is now handled server-side in /api/chat route
 
@@ -86,13 +95,74 @@ const convertMarkdownToNovelJSON = (markdown: string) => {
       const hoursIdx = headerRow.findIndex(h => h.toLowerCase().includes('hours'));
       const rateIdx = headerRow.findIndex(h => h.toLowerCase().includes('rate'));
 
+      // Helper function to match role name to ROLES list with better fuzzy matching
+      const matchRole = (roleName: string) => {
+        const cleanRoleName = roleName.trim().replace(/\s+/g, ' ');
+        
+        // 1. Try exact match first
+        const exactMatch = ROLES.find(r => r.name === cleanRoleName);
+        if (exactMatch) return { name: exactMatch.name, rate: exactMatch.rate };
+        
+        // 2. Try case-insensitive match
+        const caseInsensitiveMatch = ROLES.find(r => 
+          r.name.toLowerCase() === cleanRoleName.toLowerCase()
+        );
+        if (caseInsensitiveMatch) return { name: caseInsensitiveMatch.name, rate: caseInsensitiveMatch.rate };
+        
+        // 3. Try splitting by hyphen and matching parts (e.g., "Tech - Producer" should match "Producer")
+        const parts = cleanRoleName.split(/\s*[-–—]\s*/);
+        if (parts.length > 1) {
+          for (const part of parts) {
+            const trimmedPart = part.trim();
+            if (trimmedPart.length > 2) {
+              const partMatch = ROLES.find(r => 
+                r.name.toLowerCase() === trimmedPart.toLowerCase() ||
+                r.name.toLowerCase().includes(trimmedPart.toLowerCase())
+              );
+              if (partMatch) return { name: partMatch.name, rate: partMatch.rate };
+            }
+          }
+        }
+        
+        // 4. Try fuzzy matching by looking for role keywords
+        const keywords = ['tech', 'producer', 'specialist', 'consultant', 'manager', 'coordinator', 'architect', 'designer', 'developer', 'strategist', 'account'];
+        for (const keyword of keywords) {
+          if (cleanRoleName.toLowerCase().includes(keyword)) {
+            const keywordMatch = ROLES.find(r => r.name.toLowerCase().includes(keyword));
+            if (keywordMatch) return { name: keywordMatch.name, rate: keywordMatch.rate };
+          }
+        }
+        
+        // 5. Try partial match (contains)
+        const partialMatch = ROLES.find(r => 
+          r.name.toLowerCase().includes(cleanRoleName.toLowerCase()) ||
+          cleanRoleName.toLowerCase().includes(r.name.toLowerCase())
+        );
+        if (partialMatch) return { name: partialMatch.name, rate: partialMatch.rate };
+        
+        // 6. Default: use the role name as-is but try to extract rate
+        const rateMatch = roleName.match(/\$?(\d+)/);
+        return { 
+          name: cleanRoleName, 
+          rate: rateMatch ? parseFloat(rateMatch[1]) : 0 
+        };
+      };
+
       // Convert data rows to pricing row format
-      const pricingRows = dataRows.map(row => ({
-        role: row[roleIdx] || '',
-        description: row[descIdx] || '',
-        hours: parseFloat(row[hoursIdx]?.replace(/[^0-9.]/g, '') || '0'),
-        rate: parseFloat(row[rateIdx]?.replace(/[^0-9.]/g, '') || '0'),
-      }));
+      const pricingRows = dataRows.map(row => {
+        const rawRole = row[roleIdx] || '';
+        const matchedRole = matchRole(rawRole);
+        const specifiedRate = row[rateIdx] ? parseFloat(row[rateIdx]?.replace(/[^0-9.]/g, '') || '0') : null;
+        
+        console.log(`💼 [Role Match] "${rawRole}" → "${matchedRole.name}" @ $${matchedRole.rate}`);
+        
+        return {
+          role: matchedRole.name, // Use matched role name from ROLES list
+          description: row[descIdx] || '',
+          hours: parseFloat(row[hoursIdx]?.replace(/[^0-9.]/g, '') || '0'),
+          rate: specifiedRate || matchedRole.rate, // Use specified rate or matched role's rate
+        };
+      });
 
       // Return editable pricing table node
       return {
@@ -220,6 +290,7 @@ interface Document {
   threadSlug?: string;
   threadId?: string;
   syncedAt?: string;
+  totalInvestment?: number;
 }
 
 interface Folder {
@@ -237,6 +308,7 @@ interface Agent {
   name: string;
   systemPrompt: string;
   model: string;
+  useAnythingLLM?: boolean; // If true, use AnythingLLM's configured provider
 }
 
 interface ChatMessage {
@@ -247,49 +319,105 @@ interface ChatMessage {
 }
 
 export default function Page() {
+  const [mounted, setMounted] = useState(false);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [currentDocId, setCurrentDocId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [agentSidebarOpen, setAgentSidebarOpen] = useState(true); // Open by default
+  const [agentSidebarOpen, setAgentSidebarOpen] = useState(false); // Closed by default
   const [agents, setAgents] = useState<Agent[]>([]);
   const [currentAgentId, setCurrentAgentId] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null); // Track which message is streaming
   const [showSendModal, setShowSendModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareModalData, setShareModalData] = useState<{
+    shareLink: string;
+    documentTitle: string;
+    shareCount?: number;
+    firstShared?: string;
+    lastShared?: string;
+  } | null>(null);
+  const [showGuidedSetup, setShowGuidedSetup] = useState(false);
+  const [viewMode, setViewMode] = useState<'editor' | 'dashboard' | 'knowledgebase'>('editor'); // NEW: View mode
   const editorRef = useRef<any>(null);
 
+  // Initialize master dashboard on app load
   useEffect(() => {
-    const savedDocs = localStorage.getItem("documents");
-    const savedFolders = localStorage.getItem("folders");
-    const savedCurrent = localStorage.getItem("currentDocId");
-    if (savedDocs) {
-      setDocuments(JSON.parse(savedDocs));
-    } else {
-      // Create initial document
-      const initialDoc: Document = {
-        id: "doc1",
-        title: "Untitled Document",
-        content: defaultEditorContent,
-      };
-      setDocuments([initialDoc]);
-      setCurrentDocId("doc1");
-    }
-    if (savedFolders) {
-      setFolders(JSON.parse(savedFolders));
-    }
-    if (savedCurrent) {
-      setCurrentDocId(savedCurrent);
-    }
+    const initDashboard = async () => {
+      try {
+        await anythingLLM.getOrCreateMasterDashboard();
+        console.log('✅ Master SOW Dashboard initialized');
+      } catch (error) {
+        console.error('❌ Failed to initialize dashboard:', error);
+      }
+    };
+    initDashboard();
   }, []);
+
+  // Fix hydration by setting mounted state
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    console.log('🔍 useEffect running, mounted:', mounted);
+    if (!mounted) return;
+    
+    const loadData = async () => {
+      console.log('📂 Starting to load folders from database...');
+      const savedDocs = localStorage.getItem("documents");
+      const savedCurrent = localStorage.getItem("currentDocId");
+      const hasCompletedSetup = localStorage.getItem("sow-guided-setup-completed");
+      
+      // Load documents from localStorage
+      if (savedDocs) {
+        setDocuments(JSON.parse(savedDocs));
+      } else {
+        // Create initial document
+        const initialDoc: Document = {
+          id: "doc1",
+          title: "Untitled Document",
+          content: defaultEditorContent,
+        };
+        setDocuments([initialDoc]);
+        setCurrentDocId("doc1");
+      }
+      
+      // FETCH FOLDERS FROM DATABASE (NOT localStorage!)
+      try {
+        const response = await fetch('/api/folders');
+        if (response.ok) {
+          const dbFolders = await response.json();
+          console.log('✅ Loaded folders from database:', dbFolders.length);
+          console.log('📁 Folder names:', dbFolders.map((f: any) => f.name).join(', '));
+          setFolders(dbFolders);
+          
+          // Show guided setup if no folders in database
+          if (!hasCompletedSetup && dbFolders.length === 0) {
+            setTimeout(() => setShowGuidedSetup(true), 1000);
+          }
+        } else {
+          console.error('❌ Failed to load folders from database');
+        }
+      } catch (error) {
+        console.error('❌ Error loading folders:', error);
+      }
+      
+      if (savedCurrent) {
+        setCurrentDocId(savedCurrent);
+      }
+    };
+    
+    loadData();
+  }, [mounted]);
 
   useEffect(() => {
     localStorage.setItem("documents", JSON.stringify(documents));
   }, [documents]);
 
-  useEffect(() => {
-    localStorage.setItem("folders", JSON.stringify(folders));
-  }, [folders]);
+  // DON'T save folders to localStorage - they're in the database now!
 
   useEffect(() => {
     if (currentDocId) {
@@ -298,50 +426,91 @@ export default function Page() {
   }, [currentDocId]);
 
   useEffect(() => {
-    const savedAgents = localStorage.getItem("agents");
-    const savedCurrentAgent = localStorage.getItem("currentAgentId");
-    const savedChatMessages = localStorage.getItem("chatMessages");
+    // Load agents from DATABASE (not localStorage!)
+    const loadAgentsFromDB = async () => {
+      try {
+        const response = await fetch('/api/agents');
+        if (!response.ok) throw new Error('Failed to load agents');
+        
+        let loadedAgents: Agent[] = await response.json();
+        
+        // Ensure The Architect agent exists with AnythingLLM
+        const architectIndex = loadedAgents.findIndex(agent => agent.id === "architect");
+        if (architectIndex >= 0) {
+          // Update existing architect if needed
+          if (loadedAgents[architectIndex].model !== "anythingllm" || 
+              loadedAgents[architectIndex].systemPrompt !== THE_ARCHITECT_SYSTEM_PROMPT) {
+            await fetch('/api/agents/architect', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                model: "anythingllm",
+                systemPrompt: THE_ARCHITECT_SYSTEM_PROMPT
+              })
+            });
+            loadedAgents[architectIndex].model = "anythingllm";
+            loadedAgents[architectIndex].systemPrompt = THE_ARCHITECT_SYSTEM_PROMPT;
+          }
+          console.log('✅ The Architect agent loaded from database');
+        } else {
+          // Create new architect agent in database
+          const architectAgent = {
+            id: "architect",
+            name: "The Architect (SOW Generator)",
+            systemPrompt: THE_ARCHITECT_SYSTEM_PROMPT,
+            model: "anythingllm"
+          };
+          
+          await fetch('/api/agents', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(architectAgent)
+          });
+          
+          loadedAgents.unshift(architectAgent);
+          console.log('✅ Created The Architect agent in database');
+        }
+        
+        setAgents(loadedAgents);
+        
+        // Load current agent preference from database
+        const prefResponse = await fetch('/api/preferences/current_agent_id');
+        if (prefResponse.ok) {
+          const { value } = await prefResponse.json();
+          setCurrentAgentId(value || "architect");
+        } else {
+          setCurrentAgentId("architect");
+        }
+        
+      } catch (error) {
+        console.error('❌ Failed to load agents from database:', error);
+        // Fallback: create default architect in state only
+        setAgents([{
+          id: "architect",
+          name: "The Architect (SOW Generator)",
+          systemPrompt: THE_ARCHITECT_SYSTEM_PROMPT,
+          model: "anythingllm"
+        }]);
+        setCurrentAgentId("architect");
+      }
+    };
     
-    let loadedAgents: Agent[] = [];
-    if (savedAgents) {
-      loadedAgents = JSON.parse(savedAgents);
-    }
-    
-    // Ensure The Architect agent exists
-    const architectExists = loadedAgents.some(agent => agent.id === "architect");
-    if (!architectExists) {
-      const architectAgent: Agent = {
-        id: "architect",
-        name: "The Architect (SOW Generator)",
-        systemPrompt: THE_ARCHITECT_SYSTEM_PROMPT,
-        model: "anthropic/claude-3.5-sonnet"
-      };
-      loadedAgents.unshift(architectAgent); // Add to beginning of array
-    }
-    
-    setAgents(loadedAgents);
-    
-    if (savedCurrentAgent) {
-      setCurrentAgentId(savedCurrentAgent);
-    }
-    if (savedChatMessages) {
-      setChatMessages(JSON.parse(savedChatMessages));
-    }
+    loadAgentsFromDB();
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem("agents", JSON.stringify(agents));
-  }, [agents]);
-
+  // Save current agent preference to database
   useEffect(() => {
     if (currentAgentId) {
-      localStorage.setItem("currentAgentId", currentAgentId);
+      fetch('/api/preferences/current_agent_id', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: currentAgentId })
+      }).catch(err => console.error('Failed to save agent preference:', err));
     }
   }, [currentAgentId]);
 
-  useEffect(() => {
-    localStorage.setItem("chatMessages", JSON.stringify(chatMessages));
-  }, [chatMessages]);
+  // Chat messages are now saved individually on each message send/receive
+  // No need for useEffect saving here - database handles persistence
 
   const currentDoc = documents.find(d => d.id === currentDocId);
 
@@ -354,6 +523,10 @@ export default function Page() {
 
   const handleSelectDoc = (id: string) => {
     setCurrentDocId(id);
+    // Switch to editor view when selecting a document
+    if (viewMode !== 'editor') {
+      setViewMode('editor');
+    }
   };
 
   const handleNewDoc = async (folderId?: string) => {
@@ -375,6 +548,7 @@ export default function Page() {
     try {
       // 🧵 Create AnythingLLM thread for this SOW (if workspace exists)
       if (workspaceSlug) {
+        console.log(`🔗 Creating thread in workspace: ${workspaceSlug}`);
         const thread = await anythingLLM.createThread(workspaceSlug, title);
         if (thread) {
           newDoc = {
@@ -384,28 +558,31 @@ export default function Page() {
             syncedAt: new Date().toISOString(),
           };
           toast.success(`✅ SOW created with chat thread in ${parentFolder?.name || 'workspace'}`);
+        } else {
+          console.warn('⚠️ Thread creation failed - SOW created without thread');
+          toast.warning('⚠️ SOW created but thread sync failed. You can still chat about it.');
         }
       } else {
-        toast.warning('⚠️ SOW created without workspace. Please create it inside a folder.');
+        console.log('ℹ️ No workspace found - creating standalone SOW');
+        toast.info('ℹ️ SOW created outside a folder. Create a folder first to enable AI chat.');
       }
     } catch (error) {
-      console.error('Error creating thread:', error);
+      console.error('❌ Error creating thread:', error);
       toast.error('SOW created but thread sync failed');
     }
     
     setDocuments(prev => [...prev, newDoc]);
     setCurrentDocId(newId);
     
-    // Clear chat messages for current agent
-    setChatMessages([]);
-    if (currentAgentId) {
-      localStorage.setItem(`chatMessages_${currentAgentId}`, JSON.stringify([]));
+    // 🎯 Switch to editor view (in case we're on dashboard/knowledge base)
+    if (viewMode !== 'editor') {
+      setViewMode('editor');
     }
     
-    // Open agent sidebar if not open, select The Architect
-    if (!agentSidebarOpen) {
-      setAgentSidebarOpen(true);
-    }
+    // Clear chat messages for current agent (in state only - database messages persist)
+    setChatMessages([]);
+    
+    // Keep sidebar closed - let user open manually
     const architectAgent = agents.find(a => a.id === "architect");
     if (architectAgent) {
       setCurrentAgentId("architect");
@@ -452,32 +629,51 @@ export default function Page() {
   };
 
   const handleNewFolder = async (name: string) => {
-    const newId = `folder${Date.now()}`;
-    
+    const newId = `folder-${Date.now()}`;
     try {
       // 🏢 Create AnythingLLM workspace for this folder
-      const workspaceSlug = await anythingLLM.createOrGetClientWorkspace(name);
-      const embedId = await anythingLLM.getOrCreateEmbedId(workspaceSlug);
+      const workspace = await anythingLLM.createOrGetClientWorkspace(name);
+      const embedId = await anythingLLM.getOrCreateEmbedId(workspace.slug);
+      
+      // 💾 Save folder to DATABASE
+      const response = await fetch('/api/folders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: newId,
+          name,
+          workspaceSlug: workspace.slug,
+          workspaceId: workspace.id,
+          embedId: embedId,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.details || 'Failed to create folder in database');
+      }
+      
+      const savedFolder = await response.json();
+      console.log('✅ Folder saved to database:', savedFolder);
       
       const newFolder: Folder = {
-        id: newId,
-        name,
-        workspaceSlug,
+        id: savedFolder.id,
+        name: name,
+        workspaceSlug: workspace.slug,
+        workspaceId: workspace.id,
         embedId,
         syncedAt: new Date().toISOString(),
       };
       
       setFolders(prev => [...prev, newFolder]);
-      toast.success(`✅ Folder "${name}" created with workspace`);
+      toast.success(`✅ Workspace "${name}" created!`);
+      
+      // 🎯 AUTO-CREATE FIRST SOW IN NEW FOLDER
+      // This creates an empty SOW and opens it immediately
+      await handleNewDoc(newFolder.id);
     } catch (error) {
       console.error('Error creating folder:', error);
-      // Fallback: create folder without workspace
-      const newFolder: Folder = {
-        id: newId,
-        name,
-      };
-      setFolders(prev => [...prev, newFolder]);
-      toast.error('Folder created but workspace sync failed');
+      toast.error(`❌ Failed to create folder: ${error.message}`);
     }
   };
 
@@ -485,6 +681,17 @@ export default function Page() {
     const folder = folders.find(f => f.id === id);
     
     try {
+      // 💾 Update folder in DATABASE
+      const response = await fetch(`/api/folders/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update folder in database');
+      }
+      
       // 🏢 Update AnythingLLM workspace name if it exists
       if (folder?.workspaceSlug) {
         await anythingLLM.updateWorkspace(folder.workspaceSlug, name);
@@ -494,8 +701,7 @@ export default function Page() {
       toast.success(`✅ Folder renamed to "${name}"`);
     } catch (error) {
       console.error('Error renaming folder:', error);
-      setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f));
-      toast.error('Folder renamed locally but workspace sync failed');
+      toast.error('❌ Failed to rename folder');
     }
   };
 
@@ -513,18 +719,27 @@ export default function Page() {
     deleteRecursive(id);
     
     try {
+      // 💾 Delete folder from DATABASE
+      const response = await fetch(`/api/folders/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete folder from database');
+      }
+      
       // 🏢 Delete AnythingLLM workspace (cascades to all threads)
       if (folder?.workspaceSlug) {
         await anythingLLM.deleteWorkspace(folder.workspaceSlug);
-        toast.success(`✅ Folder and workspace deleted`);
       }
+      
+      setFolders(prev => prev.filter(f => !toDelete.includes(f.id)));
+      setDocuments(prev => prev.filter(d => !d.folderId || !toDelete.includes(d.folderId)));
+      toast.success(`✅ Folder deleted from database`);
     } catch (error) {
-      console.error('Error deleting workspace:', error);
-      toast.error('Folder deleted but workspace cleanup failed');
+      console.error('Error deleting folder:', error);
+      toast.error('❌ Failed to delete folder');
     }
-    
-    setFolders(prev => prev.filter(f => !toDelete.includes(f.id)));
-    setDocuments(prev => prev.filter(d => !d.folderId || !toDelete.includes(d.folderId)));
   };
 
   const handleMoveDoc = (docId: string, folderId?: string) => {
@@ -538,43 +753,67 @@ export default function Page() {
       return;
     }
 
-    try {
-      toast.loading('Embedding SOW to AI knowledge base...');
+    // Show loading toast with dismiss button
+    const toastId = toast.loading('Embedding SOW to AI knowledge base...', {
+      duration: Infinity, // Don't auto-dismiss
+    });
 
+    try {
       // Extract client name from title (e.g., "SOW: AGGF - HubSpot" → "AGGF")
       const clientName = currentDoc.title.split(':')[1]?.split('-')[0]?.trim() || 'Default Client';
 
-      // Create or get workspace
+      console.log('🚀 Starting embed process for:', currentDoc.title);
+
+      // Create or get workspace (this is fast)
       const workspaceSlug = await anythingLLM.createOrGetClientWorkspace(clientName);
+      console.log('✅ Workspace ready:', workspaceSlug);
 
       // Get HTML content
       const htmlContent = editorRef.current.getHTML();
 
-      // Embed document
-      const success = await anythingLLM.embedSOWDocument(
+      // Update toast to show progress
+      toast.loading('Uploading document and creating embeddings...', { id: toastId });
+
+      // Embed document in BOTH client workspace AND master dashboard
+      const success = await anythingLLM.embedSOWEverywhere(
         workspaceSlug,
         currentDoc.title,
         htmlContent,
         {
           docId: currentDoc.id,
+          clientName: clientName,
           createdAt: new Date().toISOString(),
+          totalInvestment: currentDoc.totalInvestment || 0,
         }
       );
 
+      // Dismiss loading toast
+      toast.dismiss(toastId);
+
       if (success) {
-        // Set client-facing workspace prompt with client name
-        await anythingLLM.setWorkspacePrompt(workspaceSlug, clientName);
+        toast.success(`✅ SOW embedded! Available in ${clientName}'s workspace AND master dashboard.`, {
+          duration: 5000,
+        });
         
-        toast.success(`✅ SOW embedded! ${clientName}'s AI assistant is ready to answer questions.`);
-        
-        // Store workspace slug in localStorage for quick access
-        localStorage.setItem(`workspace_${currentDoc.id}`, workspaceSlug);
+        // Save workspace slug to database (non-blocking)
+        if (currentDoc.folderId) {
+          fetch(`/api/folders/${currentDoc.folderId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ workspaceSlug }),
+          }).catch(err => console.warn('Failed to save workspace slug:', err));
+        }
       } else {
-        toast.error('Failed to embed SOW');
+        toast.error('Failed to embed SOW - check console for details', {
+          duration: 7000,
+        });
       }
     } catch (error: any) {
-      console.error('Error embedding to AI:', error);
-      toast.error(`Error: ${error.message}`);
+      console.error('❌ Error embedding to AI:', error);
+      toast.dismiss(toastId);
+      toast.error(`Error: ${error.message || 'Unknown error'}`, {
+        duration: 7000,
+      });
     }
   };
 
@@ -592,6 +831,80 @@ export default function Page() {
     // Open AnythingLLM in new tab
     const url = anythingLLM.getWorkspaceChatUrl(workspaceSlug);
     window.open(url, '_blank');
+  };
+
+  const handleShare = async () => {
+    if (!currentDocId) {
+      toast.error('Please select a document first');
+      return;
+    }
+    
+    try {
+      // Get or create share link (only generated once per document)
+      const baseUrl = window.location.origin;
+      const shareLink = `${baseUrl}/portal/sow/${currentDocId}`;
+      
+      // Check if this document has been shared before
+      const docs = JSON.parse(localStorage.getItem('documents') || '[]');
+      const docIndex = docs.findIndex((d: any) => d.id === currentDocId);
+      
+      if (docIndex !== -1) {
+        const doc = docs[docIndex];
+        const now = new Date().toISOString();
+        
+        // Track share metadata
+        if (!doc.shareMetadata) {
+          doc.shareMetadata = {
+            firstShared: now,
+            lastShared: now,
+            shareCount: 1,
+            shareLink: shareLink
+          };
+        } else {
+          doc.shareMetadata.lastShared = now;
+          doc.shareMetadata.shareCount = (doc.shareMetadata.shareCount || 0) + 1;
+        }
+        
+        docs[docIndex] = doc;
+        localStorage.setItem('documents', JSON.stringify(docs));
+        
+        console.log(`📤 Share link generated (share #${doc.shareMetadata.shareCount}):`, shareLink);
+      }
+      
+      // Copy to clipboard with fallback
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(shareLink);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = shareLink;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      
+      // Copy to clipboard immediately
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(shareLink);
+      }
+      
+      // Show share modal with all details
+      setShareModalData({
+        shareLink,
+        documentTitle: currentDoc.title,
+        shareCount: docs[docIndex].shareMetadata.shareCount,
+        firstShared: docs[docIndex].shareMetadata.firstShared,
+        lastShared: docs[docIndex].shareMetadata.lastShared,
+      });
+      setShowShareModal(true);
+      
+      toast.success('✅ Share link copied to clipboard!');
+    } catch (error) {
+      console.error('Error sharing:', error);
+      toast.error('Failed to copy link');
+    }
   };
 
   const handleExportPDF = async () => {
@@ -817,35 +1130,80 @@ export default function Page() {
     }
   };
 
-  const handleCreateAgent = (agent: Omit<Agent, 'id'>) => {
+  const handleCreateAgent = async (agent: Omit<Agent, 'id'>) => {
     const newId = `agent${Date.now()}`;
     const newAgent: Agent = { id: newId, ...agent };
-    setAgents(prev => [...prev, newAgent]);
-    setCurrentAgentId(newId);
+    
+    try {
+      const response = await fetch('/api/agents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newAgent)
+      });
+      
+      if (response.ok) {
+        setAgents(prev => [...prev, newAgent]);
+        setCurrentAgentId(newId);
+        console.log('✅ Agent created in database');
+      }
+    } catch (error) {
+      console.error('❌ Failed to create agent:', error);
+    }
   };
 
-  const handleSelectAgent = (id: string) => {
+  const handleSelectAgent = async (id: string) => {
     setCurrentAgentId(id);
-    // Load chat messages for this agent
-    const agentMessages = localStorage.getItem(`chatMessages_${id}`);
-    if (agentMessages) {
-      setChatMessages(JSON.parse(agentMessages));
-    } else {
+    
+    // Load chat messages from DATABASE
+    try {
+      const response = await fetch(`/api/agents/${id}/messages`);
+      if (response.ok) {
+        const messages = await response.json();
+        setChatMessages(messages);
+        console.log(`✅ Loaded ${messages.length} messages from database for agent ${id}`);
+      } else {
+        setChatMessages([]);
+      }
+    } catch (error) {
+      console.error('❌ Failed to load messages:', error);
       setChatMessages([]);
     }
   };
 
-  const handleUpdateAgent = (id: string, updates: Partial<Agent>) => {
-    setAgents(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+  const handleUpdateAgent = async (id: string, updates: Partial<Agent>) => {
+    try {
+      const response = await fetch(`/api/agents/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      
+      if (response.ok) {
+        setAgents(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+        console.log('✅ Agent updated in database');
+      }
+    } catch (error) {
+      console.error('❌ Failed to update agent:', error);
+    }
   };
 
-  const handleDeleteAgent = (id: string) => {
-    setAgents(prev => prev.filter(a => a.id !== id));
-    if (currentAgentId === id) {
-      setCurrentAgentId(null);
-      setChatMessages([]);
+  const handleDeleteAgent = async (id: string) => {
+    try {
+      const response = await fetch(`/api/agents/${id}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        setAgents(prev => prev.filter(a => a.id !== id));
+        if (currentAgentId === id) {
+          setCurrentAgentId(null);
+          setChatMessages([]);
+        }
+        console.log('✅ Agent deleted from database (messages cascade deleted)');
+      }
+    } catch (error) {
+      console.error('❌ Failed to delete agent:', error);
     }
-    localStorage.removeItem(`chatMessages_${id}`);
   };
 
   const handleInsertContent = async (content: string) => {
@@ -859,15 +1217,20 @@ export default function Page() {
     }
 
     try {
+      // Clean the content first - remove non-client-facing elements
+      console.log('🧹 Cleaning SOW content...');
+      const cleanedContent = cleanSOWContent(content);
+      console.log('✅ Content cleaned');
+      
       // Convert markdown content to Novel editor JSON format
       console.log('🔄 Converting markdown to JSON...');
-      const convertedContent = convertMarkdownToNovelJSON(content);
+      const convertedContent = convertMarkdownToNovelJSON(cleanedContent);
       console.log('✅ Content converted');
       
       // Extract title from the content (first heading)
-      const titleMatch = content.match(/^#\s+(.+)$/m);
-      const clientMatch = content.match(/\*\*Client:\*\*\s+(.+)$/m);
-      const scopeMatch = content.match(/Scope of Work:\s+(.+)/);
+      const titleMatch = cleanedContent.match(/^#\s+(.+)$/m);
+      const clientMatch = cleanedContent.match(/\*\*Client:\*\*\s+(.+)$/m);
+      const scopeMatch = cleanedContent.match(/Scope of Work:\s+(.+)/);
       
       let docTitle = "New SOW";
       if (titleMatch) {
@@ -894,7 +1257,30 @@ export default function Page() {
         editorRef.current.insertContent(convertedContent);
       }
       
-      toast.success("✅ Content inserted into editor!");
+      // Embed SOW in both client workspace and master dashboard
+      const currentAgent = agents.find(a => a.id === currentAgentId);
+      const useAnythingLLM = currentAgent?.model === 'anythingllm';
+      
+      if (useAnythingLLM && currentAgentId) {
+        console.log('🤖 Embedding SOW in workspaces...');
+        try {
+          const clientWorkspaceSlug = getWorkspaceForAgent(currentAgentId);
+          const success = await anythingLLM.embedSOWInBothWorkspaces(docTitle, cleanedContent, clientWorkspaceSlug);
+          
+          if (success) {
+            console.log('✅ SOW embedded in both workspaces successfully');
+            toast.success("✅ Content inserted and embedded in both workspaces!");
+          } else {
+            console.warn('⚠️ Embedding completed with warnings');
+            toast.success("✅ Content inserted to editor (workspace embedding had issues)");
+          }
+        } catch (embedError) {
+          console.error('⚠️ Embedding error:', embedError);
+          toast.success("✅ Content inserted to editor (embedding skipped)");
+        }
+      } else {
+        toast.success("✅ Content inserted into editor!");
+      }
     } catch (error) {
       console.error("Error inserting content:", error);
       toast.error("❌ Failed to insert content. Please try again.");
@@ -907,9 +1293,8 @@ export default function Page() {
     setIsChatLoading(true);
     if (!currentAgentId) return;
 
-    // Check for /inserttosow or insert command
-    if (message.toLowerCase().includes('/inserttosow') || 
-        message.toLowerCase().includes('insert into editor') ||
+    // Check for insert command
+    if (message.toLowerCase().includes('insert into editor') ||
         message.toLowerCase() === 'insert' ||
         message.toLowerCase().includes('add to editor')) {
       console.log('📝 Insert command detected!', { message });
@@ -928,15 +1313,20 @@ export default function Page() {
       
       if (lastAIMessage && currentDocId) {
         try {
+          // Clean the content first - remove non-client-facing elements
+          console.log('🧹 Cleaning SOW content...');
+          const cleanedMessage = cleanSOWContent(lastAIMessage.content);
+          console.log('✅ Content cleaned');
+          
           // Convert markdown content to Novel editor JSON format
           console.log('🔄 Converting markdown to JSON...');
-          const content = convertMarkdownToNovelJSON(lastAIMessage.content);
+          const content = convertMarkdownToNovelJSON(cleanedMessage);
           console.log('✅ Content converted');
           
           // Extract title from the SOW content (first heading)
-          const titleMatch = lastAIMessage.content.match(/^#\s+(.+)$/m);
-          const clientMatch = lastAIMessage.content.match(/\*\*Client:\*\*\s+(.+)$/m);
-          const scopeMatch = lastAIMessage.content.match(/Scope of Work:\s+(.+)/);
+          const titleMatch = cleanedMessage.match(/^#\s+(.+)$/m);
+          const clientMatch = cleanedMessage.match(/\*\*Client:\*\*\s+(.+)$/m);
+          const scopeMatch = cleanedMessage.match(/Scope of Work:\s+(.+)/);
           
           let docTitle = "New SOW";
           if (titleMatch) {
@@ -971,7 +1361,15 @@ export default function Page() {
             timestamp: Date.now(),
           };
           setChatMessages(prev => [...prev, confirmMessage]);
-          localStorage.setItem(`chatMessages_${currentAgentId}`, JSON.stringify([...chatMessages, confirmMessage]));
+          
+          // Save to DATABASE
+          if (currentAgentId) {
+            await fetch(`/api/agents/${currentAgentId}/messages`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(confirmMessage)
+            });
+          }
           return;
         } catch (error) {
           console.error("Error inserting content:", error);
@@ -982,7 +1380,15 @@ export default function Page() {
             timestamp: Date.now(),
           };
           setChatMessages(prev => [...prev, errorMessage]);
-          localStorage.setItem(`chatMessages_${currentAgentId}`, JSON.stringify([...chatMessages, errorMessage]));
+          
+          // Save to DATABASE
+          if (currentAgentId) {
+            await fetch(`/api/agents/${currentAgentId}/messages`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(errorMessage)
+            });
+          }
           return;
         }
       }
@@ -997,24 +1403,45 @@ export default function Page() {
 
     const newMessages = [...chatMessages, userMessage];
     setChatMessages(newMessages);
-    localStorage.setItem(`chatMessages_${currentAgentId}`, JSON.stringify(newMessages));
+    
+    // Save user message to DATABASE
+    if (currentAgentId) {
+      await fetch(`/api/agents/${currentAgentId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userMessage)
+      }).catch(err => console.error('Failed to save user message:', err));
+    }
 
     const currentAgent = agents.find(a => a.id === currentAgentId);
     if (currentAgent) {
       try {
-        console.log('📤 Sending chat request:', {
-          model: currentAgent.model,
-          messageCount: newMessages.length,
-          endpoint: '/api/chat'
-        });
+        const useAnythingLLM = currentAgent.model === 'anythingllm';
+        const endpoint = useAnythingLLM ? '/api/anythingllm/chat' : '/api/chat';
+        
+        // Get the appropriate workspace for this agent
+        const workspaceSlug = useAnythingLLM ? getWorkspaceForAgent(currentAgentId) : undefined;
+        
+        console.log('🤖 ============ CHAT REQUEST START ============');
+        console.log('📤 Agent:', currentAgent.name);
+        console.log('🔧 Model:', currentAgent.model);
+        console.log('🌐 Provider:', useAnythingLLM ? 'AnythingLLM' : 'OpenRouter');
+        console.log('🎯 Endpoint:', endpoint);
+        console.log('💬 Message Count:', newMessages.length);
+        console.log('📝 System Prompt:', currentAgent.systemPrompt.substring(0, 100) + '...');
+        if (workspaceSlug) {
+          console.log('🏢 Workspace:', workspaceSlug);
+        }
+        console.log('=============================================');
 
-        const response = await fetch("/api/chat", {
+        const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           model: currentAgent.model,
+          workspace: workspaceSlug, // Pass workspace slug for AnythingLLM agents
           messages: [
             { role: "system", content: currentAgent.systemPrompt },
             ...newMessages.map(m => ({ role: m.role, content: m.content })),
@@ -1022,9 +1449,16 @@ export default function Page() {
         }),
       });
 
-        console.log('📥 Chat response status:', response.status, response.statusText);
+        console.log('📥 Response Status:', response.status, response.statusText);
         const data = await response.json();
-        console.log('📄 Chat response data:', data);
+        console.log('📄 Response Data Structure:', {
+          hasChoices: !!data.choices,
+          choicesLength: data.choices?.length,
+          hasMessage: !!data.choices?.[0]?.message,
+          messageContent: data.choices?.[0]?.message?.content?.substring(0, 100),
+          rawDataKeys: Object.keys(data)
+        });
+        console.log('📦 Full Response Data:', data);
 
         if (!response.ok) {
           let errorMessage = "Sorry, there was an error processing your request.";
@@ -1049,7 +1483,15 @@ export default function Page() {
           };
           const updatedMessages = [...newMessages, aiMessage];
           setChatMessages(updatedMessages);
-          localStorage.setItem(`chatMessages_${currentAgentId}`, JSON.stringify(updatedMessages));
+          
+          // Save to DATABASE
+          if (currentAgentId) {
+            await fetch(`/api/agents/${currentAgentId}/messages`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(aiMessage)
+            });
+          }
           return;
         }
 
@@ -1059,9 +1501,24 @@ export default function Page() {
           content: data.choices?.[0]?.message?.content || "Sorry, I couldn't generate a response.",
           timestamp: Date.now(),
         };
+        console.log('✅ AI Message Created:', {
+          id: aiMessage.id,
+          role: aiMessage.role,
+          contentLength: aiMessage.content.length,
+          contentPreview: aiMessage.content.substring(0, 100) + '...'
+        });
         const updatedMessages = [...newMessages, aiMessage];
         setChatMessages(updatedMessages);
-        localStorage.setItem(`chatMessages_${currentAgentId}`, JSON.stringify(updatedMessages));
+        
+        // Save AI message to DATABASE
+        if (currentAgentId) {
+          await fetch(`/api/agents/${currentAgentId}/messages`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(aiMessage)
+          }).catch(err => console.error('Failed to save AI message:', err));
+        }
+        console.log('💾 Chat messages saved to database, total messages:', updatedMessages.length);
       } catch (error) {
         console.error("❌ Chat API error:", error);
         const errorMessage: ChatMessage = {
@@ -1072,7 +1529,15 @@ export default function Page() {
         };
         const updatedMessages = [...newMessages, errorMessage];
         setChatMessages(updatedMessages);
-        localStorage.setItem(`chatMessages_${currentAgentId}`, JSON.stringify(updatedMessages));
+        
+        // Save error message to DATABASE
+        if (currentAgentId) {
+          await fetch(`/api/agents/${currentAgentId}/messages`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(errorMessage)
+          }).catch(err => console.error('Failed to save error message:', err));
+        }
       } finally {
         setIsChatLoading(false);
       }
@@ -1081,10 +1546,15 @@ export default function Page() {
     }
   };
 
+  // Prevent hydration errors by not rendering until mounted
+  if (!mounted) {
+    return null;
+  }
+
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-[#0e0f0f]">
       {/* Onboarding Tutorial */}
-      <OnboardingTutorial />
+      <InteractiveOnboarding />
       
       <Sidebar
         isOpen={sidebarOpen}
@@ -1100,89 +1570,68 @@ export default function Page() {
         onRenameFolder={handleRenameFolder}
         onDeleteFolder={handleDeleteFolder}
         onMoveDoc={handleMoveDoc}
+        onDashboard={() => setViewMode(viewMode === 'dashboard' ? 'editor' : 'dashboard')}
+        onKnowledgeBase={() => setViewMode(viewMode === 'knowledgebase' ? 'editor' : 'knowledgebase')}
       />
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-0'} ${agentSidebarOpen ? 'mr-[480px]' : 'mr-0'}`}>
         
-        <div className="flex w-full max-w-screen-lg items-center gap-2 px-4 sm:mb-[calc(20vh)] mx-auto mt-4">
-          {/* Back to AI Hub button */}
-          <Button
-            onClick={() => window.open('https://ahmad-anything-llm.840tjq.easypanel.host', '_blank')}
-            variant="ghost"
-            size="sm"
-            className="gap-2 text-slate-600 hover:text-slate-900"
-            title="Return to AnythingLLM"
-          >
-            ← Back to AI Hub
-          </Button>
-          
-          <div className="ml-auto flex gap-2">
-            <Button
-              onClick={handleEmbedToAI}
-              variant="outline"
-              size="default"
-              className="gap-2 border-[#20e28f] text-[#0e2e33] hover:bg-[#20e28f]/10 font-semibold"
-              title="Embed this SOW to AI knowledge base"
-            >
-              <Sparkles className="h-5 w-5" />
-              Embed to AI
-            </Button>
-            <Button
-              onClick={handleOpenAIChat}
-              variant="default"
-              size="default"
-              className="gap-2 bg-[#0e2e33] hover:bg-[#0e2e33]/90 text-white font-semibold"
-              title="Ask AI about this SOW"
-            >
-              <Sparkles className="h-5 w-5" />
-              Ask AI
-            </Button>
-            <Button
-              onClick={() => {
-                if (currentDocId) {
-                  setShowSendModal(true);
-                } else {
-                  toast.error('Please select a document first');
-                }
-              }}
-              variant="default"
-              size="default"
-              className="gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold"
-              title="Send SOW to client via secure portal"
-            >
-              <Send className="h-4 w-4" />
-              Send to Client
-            </Button>
-            <Menu 
-              onExportPDF={handleExportPDF}
-              onExportExcel={handleExportExcel}
-            />
-          </div>
-        </div>
-        
-        {currentDoc && (
-          <div className="mx-auto max-w-screen-lg px-4">
-            <TailwindAdvancedEditor
-              ref={editorRef}
-              initialContent={currentDoc.content}
-              onUpdate={handleUpdateDoc}
-            />
-          </div>
+        {viewMode === 'editor' ? (
+          <>
+            {currentDoc && (
+              <div className="mx-auto max-w-screen-lg px-4 py-8">
+                <TailwindAdvancedEditor
+                  ref={editorRef}
+                  initialContent={currentDoc.content}
+                  onUpdate={handleUpdateDoc}
+                />
+              </div>
+            )}
+            
+            {/* Floating Action Button */}
+            {currentDoc && (
+              <FloatingDocumentActions
+                onExport={(format) => {
+                  if (format === 'pdf') {
+                    handleExportPDF();
+                  } else if (format === 'docx' || format === 'txt' || format === 'html') {
+                    // Handle other export formats if needed
+                    console.log('Export format:', format);
+                  }
+                }}
+                onShare={handleShare}
+              />
+            )}
+          </>
+        ) : viewMode === 'dashboard' ? (
+          <EnhancedDashboard />
+        ) : (
+          <KnowledgeBase />
         )}
       </div>
-      <AgentSidebar
-        isOpen={agentSidebarOpen}
-        onToggle={() => setAgentSidebarOpen(!agentSidebarOpen)}
-        agents={agents}
-        currentAgentId={currentAgentId}
-        onSelectAgent={handleSelectAgent}
-        onCreateAgent={handleCreateAgent}
-        onUpdateAgent={handleUpdateAgent}
-        onDeleteAgent={handleDeleteAgent}
-        chatMessages={chatMessages}
-        onSendMessage={handleSendMessage}
-        isLoading={isChatLoading}
-        onInsertToEditor={(content) => handleInsertContent(content)}
-      />
+      {/* Only show Agent Sidebar (SOW Builder) in editor mode */}
+      {viewMode === 'editor' && (
+        <AgentSidebar
+          isOpen={agentSidebarOpen}
+          onToggle={() => setAgentSidebarOpen(!agentSidebarOpen)}
+          agents={agents}
+          currentAgentId={currentAgentId}
+          onSelectAgent={handleSelectAgent}
+          onCreateAgent={handleCreateAgent}
+          onUpdateAgent={handleUpdateAgent}
+          onDeleteAgent={handleDeleteAgent}
+          chatMessages={chatMessages}
+          onSendMessage={handleSendMessage}
+          isLoading={isChatLoading}
+          streamingMessageId={streamingMessageId}
+          onInsertToEditor={(content) => {
+            console.log('📝 Insert to Editor button clicked from AI chat');
+            // Strip <think> tags and any XML-like tags from AI responses
+            const cleanContent = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+            // Use the existing handleInsertContent which properly converts markdown to Novel JSON with pricing tables
+            handleInsertContent(cleanContent || content);
+          }}
+        />
+      )}
 
       {/* Send to Client Modal */}
       {currentDoc && (
@@ -1203,33 +1652,22 @@ export default function Page() {
           }}
         />
       )}
+
+      {/* Share Link Modal */}
+      {shareModalData && (
+        <ShareLinkModal
+          isOpen={showShareModal}
+          onClose={() => {
+            setShowShareModal(false);
+            setShareModalData(null);
+          }}
+          shareLink={shareModalData.shareLink}
+          documentTitle={shareModalData.documentTitle}
+          shareCount={shareModalData.shareCount}
+          firstShared={shareModalData.firstShared}
+          lastShared={shareModalData.lastShared}
+        />
+      )}
     </div>
   );
-}
-
-// Helper: Calculate total investment from pricing tables in content
-function calculateTotalInvestment(content: any): number {
-  try {
-    if (!content || !content.content) return 0;
-    
-    let total = 0;
-    const traverse = (node: any) => {
-      if (node.type === 'editablePricingTable' && node.attrs?.rows) {
-        const subtotal = node.attrs.rows.reduce((sum: number, row: any) => {
-          const hours = parseFloat(row.hours) || 0;
-          const rate = parseFloat(row.rate) || 0;
-          return sum + (hours * rate);
-        }, 0);
-        total += subtotal;
-      }
-      if (node.content && Array.isArray(node.content)) {
-        node.content.forEach(traverse);
-      }
-    };
-    traverse(content);
-    return total;
-  } catch (error) {
-    console.error('Error calculating total investment:', error);
-    return 0;
-  }
 }

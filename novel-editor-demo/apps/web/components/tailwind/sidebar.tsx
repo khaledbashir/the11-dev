@@ -69,6 +69,8 @@ interface SidebarProps {
   onRenameFolder: (id: string, name: string) => void;
   onDeleteFolder: (id: string) => void;
   onMoveDoc: (docId: string, folderId?: string) => void;
+  onDashboard?: () => void;
+  onKnowledgeBase?: () => void;
 }
 
 // Draggable Document Component
@@ -183,11 +185,11 @@ function DroppableFolder({
   return (
     <div
       ref={setNodeRef}
-      className={`mb-2 rounded-md transition-colors ${
+      className={`mb-2 rounded-md transition-colors group ${
         isOver ? 'bg-accent/50 ring-2 ring-primary' : ''
       }`}
     >
-      <div className="flex items-center gap-2 px-2 py-1.5 hover:bg-accent rounded-md group">
+      <div className="flex items-center gap-2 px-2 py-1.5 hover:bg-accent rounded-md">
         <Folder className="h-4 w-4 text-muted-foreground" />
         {renamingId === folder.id ? (
           <Input
@@ -201,7 +203,7 @@ function DroppableFolder({
         ) : (
           <span className="text-sm font-medium flex-1">{folder.name}</span>
         )}
-        <div className="flex gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
+        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <Button
             size="sm"
             variant="ghost"
@@ -274,6 +276,8 @@ export default function Sidebar({
   onRenameFolder,
   onDeleteFolder,
   onMoveDoc,
+  onDashboard,
+  onKnowledgeBase,
 }: SidebarProps) {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -446,6 +450,28 @@ export default function Sidebar({
                     ))}
                   </SortableContext>
                 </DroppableUnorganized>
+              )}
+            </div>
+            
+            {/* Action Buttons */}
+            <div className="border-t border-border p-2 mt-4 space-y-2">
+              {onDashboard && (
+                <Button 
+                  onClick={onDashboard}
+                  variant="ghost" 
+                  className="w-full justify-start text-sm"
+                >
+                  📊 Dashboard
+                </Button>
+              )}
+              {onKnowledgeBase && (
+                <Button 
+                  onClick={onKnowledgeBase}
+                  variant="ghost" 
+                  className="w-full justify-start text-sm"
+                >
+                  📚 Knowledge Base
+                </Button>
               )}
             </div>
             
