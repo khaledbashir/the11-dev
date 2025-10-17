@@ -10,7 +10,6 @@ import { Button } from "@/components/tailwind/ui/button";
 import { SendToClientModal } from "@/components/tailwind/send-to-client-modal";
 import { ShareLinkModal } from "@/components/tailwind/share-link-modal";
 import { ResizableLayout } from "@/components/tailwind/resizable-layout";
-import { EmptyStateWelcome } from "@/components/tailwind/empty-state-welcome";
 import { DocumentStatusBar } from "@/components/tailwind/document-status-bar";
 
 import { toast } from "sonner";
@@ -339,8 +338,8 @@ export default function Page() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [currentDocId, setCurrentDocId] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [agentSidebarOpen, setAgentSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [agentSidebarOpen, setAgentSidebarOpen] = useState(true);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [currentAgentId, setCurrentAgentId] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -847,16 +846,81 @@ export default function Page() {
   };
 
   // ==================== WORKSPACE & SOW HANDLERS (NEW) ====================
-  const handleCreateWorkspace = (workspaceName: string) => {
-    const newId = `ws-${Date.now()}`;
+  const handleCreateWorkspace = async (workspaceName: string) => {
+    const newWorkspaceId = `ws-${Date.now()}`;
     const newWorkspace: Workspace = {
-      id: newId,
+      id: newWorkspaceId,
       name: workspaceName,
       sows: []
     };
     setWorkspaces(prev => [...prev, newWorkspace]);
-    setCurrentWorkspaceId(newId);
-    setCurrentSOWId(null);
+    setCurrentWorkspaceId(newWorkspaceId);
+    
+    // IMMEDIATELY CREATE A BLANK SOW (NO MODAL, NO USER INPUT)
+    const newSOWId = `sow-${Date.now()}`;
+    const sowTitle = `New SOW for ${workspaceName}`; // Auto-generated title
+    const newSOW: SOW = {
+      id: newSOWId,
+      name: sowTitle,
+      workspaceId: newWorkspaceId
+    };
+    
+    // Add SOW to the workspace
+    setWorkspaces(prev => prev.map(ws => 
+      ws.id === newWorkspaceId ? { ...ws, sows: [newSOW] } : ws
+    ));
+    setCurrentSOWId(newSOWId);
+    
+    // AUTOMATICALLY SWITCH TO EDITOR VIEW
+    setViewMode('editor');
+    
+    // CREATE A NEW BLANK DOCUMENT
+    const newDocId = `doc${Date.now()}`;
+    const newDoc: Document = {
+      id: newDocId,
+      title: sowTitle, // Use auto-generated title
+      content: defaultEditorContent,
+      folderId: undefined,
+      workspaceSlug: undefined,
+    };
+    
+    // Save to database
+    try {
+      const saveResponse = await fetch('/api/sow/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: sowTitle,
+          content: defaultEditorContent,
+          client_name: workspaceName,
+          client_email: '',
+          total_investment: 0,
+        }),
+      });
+
+      if (saveResponse.ok) {
+        const savedDoc = await saveResponse.json();
+        // Update local state with database ID
+        const docWithDbId: Document = {
+          ...newDoc,
+          id: savedDoc.id || newDocId,
+        };
+        setDocuments(prev => [...prev, docWithDbId]);
+        setCurrentDocId(docWithDbId.id);
+        toast.success(`✅ Created workspace "${workspaceName}" with blank SOW ready to edit!`);
+      } else {
+        // Fallback: save locally if database fails
+        setDocuments(prev => [...prev, newDoc]);
+        setCurrentDocId(newDocId);
+        toast.success(`✅ Created workspace "${workspaceName}" (local save)`);
+      }
+    } catch (error) {
+      console.error('Error saving SOW:', error);
+      // Fallback: save locally
+      setDocuments(prev => [...prev, newDoc]);
+      setCurrentDocId(newDocId);
+      toast.success(`✅ Created workspace "${workspaceName}" (offline mode)`);
+    }
   };
 
   const handleRenameWorkspace = (workspaceId: string, newName: string) => {
@@ -880,7 +944,7 @@ export default function Page() {
     }
   };
 
-  const handleCreateSOW = (workspaceId: string, sowName: string) => {
+  const handleCreateSOW = async (workspaceId: string, sowName: string) => {
     const newId = `sow-${Date.now()}`;
     const newSOW: SOW = {
       id: newId,
@@ -891,8 +955,47 @@ export default function Page() {
       ws.id === workspaceId ? { ...ws, sows: [...ws.sows, newSOW] } : ws
     ));
     setCurrentSOWId(newId);
-    // Create a new document for this SOW
-    handleNewDoc();
+    
+    // AUTOMATICALLY SWITCH TO EDITOR VIEW AND CREATE NEW DOCUMENT
+    setViewMode('editor');
+    
+    // Create a new document with the SOW name as title
+    const newDocId = `doc${Date.now()}`;
+    const newDoc: Document = {
+      id: newDocId,
+      title: sowName, // Use the SOW name as the document title
+      content: defaultEditorContent,
+      folderId: undefined,
+      workspaceSlug: undefined,
+    };
+    
+    // Save to database
+    try {
+      const saveResponse = await fetch('/api/sow/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newDoc.title,
+          content: newDoc.content,
+          client_name: '',
+          client_email: '',
+          total_investment: 0,
+        }),
+      });
+      
+      if (saveResponse.ok) {
+        const savedDoc = await saveResponse.json();
+        newDoc.id = savedDoc.id;
+      }
+    } catch (error) {
+      console.error('Error saving SOW:', error);
+    }
+    
+    // Add to documents and set as current
+    setDocuments(prev => [...prev, newDoc]);
+    setCurrentDocId(newDoc.id);
+    
+    toast.success(`✅ SOW "${sowName}" created and opened in editor!`);
   };
 
   const handleRenameSOW = (sowId: string, newName: string) => {
@@ -1441,15 +1544,20 @@ export default function Page() {
   };
 
   const handleSendMessage = async (message: string) => {
-    if (!message.trim() || !currentAgentId) return;
+    // In dashboard mode, we don't need an agent selected - use dashboard workspace directly
+    const isDashboardMode = viewMode === 'dashboard';
+    
+    if (!message.trim()) return;
+    if (!isDashboardMode && !currentAgentId) return; // Only require agent in editor mode
 
     setIsChatLoading(true);
-    if (!currentAgentId) return;
 
-    // Check for insert command
-    if (message.toLowerCase().includes('insert into editor') ||
+    // Check for insert command (only relevant in editor mode)
+    if (!isDashboardMode && (
+        message.toLowerCase().includes('insert into editor') ||
         message.toLowerCase() === 'insert' ||
-        message.toLowerCase().includes('add to editor')) {
+        message.toLowerCase().includes('add to editor')
+    )) {
       console.log('📝 Insert command detected!', { message });
       setIsChatLoading(false);
       
@@ -1557,8 +1665,8 @@ export default function Page() {
     const newMessages = [...chatMessages, userMessage];
     setChatMessages(newMessages);
     
-    // Save user message to DATABASE
-    if (currentAgentId) {
+    // Save user message to DATABASE (only in editor mode with agent)
+    if (!isDashboardMode && currentAgentId) {
       await fetch(`/api/agents/${currentAgentId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1567,13 +1675,34 @@ export default function Page() {
     }
 
     const currentAgent = agents.find(a => a.id === currentAgentId);
-    if (currentAgent) {
+    
+    // In dashboard mode, we use a simulated agent configuration
+    const effectiveAgent = isDashboardMode ? {
+      id: 'dashboard',
+      name: 'Dashboard AI',
+      systemPrompt: 'You are a helpful assistant that answers questions about the user\'s dashboard data, SOWs, clients, and metrics. Provide insights and analytics based on the context.',
+      model: 'anythingllm'
+    } : currentAgent;
+    
+    if (effectiveAgent) {
       try {
-        const useAnythingLLM = currentAgent.model === 'anythingllm';
+        const useAnythingLLM = effectiveAgent.model === 'anythingllm';
         const endpoint = useAnythingLLM ? '/api/anythingllm/chat' : '/api/chat';
         
         // Get the appropriate workspace for this agent
-        const workspaceSlug = useAnythingLLM ? getWorkspaceForAgent(currentAgentId) : undefined;
+        // Dashboard mode always uses 'sow-master-dashboard' workspace, editor mode uses agent-specific workspace
+        const workspaceSlug = useAnythingLLM ? (
+          isDashboardMode ? 'sow-master-dashboard' : getWorkspaceForAgent(currentAgentId || '')
+        ) : undefined;
+
+        console.log('🔍 [Chat Debug]', {
+          isDashboardMode,
+          useAnythingLLM,
+          endpoint,
+          workspaceSlug,
+          agentModel: effectiveAgent.model,
+          agentName: effectiveAgent.name
+        });
 
         const response = await fetch(endpoint, {
         method: "POST",
@@ -1581,10 +1710,10 @@ export default function Page() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: currentAgent.model,
+          model: effectiveAgent.model,
           workspace: workspaceSlug, // Pass workspace slug for AnythingLLM agents
           messages: [
-            { role: "system", content: currentAgent.systemPrompt },
+            { role: "system", content: effectiveAgent.systemPrompt },
             ...newMessages.map(m => ({ role: m.role, content: m.content })),
           ],
         }),
@@ -1604,16 +1733,33 @@ export default function Page() {
         if (!response.ok) {
           let errorMessage = "Sorry, there was an error processing your request.";
 
-          if (response.status === 400) {
-            errorMessage = "⚠️ OpenRouter API key not configured. Please set the OPENROUTER_API_KEY environment variable to enable AI chat functionality.";
-          } else if (response.status === 402) {
-            errorMessage = "Payment required: Please check your OpenRouter account balance or billing information.";
-          } else if (response.status === 401) {
-            errorMessage = "Authentication failed: Please check your OpenRouter API key.";
-          } else if (response.status === 429) {
-            errorMessage = "Rate limit exceeded: Please wait a moment before trying again.";
-          } else if (data.error?.message) {
-            errorMessage = `API Error: ${data.error.message}`;
+          // Different error messages for AnythingLLM vs OpenRouter
+          if (isDashboardMode || useAnythingLLM) {
+            // AnythingLLM-specific errors
+            if (response.status === 400) {
+              errorMessage = "⚠️ AnythingLLM error: Invalid request. Please check the workspace configuration.";
+            } else if (response.status === 401 || response.status === 403) {
+              errorMessage = "⚠️ AnythingLLM authentication failed. Please check the API key configuration.";
+            } else if (response.status === 404) {
+              errorMessage = `⚠️ AnythingLLM workspace '${workspaceSlug}' not found. Please verify it exists.`;
+            } else if (data.error?.message) {
+              errorMessage = `AnythingLLM Error: ${data.error.message}`;
+            } else {
+              errorMessage = `AnythingLLM Error: ${response.status} ${response.statusText}`;
+            }
+          } else {
+            // OpenRouter-specific errors
+            if (response.status === 400) {
+              errorMessage = "⚠️ OpenRouter API key not configured. Please set the OPENROUTER_API_KEY environment variable to enable AI chat functionality.";
+            } else if (response.status === 402) {
+              errorMessage = "Payment required: Please check your OpenRouter account balance or billing information.";
+            } else if (response.status === 401) {
+              errorMessage = "Authentication failed: Please check your OpenRouter API key.";
+            } else if (response.status === 429) {
+              errorMessage = "Rate limit exceeded: Please wait a moment before trying again.";
+            } else if (data.error?.message) {
+              errorMessage = `API Error: ${data.error.message}`;
+            }
           }
 
           const aiMessage: ChatMessage = {
@@ -1625,8 +1771,8 @@ export default function Page() {
           const updatedMessages = [...newMessages, aiMessage];
           setChatMessages(updatedMessages);
           
-          // Save to DATABASE
-          if (currentAgentId) {
+          // Save to DATABASE (only in editor mode)
+          if (!isDashboardMode && currentAgentId) {
             await fetch(`/api/agents/${currentAgentId}/messages`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -1651,8 +1797,8 @@ export default function Page() {
         const updatedMessages = [...newMessages, aiMessage];
         setChatMessages(updatedMessages);
         
-        // Save AI message to DATABASE
-        if (currentAgentId) {
+        // Save AI message to DATABASE (only in editor mode)
+        if (!isDashboardMode && currentAgentId) {
           await fetch(`/api/agents/${currentAgentId}/messages`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1671,8 +1817,8 @@ export default function Page() {
         const updatedMessages = [...newMessages, errorMessage];
         setChatMessages(updatedMessages);
         
-        // Save error message to DATABASE
-        if (currentAgentId) {
+        // Save error message to DATABASE (only in editor mode)
+        if (!isDashboardMode && currentAgentId) {
           await fetch(`/api/agents/${currentAgentId}/messages`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1704,7 +1850,9 @@ export default function Page() {
         aiChatOpen={agentSidebarOpen}
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         onToggleAiChat={() => setAgentSidebarOpen(!agentSidebarOpen)}
+        viewMode={viewMode} // Pass viewMode for context awareness
         leftPanel={
+          // Always show sidebar navigation regardless of view mode
           <SidebarNav
             workspaces={workspaces}
             currentWorkspaceId={currentWorkspaceId}
@@ -1745,10 +1893,12 @@ export default function Page() {
                     />
                   </div>
                 ) : (
-                  <EmptyStateWelcome
-                    onCreateNewSOW={() => handleNewDoc()}
-                    isLoading={false}
-                  />
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center">
+                      <p className="text-gray-400 text-lg mb-4">No document selected</p>
+                      <p className="text-gray-500 text-sm">Create a new workspace to get started</p>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
@@ -1759,7 +1909,8 @@ export default function Page() {
           )
         }
         rightPanel={
-          viewMode === 'editor' ? (
+          // Show AI Chat in both editor and dashboard modes
+          viewMode === 'editor' || viewMode === 'dashboard' ? (
             <AgentSidebar
               isOpen={agentSidebarOpen}
               onToggle={() => setAgentSidebarOpen(!agentSidebarOpen)}
@@ -1773,9 +1924,10 @@ export default function Page() {
               onSendMessage={handleSendMessage}
               isLoading={isChatLoading}
               streamingMessageId={streamingMessageId}
+              viewMode={viewMode} // Pass viewMode for context awareness
               onInsertToEditor={(content) => {
                 console.log('📝 Insert to Editor button clicked from AI chat');
-                const cleanContent = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+                const cleanContent = content.replace(/<tool_call>[\s\S]*?<\/think>/gi, '').trim();
                 handleInsertContent(cleanContent || content);
               }}
             />
@@ -1829,6 +1981,7 @@ export default function Page() {
           lastShared={shareModalData.lastShared}
         />
       )}
+
     </div>
   );
 }

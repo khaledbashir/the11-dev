@@ -78,20 +78,30 @@ export function EnhancedDashboard() {
     try {
       setLoading(true);
       
-      // Fetch from database API
-      const response = await fetch('/api/dashboard/stats');
+      // Fetch from database API with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+      
+      const response = await fetch('/api/dashboard/stats', {
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
       
       if (response.ok) {
         const data = await response.json();
         setStats(data);
         setError(null);
       } else {
-        throw new Error('Failed to fetch dashboard stats');
+        throw new Error(`API returned ${response.status}: ${response.statusText}`);
       }
       
     } catch (err: any) {
       console.error('❌ Dashboard failed to load:', err);
-      setError(err.message);
+      const errorMessage = err.name === 'AbortError' 
+        ? 'Dashboard took too long to load. Please refresh.' 
+        : err.message;
+      setError(errorMessage);
       setStats({
         totalSOWs: 0,
         totalValue: 0,
@@ -154,7 +164,7 @@ export function EnhancedDashboard() {
     );
   }
 
-  if (!stats || error) {
+  if (!stats) {
     return (
       <div className="flex items-center justify-center h-full bg-[#0e0f0f]">
         <div className="text-center max-w-md mx-auto p-8">
@@ -191,13 +201,6 @@ export function EnhancedDashboard() {
               <RefreshCw className="mr-2 h-4 w-4" />
               Refresh
             </Button>
-            <Button
-              onClick={() => setShowChat(!showChat)}
-              className="bg-[#1CBF79] hover:bg-[#15a366]"
-            >
-              <MessageSquare className="mr-2 h-4 w-4" />
-              {showChat ? 'Hide' : 'Show'} AI Chat
-            </Button>
           </div>
         </div>
 
@@ -207,12 +210,9 @@ export function EnhancedDashboard() {
             <div className="text-6xl mb-4">🚀</div>
             <h3 className="text-2xl font-bold text-white mb-2">Dashboard Ready!</h3>
             <p className="text-gray-300 mb-4 max-w-2xl mx-auto">
-              Your master dashboard workspace is connected to AnythingLLM. 
-              Create your first SOW and click <strong className="text-[#20e28f]">"Embed to AI"</strong> to see analytics here.
+              Your dashboard is ready. Create your first Workspace and add an SOW to begin seeing your analytics.
             </p>
-            <p className="text-sm text-gray-500">
-              {stats.message || 'Waiting for documents...'}
-            </p>
+            {/* Removed the ambiguous error message - the dashboard is ready, just empty */}
           </div>
         )}
 

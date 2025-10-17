@@ -98,7 +98,19 @@ export default function SidebarNav({
   };
 
   return (
-    <div className="w-64 h-screen bg-[#0E0F0F] border-r border-gray-800 flex flex-col">
+    <div className="w-64 h-full bg-[#0E0F0F] border-r border-gray-800 flex flex-col relative">
+      {/* COLLAPSE BUTTON - Top Right Corner */}
+      {onToggleSidebar && (
+        <button
+          onClick={onToggleSidebar}
+          className="absolute top-4 right-4 p-1 hover:bg-gray-800 rounded transition-colors text-gray-400 hover:text-gray-300 z-10"
+          title="Collapse sidebar"
+          aria-label="Collapse sidebar"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+      )}
+
       {/* STATIC LINKS SECTION */}
       <div className="flex-shrink-0 p-4 space-y-2 border-b border-gray-800">
         {/* Dashboard Link */}
@@ -134,15 +146,6 @@ export default function SidebarNav({
         <div className="flex-shrink-0 px-4 py-3 border-b border-gray-800 flex items-center justify-between">
           <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">Workspaces</h3>
           <div className="flex items-center gap-1">
-            {onToggleSidebar && (
-              <button
-                onClick={onToggleSidebar}
-                className="p-1 hover:bg-gray-800 rounded transition-colors text-gray-400 hover:text-gray-300"
-                title="Collapse sidebar"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-            )}
             <Dialog open={showNewWorkspaceDialog} onOpenChange={setShowNewWorkspaceDialog}>
               <DialogTrigger asChild>
                 <button
