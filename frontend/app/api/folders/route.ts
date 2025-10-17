@@ -13,16 +13,19 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, description } = await request.json();
+    const { name } = await request.json();
+    
+    // Generate UUID for folder id
+    const folderId = crypto.randomUUID();
     
     await query(
-      'INSERT INTO folders (name, description, created_at) VALUES (?, ?, NOW())',
-      [name, description || null]
+      'INSERT INTO folders (id, name) VALUES (?, ?)',
+      [folderId, name]
     );
     
-    return NextResponse.json({ name, description }, { status: 201 });
+    return NextResponse.json({ id: folderId, name }, { status: 201 });
   } catch (error) {
     console.error('❌ Failed to create folder:', error);
-    return NextResponse.json({ error: 'Failed to create folder' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to create folder', details: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }

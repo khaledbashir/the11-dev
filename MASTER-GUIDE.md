@@ -163,22 +163,32 @@ Table 'socialgarden_sow.agent_messages' doesn't exist
 **Root Cause:** Code was using old table names, but actual database tables have different names.
 
 **Solution Applied:**
-Fixed 3 API routes to use correct table names:
+Fixed 3 API routes to match actual database schema:
 
-| API Route | Old Table Name | Correct Table Name |
-|-----------|---------------|-------------------|
-| `/api/folders` | `sow_folders` | `folders` |
-| `/api/dashboard/stats` | `statements_of_work` | `sows` |
-| `/api/agents/[id]/messages` | `agent_messages` | `chat_messages` |
+| API Route | Issue | Fix |
+|-----------|-------|-----|
+| `/api/folders` | Used `sow_folders` table, tried to insert `description` column | Use `folders` table, only insert `name` (no description column exists) |
+| `/api/dashboard/stats` | Used `statements_of_work` table | Use `sows` table |
+| `/api/agents/[id]/messages` | Used `agent_messages` table, tried to insert into `message` column | Use `chat_messages` table with `content` column and `timestamp` (bigint) |
+
+**Actual Table Schema:**
+```sql
+-- folders table
+id (varchar36), name, created_at, updated_at, anythingllm_workspace_slug
+
+-- sows table  
+(various SOW metadata columns)
+
+-- chat_messages table
+id, agent_id, role (enum), content (longtext), timestamp (bigint), created_at
+```
 
 **Files Changed:**
-- `/frontend/app/api/folders/route.ts`
-- `/frontend/app/api/dashboard/stats/route.ts`
-- `/frontend/app/api/agents/[agentId]/messages/route.ts`
+- `/frontend/app/api/folders/route.ts` - Fixed column names
+- `/frontend/app/api/dashboard/stats/route.ts` - Fixed table name
+- `/frontend/app/api/agents/[agentId]/messages/route.ts` - Fixed table and column names
 
-**Bonus Fix:** Added `null` fallbacks for undefined params (e.g., `description || null`) to prevent SQL parameter errors.
-
-**Result:** ✅ API errors resolved, database queries working
+**Result:** ✅ All database schema mismatches resolved
 
 ### ❌ Issue: Console.log Debug Spam
 **Errors seen:**

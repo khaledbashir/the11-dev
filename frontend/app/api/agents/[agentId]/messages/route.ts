@@ -28,9 +28,10 @@ export async function POST(
     const { agentId } = await params;
     const { message, role = 'user' } = await request.json();
     
+    // chat_messages table uses 'content' not 'message', and 'timestamp' (bigint) not created_at for ordering
     await query(
-      'INSERT INTO chat_messages (agent_id, message, role, created_at) VALUES (?, ?, ?, NOW())',
-      [agentId, message || null, role]
+      'INSERT INTO chat_messages (agent_id, content, role, timestamp, created_at) VALUES (?, ?, ?, ?, NOW())',
+      [agentId, message || '', role, Date.now()]
     );
     
     return NextResponse.json({ message, role }, { status: 201 });
