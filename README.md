@@ -44,13 +44,13 @@ Press `Ctrl+C` to stop.
 
 ```
 /root/the11/
-├── novel-editor-demo/apps/web/   ← Main Next.js app (Frontend)
+├── frontend/                     ← Next.js app (Main application)
 │   ├── app/                      ← Next.js 15 App Router
 │   ├── components/               ← React components
 │   ├── lib/                      ← Utilities, database, AI logic
 │   └── public/                   ← Static assets
 │
-├── pdf-service/                  ← FastAPI backend (PDF generation)
+├── backend/                      ← FastAPI service (PDF generation)
 │   ├── main.py                   ← PDF API server
 │   ├── requirements.txt          ← Python dependencies
 │   └── venv/                     ← Python virtual environment
@@ -60,7 +60,7 @@ Press `Ctrl+C` to stop.
 │   └── init.sql                  ← Initial setup
 │
 ├── docs/                         ← Technical documentation
-│   └── API.md                    ← API reference
+│   └── archive/                  ← Historical session notes
 │
 ├── dev.sh                        ← Start development (ONE COMMAND)
 ├── .env.example                  ← Environment variables template
@@ -68,7 +68,7 @@ Press `Ctrl+C` to stop.
 └── README.md                     ← You are here
 ```
 
-**Why nested?** The app uses the [Novel](https://github.com/steven-tey/novel) editor template, which is a Turborepo monorepo. We use only the `/apps/web` workspace. This structure is intentional and works perfectly.
+**Clean & Simple:** No nested submodules. No monorepo complexity. Just a clean frontend/backend structure.
 
 ---
 
@@ -118,14 +118,14 @@ This script:
 
 **Frontend:**
 ```bash
-cd /root/the11/novel-editor-demo/apps/web
+cd /root/the11/frontend
 pnpm install  # First time only
 pnpm dev
 ```
 
 **Backend:**
 ```bash
-cd /root/the11/pdf-service
+cd /root/the11/backend
 python3 -m venv venv  # First time only
 source venv/bin/activate
 pip install -r requirements.txt  # First time only
@@ -189,7 +189,7 @@ docker-compose -f docker-compose.prod.yml logs -f
 
 **Frontend:**
 ```bash
-cd /root/the11/novel-editor-demo/apps/web
+cd /root/the11/frontend
 pnpm install
 pnpm build
 pnpm start  # or use pm2
@@ -197,7 +197,7 @@ pnpm start  # or use pm2
 
 **Backend:**
 ```bash
-cd /root/the11/pdf-service
+cd /root/the11/backend
 source venv/bin/activate
 pip install -r requirements.txt
 uvicorn main:app --host 0.0.0.0 --port 8000  # or use gunicorn
