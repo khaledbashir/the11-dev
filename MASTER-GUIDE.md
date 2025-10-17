@@ -14,11 +14,23 @@ cd /root/the11
 ./dev.sh
 ```
 
+**You'll see:**
+- ✅ Clear startup messages for backend & frontend
+- ✅ Next.js compilation output (errors show here!)
+- ✅ "Ready in Xs" when app is ready
+- ✅ Hot reload notifications
+
 **Opens:**
 - Frontend: http://localhost:3333
 - Backend: http://localhost:8000
 
-**That's it.** Hot reload works. Start coding.
+**Check Status Anytime:**
+```bash
+./status.sh  # Shows what's running, what's not
+```
+
+**Stop Everything:**
+- Press `Ctrl+C` (kills both frontend & backend)
 
 ---
 
@@ -140,35 +152,33 @@ pip install -r requirements.txt
 
 ## 🐛 CURRENT ISSUES & FIXES
 
-### ❌ Issue: API Errors (500, 404, 405)
+### ✅ FIXED: Database Table Name Mismatches
 **Errors seen:**
 ```
-Failed to load resource: 500 (Internal Server Error)
-/api/folders
-/api/dashboard/stats
-
-Failed to load resource: 404 (Not Found)
-/api/agents/architect
-
-Failed to load resource: 405 (Method Not Allowed)
-/api/preferences/current_agent_id
+Table 'socialgarden_sow.sow_folders' doesn't exist
+Table 'socialgarden_sow.statements_of_work' doesn't exist  
+Table 'socialgarden_sow.agent_messages' doesn't exist
 ```
 
-**Root Cause:** API routes missing or not properly connected to database.
+**Root Cause:** Code was using old table names, but actual database tables have different names.
 
-**Fix Needed:**
-1. Check `/frontend/app/api/folders/route.ts` exists
-2. Check `/frontend/app/api/dashboard/stats/route.ts` exists
-3. Verify database connection in `lib/db.ts`
-4. Check MySQL credentials are correct
+**Solution Applied:**
+Fixed 3 API routes to use correct table names:
 
-**Quick Test:**
-```bash
-# Test database connection
-mysql -h 168.231.115.219 -u sg_sow_user -p'SG_sow_2025_SecurePass!' socialgarden_sow -e "SHOW TABLES;"
+| API Route | Old Table Name | Correct Table Name |
+|-----------|---------------|-------------------|
+| `/api/folders` | `sow_folders` | `folders` |
+| `/api/dashboard/stats` | `statements_of_work` | `sows` |
+| `/api/agents/[id]/messages` | `agent_messages` | `chat_messages` |
 
-# Should show 12 tables
-```
+**Files Changed:**
+- `/frontend/app/api/folders/route.ts`
+- `/frontend/app/api/dashboard/stats/route.ts`
+- `/frontend/app/api/agents/[agentId]/messages/route.ts`
+
+**Bonus Fix:** Added `null` fallbacks for undefined params (e.g., `description || null`) to prevent SQL parameter errors.
+
+**Result:** ✅ API errors resolved, database queries working
 
 ### ❌ Issue: Console.log Debug Spam
 **Errors seen:**
@@ -362,12 +372,16 @@ curl http://localhost:8000/health
 ## 🎯 TODO CHECKLIST
 
 ### Phase 1: Fix Current Issues ⏳
-- [ ] Remove all console.log debug statements
-- [ ] Fix `/api/folders` 500 error
-- [ ] Fix `/api/dashboard/stats` 500 error
-- [ ] Fix `/api/agents/architect` 404 error
-- [ ] Fix `/api/preferences/current_agent_id` 405 error
-- [ ] Verify database connection working
+- [ ] Remove all console.log debug statements (47+ logs to clean)
+- [x] Fix `/api/folders` 500 error ✅ (table name: folders)
+- [x] Fix `/api/dashboard/stats` 500 error ✅ (table name: sows)
+- [x] Fix `/api/agents/[id]/messages` 500 error ✅ (table name: chat_messages)
+- [ ] Fix `/api/preferences/current_agent_id` 405 error (needs PUT handler)
+- [ ] Fix `/api/generate` 401 error (OpenRouter/OpenAI API key issue)
+- [x] Verify database connection working ✅
+- [ ] Add markdown rendering to AI chat responses (tables, formatting)
+- [ ] Add floating action menu (Export PDF/Excel, Embed, Client Portal)
+- [ ] Make Knowledge Base tab an iframe to AnythingLLM
 - [ ] Test all features end-to-end
 
 ### Phase 2: Production Hardening 📦

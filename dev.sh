@@ -5,7 +5,10 @@
 
 set -e
 
-echo "🔥 Starting Social Garden SOW Generator in DEV mode..."
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🔥 STARTING SOW GENERATOR DEV MODE"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
 # Check if we're in the right directory
@@ -15,59 +18,101 @@ if [ ! -f "docker-compose.yml" ]; then
 fi
 
 # Kill any Docker containers
-echo "🛑 Stopping Docker containers (if running)..."
+echo "🛑 Stopping Docker containers..."
 docker-compose down 2>/dev/null || true
 
 # Kill any processes on our ports
-echo "🧹 Cleaning up ports..."
-pkill -f "next-server" 2>/dev/null || true
-pkill -f "uvicorn" 2>/dev/null || true
-sleep 1
+echo "🧹 Cleaning up ports 3333 and 8000..."
+lsof -ti:3333 | xargs kill -9 2>/dev/null || true
+lsof -ti:8000 | xargs kill -9 2>/dev/null || true
+sleep 2
 
-# Start PDF service in background
-echo "📄 Starting backend on port 8000..."
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📄 STARTING BACKEND (Python FastAPI)"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
 cd backend
+
+# Setup venv
 if [ ! -d "venv" ]; then
-    echo "  Creating virtual environment..."
+    echo "  📦 Creating virtual environment..."
     python3 -m venv venv
     source venv/bin/activate
+    echo "  📥 Installing dependencies..."
     pip install -q -r requirements.txt
+    echo "  ✅ Backend setup complete"
 else
     source venv/bin/activate
+    echo "  ✅ Virtual environment activated"
 fi
-nohup uvicorn main:app --reload --host 0.0.0.0 --port 8000 > /tmp/backend.log 2>&1 &
-PDF_PID=$!
-echo "  ✅ Backend started (PID: $PDF_PID)"
-cd ..
 
-# Start frontend
-echo "🎨 Starting frontend on port 3333..."
+# Start backend
+echo "  🚀 Starting uvicorn on port 8000..."
+uvicorn main:app --reload --host 0.0.0.0 --port 8000 > /tmp/backend.log 2>&1 &
+BACKEND_PID=$!
+echo "  ✅ Backend running (PID: $BACKEND_PID)"
+echo "  📋 Logs: tail -f /tmp/backend.log"
+
+cd ..
+sleep 2
+
+# Check if backend is actually running
+if ! lsof -ti:8000 > /dev/null; then
+    echo ""
+    echo "❌ ERROR: Backend failed to start!"
+    echo "📋 Check logs: tail -f /tmp/backend.log"
+    exit 1
+fi
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🎨 STARTING FRONTEND (Next.js)"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
 cd frontend
 
 # Install dependencies if needed
 if [ ! -d "node_modules" ]; then
-    echo "  Installing dependencies (first time only)..."
+    echo "  📦 Installing dependencies (first time)..."
     pnpm install
 fi
 
 echo ""
-echo "======================================"
-echo "🎉 READY TO CODE!"
-echo "======================================"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "✅ SERVICES RUNNING"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "Frontend: http://localhost:3333"
-echo "PDF API:  http://localhost:8000"
+echo "  🌐 Frontend: http://localhost:3333"
+echo "  🔌 Backend:  http://localhost:8000"
 echo ""
-echo "📝 Edit files and see changes INSTANTLY!"
-echo "📊 Logs:"
-echo "  - Frontend: Right here in this terminal"
-echo "  - Backend: tail -f /tmp/backend.log"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📝 YOU'LL SEE COMPILATION OUTPUT BELOW:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "Press Ctrl+C to stop everything"
+echo "  ✓ Watch for 'Ready in Xs' = App is ready"
+echo "  ✓ Hot reload works automatically"
+echo "  ✓ Errors will show here"
+echo ""
+echo "  🛑 Press Ctrl+C to stop everything"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# Run frontend (this keeps terminal open)
+# Cleanup function to kill backend on exit
+cleanup() {
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🛑 STOPPING SERVICES..."
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    kill $BACKEND_PID 2>/dev/null || true
+    lsof -ti:8000 | xargs kill -9 2>/dev/null || true
+    lsof -ti:3333 | xargs kill -9 2>/dev/null || true
+    echo "✅ All services stopped"
+    echo ""
+}
+
+trap cleanup EXIT
+
+# Run frontend in foreground (you'll see ALL compilation output, errors, etc.)
 PORT=3333 pnpm dev
-
-# Cleanup on exit
-trap "echo ''; echo '🛑 Stopping services...'; kill $PDF_PID 2>/dev/null; echo '✅ Stopped!'" EXIT
