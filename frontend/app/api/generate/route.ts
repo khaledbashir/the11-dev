@@ -7,9 +7,15 @@ import { match } from "ts-pattern";
 export const runtime = "edge";
 
 export async function POST(req: NextRequest): Promise<Response> {
-  // Check if the OPENROUTER_API_KEY is set, if not return 400
-  if (!process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY === "") {
-    return new Response("Missing OPENROUTER_API_KEY - make sure to add it to your .env file.", {
+  // Check if AnythingLLM credentials are set
+  if (!process.env.ANYTHINGLLM_API_KEY || process.env.ANYTHINGLLM_API_KEY === "") {
+    return new Response("Missing ANYTHINGLLM_API_KEY - make sure to add it to your .env file.", {
+      status: 400,
+    });
+  }
+  
+  if (!process.env.ANYTHINGLLM_WORKSPACE_SLUG || process.env.ANYTHINGLLM_WORKSPACE_SLUG === "") {
+    return new Response("Missing ANYTHINGLLM_WORKSPACE_SLUG - make sure to add it to your .env file.", {
       status: 400,
     });
   }
@@ -99,65 +105,119 @@ export async function POST(req: NextRequest): Promise<Response> {
     .run();
 
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        max_tokens: 4096,
-        temperature: 0.7,
-        top_p: 1,
-        frequency_penalty: 0,
-        presence_penalty: 0,
-        stream: true, // Enable streaming
-      }),
-    });
+    // Build the prompt message for AnythingLLM
+    const fullPrompt = match(option)
+      .with("continue", () => `Continue this text: ${prompt}`)
+      .with("improve", () => `Improve this text: ${prompt}`)
+      .with("shorter", () => `Make this shorter: ${prompt}`)
+      .with("longer", () => `Make this longer: ${prompt}`)
+      .with("fix", () => `Fix grammar and spelling: ${prompt}`)
+      .with("zap", () => `${command}: ${prompt}`)
+      .run();
+
+    const anythingllmUrl = process.env.ANYTHINGLLM_URL || "https://ahmad-anything-llm.840tjq.easypanel.host";
+    const workspaceSlug = process.env.ANYTHINGLLM_WORKSPACE_SLUG || "pop";
+    const apiKey = process.env.ANYTHINGLLM_API_KEY;
+
+    // Call AnythingLLM stream-chat endpoint (correct endpoint for streaming)
+    // POST /v1/workspace/{slug}/stream-chat
+    const response = await fetch(
+      `${anythingllmUrl}/api/v1/workspace/${workspaceSlug}/stream-chat`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: fullPrompt,
+        }),
+      }
+    );
 
     if (!response.ok) {
-      return new Response(await response.text(), { status: response.status });
+      const errorText = await response.text();
+      console.error(`AnythingLLM error: ${response.status}`, errorText);
+      return new Response(
+        JSON.stringify({ error: `AnythingLLM API error: ${response.status}` }),
+        { status: response.status, headers: { 'Content-Type': 'application/json' } }
+      );
     }
 
-    // Transform OpenRouter SSE stream to AI SDK format
+    // Handle streaming response from AnythingLLM
+    // stream-chat returns Server-Sent Events (SSE) format
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
     
     const stream = new ReadableStream({
       async start(controller) {
-        const reader = response.body?.getReader();
-        if (!reader) return;
-
         try {
+          const reader = response.body?.getReader();
+          if (!reader) {
+            controller.close();
+            return;
+          }
+
+          let buffer = '';
+
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
-            const chunk = decoder.decode(value);
-            const lines = chunk.split('\n');
-
+            buffer += decoder.decode(value, { stream: true });
+            
+            // Parse SSE format (lines starting with "data: ")
+            const lines = buffer.split('\n');
+            
+            // Keep the last incomplete line in buffer
+            buffer = lines.pop() || '';
+            
             for (const line of lines) {
               if (line.startsWith('data: ')) {
-                const data = line.slice(6);
+                const data = line.slice(6).trim();
+                
+                // Skip [DONE] marker
                 if (data === '[DONE]') continue;
                 
                 try {
+                  // Try to parse as JSON
                   const json = JSON.parse(data);
-                  const content = json.choices?.[0]?.delta?.content;
-                  if (content) {
-                    // Send in AI SDK format - raw text only
-                    controller.enqueue(encoder.encode(content));
+                  // AnythingLLM stream-chat returns: { "id": "...", "textResponse": "..." }
+                  const text = json.textResponse || json.text || json.message || '';
+                  if (text) {
+                    controller.enqueue(encoder.encode(text));
                   }
                 } catch (e) {
-                  // Skip malformed JSON - sometimes happens with preambles
-                  console.error('Stream parse error:', e, 'Data:', data);
+                  // If not valid JSON, try sending as plain text
+                  if (data && data !== '') {
+                    controller.enqueue(encoder.encode(data));
+                  }
+                }
+              }
+            }
+          }
+          
+          // Process any remaining data in buffer
+          if (buffer.trim()) {
+            if (buffer.startsWith('data: ')) {
+              const data = buffer.slice(6).trim();
+              if (data !== '[DONE]') {
+                try {
+                  const json = JSON.parse(data);
+                  const text = json.textResponse || json.text || json.message || '';
+                  if (text) {
+                    controller.enqueue(encoder.encode(text));
+                  }
+                } catch (e) {
+                  if (data) {
+                    controller.enqueue(encoder.encode(data));
+                  }
                 }
               }
             }
           }
         } catch (error) {
+          console.error('Stream processing error:', error);
           controller.error(error);
         } finally {
           controller.close();
@@ -173,9 +233,10 @@ export async function POST(req: NextRequest): Promise<Response> {
       },
     });
   } catch (error) {
-    console.error('OpenRouter API error:', error);
-    return new Response("Failed to get response from OpenRouter", {
-      status: 500,
-    });
+    console.error('AnythingLLM API error:', error);
+    return new Response(
+      JSON.stringify({ error: 'Failed to get response from AnythingLLM' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
   }
 }

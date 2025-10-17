@@ -366,23 +366,24 @@ export default function Page() {
     if (!mounted) return;
     
     const loadData = async () => {
-      console.log('📂 Starting to load folders from database...');
-      const savedDocs = localStorage.getItem("documents");
+      console.log('📂 Starting to load SOWs from database...');
       const savedCurrent = localStorage.getItem("currentDocId");
       const hasCompletedSetup = localStorage.getItem("sow-guided-setup-completed");
       
-      // Load documents from localStorage
-      if (savedDocs) {
-        setDocuments(JSON.parse(savedDocs));
-      } else {
-        // Create initial document
-        const initialDoc: Document = {
-          id: "doc1",
-          title: "Untitled Document",
-          content: defaultEditorContent,
-        };
-        setDocuments([initialDoc]);
-        setCurrentDocId("doc1");
+      // Load documents from database API instead of localStorage
+      try {
+        const response = await fetch('/api/sow/list');
+        if (response.ok) {
+          const sows = await response.json();
+          console.log('✅ Loaded SOWs from database:', sows.length);
+          setDocuments(sows);
+        } else {
+          console.warn('⚠️ Failed to load SOWs, creating empty list');
+          setDocuments([]);
+        }
+      } catch (error) {
+        console.error('❌ Error loading SOWs:', error);
+        setDocuments([]);
       }
       
       // FETCH FOLDERS FROM DATABASE (NOT localStorage!)
@@ -413,11 +414,37 @@ export default function Page() {
     loadData();
   }, [mounted]);
 
-  useEffect(() => {
-    localStorage.setItem("documents", JSON.stringify(documents));
-  }, [documents]);
+  // Note: SOWs are now saved to database via API calls, not localStorage
 
-  // DON'T save folders to localStorage - they're in the database now!
+  // Auto-save SOW content to database with debouncing
+  useEffect(() => {
+    // Find current doc in documents array
+    const currentDoc = documents.find(d => d.id === currentDocId);
+    if (!currentDocId || !currentDoc?.content) return;
+
+    const autoSaveTimer = setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/sow/${currentDocId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: currentDoc.content,
+            title: currentDoc.title,
+          }),
+        });
+
+        if (response.ok) {
+          console.log('💾 Auto-saved SOW:', currentDocId);
+        } else {
+          console.warn('⚠️ Auto-save failed for SOW:', currentDocId);
+        }
+      } catch (error) {
+        console.error('❌ Error auto-saving SOW:', error);
+      }
+    }, 2000); // Save after 2 seconds of inactivity
+
+    return () => clearTimeout(autoSaveTimer);
+  }, [currentDocId, documents]);
 
   useEffect(() => {
     if (currentDocId) {
@@ -571,8 +598,38 @@ export default function Page() {
       toast.error('SOW created but thread sync failed');
     }
     
+    // Save new SOW to database first
+    try {
+      const saveResponse = await fetch('/api/sow/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newDoc.title,
+          content: newDoc.content,
+          folder_id: newDoc.folderId,
+          workspace_slug: newDoc.workspaceSlug,
+          client_name: '',
+          client_email: '',
+          total_investment: 0,
+        }),
+      });
+      
+      if (saveResponse.ok) {
+        const savedDoc = await saveResponse.json();
+        // Update newDoc with the database ID
+        newDoc = { ...newDoc, id: savedDoc.id || newId };
+        console.log('✅ SOW saved to database with id:', newDoc.id);
+      } else {
+        console.warn('⚠️ Failed to save SOW to database');
+        toast.warning('⚠️ SOW created but not saved to database');
+      }
+    } catch (error) {
+      console.error('❌ Error saving SOW to database:', error);
+      toast.error('⚠️ Failed to save SOW');
+    }
+    
     setDocuments(prev => [...prev, newDoc]);
-    setCurrentDocId(newId);
+    setCurrentDocId(newDoc.id);
     
     // 🎯 Switch to editor view (in case we're on dashboard/knowledge base)
     if (viewMode !== 'editor') {
@@ -611,14 +668,27 @@ export default function Page() {
     const doc = documents.find(d => d.id === id);
     
     try {
+      // Delete SOW from database first
+      const deleteResponse = await fetch(`/api/sow/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (deleteResponse.ok) {
+        console.log('✅ SOW deleted from database:', id);
+      } else {
+        console.warn('⚠️ Failed to delete SOW from database');
+        toast.warning('⚠️ SOW deleted from UI but database deletion failed');
+      }
+
       // 🧵 Delete AnythingLLM thread if it exists
       if (doc?.workspaceSlug && doc?.threadSlug) {
         await anythingLLM.deleteThread(doc.workspaceSlug, doc.threadSlug);
         toast.success(`✅ SOW and thread deleted`);
       }
     } catch (error) {
-      console.error('Error deleting thread:', error);
-      toast.error('SOW deleted but thread cleanup failed');
+      console.error('Error deleting SOW:', error);
+      toast.error('Failed to delete SOW');
     }
     
     setDocuments(prev => prev.filter(d => d.id !== id));
@@ -845,32 +915,7 @@ export default function Page() {
       const baseUrl = window.location.origin;
       const shareLink = `${baseUrl}/portal/sow/${currentDocId}`;
       
-      // Check if this document has been shared before
-      const docs = JSON.parse(localStorage.getItem('documents') || '[]');
-      const docIndex = docs.findIndex((d: any) => d.id === currentDocId);
-      
-      if (docIndex !== -1) {
-        const doc = docs[docIndex];
-        const now = new Date().toISOString();
-        
-        // Track share metadata
-        if (!doc.shareMetadata) {
-          doc.shareMetadata = {
-            firstShared: now,
-            lastShared: now,
-            shareCount: 1,
-            shareLink: shareLink
-          };
-        } else {
-          doc.shareMetadata.lastShared = now;
-          doc.shareMetadata.shareCount = (doc.shareMetadata.shareCount || 0) + 1;
-        }
-        
-        docs[docIndex] = doc;
-        localStorage.setItem('documents', JSON.stringify(docs));
-        
-        console.log(`📤 Share link generated (share #${doc.shareMetadata.shareCount}):`, shareLink);
-      }
+      console.log('📤 Share link generated:', shareLink);
       
       // Copy to clipboard with fallback
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -886,18 +931,13 @@ export default function Page() {
         document.body.removeChild(textarea);
       }
       
-      // Copy to clipboard immediately
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(shareLink);
-      }
-      
       // Show share modal with all details
       setShareModalData({
         shareLink,
-        documentTitle: currentDoc.title,
-        shareCount: docs[docIndex].shareMetadata.shareCount,
-        firstShared: docs[docIndex].shareMetadata.firstShared,
-        lastShared: docs[docIndex].shareMetadata.lastShared,
+        documentTitle: currentDoc?.title || 'SOW',
+        shareCount: 1,
+        firstShared: new Date().toISOString(),
+        lastShared: new Date().toISOString(),
       });
       setShowShareModal(true);
       
