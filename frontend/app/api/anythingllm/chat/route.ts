@@ -5,10 +5,25 @@ const ANYTHINGLLM_API_KEY = process.env.ANYTHINGLLM_API_KEY || '0G0WTZ3-6ZX4D20-
 
 export async function POST(request: NextRequest) {
   try {
-    const { messages, workspaceSlug, workspace = 'gen', mode = 'chat' } = await request.json();
+    const { messages, workspaceSlug, workspace, mode = 'chat' } = await request.json();
     
-    // Use 'workspace' if provided, otherwise fall back to 'workspaceSlug', then default to 'gen'
-    const effectiveWorkspaceSlug = workspace || workspaceSlug || 'gen';
+    // Use 'workspace' if provided, otherwise fall back to 'workspaceSlug'
+    // NO DEFAULT - if no workspace specified, return error
+    const effectiveWorkspaceSlug = workspace || workspaceSlug;
+    
+    console.log('🔍 [AnythingLLM API] Workspace Debug:', {
+      receivedWorkspace: workspace,
+      receivedWorkspaceSlug: workspaceSlug,
+      effectiveWorkspaceSlug,
+      mode
+    });
+    
+    if (!effectiveWorkspaceSlug) {
+      return NextResponse.json(
+        { error: 'No workspace specified. Must provide workspace or workspaceSlug parameter.' },
+        { status: 400 }
+      );
+    }
     
     // Get the system prompt (if provided)
     const systemMessage = messages.find((m: any) => m.role === 'system');
@@ -30,6 +45,9 @@ export async function POST(request: NextRequest) {
       : lastMessage.content;
 
     // Send chat request to AnythingLLM workspace
+    console.log(`🚀 [AnythingLLM API] Sending to workspace: ${effectiveWorkspaceSlug}`);
+    console.log(`📍 [AnythingLLM API] Full URL: ${ANYTHINGLLM_URL}/api/v1/workspace/${effectiveWorkspaceSlug}/chat`);
+    
     const response = await fetch(`${ANYTHINGLLM_URL}/api/v1/workspace/${effectiveWorkspaceSlug}/chat`, {
       method: 'POST',
       headers: {
