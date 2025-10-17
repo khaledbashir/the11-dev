@@ -12,6 +12,11 @@
       "static/css/app/page.css",
       "static/chunks/app/page.js"
     ],
+    "/api/folders/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/folders/route.js"
+    ],
     "/api/agents/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
@@ -22,35 +27,10 @@
       "static/chunks/main-app.js",
       "static/chunks/app/api/models/route.js"
     ],
-    "/api/folders/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/folders/route.js"
-    ],
-    "/api/dashboard/stats/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/dashboard/stats/route.js"
-    ],
     "/api/preferences/current_agent_id/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/api/preferences/current_agent_id/route.js"
-    ],
-    "/api/generate/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/generate/route.js"
-    ],
-    "/api/agents/[agentId]/messages/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/agents/[agentId]/messages/route.js"
-    ],
-    "/api/anythingllm/chat/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/anythingllm/chat/route.js"
     ],
     "/_not-found/page": [
       "static/chunks/webpack.js",
