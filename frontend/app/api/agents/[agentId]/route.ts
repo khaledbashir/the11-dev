@@ -3,12 +3,13 @@ import { query } from '@/lib/db';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { agentId: string } }
+  { params }: { params: Promise<{ agentId: string }> }
 ) {
   try {
+    const { agentId } = await params;
     const agent = await query(
       'SELECT * FROM agents WHERE id = ? LIMIT 1',
-      [params.agentId]
+      [agentId]
     );
 
     if (!agent || agent.length === 0) {
@@ -30,20 +31,21 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { agentId: string } }
+  { params }: { params: Promise<{ agentId: string }> }
 ) {
   try {
+    const { agentId } = await params;
     const body = await request.json();
-    const { name, systemPrompt, model } = body;
+    const { name, model } = body;
 
     await query(
-      'UPDATE agents SET name = ?, systemPrompt = ?, model = ? WHERE id = ?',
-      [name || 'Agent', systemPrompt || '', model || 'gpt-4', params.agentId]
+      'UPDATE agents SET name = ?, model = ? WHERE id = ?',
+      [name || 'Agent', model || 'gpt-4', agentId]
     );
 
     const updated = await query(
       'SELECT * FROM agents WHERE id = ? LIMIT 1',
-      [params.agentId]
+      [agentId]
     );
 
     return NextResponse.json(updated[0]);
@@ -58,10 +60,11 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { agentId: string } }
+  { params }: { params: Promise<{ agentId: string }> }
 ) {
   try {
-    await query('DELETE FROM agents WHERE id = ?', [params.agentId]);
+    const { agentId } = await params;
+    await query('DELETE FROM agents WHERE id = ?', [agentId]);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Failed to delete agent:', error);

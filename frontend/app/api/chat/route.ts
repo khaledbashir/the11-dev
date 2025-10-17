@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   
   const { messages, model } = await request.json();
+  console.log('📨 Chat endpoint called', {
     model, 
     messageCount: messages?.length,
     hasApiKey: !!process.env.OPENROUTER_API_KEY 

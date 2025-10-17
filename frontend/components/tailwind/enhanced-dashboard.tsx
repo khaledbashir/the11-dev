@@ -21,7 +21,6 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
 import { formatInvestment } from '@/lib/sow-utils';
-import { anythingLLM } from '@/lib/anythingllm';
 
 interface DashboardStats {
   totalSOWs: number;
@@ -123,17 +122,11 @@ export function EnhancedDashboard() {
     setChatLoading(true);
 
     try {
-      // Query the master dashboard workspace via thread chat
-      const dashboardWorkspace = await anythingLLM.getOrCreateMasterDashboard();
-      const response = await anythingLLM.chatWithThread(
-        dashboardWorkspace,
-        'general',  // default thread
-        chatInput
-      );
-
+      // AI Chat feature temporarily disabled
+      // TODO: Implement proper thread creation before sending chat messages
       const assistantMessage: ChatMessage = {
         role: 'assistant',
-        content: response?.message || 'Sorry, I couldn\'t process that request.',
+        content: 'Dashboard AI is currently under maintenance. Please check back soon!',
         timestamp: new Date().toISOString()
       };
 
@@ -193,14 +186,14 @@ export function EnhancedDashboard() {
             <Button
               onClick={fetchDashboardStats}
               variant="outline"
-              className="border-[#0e2e33] text-gray-300 hover:bg-[#1b1b1e]"
+              className="border-[#1CBF79] text-[#1CBF79] hover:bg-[#1CBF79]/10"
             >
               <RefreshCw className="mr-2 h-4 w-4" />
               Refresh
             </Button>
             <Button
               onClick={() => setShowChat(!showChat)}
-              className="bg-emerald-600 hover:bg-emerald-700"
+              className="bg-[#1CBF79] hover:bg-[#15a366]"
             >
               <MessageSquare className="mr-2 h-4 w-4" />
               {showChat ? 'Hide' : 'Show'} AI Chat
@@ -230,8 +223,8 @@ export function EnhancedDashboard() {
             label="Total SOWs"
             value={stats.totalSOWs}
             color="from-blue-500 to-blue-600"
-            iconBg="bg-blue-500/20"
-            iconColor="text-blue-400"
+            iconBg="bg-[#1CBF79]/20"
+            iconColor="text-[#1CBF79]"
           />
           <MetricCard
             icon={<DollarSign className="w-6 h-6" />}
@@ -239,24 +232,24 @@ export function EnhancedDashboard() {
             value={formatInvestment(stats.totalValue)}
             subValue="+GST"
             color="from-emerald-500 to-emerald-600"
-            iconBg="bg-emerald-500/20"
-            iconColor="text-emerald-400"
+            iconBg="bg-[#1CBF79]/20"
+            iconColor="text-[#1CBF79]"
           />
           <MetricCard
             icon={<Clock className="w-6 h-6" />}
             label="Active Proposals"
             value={stats.activeSOWs}
             color="from-yellow-500 to-yellow-600"
-            iconBg="bg-yellow-500/20"
-            iconColor="text-yellow-400"
+            iconBg="bg-[#1CBF79]/20"
+            iconColor="text-[#1CBF79]"
           />
           <MetricCard
             icon={<TrendingUp className="w-6 h-6" />}
             label="This Month"
             value={stats.thisMonthSOWs}
             color="from-purple-500 to-purple-600"
-            iconBg="bg-purple-500/20"
-            iconColor="text-purple-400"
+            iconBg="bg-[#1CBF79]/20"
+            iconColor="text-[#1CBF79]"
           />
         </div>
 
@@ -447,7 +440,7 @@ export function EnhancedDashboard() {
               <Button
                 onClick={handleChatSend}
                 disabled={chatLoading || !chatInput.trim()}
-                className="bg-emerald-600 hover:bg-emerald-700 flex-shrink-0"
+                className="bg-[#1CBF79] hover:bg-[#15a366] flex-shrink-0"
               >
                 {chatLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
