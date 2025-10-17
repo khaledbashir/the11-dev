@@ -9,7 +9,7 @@ export async function GET(
     const { agentId } = await params;
     
     const messages = await query(
-      'SELECT * FROM agent_messages WHERE agent_id = ? ORDER BY created_at DESC LIMIT 50',
+      'SELECT * FROM chat_messages WHERE agent_id = ? ORDER BY created_at DESC LIMIT 50',
       [agentId]
     );
     
@@ -29,8 +29,8 @@ export async function POST(
     const { message, role = 'user' } = await request.json();
     
     await query(
-      'INSERT INTO agent_messages (agent_id, message, role, created_at) VALUES (?, ?, ?, NOW())',
-      [agentId, message, role]
+      'INSERT INTO chat_messages (agent_id, message, role, created_at) VALUES (?, ?, ?, NOW())',
+      [agentId, message || null, role]
     );
     
     return NextResponse.json({ message, role }, { status: 201 });

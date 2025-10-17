@@ -560,12 +560,18 @@ chore: Maintenance tasks
 - ✅ Fixed TipTap build error (pnpm override for tiptap-extension-global-drag-handle)
 - ✅ Fixed dev.sh backend startup (venv pip install logic)
 - ✅ App running successfully on http://localhost:3333
-- ⏳ **CURRENT:** Testing API errors, need to verify database connection
+- ✅ Fixed database table name mismatches:
+  - `/api/folders`: sow_folders → folders
+  - `/api/dashboard/stats`: statements_of_work → sows
+  - `/api/agents/[id]/messages`: agent_messages → chat_messages
+- ✅ Fixed undefined params causing SQL errors (added null fallbacks)
+- ⏳ **CURRENT:** Fixing UI issues (markdown rendering, floating menu, Knowledge Base iframe)
 
 ### Next Update
-- Will add: Solutions to API errors (folders, dashboard, agents)
-- Will add: Console.log cleanup
-- Will add: Production deployment checklist
+- Will add: Markdown rendering for AI responses
+- Will add: Floating action menu (Export, Embed, Portal)
+- Will add: Knowledge Base tab as AnythingLLM iframe
+- Will add: Console.log cleanup script
 
 ---
 
