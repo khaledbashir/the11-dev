@@ -338,7 +338,11 @@ export default function AgentSidebar({
                       
                       return (
                         <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`w-full rounded-lg p-4 ${msg.role === 'user' ? 'bg-[#1b5e5e] text-white border border-[#0E2E33]' : 'bg-[#0E2E33] text-white border border-[#1b5e5e]'}`}>
+                          <div className={`w-full rounded-lg p-4 ${
+                            msg.role === 'user' 
+                              ? 'bg-[#0E2E33]/30 text-white border border-[#1CBF79]' 
+                              : 'bg-[#0E2E33] text-white border border-[#1b5e5e]'
+                          }`}>
                             
                             {/* Show thinking section with streaming support */}
                             {msg.role === 'assistant' && (

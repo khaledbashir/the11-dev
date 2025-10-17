@@ -58,8 +58,69 @@ export function StreamingThoughtAccordion({
   }, [content, isStreaming, onThinkingExtracted]);
 
   if (!thinking) {
-    // No thinking tags, just return the content
-    return <>{actualContent}</>;
+    // No thinking tags, just return the content with proper markdown rendering
+    return (
+      <div className="pt-2">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            // Headings with proper spacing
+            h1: ({node, ...props}) => <h1 className="text-xl font-bold mt-4 mb-2 text-white" {...props} />,
+            h2: ({node, ...props}) => <h2 className="text-lg font-bold mt-3 mb-2 text-white" {...props} />,
+            h3: ({node, ...props}) => <h3 className="text-base font-bold mt-2 mb-1 text-white" {...props} />,
+            
+            // Paragraphs with proper spacing
+            p: ({node, ...props}) => <p className="text-sm text-white mb-2 leading-relaxed" {...props} />,
+            
+            // Lists
+            ul: ({node, ...props}) => <ul className="list-disc list-inside text-sm text-white mb-2 pl-2" {...props} />,
+            ol: ({node, ...props}) => <ol className="list-decimal list-inside text-sm text-white mb-2 pl-2" {...props} />,
+            li: ({node, ...props}) => <li className="text-sm text-white mb-1" {...props} />,
+            
+            // Tables with professional styling
+            table: ({node, ...props}) => (
+              <div className="overflow-x-auto my-3">
+                <table className="w-full border-collapse border border-[#1b5e5e]" {...props} />
+              </div>
+            ),
+            thead: ({node, ...props}) => <thead className="bg-[#0e2e33]" {...props} />,
+            th: ({node, ...props}) => (
+              <th className="border border-[#1b5e5e] px-3 py-2 text-left font-bold text-white text-xs" {...props} />
+            ),
+            td: ({node, ...props}) => (
+              <td className="border border-[#1b5e5e] px-3 py-2 text-xs text-white" {...props} />
+            ),
+            tr: ({node, ...props}) => <tr className="hover:bg-[#1b5e5e]/20" {...props} />,
+            
+            // Code blocks
+            code: ({node, className, children, ...props}: any) => {
+              const isInline = !className?.includes('language-');
+              return isInline ? (
+                <code className="bg-[#0a0a0a] text-[#20e28f] px-2 py-1 rounded text-xs font-mono" {...props}>{children}</code>
+              ) : (
+                <code className="bg-[#0a0a0a] text-[#20e28f] block p-3 rounded text-xs font-mono overflow-x-auto mb-2 border border-[#1b5e5e]" {...props}>{children}</code>
+              );
+            },
+            pre: ({node, ...props}) => <pre className="mb-2" {...props} />,
+            
+            // Blockquotes
+            blockquote: ({node, ...props}) => (
+              <blockquote className="border-l-4 border-[#20e28f] pl-3 italic text-gray-300 my-2 text-sm" {...props} />
+            ),
+            
+            // Strong and emphasis
+            strong: ({node, ...props}) => <strong className="font-bold text-white" {...props} />,
+            em: ({node, ...props}) => <em className="italic text-gray-200" {...props} />,
+            
+            // Horizontal rules
+            hr: ({node, ...props}) => <hr className="border-t border-[#1b5e5e] my-3" {...props} />,
+          }}
+          className="prose prose-invert max-w-none text-sm"
+        >
+          {actualContent}
+        </ReactMarkdown>
+      </div>
+    );
   }
 
   return (
@@ -106,12 +167,12 @@ export function StreamingThoughtAccordion({
               h3: ({node, ...props}) => <h3 className="text-base font-bold mt-2 mb-1 text-white" {...props} />,
               
               // Paragraphs with proper spacing
-              p: ({node, ...props}) => <p className="text-sm text-gray-100 mb-2 leading-relaxed" {...props} />,
+              p: ({node, ...props}) => <p className="text-sm text-white mb-2 leading-relaxed" {...props} />,
               
               // Lists
-              ul: ({node, ...props}) => <ul className="list-disc list-inside text-sm text-gray-100 mb-2 pl-2" {...props} />,
-              ol: ({node, ...props}) => <ol className="list-decimal list-inside text-sm text-gray-100 mb-2 pl-2" {...props} />,
-              li: ({node, ...props}) => <li className="text-sm text-gray-100 mb-1" {...props} />,
+              ul: ({node, ...props}) => <ul className="list-disc list-inside text-sm text-white mb-2 pl-2" {...props} />,
+              ol: ({node, ...props}) => <ol className="list-decimal list-inside text-sm text-white mb-2 pl-2" {...props} />,
+              li: ({node, ...props}) => <li className="text-sm text-white mb-1" {...props} />,
               
               // Tables with professional styling
               table: ({node, ...props}) => (
@@ -124,7 +185,7 @@ export function StreamingThoughtAccordion({
                 <th className="border border-[#1b5e5e] px-3 py-2 text-left font-bold text-white text-xs" {...props} />
               ),
               td: ({node, ...props}) => (
-                <td className="border border-[#1b5e5e] px-3 py-2 text-xs text-gray-100" {...props} />
+                <td className="border border-[#1b5e5e] px-3 py-2 text-xs text-white" {...props} />
               ),
               tr: ({node, ...props}) => <tr className="hover:bg-[#1b5e5e]/20" {...props} />,
               
