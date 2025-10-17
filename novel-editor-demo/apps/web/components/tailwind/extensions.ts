@@ -19,7 +19,7 @@ import { Table } from "@tiptap/extension-table";
 import { TableRow } from "@tiptap/extension-table-row";
 import { TableHeader } from "@tiptap/extension-table-header";
 import { TableCell } from "@tiptap/extension-table-cell";
-import GlobalDragHandle from "tiptap-extension-global-drag-handle";
+// import GlobalDragHandle from "tiptap-extension-global-drag-handle";
 import { EditablePricingTable } from "./extensions/editable-pricing-table";
 
 import { cx } from "class-variance-authority";
@@ -157,7 +157,7 @@ export const defaultExtensions: any[] = [
   youtube,
   twitter,
   characterCount,
-  GlobalDragHandle,
+  // GlobalDragHandle,
   table,
   tableRow,
   tableHeader,

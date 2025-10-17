@@ -40,7 +40,6 @@ export {
   Twitter,
   Mathematics,
   CharacterCount,
-  GlobalDragHandle,
   Command,
   renderItems,
   createSuggestionItems,
