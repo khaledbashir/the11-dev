@@ -3,7 +3,7 @@ import { query } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
-    const folders = await query('SELECT * FROM sow_folders ORDER BY created_at DESC');
+    const folders = await query('SELECT * FROM folders ORDER BY created_at DESC');
     return NextResponse.json(folders);
   } catch (error) {
     console.error('❌ Failed to fetch folders:', error);
@@ -16,8 +16,8 @@ export async function POST(request: NextRequest) {
     const { name, description } = await request.json();
     
     await query(
-      'INSERT INTO sow_folders (name, description, created_at) VALUES (?, ?, NOW())',
-      [name, description]
+      'INSERT INTO folders (name, description, created_at) VALUES (?, ?, NOW())',
+      [name, description || null]
     );
     
     return NextResponse.json({ name, description }, { status: 201 });
