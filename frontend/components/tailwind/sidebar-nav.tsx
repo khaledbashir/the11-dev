@@ -31,8 +31,8 @@ interface Workspace {
 }
 
 interface SidebarNavProps {
-  currentView: "dashboard" | "knowledge-base" | "editor";
-  onViewChange: (view: "dashboard" | "knowledge-base" | "editor") => void;
+  currentView: "dashboard" | "ai-management" | "editor";
+  onViewChange: (view: "dashboard" | "ai-management" | "editor") => void;
   
   workspaces: Workspace[];
   currentWorkspaceId: string;
@@ -126,17 +126,17 @@ export default function SidebarNav({
           <span className="text-sm font-medium">Dashboard</span>
         </button>
 
-        {/* Knowledge Base Link */}
+        {/* AI Management Link */}
         <button
-          onClick={() => onViewChange("knowledge-base")}
+          onClick={() => onViewChange("ai-management")}
           className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-colors ${
-            currentView === "knowledge-base"
+            currentView === "ai-management"
               ? "bg-[#0e2e33] text-white"
               : "text-gray-400 hover:text-gray-300 hover:bg-gray-900/50"
           }`}
         >
           <BookOpen className="w-5 h-5 flex-shrink-0" />
-          <span className="text-sm font-medium">Knowledge Base</span>
+          <span className="text-sm font-medium">AI Management</span>
         </button>
       </div>
 

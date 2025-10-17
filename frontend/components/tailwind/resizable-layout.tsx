@@ -17,7 +17,7 @@ interface ResizableLayoutProps {
   aiChatOpen?: boolean;
   onToggleSidebar?: () => void;
   onToggleAiChat?: () => void;
-  viewMode?: 'editor' | 'dashboard' | 'knowledge-base'; // NEW: Context awareness
+  viewMode?: 'editor' | 'dashboard' | 'ai-management'; // NEW: Context awareness
 }
 
 export function ResizableLayout({
@@ -58,8 +58,8 @@ export function ResizableLayout({
         </button>
       )}
 
-      {/* PERSISTENT RIGHT SIDEBAR TOGGLE TAB - HIDDEN IN KNOWLEDGE BASE MODE */}
-      {!aiChatOpen && viewMode !== 'knowledge-base' && (
+      {/* PERSISTENT RIGHT SIDEBAR TOGGLE TAB - HIDDEN IN AI MANAGEMENT MODE */}
+      {!aiChatOpen && viewMode !== 'ai-management' && (
         <button
           onClick={onToggleAiChat}
           className="fixed right-0 top-20 z-40 bg-[#1CBF79] hover:bg-[#15a366] text-black p-2 rounded-l-lg transition-all duration-300 shadow-lg"

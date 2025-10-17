@@ -355,7 +355,7 @@ export default function Page() {
     lastShared?: string;
   } | null>(null);
   const [showGuidedSetup, setShowGuidedSetup] = useState(false);
-  const [viewMode, setViewMode] = useState<'editor' | 'dashboard' | 'knowledge-base'>('dashboard'); // NEW: View mode - START WITH DASHBOARD
+  const [viewMode, setViewMode] = useState<'editor' | 'dashboard' | 'ai-management'>('dashboard'); // NEW: View mode - START WITH DASHBOARD
   
   // Workspace & SOW state (NEW)
   const [workspaces, setWorkspaces] = useState<Workspace[]>([
@@ -660,7 +660,7 @@ export default function Page() {
     setDocuments(prev => [...prev, newDoc]);
     setCurrentDocId(newDoc.id);
     
-    // 🎯 Switch to editor view (in case we're on dashboard/knowledge base)
+    // 🎯 Switch to editor view (in case we're on dashboard/AI management)
     if (viewMode !== 'editor') {
       setViewMode('editor');
     }
@@ -1019,9 +1019,9 @@ export default function Page() {
     }
   };
 
-  const handleViewChange = (view: 'dashboard' | 'knowledge-base' | 'editor') => {
-    if (view === 'knowledge-base') {
-      setViewMode('knowledge-base');
+  const handleViewChange = (view: 'dashboard' | 'ai-management' | 'editor') => {
+    if (view === 'ai-management') {
+      setViewMode('ai-management');
     } else if (view === 'dashboard') {
       setViewMode('dashboard');
     } else {

@@ -203,6 +203,46 @@ pip install -r requirements.txt
 
 ---
 
+### ✅ FIXED: "Knowledge Base" Tab Renamed to "AI Management" for Clarity
+
+**Issue Identified:**
+The navigation link labeled "Knowledge Base" was misleading. Users expected help articles or documentation, but the tab actually displays an iframe of the full AnythingLLM backend AI management application. This confusion degraded UX and made the purpose of the tab unclear.
+
+**Root Cause:**
+- The tab name "Knowledge Base" suggested a collection of help articles
+- The actual functionality is a full AI backend admin panel for managing workspaces, documents, and AI configurations
+- ViewMode string value `'knowledge-base'` created inconsistency across components
+
+**Solution Applied:**
+
+1. **Updated Sidebar Navigation** (`/frontend/components/tailwind/sidebar-nav.tsx`):
+   - Changed visible label from "Knowledge Base" to "AI Management" ✅
+   - Updated TypeScript interface types from `'knowledge-base'` to `'ai-management'` ✅
+   - Updated onClick handler to use new viewMode value ✅
+
+2. **Updated Main Page** (`/frontend/app/page.tsx`):
+   - Changed viewMode type from `'knowledge-base'` to `'ai-management'` ✅
+   - Updated handleViewChange function to accept and set new viewMode ✅
+   - Updated comment from "knowledge base" to "AI management" ✅
+
+3. **Updated Layout Component** (`/frontend/components/tailwind/resizable-layout.tsx`):
+   - Changed viewMode type from `'knowledge-base'` to `'ai-management'` ✅
+   - Updated conditional rendering logic and comments ✅
+
+**Files Changed:**
+- `/frontend/components/tailwind/sidebar-nav.tsx` - Changed label and viewMode types
+- `/frontend/app/page.tsx` - Updated viewMode state and handler
+- `/frontend/components/tailwind/resizable-layout.tsx` - Updated viewMode types
+
+**User-Facing Change:**
+- Sidebar navigation link now reads "AI Management" instead of "Knowledge Base"
+- Tab still displays the full AnythingLLM application iframe
+- Behavior is identical, only naming is clarified
+
+**Result:** ✅ The tab name now accurately reflects its function as an admin panel for AI services. No more user confusion about what the tab does.
+
+---
+
 ### ✅ FIXED: Adjustable Drag Handles for Sidebar & AI (Left/Right Resize)
 **Issue:** 
 - Left drag handle (sidebar) wasn't working - dragging resized middle editor instead
@@ -456,10 +496,10 @@ The sidebar-nav.tsx component used JavaScript's native `prompt()` function inste
 
 ---
 
-### ✅ FIXED: Knowledge Base Iframe Not Rendering
+### ✅ FIXED: AI Management Iframe Not Rendering (Previously "Knowledge Base")
 
 **Issue Identified:** 
-Clicking the "Knowledge Base" link in the sidebar showed a blank white page. The iframe was present but not rendering properly, destroying user trust in the application.
+Clicking the "AI Management" link (formerly "Knowledge Base") in the sidebar showed a blank white page. The iframe was present but not rendering properly, destroying user trust in the application.
 
 **Root Cause:** 
 - Iframe had conflicting CSS: `rounded-lg border border-gray-200 bg-white` (light theme CSS in dark app)
@@ -493,7 +533,9 @@ Updated `/frontend/components/tailwind/knowledge-base.tsx`:
 **Files Changed:**
 - `/frontend/components/tailwind/knowledge-base.tsx` - Fixed iframe styling
 
-**Result:** ✅ Knowledge Base iframe now renders correctly, filling 100% of the content area with dark theme styling.
+**Result:** ✅ AI Management iframe now renders correctly, filling 100% of the content area with dark theme styling.
+
+**Note:** This tab was later renamed from "Knowledge Base" to "AI Management" for better clarity (see fix above).
 
 ---
 
@@ -634,7 +676,7 @@ Changed the default view mode from 'editor' to 'dashboard'. Users now see the ma
 **Files Changed:**
 - `/frontend/app/page.tsx` - Changed `useState<'editor' | 'dashboard' | 'knowledge-base'>('editor')` to `useState<'editor' | 'dashboard' | 'knowledge-base'>('dashboard')`
 
-**Result:** ✅ Dashboard is now the default application view. Users see analytics, stats, and AI insights immediately on startup. Can easily switch to editor or knowledge base from the sidebar.
+**Result:** ✅ Dashboard is now the default application view. Users see analytics, stats, and AI insights immediately on startup. Can easily switch to editor or AI Management from the sidebar.
 
 ---
 
@@ -700,15 +742,13 @@ Simplified the empty state message to provide a clear, single call to action tha
 
 ---
 
-### ✅ FIXED: Knowledge Base Tab Now Displays Full AnythingLLM App
+### ✅ FIXED: AI Management Tab Now Displays Full AnythingLLM App (Previously "Knowledge Base")
 
-**Issue Identified:** 
-Clicking the "Knowledge Base" tab in the sidebar showed a blank white page or an embedded knowledge base instead of the full AnythingLLM application interface.
+**Issue Identified:**
+Clicking the "AI Management" tab (formerly "Knowledge Base") in the sidebar showed a blank white page or an embedded chat instead of the full AnythingLLM application interface.
 
-**Root Cause:** 
-The iframe in `/frontend/components/tailwind/knowledge-base.tsx` was pointing to an embedded knowledge base endpoint (`/embed/dee07d93...`) instead of the main AnythingLLM app URL.
-
-**Solution Applied:** ✅
+**Root Cause:**
+The iframe in `/frontend/components/tailwind/knowledge-base.tsx` was pointing to an embedded chat endpoint (`/embed/dee07d93...`) instead of the main AnythingLLM app URL.**Solution Applied:** ✅
 Updated the iframe URL to point to the full AnythingLLM application and added proper sandbox attributes for security and functionality.
 
 **Files Changed:**
@@ -727,7 +767,9 @@ Updated the iframe URL to point to the full AnythingLLM application and added pr
 />
 ```
 
-**Result:** ✅ Knowledge Base tab now displays the full AnythingLLM application with all features accessible.
+**Result:** ✅ AI Management tab now displays the full AnythingLLM application with all features accessible.
+
+**Note:** This tab was later renamed from "Knowledge Base" to "AI Management" for better clarity (see fix above).
 
 ---
 
@@ -1605,7 +1647,7 @@ curl http://localhost:8000/health
 - [x] Verify database connection working ✅
 - [x] Add markdown rendering to AI chat responses (tables, formatting) ✅
 - [x] Add floating action menu (Export PDF/Excel, Embed, Client Portal) ✅
-- [x] Make Knowledge Base tab an iframe to AnythingLLM ✅
+- [x] Make AI Management tab an iframe to AnythingLLM ✅ (formerly "Knowledge Base")
 - [x] Test all features end-to-end ✅
 
 ### CRITICAL REGRESSION: SidebarNav and AgentSidebar Not Rendering ⚠️ P0
@@ -1660,9 +1702,9 @@ curl http://localhost:8000/health
 - [x] **Update page.tsx to pass viewMode to agent sidebar**
   - [x] Pass viewMode prop to AgentSidebar component
   - [x] Ensure proper conditional rendering logic
-- [x] **Hide AI chat toggle on knowledge base view**
+- [x] **Hide AI chat toggle on AI Management view** (formerly "knowledge base")
   - [x] Modify toggle button visibility based on viewMode
-  - [x] Test knowledge base view without chat interference
+  - [x] Test AI Management view without chat interference
 - [x] **Test context-aware behavior across all views**
   - [x] Verify dashboard shows "Ask the Dashboard" panel
   - [x] Verify SOW editor shows full "AI Agent Chat" panel
@@ -2047,12 +2089,12 @@ chore: Maintenance tasks
   - Modal now matches "New Workspace" design system (branded, professional)
   - Input placeholder: "e.g., Q3 Marketing Campaign SOW"
   - Button: "Create SOW" with brand green color (#1CBF79)
-- ✅ FIXED: Knowledge Base iframe not rendering
+- ✅ FIXED: AI Management iframe not rendering (formerly "Knowledge Base")
   - Updated `knowledge-base.tsx` with proper dark theme styling
   - Changed background from light white to dark theme (#0e0f0f)
   - Added explicit inline styles for width/height (100%)
   - Removed conflicting CSS classes (light theme borders)
-  - AnythingLLM Knowledge Base now renders correctly and fills entire content area
+  - AnythingLLM AI Management interface now renders correctly and fills entire content area
 - ✅ FIXED: Dashboard visual polish with brand colors
     - Updated Refresh button: weak gray → prominent #1CBF79 (brand green)
   - Updated all 4 metric card icons: generic colors → brand green (#1CBF79)
@@ -2074,8 +2116,8 @@ chore: Maintenance tasks
 - ✅ Enhanced error messages in API responses with detailed logging for debugging
 - 🎯 **Status:** All critical blocking issues resolved. Application now loads successfully with dashboard as default view.
 
-### October 17, 2025 - Session 6 (UI/UX Refinement: Sidebars & Knowledge Base)
-- ✅ FIXED: Knowledge Base tab now displays full AnythingLLM app
+### October 17, 2025 - Session 6 (UI/UX Refinement: Sidebars & AI Management)
+- ✅ FIXED: AI Management tab now displays full AnythingLLM app (formerly "Knowledge Base")
   - Changed iframe URL from `/embed/...` endpoint to main app URL
   - Added sandbox attributes for security and functionality
   - Knowledge Base is now fully interactive with all features
@@ -2197,10 +2239,47 @@ chore: Maintenance tasks
 
 - 🎯 **Status:** All blocking issues resolved. Application builds, workspace creation is seamless, no more obsolete UI screens.
 
+### October 17, 2025 - Session 10 (UX POLISH: Workspace Routing, Chat UI, Tab Clarity)
+- ✅ **FIXED: "Knowledge Base" Tab Renamed to "AI Management"** (UX CLARITY)
+  - **Problem:** Tab name "Knowledge Base" was misleading - users expected help articles, but tab shows full AnythingLLM admin panel
+  - **Solution:** Renamed navigation link and all viewMode references from `'knowledge-base'` to `'ai-management'`
+  - **Files Changed:**
+    - `sidebar-nav.tsx` - Updated label and TypeScript types
+    - `page.tsx` - Updated viewMode state and handler
+    - `resizable-layout.tsx` - Updated viewMode types
+    - `MASTER-GUIDE.md` - Updated all documentation references
+  - **Result:** Tab name now accurately reflects functionality ✅
+
+- ✅ **FIXED: Workspace Isolation & Debug Logging** (CRITICAL FIX)
+  - **Problem:** Dashboard chat was potentially using wrong AnythingLLM workspace (gen instead of sow-master-dashboard)
+  - **Solution:**
+    - Removed dangerous `'gen'` default fallback from API route
+    - Added comprehensive debug logging at every step of workspace routing
+    - Now returns 400 error if no workspace specified (prevents silent failures)
+  - **Files Changed:** `frontend/app/api/anythingllm/chat/route.ts`
+  - **Console Logs Added:**
+    - `🔍 [AnythingLLM API] Workspace Debug` - Shows received workspace parameters
+    - `🚀 [AnythingLLM API] Sending to workspace` - Confirms which workspace is called
+    - `📍 [AnythingLLM API] Full URL` - Shows complete API endpoint
+  - **Result:** Workspace routing is now verifiable and secure ✅
+
+- ✅ **FIXED: Chat Bubble Styling & Readability** (VISUAL POLISH)
+  - **Problem:** Chat bubbles had poor readability, user messages blended with background
+  - **Solution:**
+    - User messages: Transparent dark bg (`bg-[#0E2E33]/30`) with prominent green border (`border-[#1CBF79]`)
+    - AI messages: All text changed to white (`text-white`) instead of gray for better readability
+    - Fixed markdown rendering for messages without `<think>` tags
+  - **Files Changed:**
+    - `agent-sidebar-clean.tsx` - Updated chat bubble classes
+    - `streaming-thought-accordion.tsx` - Fixed text colors and markdown rendering
+  - **Result:** Modern, readable chat UI with clear visual distinction between user and AI ✅
+
+- 🎯 **Status:** Tab naming clarified, workspace routing verified, chat UI polished and readable.
+
 ---
 
 **📝 REMEMBER: Edit this file. Don't create new docs. Keep it organized. Keep it updated.**
 
-**Last Updated:** October 17, 2025 (Session 9 - Build Fixed, Flow Overhauled, Welcome Removed)  
-**Status:** ✅ Build Compiles, Seamless Workspace Creation, Clean UI  
-**Version:** 1.0.6
+**Last Updated:** October 17, 2025 (Session 10 - Tab Renamed, Workspace Verified, Chat UI Polished)  
+**Status:** ✅ All Systems Operational - Ready for Testing  
+**Version:** 1.0.7
