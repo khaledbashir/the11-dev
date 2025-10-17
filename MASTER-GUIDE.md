@@ -617,6 +617,41 @@ cd /root/the11
 ./dev.sh            # Test at http://localhost:3333
 ```
 
+### Quick Test: SOW Persistence ✅
+**Test that SOWs persist to database:**
+
+```bash
+# 1. Count SOWs before test
+curl -s http://localhost:3001/api/sow/list | jq 'length'
+
+# 2. Create a new SOW via API
+curl -X POST http://localhost:3001/api/sow/create \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Test SOW",
+    "content": {"type":"doc","content":[]},
+    "client_name": "Test Client",
+    "client_email": "test@example.com",
+    "total_investment": 5000
+  }' | jq '.id'
+
+# 3. Save the returned ID and verify it exists
+curl http://localhost:3001/api/sow/{ID} | jq '.title'
+
+# 4. Count SOWs after test
+curl -s http://localhost:3001/api/sow/list | jq 'length'
+
+# 5. Refresh browser and verify SOW still appears (database persistence ✅)
+```
+
+**UI Test:**
+1. Open http://localhost:3001
+2. Click "New SOW" button
+3. Add title and content
+4. Wait 2 seconds (auto-save)
+5. Refresh page with F5
+6. SOW should still be there with all content intact ✅
+
 ### Production Environment
 ```bash
 # Set production env vars
