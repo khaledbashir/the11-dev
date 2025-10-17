@@ -1,195 +1,353 @@
-# 🌱 Social Garden SOW Generator
+# 🌱 Social Garden - SOW Generator
 
-> **Beautiful, AI-powered Statement of Work generator with professional PDF export**
-
-**Location:** `/root/the11/` (You are here!)
+**Production-ready Statement of Work generator with AI-powered content, interactive pricing tables, and professional PDF export.**
 
 ---
 
-## ⚡ QUICK START
+## 🚀 Quick Start
 
 ```bash
 ./dev.sh
 ```
 
-**That's it!** This ONE command starts everything with hot reload.
-
-- Frontend: http://localhost:3333
-- PDF API: http://localhost:8000
-- Changes appear INSTANTLY!
+**That's it.** One command starts everything:
+- ✅ Frontend: http://localhost:3333
+- ✅ PDF Service: http://localhost:8000  
+- ✅ Hot reload enabled
+- ✅ Database connected
 
 Press `Ctrl+C` to stop.
 
 ---
 
-## 📚 DOCUMENTATION
+## 📋 What You Get
 
-**👉 START HERE:** [`docs/MASTER_GUIDE.md`](docs/MASTER_GUIDE.md)
+### Core Features
+- **📝 Rich Text Editor** - TipTap/ProseMirror with full formatting
+- **💰 Interactive Pricing Tables** - 82 pre-loaded roles with drag-drop reordering
+- **🤖 AI-Powered Generation** - The Architect agent creates complete SOWs
+- **📄 Professional PDF Export** - WeasyPrint with Social Garden branding
+- **📊 Excel Export** - Pricing tables to .xlsx
+- **🎨 Dark Theme** - Brand color #0e2e33 throughout
+- **📱 Client Portal** - Share SOWs with clients for review/approval
+- **💬 AnythingLLM Integration** - AI chat with context about each SOW
+- **🗄️ MySQL Database** - Full persistence (folders, documents, agents)
 
-Everything you need in one organized document!
-
-### Other Guides:
-
-| Doc | What's Inside |
-|-----|---------------|
-| [`MASTER_GUIDE.md`](docs/MASTER_GUIDE.md) | 🎯 **START HERE!** Complete guide, everything in one place |
-| [`quick-start.md`](docs/quick-start.md) | ⚡ Get running in 30 seconds |
-| [`development.md`](docs/development.md) | 🔨 Dev vs Production workflows |
-| [`deployment.md`](docs/deployment.md) | 🚀 Deploy to VPS, client, or anywhere |
-| [`quick-reference.md`](docs/quick-reference.md) | 📖 Simple truth, direct answers |
-| [`visual-guide.md`](docs/visual-guide.md) | 🖼️ Visual diagrams and explanations |
-| [`understanding-setup.md`](docs/understanding-setup.md) | 🧠 VPS, GitHub, Docker explained |
-| [`ai-development-guide.md`](docs/ai-development-guide.md) | 🤖 For AI assistants editing this project |
-| [`session-summary.md`](docs/session-summary.md) | 📝 What we fixed in last session |
+### Live Services
+- **Database:** 168.231.115.219:3306 (socialgarden_sow)
+- **AnythingLLM:** ahmad-anything-llm.840tjq.easypanel.host
+- **VPS:** 168.231.115.219
 
 ---
 
-## 🎯 COMMON TASKS
+## 🏗️ Project Structure
 
-### Daily Coding:
-```bash
-./dev.sh              # Start dev server
-# Edit files, see changes instantly!
-git add -A            # Stage changes
-git commit -m "..."   # Commit
-git push              # Push to GitHub
+```
+/root/the11/
+├── novel-editor-demo/apps/web/   ← Main Next.js app (Frontend)
+│   ├── app/                      ← Next.js 15 App Router
+│   ├── components/               ← React components
+│   ├── lib/                      ← Utilities, database, AI logic
+│   └── public/                   ← Static assets
+│
+├── pdf-service/                  ← FastAPI backend (PDF generation)
+│   ├── main.py                   ← PDF API server
+│   ├── requirements.txt          ← Python dependencies
+│   └── venv/                     ← Python virtual environment
+│
+├── database/                     ← SQL schemas
+│   ├── schema.sql                ← Full database schema
+│   └── init.sql                  ← Initial setup
+│
+├── docs/                         ← Technical documentation
+│   └── API.md                    ← API reference
+│
+├── dev.sh                        ← Start development (ONE COMMAND)
+├── .env.example                  ← Environment variables template
+├── .gitignore                    ← Git ignore rules
+└── README.md                     ← You are here
 ```
 
-### Deploy to Production:
-```bash
-docker-compose build  # Build once
-docker-compose up -d  # Run forever
-```
-
-### Check Status:
-```bash
-docker-compose ps     # See running containers
-docker-compose logs   # View logs
-```
+**Why nested?** The app uses the [Novel](https://github.com/steven-tey/novel) editor template, which is a Turborepo monorepo. We use only the `/apps/web` workspace. This structure is intentional and works perfectly.
 
 ---
 
-## 🔥 KEY FEATURES
+## ⚙️ Environment Variables
 
-- 📝 **Rich text editor** with slash commands (`/table`, `/divider`, `/heading`)
-- 🤖 **AI writing assistant** (improve, shorten, lengthen, simplify, fix)
-- 📄 **Professional PDF export** with Social Garden branding
-- 🎨 **Beautiful dark mode** (pitch black with brand accents)
-- 💾 **Auto-save** to localStorage
-- 🖼️ **Image uploads** and embeds
-- 📊 **Tables** with proper formatting
-
----
-
-## 📁 PROJECT STRUCTURE
-
-```
-the11/
-├── docs/                 ← All documentation
-├── novel-editor-demo/    ← Frontend (Next.js)
-│   └── apps/web/         ← Main app
-│       ├── components/   ← React components
-│       ├── styles/       ← CSS (dark mode, colors)
-│       └── public/       ← Logo, assets
-├── pdf-service/          ← Backend (Python/FastAPI)
-│   ├── main.py          ← PDF generation
-│   └── requirements.txt  ← Dependencies
-├── dev.sh               ← 🔥 Run everything!
-├── docker-compose.yml   ← Production deployment
-└── .env                 ← API keys (never commit!)
-```
-
----
-
-## 🆘 TROUBLESHOOTING
-
-**Port already in use?**
-```bash
-pkill -f next-server
-pkill -f uvicorn
-```
-
-**Changes not appearing?**
-- Use `./dev.sh` for development (NOT Docker!)
-- Docker is only for production
-
-**Lost?**
-- Read `docs/MASTER_GUIDE.md` - has everything!
-
----
-
-## 🔒 ENVIRONMENT VARIABLES
-
-Copy `.env.example` to `.env` and add your API key:
+Copy `.env.example` to `.env` and configure:
 
 ```bash
-cp .env.example .env
-nano .env
-```
+# Database
+DB_HOST=168.231.115.219
+DB_USER=sg_sow_user
+DB_PASSWORD=SG_sow_2025_SecurePass!
+DB_NAME=socialgarden_sow
+DB_PORT=3306
 
-Required:
-- `OPENROUTER_API_KEY` - Get free at https://openrouter.ai/keys
+# AnythingLLM
+ANYTHINGLLM_URL=https://ahmad-anything-llm.840tjq.easypanel.host
+ANYTHINGLLM_API_KEY=0G0WTZ3-6ZX4D20-H35VBRG-9059WPA
+
+# OpenAI / OpenRouter (for AI features)
+OPENROUTER_API_KEY=your_key_here
+# OR
+OPENAI_API_KEY=your_key_here
+
+# App Config
+NEXT_PUBLIC_BASE_URL=http://localhost:3333
+NEXT_PUBLIC_API_URL=http://localhost:8000
+FRONTEND_PORT=3333
+```
 
 ---
 
-## 🚀 DEPLOYMENT
+## 🛠️ Development
 
-**VPS/Cloud:**
+### Start Development Server
 ```bash
-git clone https://github.com/khaledbashir/the11.git
-cd the11
-cp .env.example .env
-nano .env  # Add API key
-docker-compose up -d
+./dev.sh
 ```
 
-**Client Delivery:**
-Send them the repo link + above instructions!
+This script:
+1. Stops any Docker containers
+2. Starts PDF service (Python/FastAPI on port 8000)
+3. Starts frontend (Next.js on port 3333)
+4. Enables hot reload for both services
+
+### Manual Start (if needed)
+
+**Frontend:**
+```bash
+cd /root/the11/novel-editor-demo/apps/web
+pnpm install  # First time only
+pnpm dev
+```
+
+**Backend:**
+```bash
+cd /root/the11/pdf-service
+python3 -m venv venv  # First time only
+source venv/bin/activate
+pip install -r requirements.txt  # First time only
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Tech Stack
+- **Frontend:** Next.js 15.1.4, React 18, TypeScript
+- **Editor:** TipTap, ProseMirror
+- **Styling:** Tailwind CSS, Radix UI
+- **AI:** OpenAI SDK, AnythingLLM
+- **Backend:** FastAPI, Uvicorn
+- **PDF:** WeasyPrint, Jinja2
+- **Database:** MySQL 8.0
+- **Deployment:** Docker, Docker Compose
 
 ---
 
-## 📝 GIT WORKFLOW
+## 📊 Database Schema
+
+The app uses MySQL with these tables:
+
+| Table | Purpose |
+|-------|---------|
+| `folders` | Folder hierarchy |
+| `documents` | SOW documents (with full content) |
+| `sows` | Client-facing SOW metadata |
+| `agents` | AI agent configurations |
+| `ai_conversations` | Chat history |
+| `chat_messages` | Message details |
+| `sow_activities` | Client engagement tracking |
+| `sow_comments` | Client comments on SOWs |
+| `sow_acceptances` | Digital signatures |
+| `sow_rejections` | Rejection tracking |
+| `user_preferences` | User settings |
+| `active_sows_dashboard` | Dashboard view |
+
+**Schema location:** `/root/the11/database/schema.sql`
+
+---
+
+## 🚀 Production Deployment
+
+### Using Docker Compose (Recommended)
 
 ```bash
-git status           # Check changes
-git add -A           # Stage all
-git commit -m "..."  # Commit
-git push             # Push to GitHub
+# Build production images
+docker-compose -f docker-compose.prod.yml build
+
+# Start production services
+docker-compose -f docker-compose.prod.yml up -d
+
+# Check status
+docker-compose -f docker-compose.prod.yml ps
+
+# View logs
+docker-compose -f docker-compose.prod.yml logs -f
 ```
 
-**Current branch:** `production-ready`
+### Manual Deployment
+
+**Frontend:**
+```bash
+cd /root/the11/novel-editor-demo/apps/web
+pnpm install
+pnpm build
+pnpm start  # or use pm2
+```
+
+**Backend:**
+```bash
+cd /root/the11/pdf-service
+source venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app --host 0.0.0.0 --port 8000  # or use gunicorn
+```
+
+### Production Checklist
+- [ ] Set all environment variables
+- [ ] Database is accessible
+- [ ] Ports 3333 and 8000 are open
+- [ ] SSL certificates configured (if using domain)
+- [ ] AnythingLLM workspace created
+- [ ] Backup strategy in place
 
 ---
 
-## 🎨 BRANDING
+## 🎯 Common Tasks
 
-**Social Garden Colors:**
-- Dark: `#0e2e33` (accents)
-- Green: `#20e28f` (highlights)
-- Dark mode: Pitch black backgrounds
+### Create a New SOW
+1. Open http://localhost:3333
+2. Click "+" in left sidebar to create new document
+3. Use AI chat (right sidebar) or type manually
+4. Add pricing table: Insert → Pricing Table
+5. Fill in roles, hours, rates
+6. Click "Export PDF" when ready
 
-**Logo:** 366x44 horizontal (Jakarta Sans font)
+### Use AI to Generate SOW
+1. Click AI button (bottom right)
+2. Select "The Architect (SOW Generator)" agent
+3. Prompt example: "Create a HubSpot implementation SOW for $50k"
+4. Click "📝 Insert to Editor" when generated
+5. Review and adjust pricing table
+
+### Share SOW with Client
+1. Click "🔗 Share" in left sidebar
+2. Copy generated link
+3. Send to client
+4. Track when they view it (dashboard)
+
+### Export as PDF
+1. Click "📄 Export PDF" in left sidebar
+2. PDF generates with Social Garden branding
+3. Download automatically starts
 
 ---
 
-## 🎯 CURRENT STATUS
+## 🔧 Troubleshooting
 
-**✅ Working:**
-- Logo in PDFs (366x44 horizontal)
-- Table command (`/table`)
-- Divider command (`/divider`)
-- Ask AI popup (with extensive logging)
-- Pitch black dark mode
-- Development script (`./dev.sh`)
+### Port already in use
+```bash
+lsof -ti:3333 | xargs kill -9  # Kill frontend
+lsof -ti:8000 | xargs kill -9  # Kill backend
+./dev.sh  # Restart
+```
 
-**🔥 High Priority:**
-- Switch to OpenRouter API
-- Fix PDF security warning
-- Fix slash command disappearing
-- Fix YouTube/Twitter embeds
+### App not loading
+```bash
+# Check logs
+tail -f /tmp/nextjs.log
+
+# Check services
+curl http://localhost:3333  # Should return HTML
+curl http://localhost:8000/health  # Should return OK
+```
+
+### Database connection errors
+```bash
+# Test connection
+mysql -h 168.231.115.219 -u sg_sow_user -p'SG_sow_2025_SecurePass!' socialgarden_sow -e "SHOW TABLES;"
+
+# Check credentials in .env
+cat .env | grep DB_
+```
+
+### PDF generation failing
+```bash
+# Check PDF service
+curl http://localhost:8000/health
+
+# Check Python dependencies
+cd /root/the11/pdf-service
+source venv/bin/activate
+pip list | grep weasyprint
+```
+
+### Changes not showing
+```bash
+# Hard refresh browser: Ctrl+Shift+R
+
+# Clear Next.js cache
+cd /root/the11/novel-editor-demo/apps/web
+rm -rf .next
+pnpm dev
+```
 
 ---
 
-**Made with ❤️ for Social Garden**
+## 📖 Additional Documentation
 
-🌐 Need help? Check `docs/MASTER_GUIDE.md`!
+- **API Reference:** `/docs/API.md` - All API endpoints documented
+- **Architecture:** `/docs/ARCHITECTURE.md` - System design decisions
+- **Database Schema:** `/database/schema.sql` - Complete SQL schema
+- **Deployment Guide:** `/docs/DEPLOYMENT.md` - Production deployment details
+
+---
+
+## 🤝 Contributing
+
+### Code Style
+- TypeScript for frontend
+- Python type hints for backend
+- Prettier for formatting
+- ESLint for linting
+
+### Git Workflow
+```bash
+git checkout -b feature/your-feature
+git add -A
+git commit -m "feat: your feature description"
+git push origin feature/your-feature
+```
+
+### Testing Before Push
+```bash
+# Frontend
+cd novel-editor-demo/apps/web
+pnpm typecheck
+pnpm lint
+
+# Backend
+cd pdf-service
+python -m pytest  # if tests exist
+```
+
+---
+
+## 📝 License
+
+Proprietary - Social Garden © 2025
+
+---
+
+## 🆘 Support
+
+- **Issues:** Check `/docs/TROUBLESHOOTING.md`
+- **Database:** Check credentials in `.env`
+- **Logs:** `tail -f /tmp/nextjs.log`
+- **Contact:** [Your contact info]
+
+---
+
+**Last Updated:** October 17, 2025  
+**Version:** 1.0.0  
+**Status:** ✅ Production Ready

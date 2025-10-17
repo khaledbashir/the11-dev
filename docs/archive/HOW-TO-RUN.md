@@ -82,7 +82,7 @@ mysql -u sg_sow_user -p -e "SELECT * FROM folders;" socialgarden_sow
 curl -H "Authorization: Bearer 0G0WTZ3-6ZX4D20-H35VBRG-9059WPA" \
   https://ahmad-anything-llm.840tjq.easypanel.host/api/v1/workspaces
 ```
-- **Port:** 3005
+- **Port:** 3333
 - **Location:** `/root/the11/novel-editor-demo/apps/web`
 - **Status:** ✅ Running
 - **Database:** MySQL (168.231.115.219:3306)
@@ -156,9 +156,9 @@ curl -H "Authorization: Bearer 0G0WTZ3-6ZX4D20-H35VBRG-9059WPA" \
 ### Port already in use
 ```bash
 # Kill existing processes
-lsof -ti:3005 | xargs kill -9
+lsof -ti:3333 | xargs kill -9
 # Then restart
-bash /root/the11/start-all.sh
+./dev.sh
 ```
 
 ### App not loading
@@ -185,6 +185,8 @@ bash /root/the11/start-all.sh
 
 ## 🎉 That's It!
 
-Your app should now be running at **http://168.231.115.219:3005**
+Your app should now be running at:
+- **Local:** http://localhost:3333
+- **Production:** http://168.231.115.219:3333
 
 Need help? Check the logs: `tail -f /tmp/nextjs.log`
