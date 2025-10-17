@@ -12,45 +12,65 @@
       "static/css/app/page.css",
       "static/chunks/app/page.js"
     ],
+    "/api/agents/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/agents/route.js"
+    ],
     "/api/sow/list/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/api/sow/list/route.js"
     ],
-    "/api/sow/create/route": [
+    "/api/dashboard/stats/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/sow/create/route.js"
+      "static/chunks/app/api/dashboard/stats/route.js"
     ],
     "/api/models/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/api/models/route.js"
     ],
-    "/api/agents/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/agents/route.js"
-    ],
     "/api/folders/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/api/folders/route.js"
+    ],
+    "/api/agents/[agentId]/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/agents/[agentId]/route.js"
     ],
     "/api/preferences/current_agent_id/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/api/preferences/current_agent_id/route.js"
     ],
+    "/api/dashboard/chat/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/dashboard/chat/route.js"
+    ],
+    "/api/sow/create/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/sow/create/route.js"
+    ],
     "/api/sow/[id]/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/api/sow/[id]/route.js"
     ],
-    "/api/agents/[agentId]/route": [
+    "/api/agents/[agentId]/messages/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/agents/[agentId]/route.js"
+      "static/chunks/app/api/agents/[agentId]/messages/route.js"
+    ],
+    "/api/anythingllm/chat/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/anythingllm/chat/route.js"
     ]
   }
 }

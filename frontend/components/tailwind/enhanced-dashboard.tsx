@@ -78,15 +78,11 @@ export function EnhancedDashboard() {
     try {
       setLoading(true);
       
-      // Fetch from database API with timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-      
+      // Fetch from database API (no artificial timeout - let browser handle it)
       const response = await fetch('/api/dashboard/stats', {
-        signal: controller.signal
+        // Removed AbortController timeout - browser has its own timeout
+        // This prevents premature aborts during slow database queries
       });
-      
-      clearTimeout(timeoutId);
       
       if (response.ok) {
         const data = await response.json();
@@ -99,8 +95,8 @@ export function EnhancedDashboard() {
     } catch (err: any) {
       console.error('❌ Dashboard failed to load:', err);
       const errorMessage = err.name === 'AbortError' 
-        ? 'Dashboard took too long to load. Please refresh.' 
-        : err.message;
+        ? 'Dashboard request was cancelled. Please try again.' 
+        : err.message || 'Failed to load dashboard data';
       setError(errorMessage);
       setStats({
         totalSOWs: 0,
@@ -184,8 +180,8 @@ export function EnhancedDashboard() {
 
   return (
     <div className="h-full flex bg-[#0e0f0f]">
-      {/* Main Dashboard - Left Side */}
-      <div className="flex-1 overflow-auto p-6">
+      {/* Main Dashboard - Reduced left padding to eliminate gap */}
+      <div className="flex-1 overflow-auto py-6 pr-6 pl-2">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <div>

@@ -23,11 +23,11 @@ export async function POST(req: NextRequest) {
       embedId,
     } = body;
 
-    // Validation
-    if (!title || !clientName || !content || !totalInvestment) {
-      console.error(' [SOW CREATE] Validation failed - missing fields');
+    // Validation - only title, clientName, and content are required
+    if (!title || !clientName || !content) {
+      console.error(' [SOW CREATE] Validation failed - missing fields', { title: !!title, clientName: !!clientName, content: !!content });
       return NextResponse.json(
-        { error: 'Missing required fields: title, clientName, content, totalInvestment' },
+        { error: 'Missing required fields: title, clientName, content' },
         { status: 400 }
       );
     }
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
         clientName,
         clientEmail || null,
         content,
-        totalInvestment,
+        totalInvestment || 0,  // Default to 0 if not provided
         'draft',
         workspaceSlug || null,
         embedId || null,
@@ -71,7 +71,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      sowId,
+      id: sowId, // Return 'id' for consistency with frontend expectations
+      sowId, // Keep for backward compatibility
       message: 'SOW created successfully',
     });
   } catch (error) {

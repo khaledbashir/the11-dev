@@ -14,7 +14,7 @@ import {
   Trash2,
   Edit3,
   LayoutDashboard,
-  BookOpen,
+  Sparkles,
   ChevronLeft,
 } from "lucide-react";
 
@@ -31,8 +31,8 @@ interface Workspace {
 }
 
 interface SidebarNavProps {
-  currentView: "dashboard" | "ai-management" | "editor";
-  onViewChange: (view: "dashboard" | "ai-management" | "editor") => void;
+  currentView: "dashboard" | "gardner-studio" | "editor";
+  onViewChange: (view: "dashboard" | "gardner-studio" | "editor") => void;
   
   workspaces: Workspace[];
   currentWorkspaceId: string;
@@ -126,17 +126,17 @@ export default function SidebarNav({
           <span className="text-sm font-medium">Dashboard</span>
         </button>
 
-        {/* AI Management Link */}
+        {/* Gardner Studio Link */}
         <button
-          onClick={() => onViewChange("ai-management")}
+          onClick={() => onViewChange("gardner-studio")}
           className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-colors ${
-            currentView === "ai-management"
+            currentView === "gardner-studio"
               ? "bg-[#0e2e33] text-white"
               : "text-gray-400 hover:text-gray-300 hover:bg-gray-900/50"
           }`}
         >
-          <BookOpen className="w-5 h-5 flex-shrink-0" />
-          <span className="text-sm font-medium">AI Management</span>
+          <Sparkles className="w-5 h-5 flex-shrink-0" />
+          <span className="text-sm font-medium">Gardner Studio</span>
         </button>
       </div>
 
