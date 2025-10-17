@@ -99,7 +99,6 @@ export async function POST(
 
       if (hasBuyingSignal) {
         // TODO: Send notification to agency owner
-        console.log(`🔥 BUYING SIGNAL DETECTED for SOW ${sowId}:`, metadata.message);
       }
     }
 

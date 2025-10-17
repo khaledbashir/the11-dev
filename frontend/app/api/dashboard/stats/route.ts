@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
       masterDashboard: 'sow-master-dashboard'
     });
   } catch (error) {
-    console.error('❌ Failed to fetch dashboard stats:', error);
+    console.error(' Failed to fetch dashboard stats:', error);
     return NextResponse.json({ error: 'Failed to fetch dashboard stats' }, { status: 500 });
   }
 }

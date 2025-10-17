@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
     const folders = await query('SELECT * FROM folders ORDER BY created_at DESC');
     return NextResponse.json(folders);
   } catch (error) {
-    console.error('❌ Failed to fetch folders:', error);
+    console.error(' Failed to fetch folders:', error);
     return NextResponse.json({ error: 'Failed to fetch folders' }, { status: 500 });
   }
 }
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({ id: folderId, name }, { status: 201 });
   } catch (error) {
-    console.error('❌ Failed to create folder:', error);
+    console.error(' Failed to create folder:', error);
     return NextResponse.json({ error: 'Failed to create folder', details: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }
