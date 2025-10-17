@@ -124,17 +124,17 @@ function DraggableDocument({
       }`}
       onClick={() => onSelectDoc(doc.id)}
     >
-      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
+      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing flex-shrink-0">
         <GripVertical className="h-3 w-3 text-muted-foreground" />
       </div>
-      <FileText className="h-4 w-4 text-muted-foreground" />
+      <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
       {renamingId === doc.id ? (
         <Input
           value={renameValue}
           onChange={(e) => setRenameValue(e.target.value)}
           onBlur={() => onRename(doc.id)}
           onKeyDown={(e) => e.key === 'Enter' && onRename(doc.id)}
-          className="h-6 py-0 text-sm"
+          className="h-6 py-0 text-sm flex-1 min-w-0"
           autoFocus
           onClick={(e) => e.stopPropagation()}
         />
@@ -143,14 +143,14 @@ function DraggableDocument({
       )}
       <div className="flex gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
-          className="p-1 rounded hover:bg-yellow-100 dark:hover:bg-yellow-900/30 text-yellow-600 dark:text-yellow-500 transition-colors"
+          className="p-1 rounded hover:bg-yellow-100 dark:hover:bg-yellow-900/30 text-yellow-600 dark:text-yellow-500 transition-colors flex-shrink-0"
           onClick={(e)=>{e.stopPropagation();setRenamingId(doc.id);setRenameValue(doc.title);}}
           title="Rename document"
         >
           <Edit3 className="h-4 w-4" />
         </button>
         <button
-          className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-500 transition-colors"
+          className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-500 transition-colors flex-shrink-0"
           onClick={(e)=>{e.stopPropagation();onDelete(doc.id);}}
           title="Delete document"
         >

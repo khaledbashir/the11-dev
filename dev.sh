@@ -22,8 +22,8 @@ echo "🛑 Stopping Docker containers..."
 docker-compose down 2>/dev/null || true
 
 # Kill any processes on our ports
-echo "🧹 Cleaning up ports 3333 and 8000..."
-lsof -ti:3333 | xargs kill -9 2>/dev/null || true
+echo "🧹 Cleaning up ports 5000 and 8000..."
+lsof -ti:5000 | xargs kill -9 2>/dev/null || true
 lsof -ti:8000 | xargs kill -9 2>/dev/null || true
 sleep 2
 
@@ -83,7 +83,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "✅ SERVICES RUNNING"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "  🌐 Frontend: http://localhost:3333"
+echo "  🌐 Frontend: http://localhost:5000"
 echo "  🔌 Backend:  http://localhost:8000"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -107,7 +107,7 @@ cleanup() {
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     kill $BACKEND_PID 2>/dev/null || true
     lsof -ti:8000 | xargs kill -9 2>/dev/null || true
-    lsof -ti:3333 | xargs kill -9 2>/dev/null || true
+    lsof -ti:5000 | xargs kill -9 2>/dev/null || true
     echo "✅ All services stopped"
     echo ""
 }
@@ -115,4 +115,4 @@ cleanup() {
 trap cleanup EXIT
 
 # Run frontend in foreground (you'll see ALL compilation output, errors, etc.)
-PORT=3333 pnpm dev
+PORT=5000 pnpm dev
