@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Menu, Sparkles } from "lucide-react";
 
 interface ResizableLayoutProps {
   leftPanel: React.ReactNode;
@@ -17,6 +17,7 @@ interface ResizableLayoutProps {
   aiChatOpen?: boolean;
   onToggleSidebar?: () => void;
   onToggleAiChat?: () => void;
+  viewMode?: 'editor' | 'dashboard' | 'knowledge-base'; // NEW: Context awareness
 }
 
 export function ResizableLayout({
@@ -33,6 +34,7 @@ export function ResizableLayout({
   aiChatOpen = true,
   onToggleSidebar,
   onToggleAiChat,
+  viewMode = 'editor', // Default to editor mode
 }: ResizableLayoutProps) {
   const [mounted, setMounted] = useState(false);
 
@@ -43,13 +45,37 @@ export function ResizableLayout({
   if (!mounted) return null;
 
   return (
-    <div className="h-screen w-screen flex flex-col">
-      {/* MAIN FLEX CONTAINER - LEFT | EDITOR | CHAT */}
+    <div className="h-screen w-screen flex flex-col relative">
+      {/* PERSISTENT LEFT SIDEBAR TOGGLE TAB - ALWAYS VISIBLE */}
+      {!sidebarOpen && (
+        <button
+          onClick={onToggleSidebar}
+          className="fixed left-0 top-20 z-40 bg-[#1CBF79] hover:bg-[#15a366] text-black p-2 rounded-r-lg transition-all duration-300 shadow-lg"
+          title="Open sidebar"
+          aria-label="Open sidebar"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+      )}
+
+      {/* PERSISTENT RIGHT SIDEBAR TOGGLE TAB - HIDDEN IN KNOWLEDGE BASE MODE */}
+      {!aiChatOpen && viewMode !== 'knowledge-base' && (
+        <button
+          onClick={onToggleAiChat}
+          className="fixed right-0 top-20 z-40 bg-[#1CBF79] hover:bg-[#15a366] text-black p-2 rounded-l-lg transition-all duration-300 shadow-lg"
+          title="Open AI chat"
+          aria-label="Open AI chat"
+        >
+          <Sparkles className="w-5 h-5" />
+        </button>
+      )}
+
+      {/* MAIN FLEX CONTAINER - LEFT | EDITOR | CHAT - NO GAP */}
       <div className="flex-1 flex overflow-hidden">
         {/* LEFT SIDEBAR - FIXED WIDTH OR 0 */}
         <div 
           className={`h-full overflow-y-auto overflow-x-hidden flex-shrink-0 border-r border-gray-700 transition-all duration-300 ${
-            sidebarOpen ? 'w-80' : 'w-0'
+            sidebarOpen ? 'w-80' : 'w-0 border-r-0'
           }`}
         >
           {sidebarOpen && leftPanel}
@@ -57,12 +83,7 @@ export function ResizableLayout({
 
         {/* MIDDLE EDITOR - GROWS TO FILL SPACE */}
         <div 
-          className={`flex-1 h-full overflow-hidden min-w-0 flex flex-col transition-all duration-300 ${
-            aiChatOpen ? 'flex-basis-[65%]' : 'flex-basis-full'
-          }`}
-          style={{
-            flexBasis: aiChatOpen ? '65%' : 'auto'
-          }}
+          className={`flex-1 h-full overflow-hidden min-w-0 flex flex-col transition-all duration-300`}
         >
           {mainPanel}
         </div>
@@ -70,7 +91,7 @@ export function ResizableLayout({
         {/* RIGHT CHAT PANEL - FIXED WIDTH OR 0 (NOT OVERLAPPING) */}
         <div 
           className={`h-full overflow-hidden flex-shrink-0 border-l border-gray-700 transition-all duration-300 bg-gray-950 ${
-            aiChatOpen ? 'w-[35%] min-w-96' : 'w-0'
+            aiChatOpen ? 'w-[35%] min-w-96' : 'w-0 border-l-0'
           }`}
         >
           {aiChatOpen && rightPanel}

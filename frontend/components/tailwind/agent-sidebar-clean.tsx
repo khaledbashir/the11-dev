@@ -51,6 +51,7 @@ interface AgentSidebarProps {
   isLoading?: boolean;
   onInsertToEditor?: (content: string) => void;
   streamingMessageId?: string | null; // Track which message is streaming
+  viewMode?: 'dashboard' | 'editor' | 'knowledge-base'; // NEW: Context awareness
 }
 
 export default function AgentSidebar({
@@ -67,6 +68,7 @@ export default function AgentSidebar({
   isLoading = false,
   onInsertToEditor,
   streamingMessageId,
+  viewMode = 'editor', // Default to editor mode
 }: AgentSidebarProps) {
   const [chatInput, setChatInput] = useState("");
   const [models, setModels] = useState<OpenRouterModel[]>([]);
@@ -150,85 +152,168 @@ export default function AgentSidebar({
     return date.toLocaleDateString();
   };
 
+  // Determine if this is dashboard mode (context-aware behavior)
+  const isDashboardMode = viewMode === 'dashboard';
+  const isEditorMode = viewMode === 'editor';
+
   return (
-    <div>
-      {/* Backdrop overlay */}
-      {isOpen && (
-        <div className="fixed inset-0 bg-black/20 z-20 transition-opacity duration-300" onClick={onToggle} />
-      )}
-      
-      {/* Drawer */}
-      <div className={`fixed right-0 top-0 h-screen bg-[#0e0f0f] border-l border-[#0E2E33] transition-all ease-out duration-300 z-30 ${isOpen ? 'w-[680px] translate-x-0' : 'w-[680px] translate-x-full'} overflow-hidden flex flex-col`}>
-        <div className="p-5 border-b border-[#0E2E33] bg-[#0e0f0f]">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-base font-bold text-white">AI Agent Chat</h2>
-          </div>
+    <div className="h-full w-full bg-[#0e0f0f] border-l border-[#0E2E33] overflow-hidden flex flex-col">
+      <div className="p-5 border-b border-[#0E2E33] bg-[#0e0f0f]">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-base font-bold text-white">
+            {isDashboardMode ? "Ask the Dashboard" : "AI Agent Chat"}
+          </h2>
+          {/* Close button - collapses the panel */}
+          {onToggle && (
+            <button
+              onClick={onToggle}
+              className="p-1 hover:bg-gray-800 rounded transition-colors text-gray-400 hover:text-gray-300"
+              title="Close AI chat"
+              aria-label="Close AI chat"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          )}
+        </div>
           
+          {/* Show agent selection and controls ONLY in editor mode, HIDE completely in dashboard mode */}
+          {isEditorMode && (
+            <div className="flex items-center gap-3">
+              <Select value={currentAgentId || undefined} onValueChange={onSelectAgent}>
+                <SelectTrigger className="h-10 text-sm bg-[#0E2E33] border-[#0E2E33] text-white">
+                  <SelectValue placeholder="Select Agent" />
+                </SelectTrigger>
+                <SelectContent className="max-h-80 z-50">
+                  {agents.map(agent => (
+                    <SelectItem key={agent.id} value={agent.id}>
+                      {agent.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-          
-          <div className="flex items-center gap-3">
-            <Select value={currentAgentId || undefined} onValueChange={onSelectAgent}>
-              <SelectTrigger className="h-10 text-sm bg-[#0E2E33] border-[#0E2E33] text-white">
-                <SelectValue placeholder="Select Agent" />
-              </SelectTrigger>
-              <SelectContent className="max-h-80 z-50">
-                {agents.map(agent => (
-                  <SelectItem key={agent.id} value={agent.id}>
-                    {agent.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <Dialog open={showSettings} onOpenChange={setShowSettings}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="h-10 px-3 bg-[#1CBF79] hover:bg-[#15a366] text-white font-semibold border-0" title="Agent Settings">
+                    <Settings className="h-4 w-4 mr-2" />
+                    <span className="text-xs">Settings</span>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700">
+                  <DialogHeader>
+                    <DialogTitle className="text-white">Edit Agent</DialogTitle>
+                  </DialogHeader>
+                  {currentAgent ? (
+                    <EditAgentForm 
+                      agent={currentAgent} 
+                      models={models} 
+                      onUpdateAgent={(updated) => {
+                        onUpdateAgent(updated.id, { name: updated.name, systemPrompt: updated.systemPrompt, model: updated.model });
+                        setShowSettings(false);
+                      }}
+                      onDeleteAgent={() => {
+                        onDeleteAgent(currentAgent.id);
+                        setShowSettings(false);
+                      }}
+                    />
+                  ) : (
+                    <p>No agent selected</p>
+                  )}
+                </DialogContent>
+              </Dialog>
 
-            <Dialog open={showSettings} onOpenChange={setShowSettings}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="h-10 px-3 bg-[#1CBF79] hover:bg-[#15a366] text-white font-semibold border-0" title="Agent Settings">
-                  <Settings className="h-4 w-4 mr-2" />
-                  <span className="text-xs">Settings</span>
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700">
-                <DialogHeader>
-                  <DialogTitle className="text-white">Edit Agent</DialogTitle>
-                </DialogHeader>
-                {currentAgent ? (
-                  <EditAgentForm 
-                    agent={currentAgent} 
-                    models={models} 
-                    onUpdateAgent={(updated) => {
-                      onUpdateAgent(updated.id, { name: updated.name, systemPrompt: updated.systemPrompt, model: updated.model });
-                      setShowSettings(false);
-                    }}
-                    onDeleteAgent={() => {
-                      onDeleteAgent(currentAgent.id);
-                      setShowSettings(false);
-                    }}
-                  />
-                ) : (
-                  <p>No agent selected</p>
-                )}
-              </DialogContent>
-            </Dialog>
-
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button size="sm" className="h-10 px-3 bg-[#1CBF79] hover:bg-[#15a366] text-white font-semibold border-0" title="Create New Agent">
-                  <Plus className="h-4 w-4 mr-2" />
-                  <span className="text-xs">New Agent</span>
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700">
-                <DialogHeader>
-                  <DialogTitle className="text-white">Create New Agent</DialogTitle>
-                </DialogHeader>
-                <CreateAgentForm models={models} onCreateAgent={onCreateAgent} />
-              </DialogContent>
-            </Dialog>
-          </div>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="h-10 px-3 bg-[#1CBF79] hover:bg-[#15a366] text-white font-semibold border-0" title="Create New Agent">
+                    <Plus className="h-4 w-4 mr-2" />
+                    <span className="text-xs">New Agent</span>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700">
+                  <DialogHeader>
+                    <DialogTitle className="text-white">Create New Agent</DialogTitle>
+                  </DialogHeader>
+                  <CreateAgentForm models={models} onCreateAgent={onCreateAgent} />
+                </DialogContent>
+              </Dialog>
+            </div>
+          )}
         </div>
 
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {currentAgent ? (
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* DASHBOARD MODE: Simple dashboard chat interface */}
+        {isDashboardMode ? (
+            <>
+              <ScrollArea className="flex-1">
+                <div className="p-5 space-y-5">
+                  {chatMessages.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full py-8">
+                      <Bot className="h-16 w-16 text-gray-600 mb-3" />
+                      <h3 className="text-xl font-semibold text-white mb-2">Ask About Your Dashboard</h3>
+                      <p className="text-sm text-gray-400 text-center max-w-xs">
+                        Ask questions about your SOWs, metrics, clients, or get insights from your dashboard data.
+                      </p>
+                    </div>
+                  ) : (
+                    chatMessages.map((msg) => (
+                      <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[85%] rounded-xl px-4 py-3 ${
+                          msg.role === 'user' 
+                            ? 'bg-[#1CBF79] text-white' 
+                            : 'bg-[#1b1b1e] text-gray-200 border border-[#0E2E33]'
+                        }`}>
+                          <div className="prose prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-1">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {msg.content}
+                            </ReactMarkdown>
+                          </div>
+                          <div className="text-xs mt-2 opacity-60">
+                            {formatTimestamp(msg.timestamp)}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                  <div ref={chatEndRef} />
+                </div>
+              </ScrollArea>
+
+              <div className="p-5 border-t border-[#0E2E33] bg-[#0e0f0f]">
+                <div className="flex items-end gap-3">
+                  <Textarea
+                    ref={chatInputRef}
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        if (chatInput.trim() && !isLoading) {
+                          onSendMessage(chatInput.trim());
+                          setChatInput("");
+                        }
+                      }
+                    }}
+                    placeholder="Ask about your dashboard..."
+                    className="min-h-[80px] resize-none bg-[#1b1b1e] border-[#0E2E33] text-white placeholder:text-gray-500"
+                    disabled={isLoading}
+                  />
+                  <Button 
+                    onClick={() => {
+                      if (chatInput.trim() && !isLoading) {
+                        onSendMessage(chatInput.trim());
+                        setChatInput("");
+                      }
+                    }}
+                    disabled={!chatInput.trim() || isLoading}
+                    className="self-end bg-[#1CBF79] hover:bg-[#15a366] text-white border-0"
+                  >
+                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+            </>
+          ) : isEditorMode && currentAgent ? (
+            /* EDITOR MODE: Full agent chat with all controls */
             <>
               <ScrollArea className="flex-1">
                 <div className="p-5 space-y-5">
@@ -304,26 +389,24 @@ export default function AgentSidebar({
               <div className="p-5 border-t border-[#0E2E33] bg-[#0e0f0f]">
                 <div className="flex gap-3">
                   <Textarea ref={chatInputRef} value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyPress={handleKeyPress} placeholder="Type message..." className="min-h-[50px] max-h-[150px] resize-none text-sm bg-[#0E2E33] border-[#0E2E33] text-white placeholder:text-gray-400 rounded-lg" />
-                  <Button onClick={handleSendMessage} disabled={!chatInput.trim() || isLoading} size="sm" className="self-end bg-[#0E2E33] hover:bg-[#0E2E33]/80 text-white h-[50px] font-semibold border border-[#1b5e5e]">
+                  <Button onClick={handleSendMessage} disabled={!chatInput.trim() || isLoading} size="sm" className="self-end bg-[#1CBF79] hover:bg-[#15a366] text-white h-[50px] font-semibold border-0">
                     {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                   </Button>
                 </div>
               </div>
             </>
-          ) : (
+          ) : isEditorMode ? (
+            /* EDITOR MODE - NO AGENT SELECTED */
             <div className="flex items-center justify-center h-full">
               <Card className="p-8 text-center bg-[#0E2E33] border-[#0E2E33]">
-                <p className="text-base text-white font-medium">Select an agent to start</p>
+                <p className="text-base text-white font-medium mb-4">Select an agent to start</p>
+                <Button className="bg-[#1CBF79] hover:bg-[#15a366] text-white font-semibold border-0">
+                  Create First Agent
+                </Button>
               </Card>
             </div>
-          )}
-        </div>
+          ) : null}
       </div>
-      
-      <Button onClick={onToggle} size="sm" className={`fixed transition-all duration-300 shadow-lg bg-[#0E2E33] hover:bg-[#0E2E33]/80 text-white font-semibold border border-[#1b5e5e] ${isOpen ? 'top-5 right-[690px] z-40' : 'bottom-6 right-6 z-50'}`}>
-        {isOpen ? <ChevronRight className="h-5 w-5 mr-2" /> : <Zap className="h-5 w-5 mr-2" />}
-        {isOpen ? 'Close' : 'AI'}
-      </Button>
     </div>
   );
 }
