@@ -190,6 +190,93 @@ id, agent_id, role (enum), content (longtext), timestamp (bigint), created_at
 
 **Result:** ✅ All database schema mismatches resolved
 
+### ✅ FIXED: AI Generate 401 Unauthorized Error (Endpoint Issue)
+**Error seen:**
+```
+Error: API error: 401 Unauthorized
+Source: components/tailwind/generative/ai-selector.tsx (271:15)
+```
+
+**Root Cause:** Two issues:
+1. OpenRouter was misconfigured (invalid API key)
+2. AnythingLLM endpoint was wrong - using `/chat` with `mode: 'query'` instead of `/stream-chat`
+
+**Solution Applied:**
+Switched to AnythingLLM with the CORRECT streaming endpoint:
+
+1. **Updated `/frontend/.env`:**
+   - Removed: `OPENROUTER_API_KEY`
+   - Added: `ANYTHINGLLM_API_KEY`, `ANYTHINGLLM_WORKSPACE_SLUG=pop`
+
+2. **Rewrote `/frontend/app/api/generate/route.ts`:**
+   - **OLD (WRONG):** `POST /api/v1/workspace/pop/chat` with `mode: 'query'` → Returns non-streaming response
+   - **NEW (CORRECT):** `POST /api/v1/workspace/pop/stream-chat` → Returns Server-Sent Events (SSE) stream ✅
+   - Properly parses SSE format with `data: ` prefix
+   - Extracts `textResponse` field from JSON responses
+   - Handles [DONE] marker correctly
+
+3. **Files Changed:**
+   - `/frontend/.env` - Added AnythingLLM workspace config
+   - `/frontend/app/api/generate/route.ts` - Fixed endpoint to `/stream-chat`
+
+**Configuration:**
+```bash
+# .env
+NEXT_PUBLIC_ANYTHINGLLM_URL=https://ahmad-anything-llm.840tjq.easypanel.host
+ANYTHINGLLM_API_KEY=0G0WTZ3-6ZX4D20-H35VBRG-9059WPA
+ANYTHINGLLM_WORKSPACE_SLUG=pop
+```
+
+**API Endpoints Available (from AnythingLLM Docs):**
+- `POST /v1/workspace/{slug}/chat` - Non-streaming chat (blocks until response)
+- `POST /v1/workspace/{slug}/stream-chat` - Streaming chat (returns SSE) ✅ **We use this**
+- `POST /v1/workspace/{slug}/vector-search` - Vector search only
+
+**Result:** ✅ AI text generation now works with AnythingLLM "pop" workspace using correct streaming endpoint
+
+### ✅ FIXED: SOWs Now Saving to Database
+**What Was Wrong:**
+- SOWs (documents) were being saved to **localStorage** instead of database
+- Folders were in database ✅ but SOWs were not ❌
+- Data was lost on browser refresh
+- Users couldn't see SOWs in MySQL
+
+**The Fix - 4 Changes Made:**
+
+**1. Created GET /api/sow/list endpoint** ✅
+- File: `/frontend/app/api/sow/list/route.ts`
+- Returns all SOWs from database, optionally filtered by `?folderId=`
+- Supports sorting and pagination ready
+
+**2. Load SOWs from Database on App Start** ✅
+- File: `/frontend/app/page.tsx` line ~370
+- Changed from: `localStorage.getItem("documents")`
+- Changed to: `fetch('/api/sow/list')` 
+- All SOWs now load from database on app load
+
+**3. Save New SOWs to Database** ✅
+- File: `/frontend/app/page.tsx` line ~540-620 (handleNewDoc)
+- Added: `fetch('/api/sow/create', {method: 'POST', ...})`
+- New SOWs are now created in database before being added to UI state
+
+**4. Auto-Save SOW Content to Database** ✅
+- File: `/frontend/app/page.tsx` line ~420 (new useEffect)
+- Added debounced auto-save (2 seconds of inactivity)
+- Calls: `PUT /api/sow/{id}` with content when editing
+- Content persists on every auto-save
+
+**5. Delete SOWs from Database** ✅
+- File: `/frontend/app/page.tsx` line ~665-695 (handleDeleteDoc)
+- Added: `fetch('/api/sow/{id}', {method: 'DELETE'})`
+- SOWs are now deleted from database when removed from UI
+
+**6. Removed localStorage Auto-Save** ✅
+- Removed: `useEffect(() => { localStorage.setItem("documents", ...) })`
+- No more confusing dual persistence (localStorage vs database)
+- Single source of truth: Database
+
+**Result:** ✅ SOWs now persist across browser refreshes via MySQL database
+
 ### ❌ Issue: Console.log Debug Spam
 **Errors seen:**
 ```
@@ -382,12 +469,22 @@ curl http://localhost:8000/health
 ## 🎯 TODO CHECKLIST
 
 ### Phase 1: Fix Current Issues ⏳
+- [ ] **Fix SOW persistence: Save to database instead of localStorage**
+  - [ ] Create `/api/sow/list` endpoint ← PRIORITY #1
+  - [ ] Update `page.tsx` line ~370 to load from database
+  - [ ] Update `page.tsx` line ~540 to save new SOWs to DB
+  - [ ] Update `page.tsx` line ~820 to auto-save on content change
+  - [ ] Update `page.tsx` line ~620 to delete from DB
+- [ ] Create accordion UI (folders expandable, SOWs inside) ← PRIORITY #2
+- [ ] Implement drag & drop (move SOWs between folders) ← PRIORITY #3
+- [ ] Fix `/api/models` 400 error
+- [ ] Fix `/api/preferences/current_agent_id` 405 error (needs PUT handler)
+- [ ] Fix `/api/agents/architect` 404 error
 - [ ] Remove all console.log debug statements (47+ logs to clean)
 - [x] Fix `/api/folders` 500 error ✅ (table name: folders)
 - [x] Fix `/api/dashboard/stats` 500 error ✅ (table name: sows)
 - [x] Fix `/api/agents/[id]/messages` 500 error ✅ (table name: chat_messages)
-- [ ] Fix `/api/preferences/current_agent_id` 405 error (needs PUT handler)
-- [ ] Fix `/api/generate` 401 error (OpenRouter/OpenAI API key issue)
+- [x] Fix `/api/generate` 401 error ✅ (switched to AnythingLLM workspace "pop")
 - [x] Verify database connection working ✅
 - [ ] Add markdown rendering to AI chat responses (tables, formatting)
 - [ ] Add floating action menu (Export PDF/Excel, Embed, Client Portal)
@@ -481,6 +578,47 @@ curl http://localhost:8000/health
 
 ### Production Environment
 ```bash
+## 🚢 DEPLOYMENT GUIDE
+
+### Pre-Deployment Checklist
+- [ ] All tests passing
+- [ ] No console.log statements (use `debug()` from `/lib/logger.ts`)
+- [ ] Environment variables configured
+- [ ] Database migrations run
+- [ ] SSL certificates ready
+- [ ] Domain configured
+- [ ] Monitoring setup
+
+### Dev vs Prod: Key Differences
+
+**Development Mode (`./dev.sh`):**
+- ✅ Hot reload on file changes
+- ✅ Console.logs visible (debug info)
+- ✅ Slow but interactive
+- ✅ Maps show source files
+
+**Production Mode (`pnpm build && pnpm start`):**
+- ✅ Optimized & minified
+- ✅ Console.logs stripped (faster)
+- ✅ No hot reload (restart needed)
+- ✅ Faster startup
+
+**Golden Rule:** Both should work identically. If they don't, you have a hydration or environment issue.
+
+### Local Production Testing
+```bash
+cd /root/the11/frontend
+pnpm build          # Creates optimized build
+pnpm start          # Starts production server
+# Test at http://localhost:3000
+
+# Compare with dev
+cd /root/the11
+./dev.sh            # Test at http://localhost:3333
+```
+
+### Production Environment
+```bash
 # Set production env vars
 export NODE_ENV=production
 export NEXT_PUBLIC_BASE_URL=https://your-domain.com
@@ -491,9 +629,109 @@ cd /root/the11/frontend
 pnpm build
 
 # Start with PM2
-pm2 start ecosystem.config.js
-pm2 save
-pm2 startup
+pm2 start "pnpm start" --name sow-frontend
+
+# Backend (with PM2)  
+cd /root/the11/backend
+pm2 start "uvicorn main:app --host 0.0.0.0 --port 8000" --name sow-backend
+```
+
+### Docker Deployment
+```bash
+# Build
+docker-compose -f docker-compose.prod.yml build
+
+# Deploy
+docker-compose -f docker-compose.prod.yml up -d
+
+# Check status
+docker-compose -f docker-compose.prod.yml ps
+
+# View logs
+docker-compose -f docker-compose.prod.yml logs -f
+```
+
+---
+
+## 🎨 CODE STYLE GUIDELINES - DEV TO PROD CONSISTENCY
+
+### ✅ 5 Rules to Ensure Dev = Prod
+
+#### 1. Use Safe Logging (Not Console.logs)
+```typescript
+// ❌ WRONG - Shows in dev but breaks in prod
+console.log('Debug info:', value);
+
+// ✅ RIGHT - Use the logger utility
+import { debug, error } from '@/lib/logger';
+debug('Debug info:', value);     // Only in dev ✅
+error('Error occurred:', error); // Always logs ✅
+```
+
+#### 2. Use useEffect for Dynamic Values
+```typescript
+// ❌ WRONG - Hydration mismatch
+const timestamp = Date.now();
+const randomId = Math.random();
+
+// ✅ RIGHT - Set in useEffect
+const [timestamp, setTimestamp] = useState(0);
+useEffect(() => setTimestamp(Date.now()), []);
+```
+
+#### 3. No Conditional Rendering in Render
+```typescript
+// ❌ WRONG - Server renders differently than client
+if (typeof window !== 'undefined') {
+  return <div>Client only</div>;
+}
+
+// ✅ RIGHT - Use useEffect
+const [isClient, setIsClient] = useState(false);
+useEffect(() => setIsClient(true), []);
+if (!isClient) return null;
+return <div>Client only</div>;
+```
+
+#### 4. Always Initialize Controlled Components
+```typescript
+// ❌ WRONG - Switches from uncontrolled to controlled
+const [value, setValue] = useState(undefined);
+return <input value={value} onChange={...} />;
+
+// ✅ RIGHT - Initialize with default
+const [value, setValue] = useState('');
+return <input value={value} onChange={...} />;
+```
+
+#### 5. No HTML Nesting Violations
+```typescript
+// ❌ WRONG - Invalid HTML
+return <p><div>Invalid nesting</div></p>;
+
+// ✅ RIGHT - Valid HTML structure
+return <div><p>Valid nesting</p></div>;
+```
+
+### How to Find Issues
+```bash
+# Search for console.logs
+grep -rn "console\." frontend/app/ frontend/components/ frontend/lib/
+
+# Build locally to catch hydration errors
+cd frontend
+pnpm build        # Shows hydration warnings here
+pnpm start        # Test prod locally
+```
+
+### Files for Reference
+- **Logger utility:** `/frontend/lib/logger.ts`
+- **Dev-to-Prod guide:** `/DEV-TO-PROD-GUIDE.md`
+- **Console cleanup:** Run `bash cleanup-console-logs.sh`
+
+---
+
+## 🎨 CODE STYLE GUIDELINES
 ```
 
 ### Docker Deployment
@@ -579,7 +817,7 @@ chore: Maintenance tasks
 - ✅ Created .env.example with all variables
 - ✅ Updated dev.sh for new structure
 
-### October 17, 2025 - Session 2 (Current)
+### October 17, 2025 - Session 2
 - ✅ Created MASTER-GUIDE.md as single source of truth
 - ✅ Fixed TipTap build error (pnpm override for tiptap-extension-global-drag-handle)
 - ✅ Fixed dev.sh backend startup (venv pip install logic)
@@ -589,13 +827,25 @@ chore: Maintenance tasks
   - `/api/dashboard/stats`: statements_of_work → sows
   - `/api/agents/[id]/messages`: agent_messages → chat_messages
 - ✅ Fixed undefined params causing SQL errors (added null fallbacks)
-- ⏳ **CURRENT:** Fixing UI issues (markdown rendering, floating menu, Knowledge Base iframe)
 
-### Next Update
-- Will add: Markdown rendering for AI responses
-- Will add: Floating action menu (Export, Embed, Portal)
-- Will add: Knowledge Base tab as AnythingLLM iframe
-- Will add: Console.log cleanup script
+### October 17, 2025 - Session 3
+- ✅ Fixed `/api/generate` 401 Unauthorized error (switched from OpenRouter → AnythingLLM)
+  - Updated `/frontend/.env` to use AnythingLLM workspace "pop"
+  - Rewrote `/frontend/app/api/generate/route.ts` for AnythingLLM API
+  - Fixed endpoint: `/chat` with `mode: 'query'` → `/stream-chat` (correct)
+- ✅ AI text generation now works with real-time streaming
+- ✅ FIXED: SOWs not persisting to database
+  - Created `/api/sow/list` endpoint for fetching all SOWs
+  - Updated `handleNewDoc()` to save SOWs to database via POST
+  - Added auto-save useEffect for content (2 second debounce)
+  - Updated `handleDeleteDoc()` to delete from database via DELETE
+  - Removed localStorage auto-save for documents (database is single source of truth)
+  - SOWs now persist across browser refreshes ✅
+- Next: Build accordion UI for folder/SOW hierarchy with drag & drop
+- 🔍 Identified SOW persistence issue: Saving to localStorage instead of database
+  - Created `/api/sow/list` endpoint to fetch all SOWs
+  - Need to update `page.tsx` to use database APIs
+- ⏳ **NEXT:** Fix SOW persistence, then build accordion UI with drag & drop
 
 ---
 
