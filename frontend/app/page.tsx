@@ -1687,13 +1687,19 @@ export default function Page() {
     if (effectiveAgent) {
       try {
         const useAnythingLLM = effectiveAgent.model === 'anythingllm';
-        const endpoint = useAnythingLLM ? '/api/anythingllm/chat' : '/api/chat';
         
-        // Get the appropriate workspace for this agent
-        // Dashboard mode always uses 'sow-master-dashboard' workspace, editor mode uses agent-specific workspace
-        const workspaceSlug = useAnythingLLM ? (
-          isDashboardMode ? 'sow-master-dashboard' : getWorkspaceForAgent(currentAgentId || '')
-        ) : undefined;
+        // 🔒 CRITICAL FIX: Use dedicated dashboard route when in dashboard mode
+        // This ensures dashboard chat ONLY connects to sow-master-dashboard workspace
+        const endpoint = isDashboardMode && useAnythingLLM 
+          ? '/api/dashboard/chat' 
+          : useAnythingLLM 
+            ? '/api/anythingllm/chat' 
+            : '/api/chat';
+        
+        // Get the appropriate workspace for this agent (only used for editor mode now)
+        const workspaceSlug = useAnythingLLM && !isDashboardMode 
+          ? getWorkspaceForAgent(currentAgentId || '') 
+          : undefined;
 
         console.log('🔍 [Chat Debug]', {
           isDashboardMode,
@@ -1701,7 +1707,8 @@ export default function Page() {
           endpoint,
           workspaceSlug,
           agentModel: effectiveAgent.model,
-          agentName: effectiveAgent.name
+          agentName: effectiveAgent.name,
+          routeType: isDashboardMode ? 'DEDICATED_DASHBOARD_ROUTE' : 'STANDARD_ROUTE'
         });
 
         const response = await fetch(endpoint, {
@@ -1711,7 +1718,7 @@ export default function Page() {
         },
         body: JSON.stringify({
           model: effectiveAgent.model,
-          workspace: workspaceSlug, // Pass workspace slug for AnythingLLM agents
+          workspace: workspaceSlug, // Only used for non-dashboard routes
           messages: [
             { role: "system", content: effectiveAgent.systemPrompt },
             ...newMessages.map(m => ({ role: m.role, content: m.content })),
