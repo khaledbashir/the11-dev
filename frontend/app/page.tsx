@@ -2,13 +2,17 @@
 
 import { useState, useEffect, useRef } from "react";
 import TailwindAdvancedEditor from "@/components/tailwind/advanced-editor";
-import Sidebar from "@/components/tailwind/sidebar";
+import SidebarNav from "@/components/tailwind/sidebar-nav";
 import AgentSidebar from "@/components/tailwind/agent-sidebar-clean";
 import PricingTableBuilder from "@/components/tailwind/pricing-table-builder";
 import Menu from "@/components/tailwind/ui/menu";
 import { Button } from "@/components/tailwind/ui/button";
 import { SendToClientModal } from "@/components/tailwind/send-to-client-modal";
 import { ShareLinkModal } from "@/components/tailwind/share-link-modal";
+import { ResizableLayout } from "@/components/tailwind/resizable-layout";
+import { EmptyStateWelcome } from "@/components/tailwind/empty-state-welcome";
+import { DocumentStatusBar } from "@/components/tailwind/document-status-bar";
+
 import { toast } from "sonner";
 import { Sparkles, Info, ExternalLink, Send } from "lucide-react";
 import { defaultEditorContent } from "@/lib/content";
@@ -318,13 +322,25 @@ interface ChatMessage {
   timestamp: number;
 }
 
+interface SOW {
+  id: string;
+  name: string;
+  workspaceId: string;
+}
+
+interface Workspace {
+  id: string;
+  name: string;
+  sows: SOW[];
+}
+
 export default function Page() {
   const [mounted, setMounted] = useState(false);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [currentDocId, setCurrentDocId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [agentSidebarOpen, setAgentSidebarOpen] = useState(false); // Closed by default
+  const [agentSidebarOpen, setAgentSidebarOpen] = useState(false);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [currentAgentId, setCurrentAgentId] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -340,7 +356,21 @@ export default function Page() {
     lastShared?: string;
   } | null>(null);
   const [showGuidedSetup, setShowGuidedSetup] = useState(false);
-  const [viewMode, setViewMode] = useState<'editor' | 'dashboard' | 'knowledgebase'>('editor'); // NEW: View mode
+  const [viewMode, setViewMode] = useState<'editor' | 'dashboard' | 'knowledge-base'>('dashboard'); // NEW: View mode - START WITH DASHBOARD
+  
+  // Workspace & SOW state (NEW)
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([
+    {
+      id: 'ws-1',
+      name: 'My Workspace',
+      sows: [
+        { id: 'sow-1', name: 'Q1 Project Proposal', workspaceId: 'ws-1' },
+        { id: 'sow-2', name: 'Development Retainer', workspaceId: 'ws-1' },
+      ]
+    }
+  ]);
+  const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string>('ws-1');
+  const [currentSOWId, setCurrentSOWId] = useState<string | null>('sow-1');
   const editorRef = useRef<any>(null);
 
   // Initialize master dashboard on app load
@@ -815,6 +845,88 @@ export default function Page() {
   const handleMoveDoc = (docId: string, folderId?: string) => {
     setDocuments(prev => prev.map(d => d.id === docId ? { ...d, folderId } : d));
   };
+
+  // ==================== WORKSPACE & SOW HANDLERS (NEW) ====================
+  const handleCreateWorkspace = (workspaceName: string) => {
+    const newId = `ws-${Date.now()}`;
+    const newWorkspace: Workspace = {
+      id: newId,
+      name: workspaceName,
+      sows: []
+    };
+    setWorkspaces(prev => [...prev, newWorkspace]);
+    setCurrentWorkspaceId(newId);
+    setCurrentSOWId(null);
+  };
+
+  const handleRenameWorkspace = (workspaceId: string, newName: string) => {
+    setWorkspaces(prev => prev.map(ws => 
+      ws.id === workspaceId ? { ...ws, name: newName } : ws
+    ));
+  };
+
+  const handleDeleteWorkspace = (workspaceId: string) => {
+    setWorkspaces(prev => prev.filter(ws => ws.id !== workspaceId));
+    // If we deleted the current workspace, switch to first available
+    if (currentWorkspaceId === workspaceId) {
+      const remaining = workspaces.filter(ws => ws.id !== workspaceId);
+      if (remaining.length > 0) {
+        setCurrentWorkspaceId(remaining[0].id);
+        setCurrentSOWId(remaining[0].sows[0]?.id || null);
+      } else {
+        setCurrentWorkspaceId('');
+        setCurrentSOWId(null);
+      }
+    }
+  };
+
+  const handleCreateSOW = (workspaceId: string, sowName: string) => {
+    const newId = `sow-${Date.now()}`;
+    const newSOW: SOW = {
+      id: newId,
+      name: sowName,
+      workspaceId
+    };
+    setWorkspaces(prev => prev.map(ws => 
+      ws.id === workspaceId ? { ...ws, sows: [...ws.sows, newSOW] } : ws
+    ));
+    setCurrentSOWId(newId);
+    // Create a new document for this SOW
+    handleNewDoc();
+  };
+
+  const handleRenameSOW = (sowId: string, newName: string) => {
+    setWorkspaces(prev => prev.map(ws => ({
+      ...ws,
+      sows: ws.sows.map(sow => 
+        sow.id === sowId ? { ...sow, name: newName } : sow
+      )
+    })));
+  };
+
+  const handleDeleteSOW = (sowId: string) => {
+    setWorkspaces(prev => prev.map(ws => ({
+      ...ws,
+      sows: ws.sows.filter(sow => sow.id !== sowId)
+    })));
+    // If we deleted the current SOW, clear it
+    if (currentSOWId === sowId) {
+      setCurrentSOWId(null);
+      setCurrentDocId(null);
+    }
+  };
+
+  const handleViewChange = (view: 'dashboard' | 'knowledge-base' | 'editor') => {
+    if (view === 'knowledge-base') {
+      setViewMode('knowledge-base');
+    } else if (view === 'dashboard') {
+      setViewMode('dashboard');
+    } else {
+      setViewMode('editor');
+    }
+  };
+
+  // ==================== END WORKSPACE & SOW HANDLERS ====================
 
   // AnythingLLM Integration
   const handleEmbedToAI = async () => {
@@ -1581,92 +1693,106 @@ export default function Page() {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#0e0f0f]">
+    <div className="flex flex-col h-screen bg-[#0e0f0f]">
       {/* Onboarding Tutorial */}
       <InteractiveOnboarding />
       
-      <Sidebar
-        isOpen={sidebarOpen}
-        onToggle={() => setSidebarOpen(!sidebarOpen)}
-        documents={documents}
-        folders={folders}
-        currentDocId={currentDocId}
-        onSelectDoc={handleSelectDoc}
-        onNewDoc={handleNewDoc}
-        onRenameDoc={handleRenameDoc}
-        onDeleteDoc={handleDeleteDoc}
-        onNewFolder={handleNewFolder}
-        onRenameFolder={handleRenameFolder}
-        onDeleteFolder={handleDeleteFolder}
-        onMoveDoc={handleMoveDoc}
-        onMoveFolder={(folderId, parentId) => {
-          // Stub implementation - can be enhanced later
-          console.log('Move folder:', folderId, 'to parent:', parentId);
-        }}
-        onDashboard={() => setViewMode(viewMode === 'dashboard' ? 'editor' : 'dashboard')}
-        onKnowledgeBase={() => setViewMode(viewMode === 'knowledgebase' ? 'editor' : 'knowledgebase')}
-      />
-      <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-0'} ${agentSidebarOpen ? 'mr-[480px]' : 'mr-0'}`}>
-        
-        {viewMode === 'editor' ? (
-          <>
-            {currentDoc && (
-              <div className="mx-auto max-w-screen-lg px-4 py-8">
-                <TailwindAdvancedEditor
-                  ref={editorRef}
-                  initialContent={currentDoc.content}
-                  onUpdate={handleUpdateDoc}
+      {/* Resizable Layout with Sidebar, Editor, and AI Chat */}
+      <div className="flex-1 h-full overflow-hidden">
+        <ResizableLayout
+        sidebarOpen={sidebarOpen}
+        aiChatOpen={agentSidebarOpen}
+        onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+        onToggleAiChat={() => setAgentSidebarOpen(!agentSidebarOpen)}
+        leftPanel={
+          <SidebarNav
+            workspaces={workspaces}
+            currentWorkspaceId={currentWorkspaceId}
+            currentSOWId={currentSOWId}
+            currentView={viewMode}
+            onSelectWorkspace={setCurrentWorkspaceId}
+            onSelectSOW={setCurrentSOWId}
+            onCreateWorkspace={handleCreateWorkspace}
+            onRenameWorkspace={handleRenameWorkspace}
+            onDeleteWorkspace={handleDeleteWorkspace}
+            onCreateSOW={handleCreateSOW}
+            onRenameSOW={handleRenameSOW}
+            onDeleteSOW={handleDeleteSOW}
+            onViewChange={handleViewChange}
+            onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+          />
+        }
+        mainPanel={
+          viewMode === 'editor' ? (
+            <div className="w-full h-full flex flex-col">
+              {/* Document Status Bar - Only show when document is open */}
+              {currentDoc && (
+                <DocumentStatusBar
+                  title={currentDoc.title || "Untitled Statement of Work"}
+                  saveStatus="saved"
+                  isSaving={false}
                 />
+              )}
+              
+              {/* Main Content Area */}
+              <div className="flex-1 overflow-hidden">
+                {currentDoc ? (
+                  <div className="w-full h-full">
+                    <TailwindAdvancedEditor
+                      ref={editorRef}
+                      initialContent={currentDoc.content}
+                      onUpdate={handleUpdateDoc}
+                    />
+                  </div>
+                ) : (
+                  <EmptyStateWelcome
+                    onCreateNewSOW={() => handleNewDoc()}
+                    isLoading={false}
+                  />
+                )}
               </div>
-            )}
-            
-            {/* Floating Action Button */}
-            {currentDoc && (
-              // FloatingDocumentActions component - disabled for now
-              null
-              // <FloatingDocumentActions
-              //   onExport={(format) => {
-              //     if (format === 'pdf') {
-              //       handleExportPDF();
-              //     } else if (format === 'docx' || format === 'txt' || format === 'html') {
-              //       // Handle other export formats if needed
-              //       console.log('Export format:', format);
-              //     }
-              //   }}
-              //   onShare={handleShare}
-              // />
-            )}
-          </>
-        ) : viewMode === 'dashboard' ? (
-          <EnhancedDashboard />
-        ) : (
-          <KnowledgeBase />
-        )}
-      </div>
-      {/* Only show Agent Sidebar (SOW Builder) in editor mode */}
-      {viewMode === 'editor' && (
-        <AgentSidebar
-          isOpen={agentSidebarOpen}
-          onToggle={() => setAgentSidebarOpen(!agentSidebarOpen)}
-          agents={agents}
-          currentAgentId={currentAgentId}
-          onSelectAgent={handleSelectAgent}
-          onCreateAgent={handleCreateAgent}
-          onUpdateAgent={handleUpdateAgent}
-          onDeleteAgent={handleDeleteAgent}
-          chatMessages={chatMessages}
-          onSendMessage={handleSendMessage}
-          isLoading={isChatLoading}
-          streamingMessageId={streamingMessageId}
-          onInsertToEditor={(content) => {
-            console.log('📝 Insert to Editor button clicked from AI chat');
-            // Strip <think> tags and any XML-like tags from AI responses
-            const cleanContent = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-            // Use the existing handleInsertContent which properly converts markdown to Novel JSON with pricing tables
-            handleInsertContent(cleanContent || content);
-          }}
+            </div>
+          ) : viewMode === 'dashboard' ? (
+            <EnhancedDashboard />
+          ) : (
+            <KnowledgeBase />
+          )
+        }
+        rightPanel={
+          viewMode === 'editor' ? (
+            <AgentSidebar
+              isOpen={agentSidebarOpen}
+              onToggle={() => setAgentSidebarOpen(!agentSidebarOpen)}
+              agents={agents}
+              currentAgentId={currentAgentId}
+              onSelectAgent={handleSelectAgent}
+              onCreateAgent={handleCreateAgent}
+              onUpdateAgent={handleUpdateAgent}
+              onDeleteAgent={handleDeleteAgent}
+              chatMessages={chatMessages}
+              onSendMessage={handleSendMessage}
+              isLoading={isChatLoading}
+              streamingMessageId={streamingMessageId}
+              onInsertToEditor={(content) => {
+                console.log('📝 Insert to Editor button clicked from AI chat');
+                const cleanContent = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+                handleInsertContent(cleanContent || content);
+              }}
+            />
+          ) : (
+            <div className="h-full flex items-center justify-center text-gray-400">
+              <p>AI Chat unavailable in {viewMode} mode</p>
+            </div>
+          )
+        }
+        leftMinSize={15}
+        mainMinSize={30}
+        rightMinSize={20}
+        leftDefaultSize={20}
+        mainDefaultSize={55}
+        rightDefaultSize={25}
         />
-      )}
+      </div>
 
       {/* Send to Client Modal */}
       {currentDoc && (

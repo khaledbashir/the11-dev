@@ -119,7 +119,7 @@ function DraggableDocument({
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-2 px-2 py-1.5 hover:bg-accent rounded-md cursor-pointer group ${
+      className={`flex items-center gap-1 px-2 py-1.5 hover:bg-accent rounded-md cursor-pointer group ${
         currentDocId === doc.id ? 'bg-accent' : ''
       }`}
       onClick={() => onSelectDoc(doc.id)}
@@ -139,22 +139,22 @@ function DraggableDocument({
           onClick={(e) => e.stopPropagation()}
         />
       ) : (
-        <span className="text-sm flex-1 truncate min-w-0">{doc.title}</span>
+        <span className="text-sm truncate min-w-0 max-w-[100px]" title={doc.title}>{doc.title}</span>
       )}
-      <div className="flex gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex gap-1 flex-shrink-0 ml-auto">
         <button
-          className="p-1 rounded hover:bg-yellow-100 dark:hover:bg-yellow-900/30 text-yellow-600 dark:text-yellow-500 transition-colors flex-shrink-0"
+          className="p-1.5 rounded bg-yellow-50 dark:bg-yellow-900/20 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400 transition-colors flex-shrink-0 border border-yellow-200 dark:border-yellow-800"
           onClick={(e)=>{e.stopPropagation();setRenamingId(doc.id);setRenameValue(doc.title);}}
           title="Rename document"
         >
-          <Edit3 className="h-4 w-4" />
+          <Edit3 className="h-3.5 w-3.5" />
         </button>
         <button
-          className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-500 transition-colors flex-shrink-0"
+          className="p-1.5 rounded bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-700 dark:text-red-400 transition-colors flex-shrink-0 border border-red-200 dark:border-red-800"
           onClick={(e)=>{e.stopPropagation();onDelete(doc.id);}}
           title="Delete document"
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-3.5 w-3.5" />
         </button>
       </div>
     </div>
@@ -194,50 +194,50 @@ function DroppableFolder({
         isOver ? 'bg-accent/50 ring-2 ring-primary' : ''
       }`}
     >
-      <div className="flex items-center gap-2 px-2 py-1.5 hover:bg-accent rounded-md">
-        <Folder className="h-4 w-4 text-muted-foreground" />
+      <div className="flex items-center gap-1 px-2 py-1.5 hover:bg-accent rounded-md">
+        <Folder className="h-4 w-4 text-muted-foreground flex-shrink-0" />
         {renamingId === folder.id ? (
           <Input
             value={renameValue}
             onChange={(e) => setRenameValue(e.target.value)}
             onBlur={() => onRename(folder.id)}
             onKeyDown={(e) => e.key === 'Enter' && onRename(folder.id)}
-            className="h-6 py-0 text-sm"
+            className="h-6 py-0 text-sm flex-1 min-w-0"
             autoFocus
           />
         ) : (
-          <span className="text-sm font-medium flex-1">{folder.name}</span>
+          <span className="text-sm font-medium truncate min-w-0 max-w-[80px]" title={folder.name}>{folder.name}</span>
         )}
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex gap-1 flex-shrink-0 ml-auto">
           <Button
             size="sm"
-            variant="ghost"
-            className="h-6 w-6 p-0 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 dark:text-green-500 hover:scale-110 transition-transform"
+            variant="outline"
+            className="h-7 w-7 p-0 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800"
             onClick={() => onNewDoc(folder.id)}
             title="New SOW in this folder"
           >
-            <Plus className="h-3 w-3" />
+            <Plus className="h-3.5 w-3.5" />
           </Button>
           <Button
             size="sm"
-            variant="ghost"
-            className="h-6 w-6 p-0 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 text-yellow-600 dark:text-yellow-500"
+            variant="outline"
+            className="h-7 w-7 p-0 bg-yellow-50 dark:bg-yellow-900/20 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800"
             onClick={() => {
               setRenamingId(folder.id);
               setRenameValue(folder.name);
             }}
             title="Rename folder"
           >
-            <Edit3 className="h-3 w-3" />
+            <Edit3 className="h-3.5 w-3.5" />
           </Button>
           <Button
             size="sm"
-            variant="ghost"
-            className="h-6 w-6 p-0 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-500"
+            variant="outline"
+            className="h-7 w-7 p-0 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800"
             onClick={() => onDelete(folder.id)}
             title="Delete folder"
           >
-            <Trash2 className="h-3 w-3" />
+            <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>

@@ -10,11 +10,6 @@ export async function POST(req: NextRequest) {
   
   try {
     const body = await req.json();
-      title: body.title,
-      clientName: body.clientName,
-      hasContent: !!body.content,
-      totalInvestment: body.totalInvestment,
-    });
     
     const {
       title,

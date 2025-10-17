@@ -182,14 +182,14 @@ export default function AgentSidebar({
 
             <Dialog open={showSettings} onOpenChange={setShowSettings}>
               <DialogTrigger asChild>
-                <Button size="sm" className="h-10 px-3 bg-[#1b5e5e] hover:bg-[#1b5e5e]/80 text-white font-semibold border border-[#0E2E33]" title="Agent Settings">
+                <Button size="sm" className="h-10 px-3 bg-[#1CBF79] hover:bg-[#15a366] text-white font-semibold border-0" title="Agent Settings">
                   <Settings className="h-4 w-4 mr-2" />
                   <span className="text-xs">Settings</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700">
                 <DialogHeader>
-                  <DialogTitle>Edit Agent</DialogTitle>
+                  <DialogTitle className="text-white">Edit Agent</DialogTitle>
                 </DialogHeader>
                 {currentAgent ? (
                   <EditAgentForm 
@@ -212,14 +212,14 @@ export default function AgentSidebar({
 
             <Dialog>
               <DialogTrigger asChild>
-                <Button size="sm" className="h-10 px-3 bg-[#1b5e5e] hover:bg-[#1b5e5e]/80 text-white font-semibold border border-[#0E2E33]" title="Create New Agent">
+                <Button size="sm" className="h-10 px-3 bg-[#1CBF79] hover:bg-[#15a366] text-white font-semibold border-0" title="Create New Agent">
                   <Plus className="h-4 w-4 mr-2" />
                   <span className="text-xs">New Agent</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700">
                 <DialogHeader>
-                  <DialogTitle>Create New Agent</DialogTitle>
+                  <DialogTitle className="text-white">Create New Agent</DialogTitle>
                 </DialogHeader>
                 <CreateAgentForm models={models} onCreateAgent={onCreateAgent} />
               </DialogContent>

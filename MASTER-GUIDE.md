@@ -203,7 +203,48 @@ pip install -r requirements.txt
 
 ---
 
-## 🐛 CURRENT ISSUES & FIXES
+### ✅ FIXED: Adjustable Drag Handles for Sidebar & AI (Left/Right Resize)
+**Issue:** 
+- Left drag handle (sidebar) wasn't working - dragging resized middle editor instead
+- Right drag handle (AI chat) wasn't working - dragging also resized middle editor
+- Tailwind classes were conflicting with react-resizable-panels library
+
+**Root Cause:**
+- Complex Tailwind `hover:` and `active:` states conflicting with library's data attributes
+- No dedicated CSS file for panel styling
+- Missing `touch-action: none` on resize handles
+
+**Solution Applied:**
+
+1. **Simplified ResizableLayout component** ✅
+   - Removed conflicting Tailwind classes from PanelResizeHandle
+   - Added import for dedicated CSS file
+   - Cleaned up JSX to use simple class names (`resize-handle`, `resize-handle-icon`)
+
+2. **Created `/frontend/styles/resizable-panels.css`** ✅
+   - Dedicated CSS for all panel styling
+   - Proper cursor, hover, and active states
+   - Added `touch-action: none` to prevent browser interference
+   - Icons only show on hover with smooth transitions
+
+3. **Removed conflicting CSS from globals.css** ✅
+   - Removed `@layer components` with conflicting panel rules
+   - Removed `@apply` statements that were causing issues
+
+**Files Changed:**
+- `/frontend/components/tailwind/resizable-layout.tsx` - Simplified component
+- `/frontend/styles/resizable-panels.css` - New dedicated CSS file (created)
+- `/frontend/styles/globals.css` - Removed conflicting CSS rules
+
+**How It Works Now:**
+- **Left handle (Sidebar):** Drag to resize sidebar ↔ editor
+- **Right handle (AI Chat):** Drag to resize editor ↔ AI panel
+- **Visual feedback:** Handles turn blue on hover, white grip icon appears
+- **Smooth interaction:** No jank, properly constrained min/max sizes
+
+**Result:** ✅ Both drag handles now work correctly - sidebar and AI can be resized independently
+
+---
 
 ### ✅ FIXED: Database Table Name Mismatches
 **Errors seen:**
@@ -384,19 +425,111 @@ pnpm install
 
 ---
 
-## ❓ FREQUENTLY ASKED QUESTIONS (FAQ)
+### ✅ FIXED: Native Prompt() Replaced with Custom Modal for New SOW
 
-### Q: Why is the app running on port 3001 instead of 3333?
-**A:** Port 3333 was already in use. Next.js automatically finds the next available port.
+**Issue Identified:** 
+Creating a new SOW inside a workspace triggered an ugly, native browser `window.prompt()` box. This jarring UX break confused users and looked unprofessional compared to the sleek custom modal for creating workspaces.
 
-**Solution:**
-```bash
-# Kill the process on 3333
-lsof -ti:3333 | xargs kill -9
+**Root Cause:** 
+The sidebar-nav.tsx component used JavaScript's native `prompt()` function instead of a styled modal dialog component.
 
-# Restart dev mode
-./dev.sh
+**Solution Applied:**
+
+1. **Created new reusable component:** `/frontend/components/tailwind/new-sow-modal.tsx` ✅
+   - Identical styling to "New Workspace" modal
+   - Input placeholder: "e.g., Q3 Marketing Campaign SOW"
+   - Primary button text: "Create SOW" (brand green #1CBF79)
+   - Cancel button for user control
+   - Keyboard support (Enter to submit)
+
+2. **Updated sidebar-nav.tsx** ✅
+   - Imported new `NewSOWModal` component
+   - Added state: `showNewSOWModal`, `newSOWWorkspaceId`
+   - Replaced `prompt()` call with modal trigger
+   - Modal passes workspace ID when creating SOW
+
+**Files Changed:**
+- `/frontend/components/tailwind/new-sow-modal.tsx` - New modal component (created)
+- `/frontend/components/tailwind/sidebar-nav.tsx` - Integrated modal, removed prompt()
+
+**Result:** ✅ Users now see a professional, branded modal instead of native browser prompt. Consistent UX throughout the app.
+
+---
+
+### ✅ FIXED: Knowledge Base Iframe Not Rendering
+
+**Issue Identified:** 
+Clicking the "Knowledge Base" link in the sidebar showed a blank white page. The iframe was present but not rendering properly, destroying user trust in the application.
+
+**Root Cause:** 
+- Iframe had conflicting CSS: `rounded-lg border border-gray-200 bg-white` (light theme CSS in dark app)
+- Missing explicit width/height constraints
+- Inline styles not overriding CSS classes
+
+**Solution Applied:**
+
+Updated `/frontend/components/tailwind/knowledge-base.tsx`:
+1. Changed background to match dark theme: `bg-[#0e0f0f]` ✅
+2. Removed light theme border and rounded corners ✅
+3. Added explicit inline styles: `width: 100%, height: 100%, border: none, display: block` ✅
+4. Removed unnecessary `overflow-hidden` that was conflicting with iframe sizing ✅
+
+**Configuration:**
+```tsx
+<iframe
+  src="https://ahmad-anything-llm.840tjq.easypanel.host/embed/dee07d93-59b9-4cb9-ba82-953cf79953a2"
+  className="w-full h-full border-0"
+  title="AnythingLLM Knowledge Base"
+  allow="microphone; camera"
+  style={{
+    width: "100%",
+    height: "100%",
+    border: "none",
+    display: "block",
+  }}
+/>
 ```
+
+**Files Changed:**
+- `/frontend/components/tailwind/knowledge-base.tsx` - Fixed iframe styling
+
+**Result:** ✅ Knowledge Base iframe now renders correctly, filling 100% of the content area with dark theme styling.
+
+---
+
+### ✅ FIXED: Dashboard Visual Polish - Brand Colors Applied
+
+**Issue Identified:** 
+Dashboard was visually flat with no visual hierarchy. All elements had equal visual weight, and the design didn't leverage the brand's accent colors (#1CBF79) to guide user attention. The "Refresh" button was visually weak and hard to find.
+
+**Root Cause:** 
+Dashboard was using generic colors (emerald-600, blue-500, etc.) instead of the brand's primary green color (#1CBF79). Icons in stat cards were not prominent enough.
+
+**Solution Applied:**
+
+1. **Updated Refresh button styling** ✅
+   - Old: `border-[#0e2e33] text-gray-300 hover:bg-[#1b1b1e]` (weak, barely visible)
+   - New: `border-[#1CBF79] text-[#1CBF79] hover:bg-[#1CBF79]/10` (primary action button)
+   - Now clearly signals the main action to refresh data
+
+2. **Updated stat card icons to brand color** ✅
+   - Changed all four metric cards: Total SOWs, Total Value, Active Proposals, This Month
+   - Icon backgrounds: `bg-[#1CBF79]/20` (brand green with opacity)
+   - Icon color: `text-[#1CBF79]` (brand green text)
+   - Creates visual hierarchy and draws attention to key metrics
+
+3. **Updated chat action buttons** ✅
+   - "Show/Hide AI Chat" button: `bg-[#1CBF79] hover:bg-[#15a366]`
+   - Chat send button: `bg-[#1CBF79] hover:bg-[#15a366]`
+   - All interactive elements now use brand colors
+
+**Files Changed:**
+- `/frontend/components/tailwind/enhanced-dashboard.tsx` - Applied brand colors
+
+**Result:** ✅ Dashboard now has clear visual hierarchy with brand colors guiding user attention to key actions and metrics. Professional and polished appearance.
+
+---
+
 
 The `dev.sh` script sets `PORT=3333`, but if that port is taken, Next.js will try 3334, 3335, etc.
 
@@ -1113,10 +1246,31 @@ chore: Maintenance tasks
   - Need to update `page.tsx` to use database APIs
 - ⏳ **NEXT:** Fix SOW persistence, then build accordion UI with drag & drop
 
+### October 17, 2025 - Session 4 (UX/UI Polish)
+- ✅ FIXED: Native Prompt() replaced with custom modal for New SOW
+  - Created `/frontend/components/tailwind/new-sow-modal.tsx` - reusable modal component
+  - Updated `sidebar-nav.tsx` to use custom modal instead of `window.prompt()`
+  - Modal now matches "New Workspace" design system (branded, professional)
+  - Input placeholder: "e.g., Q3 Marketing Campaign SOW"
+  - Button: "Create SOW" with brand green color (#1CBF79)
+- ✅ FIXED: Knowledge Base iframe not rendering
+  - Updated `knowledge-base.tsx` with proper dark theme styling
+  - Changed background from light white to dark theme (#0e0f0f)
+  - Added explicit inline styles for width/height (100%)
+  - Removed conflicting CSS classes (light theme borders)
+  - AnythingLLM Knowledge Base now renders correctly and fills entire content area
+- ✅ FIXED: Dashboard visual polish with brand colors
+  - Updated Refresh button: weak gray → prominent #1CBF79 (brand green)
+  - Updated all 4 metric card icons: generic colors → brand green (#1CBF79)
+  - Icon backgrounds: `bg-[#1CBF79]/20` for visual prominence
+  - Updated chat buttons: `bg-[#1CBF79]` for consistency
+  - Dashboard now has clear visual hierarchy guiding user attention
+- 🎨 **UX Improvements:** Professional, branded, polished UI with consistent design system
+
 ---
 
 **📝 REMEMBER: Edit this file. Don't create new docs. Keep it organized. Keep it updated.**
 
-**Last Updated:** October 17, 2025  
-**Status:** � Running (Fixing API errors)  
-**Version:** 1.0.1
+**Last Updated:** October 17, 2025 (Session 4 - UX/UI Polish)  
+**Status:** ✅ Running with UI Polish Applied (Custom Modal, Knowledge Base Fixed, Dashboard Branded)  
+**Version:** 1.0.2
