@@ -25,22 +25,22 @@ pkill -f "uvicorn" 2>/dev/null || true
 sleep 1
 
 # Start PDF service in background
-echo "📄 Starting PDF service on port 8000..."
-cd pdf-service
+echo "📄 Starting backend on port 8000..."
+cd backend
 if [ ! -d "venv" ]; then
     echo "  Creating virtual environment..."
     python3 -m venv venv
 fi
 source venv/bin/activate
 pip install -q -r requirements.txt
-nohup uvicorn main:app --reload --host 0.0.0.0 --port 8000 > /tmp/pdf-service.log 2>&1 &
+nohup uvicorn main:app --reload --host 0.0.0.0 --port 8000 > /tmp/backend.log 2>&1 &
 PDF_PID=$!
-echo "  ✅ PDF service started (PID: $PDF_PID)"
+echo "  ✅ Backend started (PID: $PDF_PID)"
 cd ..
 
 # Start frontend
 echo "🎨 Starting frontend on port 3333..."
-cd novel-editor-demo/apps/web
+cd frontend
 
 # Install dependencies if needed
 if [ ! -d "node_modules" ]; then
@@ -59,7 +59,7 @@ echo ""
 echo "📝 Edit files and see changes INSTANTLY!"
 echo "📊 Logs:"
 echo "  - Frontend: Right here in this terminal"
-echo "  - PDF API: tail -f /tmp/pdf-service.log"
+echo "  - Backend: tail -f /tmp/backend.log"
 echo ""
 echo "Press Ctrl+C to stop everything"
 echo ""
