@@ -80,6 +80,11 @@
     "use-debounce": "^10.0.0",
     "xlsx": "^0.18.5"
   },
+  "pnpm": {
+    "overrides": {
+      "tiptap-extension-global-drag-handle": "npm:@tiptap/extension-bubble-menu@^2.11.2"
+    }
+  },
   "devDependencies": {
     "@biomejs/biome": "^1.7.2",
     "@types/node": "20.11.24",

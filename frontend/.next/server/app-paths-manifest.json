@@ -1,1 +1,12 @@
-{}
+{
+  "/api/generate/route": "app/api/generate/route.js",
+  "/api/agents/route": "app/api/agents/route.js",
+  "/api/models/route": "app/api/models/route.js",
+  "/api/folders/route": "app/api/folders/route.js",
+  "/api/dashboard/stats/route": "app/api/dashboard/stats/route.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/preferences/current_agent_id/route": "app/api/preferences/current_agent_id/route.js",
+  "/api/agents/[agentId]/messages/route": "app/api/agents/[agentId]/messages/route.js",
+  "/api/anythingllm/chat/route": "app/api/anythingllm/chat/route.js",
+  "/page": "app/page.js"
+}
