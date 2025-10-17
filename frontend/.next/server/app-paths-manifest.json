@@ -1,4 +1,9 @@
 {
+  "/api/models/route": "app/api/models/route.js",
+  "/api/agents/route": "app/api/agents/route.js",
   "/api/sow/list/route": "app/api/sow/list/route.js",
-  "/api/sow/create/route": "app/api/sow/create/route.js"
+  "/api/agents/[agentId]/route": "app/api/agents/[agentId]/route.js",
+  "/api/preferences/current_agent_id/route": "app/api/preferences/current_agent_id/route.js",
+  "/api/folders/route": "app/api/folders/route.js",
+  "/page": "app/page.js"
 }

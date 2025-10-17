@@ -7,8 +7,6 @@ export async function POST(req: NextRequest) {
     // Use environment variable with fallback to localhost for local dev
     const pdfServiceUrl = process.env.NEXT_PUBLIC_PDF_SERVICE_URL || 'http://localhost:8000';
     
-    console.log('📄 Connecting to PDF service:', pdfServiceUrl);
-    console.log('📦 Request body keys:', Object.keys(body));
     
     // Forward request to PDF service with timeout
     const controller = new AbortController();
@@ -28,7 +26,7 @@ export async function POST(req: NextRequest) {
 
       if (!response.ok) {
         const error = await response.text();
-        console.error('❌ PDF service error:', error);
+        console.error(' PDF service error:', error);
         return NextResponse.json(
           { error: `PDF service error: ${error}` },
           { status: response.status }
@@ -37,7 +35,6 @@ export async function POST(req: NextRequest) {
 
       // Get PDF blob and return it
       const pdfBlob = await response.blob();
-      console.log('✅ PDF generated successfully');
       
       return new NextResponse(pdfBlob, {
         status: 200,
@@ -48,11 +45,11 @@ export async function POST(req: NextRequest) {
       });
     } catch (fetchError: any) {
       clearTimeout(timeout);
-      console.error('❌ Fetch error:', fetchError.message);
+      console.error(' Fetch error:', fetchError.message);
       throw fetchError;
     }
   } catch (error: any) {
-    console.error('❌ PDF generation error:', error.message, error.cause);
+    console.error(' PDF generation error:', error.message, error.cause);
     return NextResponse.json(
       { error: `fetch failed: ${error.message}` },
       { status: 500 }

@@ -15,7 +15,7 @@ export async function GET(
     
     return NextResponse.json(messages);
   } catch (error) {
-    console.error('❌ Failed to fetch agent messages:', error);
+    console.error(' Failed to fetch agent messages:', error);
     return NextResponse.json({ error: 'Failed to fetch messages' }, { status: 500 });
   }
 }
@@ -36,7 +36,7 @@ export async function POST(
     
     return NextResponse.json({ message, role }, { status: 201 });
   } catch (error) {
-    console.error('❌ Failed to create agent message:', error);
+    console.error(' Failed to create agent message:', error);
     return NextResponse.json({ error: 'Failed to create message' }, { status: 500 });
   }
 }

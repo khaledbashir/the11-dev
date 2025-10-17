@@ -23,9 +23,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('🔵 [AnythingLLM Chat] Sending to workspace:', effectiveWorkspaceSlug);
-    console.log('🔵 [AnythingLLM Chat] System Prompt:', systemPrompt ? `${systemPrompt.substring(0, 100)}...` : 'None');
-    console.log('🔵 [AnythingLLM Chat] Message:', lastMessage.content.substring(0, 100) + '...');
 
     // Combine system prompt with user message if system prompt exists
     const messageToSend = systemPrompt 
@@ -47,7 +44,7 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ [AnythingLLM Chat] Error:', response.status, errorText);
+      console.error(' [AnythingLLM Chat] Error:', response.status, errorText);
       return NextResponse.json(
         { error: `AnythingLLM API error: ${response.statusText}` },
         { status: response.status }
@@ -55,7 +52,6 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
-    console.log('✅ [AnythingLLM Chat] Response received');
 
     // Format response to match OpenAI structure
     return NextResponse.json({
@@ -78,7 +74,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('❌ [AnythingLLM Chat] Error:', error);
+    console.error(' [AnythingLLM Chat] Error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

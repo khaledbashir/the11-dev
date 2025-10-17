@@ -4,7 +4,7 @@
 **DO NOT CREATE NEW DOCS. EDIT THIS ONE.**  
 This is the single source of truth. Update this file as the project evolves.  
 No new markdown files. Just maintain this one. Keep it organized.
-
+Very importnant to spend only 10% documenting and 90% actualy working 
 ---
 
 ## 🚀 QUICK START (30 SECONDS)
