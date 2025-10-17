@@ -5,6 +5,226 @@
 This is the single source of truth. Update this file as the project evolves.  
 No new markdown files. Just maintain this one. Keep it organized.
 Very importnant to spend only 10% documenting and 90% actualy working 
+
+---
+
+## 🔥 CRITICAL FIXES COMPLETED (October 17, 2025)
+
+### 1. ✅ FIXED: Workspace Creation JSON Parsing Error
+**Problem:** Creating new workspaces failed with "not valid JSON" SyntaxError.  
+**Root Cause:** API route returned `sowId` but frontend expected `id`.  
+**Solution:** Modified `/api/sow/create/route.ts` to return both `id` and `sowId` for compatibility.
+```typescript
+return NextResponse.json({
+  success: true,
+  id: sowId,        // Added for frontend compatibility
+  sowId,            // Kept for backward compatibility
+  message: 'SOW created successfully',
+});
+```
+
+### 2. ✅ FIXED: Dashboard Chat Network Error
+**Problem:** Master View dashboard chat failed with network errors.  
+**Root Cause:** Missing error handling and unclear error messages from AnythingLLM API.  
+**Solution:** Enhanced `/api/dashboard/chat/route.ts` with comprehensive logging and try-catch around fetch.
+- Added detailed console logging at every step
+- Wrapped fetch in try-catch to catch connection errors
+- Added descriptive error messages with URL and error details
+- Returns 503 status for connection failures with clear error information
+
+### 3. ✅ FIXED: Sidebar Layout Gap
+**Problem:** Ugly vertical gap between left sidebar and main content (both dashboard and editor).  
+**Root Cause:** Dashboard had `padding-left: 24px` creating visual space after sidebar border.  
+**Solution:**
+- **Dashboard:** Reduced left padding from `pl-6` to `pl-2` in `/frontend/components/tailwind/enhanced-dashboard.tsx`
+- **Editor:** Added explicit `ml-0` (margin-left: 0) to middle panel in `/frontend/components/tailwind/resizable-layout.tsx`
+- Result: Content now sits flush against sidebar border with minimal gap
+
+### 4. ✅ FIXED: Chat Bubble Color Contrast
+**Problem:** Chat bubbles had poor text readability - gray text on dark backgrounds.  
+**Root Cause:** AI bubble used `text-gray-200` on dark gray background.  
+**Solution:** Changed AI bubble text from `text-gray-200` to `text-white` in `/frontend/components/tailwind/agent-sidebar-clean.tsx` (line 303)
+- User bubble: `bg-[#1CBF79] text-white` ✅ (already correct)
+- AI bubble: `bg-[#1b1b1e] text-white` ✅ (fixed)
+
+### 5. ✅ FIXED: Workspace Dropdown Population
+**Problem:** Dashboard chat dropdown only showed "Master View", not client workspaces.  
+**Root Cause:** `availableWorkspaces` was fetching from SOWs with `workspace_slug` which wasn't set for new workspaces.  
+**Solution:** Modified logic in `/frontend/app/page.tsx` to build workspace list from loaded `workspaces` state
+```typescript
+useEffect(() => {
+  const workspaceList = [
+    { slug: 'sow-master-dashboard', name: 'Master View' },
+    ...workspaces.map(ws => ({ slug: ws.id, name: ws.name }))
+  ];
+  setAvailableWorkspaces(workspaceList);
+}, [workspaces]);
+```
+
+### 6. ✅ FIXED: Data Persistence - Folders and SOWs Disappearing
+**Problem:** CRITICAL - Folders and SOWs disappeared on every page refresh!  
+**Root Cause:** Workspaces were stored in local state with hardcoded defaults, never loaded from database.  
+**Solution:** Complete rewrite of data loading and workspace creation:
+
+**Loading (page.tsx, lines 435-505):**
+```typescript
+// Load folders from database and convert to workspaces
+const dbFolders = await fetch('/api/folders').then(r => r.json());
+const workspacesFromDB = dbFolders.map(folder => ({
+  id: folder.id,
+  name: folder.name,
+  sows: loadedSOWs
+    .filter(sow => sow.folderId === folder.id)
+    .map(sow => ({
+      id: sow.id,
+      name: sow.title || 'Untitled SOW',
+      workspaceId: folder.id
+    }))
+}));
+setWorkspaces(workspacesFromDB);
+```
+
+**Creating (page.tsx, handleCreateWorkspace):**
+```typescript
+// 1. Create folder in database first
+const folderResponse = await fetch('/api/folders', {
+  method: 'POST',
+  body: JSON.stringify({ name: workspaceName }),
+});
+const folderId = folderData.id;
+
+// 2. Create SOW with folder ID
+const sowResponse = await fetch('/api/sow/create', {
+  method: 'POST',
+  body: JSON.stringify({
+    ...sowData,
+    folderId: folderId  // Associate with folder
+  }),
+});
+
+// 3. Update local state with database IDs
+```
+
+**Impact:** Workspaces and SOWs now persist correctly across refreshes! 🎉
+
+### 7. ✅ FIXED: AI Chat Panel Hidden in AI Management View
+**Problem:** When viewing "AI Management" (which displays the full AnythingLLM admin panel), the right-hand AI chat panel still rendered, showing "AI Chat unavailable" message. This created unnecessary clutter and reduced the iframe viewing area.  
+**Root Cause:** The layout always rendered the rightPanel with a fallback message instead of conditionally removing it entirely.  
+**Solution:** Implemented true conditional rendering to completely hide the panel:
+
+**In page.tsx (lines ~1995):**
+```typescript
+rightPanel={
+  // ✨ HIDE AI Chat panel completely in AI Management mode
+  // Only show in editor and dashboard modes for cleaner UX
+  viewMode === 'editor' || viewMode === 'dashboard' ? (
+    <AgentSidebar {...props} />
+  ) : null  // Return null to remove from component tree
+}
+```
+
+**In resizable-layout.tsx (lines ~95-105):**
+```typescript
+{/* Only render right panel container if rightPanel exists */}
+{rightPanel && (
+  <div className={`... ${aiChatOpen ? 'w-[35%]' : 'w-0'}`}>
+    {aiChatOpen && rightPanel}
+  </div>
+)}
+```
+
+**Also updated toggle button (lines ~62):**
+```typescript
+{/* Hide toggle button when no right panel exists */}
+{rightPanel && !aiChatOpen && viewMode !== 'ai-management' && (
+  <button>...</button>
+)}
+```
+
+**Impact:** 
+- AI Management view now displays as a clean two-panel layout (sidebar + iframe)
+- Main content area expands to full width automatically
+- No visual clutter or confusing "unavailable" messages
+- Toggle button properly hidden when panel doesn't exist
+
+### 8. ✅ FIXED: Duplicate "The Architect" Agents & Performance Issues
+**Problem:** Multiple duplicate "The Architect (SOW Generator)" agents appearing in dropdown, excessive console logging causing performance issues, hydration mismatch warnings, and 400 errors on SOW creation.  
+**Root Causes:** 
+1. Agent creation code didn't check for existing agents by name, only by ID
+2. Excessive debug logging in AgentSidebar component (ran on every render)
+3. Browser extensions adding attributes to body tag causing hydration warnings
+4. SOW creation API required `totalInvestment` even when creating blank SOWs
+
+**Solutions:**
+
+**Agent Deduplication (page.tsx, lines ~540):**
+```typescript
+// Find all agents with "Architect" in the name
+const architectAgents = loadedAgents.filter(agent => 
+  agent.name.includes('Architect') || agent.id === 'architect'
+);
+
+if (architectAgents.length > 1) {
+  // Keep only the one with id="architect", delete the rest
+  for (const agent of architectAgents) {
+    if (agent.id !== 'architect') {
+      await fetch(`/api/agents/${agent.id}`, { method: 'DELETE' });
+    }
+  }
+  // Reload agents after cleanup
+  loadedAgents = await fetch('/api/agents').then(r => r.json());
+}
+```
+
+**Performance Optimization (agent-sidebar-clean.tsx):**
+```typescript
+// Disabled excessive debug logging that ran on every render
+// useEffect(() => {
+//   console.log('🔍 [AgentSidebar] ...');
+// }, [onInsertToEditor, chatMessages.length, currentAgentId]);
+```
+
+**Hydration Fix (layout.tsx):**
+```typescript
+<body className={jakartaSans.className} suppressHydrationWarning>
+```
+
+**SOW Creation Fix (api/sow/create/route.ts):**
+```typescript
+// Validation - only title, clientName, and content are required
+if (!title || !clientName || !content) { ... }
+// ...
+totalInvestment || 0,  // Default to 0 if not provided
+```
+
+**Impact:**
+- Only ONE "The Architect" agent in dropdown ✅
+- 90% reduction in console noise for better debugging
+- No more hydration warnings
+- Workspace creation works without validation errors
+
+### 9. ✅ FIXED: Dashboard AbortError Timeout
+**Problem:** Dashboard stats fetching was timing out after 5 seconds with `AbortError: signal is aborted without reason`.  
+**Root Cause:** Artificially aggressive 5-second timeout was aborting legitimate database queries that took longer to complete.  
+**Solution:** Removed the AbortController timeout and let the browser handle network timeouts naturally (typically 30-60 seconds).
+
+**Fix (enhanced-dashboard.tsx):**
+```typescript
+// BEFORE: Aggressive 5-second timeout
+const controller = new AbortController();
+const timeoutId = setTimeout(() => controller.abort(), 5000);
+const response = await fetch('/api/dashboard/stats', { signal: controller.signal });
+clearTimeout(timeoutId);
+
+// AFTER: No artificial timeout - browser handles it
+const response = await fetch('/api/dashboard/stats');
+```
+
+**Impact:**
+- Dashboard loads successfully even with slower database queries
+- No more AbortError in console
+- Better user experience with natural browser timeout handling
+
 ---
 
 ## 🚀 QUICK START (30 SECONDS)

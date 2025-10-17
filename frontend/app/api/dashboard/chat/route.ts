@@ -11,13 +11,24 @@ const ANYTHINGLLM_API_KEY = process.env.ANYTHINGLLM_API_KEY || '0G0WTZ3-6ZX4D20-
 const DASHBOARD_WORKSPACE = 'sow-master-dashboard';
 
 export async function POST(request: NextRequest) {
+  console.log('🎯 [DASHBOARD CHAT] ============ REQUEST RECEIVED ============');
+  console.log('🎯 [DASHBOARD CHAT] Timestamp:', new Date().toISOString());
+  console.log('🎯 [DASHBOARD CHAT] Method:', request.method);
+  console.log('🎯 [DASHBOARD CHAT] URL:', request.url);
+  
   try {
-    const { messages } = await request.json();
+    const body = await request.json();
+    const { messages } = body;
     
-    console.log('🎯 [DASHBOARD CHAT] Route called - HARDCODED to sow-master-dashboard');
+    console.log('🎯 [DASHBOARD CHAT] Request body keys:', Object.keys(body));
+    console.log('🎯 [DASHBOARD CHAT] Messages array length:', messages?.length);
     console.log('🔒 [DASHBOARD CHAT] Workspace:', DASHBOARD_WORKSPACE);
+    console.log('🔒 [DASHBOARD CHAT] Route hardcoded to: sow-master-dashboard');
+    console.log('🌐 [DASHBOARD CHAT] AnythingLLM URL:', ANYTHINGLLM_URL);
+    console.log('🔑 [DASHBOARD CHAT] API Key configured:', !!ANYTHINGLLM_API_KEY);
     
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      console.error('❌ [DASHBOARD CHAT] Invalid messages array');
       return NextResponse.json(
         { error: 'No messages provided' },
         { status: 400 }
@@ -27,6 +38,7 @@ export async function POST(request: NextRequest) {
     // Get the last user message
     const lastMessage = messages[messages.length - 1];
     if (!lastMessage || lastMessage.role !== 'user') {
+      console.error('❌ [DASHBOARD CHAT] Last message is not from user');
       return NextResponse.json(
         { error: 'Last message must be from user' },
         { status: 400 }
@@ -43,32 +55,56 @@ export async function POST(request: NextRequest) {
       : lastMessage.content;
 
     console.log('📤 [DASHBOARD CHAT] Sending to AnythingLLM...');
-    console.log('📍 [DASHBOARD CHAT] URL:', `${ANYTHINGLLM_URL}/api/v1/workspace/${DASHBOARD_WORKSPACE}/stream-chat`);
+    console.log('📍 [DASHBOARD CHAT] Full URL:', `${ANYTHINGLLM_URL}/api/v1/workspace/${DASHBOARD_WORKSPACE}/stream-chat`);
     console.log('💬 [DASHBOARD CHAT] Message preview:', messageToSend.substring(0, 100));
 
     // Call AnythingLLM streaming chat endpoint
-    const response = await fetch(`${ANYTHINGLLM_URL}/api/v1/workspace/${DASHBOARD_WORKSPACE}/stream-chat`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${ANYTHINGLLM_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message: messageToSend,
-        mode: 'chat',
-      }),
-    });
+    const fetchUrl = `${ANYTHINGLLM_URL}/api/v1/workspace/${DASHBOARD_WORKSPACE}/stream-chat`;
+    console.log('🚀 [DASHBOARD CHAT] About to fetch:', fetchUrl);
+    
+    let response;
+    try {
+      response = await fetch(fetchUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${ANYTHINGLLM_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: messageToSend,
+          mode: 'chat',
+        }),
+      });
+      console.log('✅ [DASHBOARD CHAT] Fetch completed successfully');
+    } catch (fetchError) {
+      console.error('❌ [DASHBOARD CHAT] Fetch failed with error:', fetchError);
+      console.error('❌ [DASHBOARD CHAT] Error name:', fetchError instanceof Error ? fetchError.name : 'Unknown');
+      console.error('❌ [DASHBOARD CHAT] Error message:', fetchError instanceof Error ? fetchError.message : 'Unknown');
+      console.error('❌ [DASHBOARD CHAT] Error stack:', fetchError instanceof Error ? fetchError.stack : 'No stack');
+      return NextResponse.json(
+        { 
+          error: 'Failed to connect to AnythingLLM service',
+          details: fetchError instanceof Error ? fetchError.message : 'Unknown error',
+          url: fetchUrl
+        },
+        { status: 503 }
+      );
+    }
+    
+    console.log('📥 [DASHBOARD CHAT] Response received');
+    console.log('📥 [DASHBOARD CHAT] Status:', response.status, response.statusText);
+    console.log('📥 [DASHBOARD CHAT] Headers:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('❌ [DASHBOARD CHAT] AnythingLLM error:', response.status, errorText);
       return NextResponse.json(
-        { error: `AnythingLLM API error: ${response.statusText}` },
+        { error: `AnythingLLM API error: ${response.statusText}`, details: errorText },
         { status: response.status }
       );
     }
 
-    console.log('✅ [DASHBOARD CHAT] Response received from AnythingLLM');
+    console.log('✅ [DASHBOARD CHAT] Response OK - checking content type...');
 
     // Check if response is streaming
     const contentType = response.headers.get('content-type');

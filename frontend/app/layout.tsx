@@ -41,7 +41,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning className={jakartaSans.variable}>
-      <body className={jakartaSans.className}>
+      <body className={jakartaSans.className} suppressHydrationWarning>
         <Providers>{children}</Providers>
       </body>
     </html>

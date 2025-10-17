@@ -19,6 +19,7 @@ import { THE_ARCHITECT_SYSTEM_PROMPT } from "@/lib/knowledge-base";
 import { InteractiveOnboarding } from "@/components/tailwind/interactive-onboarding";
 import { GuidedClientSetup } from "@/components/tailwind/guided-client-setup";
 import { EnhancedDashboard } from "@/components/tailwind/enhanced-dashboard";
+import GardnerStudio from "@/components/gardners/GardnerStudio";
 import { KnowledgeBase } from "@/components/tailwind/knowledge-base";
 import { FloatingDocumentActions } from "@/components/tailwind/document-toolbar";
 import { calculateTotalInvestment } from "@/lib/sow-utils";
@@ -355,7 +356,7 @@ export default function Page() {
     lastShared?: string;
   } | null>(null);
   const [showGuidedSetup, setShowGuidedSetup] = useState(false);
-  const [viewMode, setViewMode] = useState<'editor' | 'dashboard' | 'ai-management'>('dashboard'); // NEW: View mode - START WITH DASHBOARD
+  const [viewMode, setViewMode] = useState<'editor' | 'dashboard' | 'gardner-studio'>('dashboard'); // NEW: View mode - START WITH DASHBOARD
   
   // Workspace & SOW state (NEW)
   const [workspaces, setWorkspaces] = useState<Workspace[]>([
@@ -372,6 +373,12 @@ export default function Page() {
   const [currentSOWId, setCurrentSOWId] = useState<string | null>('sow-1');
   const editorRef = useRef<any>(null);
 
+  // Dashboard AI workspace selector state
+  const [dashboardChatTarget, setDashboardChatTarget] = useState<string>('sow-master-dashboard');
+  const [availableWorkspaces, setAvailableWorkspaces] = useState<Array<{slug: string, name: string}>>([
+    { slug: 'sow-master-dashboard', name: 'Master View' }
+  ]);
+
   // Initialize master dashboard on app load
   useEffect(() => {
     const initDashboard = async () => {
@@ -385,6 +392,21 @@ export default function Page() {
     initDashboard();
   }, []);
 
+  // Fetch available workspaces for dashboard chat selector from loaded workspaces
+  useEffect(() => {
+    // Build workspace list from loaded workspaces
+    const workspaceList = [
+      { slug: 'sow-master-dashboard', name: 'Master View' },
+      ...workspaces.map(ws => ({
+        slug: ws.id, // Use folder ID as slug
+        name: ws.name
+      }))
+    ];
+    
+    setAvailableWorkspaces(workspaceList);
+    console.log('📋 Available workspaces for dashboard chat:', workspaceList);
+  }, [workspaces]); // Re-run when workspaces change
+
   // Fix hydration by setting mounted state
   useEffect(() => {
     setMounted(true);
@@ -395,17 +417,18 @@ export default function Page() {
     if (!mounted) return;
     
     const loadData = async () => {
-      console.log('📂 Starting to load SOWs from database...');
+      console.log('📂 Starting to load data from database...');
       const savedCurrent = localStorage.getItem("currentDocId");
       const hasCompletedSetup = localStorage.getItem("sow-guided-setup-completed");
       
-      // Load documents from database API instead of localStorage
+      // Load documents from database API
+      let loadedSOWs: Document[] = [];
       try {
         const response = await fetch('/api/sow/list');
         if (response.ok) {
-          const sows = await response.json();
-          console.log('✅ Loaded SOWs from database:', sows.length);
-          setDocuments(sows);
+          loadedSOWs = await response.json();
+          console.log('✅ Loaded SOWs from database:', loadedSOWs.length);
+          setDocuments(loadedSOWs);
         } else {
           console.warn('⚠️ Failed to load SOWs, creating empty list');
           setDocuments([]);
@@ -415,7 +438,7 @@ export default function Page() {
         setDocuments([]);
       }
       
-      // FETCH FOLDERS FROM DATABASE (NOT localStorage!)
+      // FETCH FOLDERS FROM DATABASE AND CONVERT TO WORKSPACES
       try {
         const response = await fetch('/api/folders');
         if (response.ok) {
@@ -423,6 +446,35 @@ export default function Page() {
           console.log('✅ Loaded folders from database:', dbFolders.length);
           console.log('📁 Folder names:', dbFolders.map((f: any) => f.name).join(', '));
           setFolders(dbFolders);
+          
+          // ✨ CRITICAL FIX: Convert folders to workspaces and associate SOWs
+          const workspacesFromDB: Workspace[] = dbFolders.map((folder: any) => {
+            // Find all SOWs that belong to this folder
+            const folderSOWs = loadedSOWs
+              .filter(sow => sow.folderId === folder.id)
+              .map(sow => ({
+                id: sow.id,
+                name: sow.title || 'Untitled SOW',
+                workspaceId: folder.id
+              }));
+            
+            return {
+              id: folder.id,
+              name: folder.name,
+              sows: folderSOWs
+            };
+          });
+          
+          console.log('🔄 Converted folders to workspaces:', workspacesFromDB);
+          setWorkspaces(workspacesFromDB);
+          
+          // Set current workspace to first one if available
+          if (workspacesFromDB.length > 0 && !currentWorkspaceId) {
+            setCurrentWorkspaceId(workspacesFromDB[0].id);
+            if (workspacesFromDB[0].sows.length > 0) {
+              setCurrentSOWId(workspacesFromDB[0].sows[0].id);
+            }
+          }
           
           // Show guided setup if no folders in database
           if (!hasCompletedSetup && dbFolders.length === 0) {
@@ -490,7 +542,29 @@ export default function Page() {
         
         let loadedAgents: Agent[] = await response.json();
         
-        // Ensure The Architect agent exists with AnythingLLM
+        // 🔥 FIX: Remove duplicate "The Architect" agents
+        // Find all agents with "Architect" in the name
+        const architectAgents = loadedAgents.filter(agent => 
+          agent.name.includes('Architect') || agent.id === 'architect'
+        );
+        
+        if (architectAgents.length > 1) {
+          console.log(`🧹 Found ${architectAgents.length} Architect agents, cleaning up duplicates...`);
+          
+          // Keep only the one with id="architect", delete the rest
+          for (const agent of architectAgents) {
+            if (agent.id !== 'architect') {
+              await fetch(`/api/agents/${agent.id}`, { method: 'DELETE' });
+              console.log(`🗑️ Deleted duplicate agent: ${agent.name} (${agent.id})`);
+            }
+          }
+          
+          // Reload agents after cleanup
+          const cleanResponse = await fetch('/api/agents');
+          loadedAgents = await cleanResponse.json();
+        }
+        
+        // Ensure THE SINGLE Architect agent exists with correct settings
         const architectIndex = loadedAgents.findIndex(agent => agent.id === "architect");
         if (architectIndex >= 0) {
           // Update existing architect if needed
@@ -509,9 +583,9 @@ export default function Page() {
           }
           console.log('✅ The Architect agent loaded from database');
         } else {
-          // Create new architect agent in database
+          // Create new architect agent in database WITH EXPLICIT ID
           const architectAgent = {
-            id: "architect",
+            id: "architect",  // EXPLICIT ID to prevent duplicates
             name: "The Architect (SOW Generator)",
             systemPrompt: THE_ARCHITECT_SYSTEM_PROMPT,
             model: "anythingllm"
@@ -847,79 +921,90 @@ export default function Page() {
 
   // ==================== WORKSPACE & SOW HANDLERS (NEW) ====================
   const handleCreateWorkspace = async (workspaceName: string) => {
-    const newWorkspaceId = `ws-${Date.now()}`;
-    const newWorkspace: Workspace = {
-      id: newWorkspaceId,
-      name: workspaceName,
-      sows: []
-    };
-    setWorkspaces(prev => [...prev, newWorkspace]);
-    setCurrentWorkspaceId(newWorkspaceId);
-    
-    // IMMEDIATELY CREATE A BLANK SOW (NO MODAL, NO USER INPUT)
-    const newSOWId = `sow-${Date.now()}`;
-    const sowTitle = `New SOW for ${workspaceName}`; // Auto-generated title
-    const newSOW: SOW = {
-      id: newSOWId,
-      name: sowTitle,
-      workspaceId: newWorkspaceId
-    };
-    
-    // Add SOW to the workspace
-    setWorkspaces(prev => prev.map(ws => 
-      ws.id === newWorkspaceId ? { ...ws, sows: [newSOW] } : ws
-    ));
-    setCurrentSOWId(newSOWId);
-    
-    // AUTOMATICALLY SWITCH TO EDITOR VIEW
-    setViewMode('editor');
-    
-    // CREATE A NEW BLANK DOCUMENT
-    const newDocId = `doc${Date.now()}`;
-    const newDoc: Document = {
-      id: newDocId,
-      title: sowTitle, // Use auto-generated title
-      content: defaultEditorContent,
-      folderId: undefined,
-      workspaceSlug: undefined,
-    };
-    
-    // Save to database
     try {
-      const saveResponse = await fetch('/api/sow/create', {
+      // 🔥 CRITICAL FIX: Create folder in DATABASE first
+      console.log('📁 Creating folder/workspace in database:', workspaceName);
+      const folderResponse = await fetch('/api/folders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: workspaceName }),
+      });
+
+      if (!folderResponse.ok) {
+        throw new Error('Failed to create folder');
+      }
+
+      const folderData = await folderResponse.json();
+      const folderId = folderData.id;
+      console.log('✅ Folder created with ID:', folderId);
+
+      // Create workspace in local state
+      const newWorkspace: Workspace = {
+        id: folderId, // Use database folder ID
+        name: workspaceName,
+        sows: []
+      };
+      
+      // IMMEDIATELY CREATE A BLANK SOW (NO MODAL, NO USER INPUT)
+      const sowTitle = `New SOW for ${workspaceName}`; // Auto-generated title
+      
+      // Save SOW to database with folder ID
+      console.log('📄 Creating SOW in database');
+      const sowResponse = await fetch('/api/sow/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: sowTitle,
           content: defaultEditorContent,
-          client_name: workspaceName,
-          client_email: '',
-          total_investment: 0,
+          clientName: workspaceName,
+          clientEmail: '',
+          totalInvestment: 0,
+          folderId: folderId, // Associate with folder
         }),
       });
 
-      if (saveResponse.ok) {
-        const savedDoc = await saveResponse.json();
-        // Update local state with database ID
-        const docWithDbId: Document = {
-          ...newDoc,
-          id: savedDoc.id || newDocId,
-        };
-        setDocuments(prev => [...prev, docWithDbId]);
-        setCurrentDocId(docWithDbId.id);
-        toast.success(`✅ Created workspace "${workspaceName}" with blank SOW ready to edit!`);
-      } else {
-        // Fallback: save locally if database fails
-        setDocuments(prev => [...prev, newDoc]);
-        setCurrentDocId(newDocId);
-        toast.success(`✅ Created workspace "${workspaceName}" (local save)`);
+      if (!sowResponse.ok) {
+        throw new Error('Failed to create SOW');
       }
-    } catch (error) {
-      console.error('Error saving SOW:', error);
-      // Fallback: save locally
+
+      const sowData = await sowResponse.json();
+      const sowId = sowData.id || sowData.sowId;
+      console.log('✅ SOW created with ID:', sowId);
+
+      // Create SOW object for local state
+      const newSOW: SOW = {
+        id: sowId,
+        name: sowTitle,
+        workspaceId: folderId
+      };
+
+      // Update workspace with the SOW
+      newWorkspace.sows = [newSOW];
+
+      // Update state
+      setWorkspaces(prev => [...prev, newWorkspace]);
+      setCurrentWorkspaceId(folderId);
+      setCurrentSOWId(sowId);
+      
+      // AUTOMATICALLY SWITCH TO EDITOR VIEW
+      setViewMode('editor');
+      
+      // Add document to local state
+      const newDoc: Document = {
+        id: sowId,
+        title: sowTitle,
+        content: defaultEditorContent,
+        folderId: folderId,
+        workspaceSlug: undefined,
+      };
+
       setDocuments(prev => [...prev, newDoc]);
-      setCurrentDocId(newDocId);
-      toast.success(`✅ Created workspace "${workspaceName}" (offline mode)`);
+      setCurrentDocId(sowId);
+      
+      toast.success(`✅ Created workspace "${workspaceName}" with blank SOW ready to edit!`);
+    } catch (error) {
+      console.error('❌ Error creating workspace:', error);
+      toast.error('Failed to create workspace. Please try again.');
     }
   };
 
@@ -1019,9 +1104,9 @@ export default function Page() {
     }
   };
 
-  const handleViewChange = (view: 'dashboard' | 'ai-management' | 'editor') => {
-    if (view === 'ai-management') {
-      setViewMode('ai-management');
+  const handleViewChange = (view: 'dashboard' | 'gardner-studio' | 'editor') => {
+    if (view === 'gardner-studio') {
+      setViewMode('gardner-studio');
     } else if (view === 'dashboard') {
       setViewMode('dashboard');
     } else {
@@ -1688,27 +1773,43 @@ export default function Page() {
       try {
         const useAnythingLLM = effectiveAgent.model === 'anythingllm';
         
-        // 🔒 CRITICAL FIX: Use dedicated dashboard route when in dashboard mode
-        // This ensures dashboard chat ONLY connects to sow-master-dashboard workspace
-        const endpoint = isDashboardMode && useAnythingLLM 
-          ? '/api/dashboard/chat' 
-          : useAnythingLLM 
-            ? '/api/anythingllm/chat' 
-            : '/api/chat';
-        
-        // Get the appropriate workspace for this agent (only used for editor mode now)
-        const workspaceSlug = useAnythingLLM && !isDashboardMode 
-          ? getWorkspaceForAgent(currentAgentId || '') 
-          : undefined;
+        // 🎯 WORKSPACE SELECTOR ROUTING:
+        // Master View → /api/dashboard/chat (hardcoded to sow-master-dashboard)
+        // Client Workspace → /api/anythingllm/chat (with selected workspace slug)
+        // Editor Mode → existing logic
+        let endpoint: string;
+        let workspaceSlug: string | undefined;
 
-        console.log('🔍 [Chat Debug]', {
+        if (isDashboardMode && useAnythingLLM) {
+          // Dashboard mode routing
+          if (dashboardChatTarget === 'sow-master-dashboard') {
+            // Master view: use dedicated dashboard route
+            endpoint = '/api/dashboard/chat';
+            workspaceSlug = undefined; // Not needed, hardcoded in route
+          } else {
+            // Client-specific view: use general AnythingLLM route with workspace slug
+            endpoint = '/api/anythingllm/chat';
+            workspaceSlug = dashboardChatTarget;
+          }
+        } else {
+          // Editor mode routing (existing logic)
+          endpoint = useAnythingLLM ? '/api/anythingllm/chat' : '/api/chat';
+          workspaceSlug = useAnythingLLM && !isDashboardMode 
+            ? getWorkspaceForAgent(currentAgentId || '') 
+            : undefined;
+        }
+
+        console.log('🎯 [Dashboard Chat Routing]', {
           isDashboardMode,
           useAnythingLLM,
+          dashboardChatTarget,
           endpoint,
           workspaceSlug,
           agentModel: effectiveAgent.model,
           agentName: effectiveAgent.name,
-          routeType: isDashboardMode ? 'DEDICATED_DASHBOARD_ROUTE' : 'STANDARD_ROUTE'
+          routeType: isDashboardMode 
+            ? (dashboardChatTarget === 'sow-master-dashboard' ? 'MASTER_DASHBOARD' : 'CLIENT_WORKSPACE')
+            : 'EDITOR_MODE'
         });
 
         const response = await fetch(endpoint, {
@@ -1912,11 +2013,16 @@ export default function Page() {
           ) : viewMode === 'dashboard' ? (
             <EnhancedDashboard />
           ) : (
-            <KnowledgeBase />
+            <GardnerStudio onSelectGardner={(slug) => {
+              // TODO: Route to Gardner chat
+              console.log('Selected Gardner:', slug);
+              toast.success('Gardner selected! Chat integration coming soon.');
+            }} />
           )
         }
         rightPanel={
-          // Show AI Chat in both editor and dashboard modes
+          // ✨ HIDE AI Chat panel completely in Gardner Studio mode
+          // Only show in editor and dashboard modes for a cleaner, context-appropriate UX
           viewMode === 'editor' || viewMode === 'dashboard' ? (
             <AgentSidebar
               isOpen={agentSidebarOpen}
@@ -1932,17 +2038,16 @@ export default function Page() {
               isLoading={isChatLoading}
               streamingMessageId={streamingMessageId}
               viewMode={viewMode} // Pass viewMode for context awareness
+              dashboardChatTarget={dashboardChatTarget}
+              onDashboardWorkspaceChange={setDashboardChatTarget}
+              availableWorkspaces={availableWorkspaces}
               onInsertToEditor={(content) => {
                 console.log('📝 Insert to Editor button clicked from AI chat');
                 const cleanContent = content.replace(/<tool_call>[\s\S]*?<\/think>/gi, '').trim();
                 handleInsertContent(cleanContent || content);
               }}
             />
-          ) : (
-            <div className="h-full flex items-center justify-center text-gray-400">
-              <p>AI Chat unavailable in {viewMode} mode</p>
-            </div>
-          )
+          ) : null // Return null to completely remove the panel from the component tree
         }
         leftMinSize={15}
         mainMinSize={30}

@@ -17,7 +17,7 @@ interface ResizableLayoutProps {
   aiChatOpen?: boolean;
   onToggleSidebar?: () => void;
   onToggleAiChat?: () => void;
-  viewMode?: 'editor' | 'dashboard' | 'ai-management'; // NEW: Context awareness
+  viewMode?: 'editor' | 'dashboard' | 'gardner-studio'; // NEW: Context awareness
 }
 
 export function ResizableLayout({
@@ -58,8 +58,8 @@ export function ResizableLayout({
         </button>
       )}
 
-      {/* PERSISTENT RIGHT SIDEBAR TOGGLE TAB - HIDDEN IN AI MANAGEMENT MODE */}
-      {!aiChatOpen && viewMode !== 'ai-management' && (
+      {/* PERSISTENT RIGHT SIDEBAR TOGGLE TAB - HIDDEN WHEN NO RIGHT PANEL OR IN AI MANAGEMENT */}
+      {rightPanel && !aiChatOpen && viewMode !== 'ai-management' && (
         <button
           onClick={onToggleAiChat}
           className="fixed right-0 top-20 z-40 bg-[#1CBF79] hover:bg-[#15a366] text-black p-2 rounded-l-lg transition-all duration-300 shadow-lg"
@@ -81,21 +81,23 @@ export function ResizableLayout({
           {sidebarOpen && leftPanel}
         </div>
 
-        {/* MIDDLE EDITOR - GROWS TO FILL SPACE */}
+        {/* MIDDLE EDITOR - GROWS TO FILL SPACE - NO LEFT MARGIN/PADDING */}
         <div 
-          className={`flex-1 h-full overflow-hidden min-w-0 flex flex-col transition-all duration-300`}
+          className={`flex-1 h-full overflow-hidden min-w-0 flex flex-col transition-all duration-300 ml-0`}
         >
           {mainPanel}
         </div>
 
-        {/* RIGHT CHAT PANEL - FIXED WIDTH OR 0 (NOT OVERLAPPING) */}
-        <div 
-          className={`h-full overflow-hidden flex-shrink-0 border-l border-gray-700 transition-all duration-300 bg-gray-950 ${
-            aiChatOpen ? 'w-[35%] min-w-96' : 'w-0 border-l-0'
-          }`}
-        >
-          {aiChatOpen && rightPanel}
-        </div>
+        {/* RIGHT CHAT PANEL - FIXED WIDTH OR 0 (HIDDEN COMPLETELY IN AI MANAGEMENT) */}
+        {rightPanel && (
+          <div 
+            className={`h-full overflow-hidden flex-shrink-0 border-l border-gray-700 transition-all duration-300 bg-gray-950 ${
+              aiChatOpen ? 'w-[35%] min-w-96' : 'w-0 border-l-0'
+            }`}
+          >
+            {aiChatOpen && rightPanel}
+          </div>
+        )}
       </div>
     </div>
   );

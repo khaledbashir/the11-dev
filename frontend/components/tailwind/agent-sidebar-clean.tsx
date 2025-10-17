@@ -51,7 +51,10 @@ interface AgentSidebarProps {
   isLoading?: boolean;
   onInsertToEditor?: (content: string) => void;
   streamingMessageId?: string | null; // Track which message is streaming
-  viewMode?: 'dashboard' | 'editor' | 'knowledge-base'; // NEW: Context awareness
+  viewMode?: 'dashboard' | 'editor' | 'gardner-studio'; // NEW: Context awareness
+  dashboardChatTarget?: string; // NEW: Workspace slug for dashboard mode
+  onDashboardWorkspaceChange?: (slug: string) => void; // NEW: Handler for workspace selection
+  availableWorkspaces?: Array<{slug: string, name: string}>; // NEW: Available workspaces
 }
 
 export default function AgentSidebar({
@@ -69,6 +72,9 @@ export default function AgentSidebar({
   onInsertToEditor,
   streamingMessageId,
   viewMode = 'editor', // Default to editor mode
+  dashboardChatTarget = 'sow-master-dashboard', // Default to master view
+  onDashboardWorkspaceChange,
+  availableWorkspaces = [{ slug: 'sow-master-dashboard', name: 'Master View' }],
 }: AgentSidebarProps) {
   const [chatInput, setChatInput] = useState("");
   const [models, setModels] = useState<OpenRouterModel[]>([]);
@@ -82,12 +88,12 @@ export default function AgentSidebar({
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Debug: Log when onInsertToEditor is available
-  useEffect(() => {
-    console.log('🔍 [AgentSidebar] onInsertToEditor prop:', onInsertToEditor ? 'Available ✅' : 'Missing ❌');
-    console.log('🔍 [AgentSidebar] Chat messages count:', chatMessages.length);
-    console.log('🔍 [AgentSidebar] Current agent ID:', currentAgentId);
-  }, [onInsertToEditor, chatMessages.length, currentAgentId]);
+  // Debug: Log when onInsertToEditor is available (DISABLED for performance)
+  // useEffect(() => {
+  //   console.log('🔍 [AgentSidebar] onInsertToEditor prop:', onInsertToEditor ? 'Available ✅' : 'Missing ❌');
+  //   console.log('🔍 [AgentSidebar] Chat messages count:', chatMessages.length);
+  //   console.log('🔍 [AgentSidebar] Current agent ID:', currentAgentId);
+  // }, [onInsertToEditor, chatMessages.length, currentAgentId]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -156,12 +162,20 @@ export default function AgentSidebar({
   const isDashboardMode = viewMode === 'dashboard';
   const isEditorMode = viewMode === 'editor';
 
+  // Get current workspace name for dashboard title
+  const currentWorkspaceName = availableWorkspaces.find(w => w.slug === dashboardChatTarget)?.name || 'Master View';
+  const isMasterView = dashboardChatTarget === 'sow-master-dashboard';
+
   return (
     <div className="h-full w-full bg-[#0e0f0f] border-l border-[#0E2E33] overflow-hidden flex flex-col">
       <div className="p-5 border-b border-[#0E2E33] bg-[#0e0f0f]">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-base font-bold text-white">
-            {isDashboardMode ? "Ask the Dashboard" : "AI Agent Chat"}
+            {isDashboardMode 
+              ? (isMasterView 
+                  ? "Ask the Dashboard" 
+                  : `Ask the Dashboard (Client: ${currentWorkspaceName})`)
+              : "AI Agent Chat"}
           </h2>
           {/* Close button - collapses the panel */}
           {onToggle && (
@@ -175,6 +189,30 @@ export default function AgentSidebar({
             </button>
           )}
         </div>
+
+        {/* Dashboard mode: Workspace selector */}
+        {isDashboardMode && onDashboardWorkspaceChange && (
+          <div className="mb-3">
+            <Label className="text-xs text-gray-400 mb-2 block">Chat Context</Label>
+            <Select value={dashboardChatTarget} onValueChange={onDashboardWorkspaceChange}>
+              <SelectTrigger className="h-10 text-sm bg-[#0E2E33] border-[#0E2E33] text-white">
+                <SelectValue placeholder="Select workspace" />
+              </SelectTrigger>
+              <SelectContent className="max-h-80 z-50">
+                {availableWorkspaces.map(workspace => (
+                  <SelectItem key={workspace.slug} value={workspace.slug}>
+                    {workspace.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-gray-500 mt-1">
+              {isMasterView 
+                ? "Querying master dashboard (all SOWs metadata)" 
+                : `Querying ${currentWorkspaceName}'s workspace`}
+            </p>
+          </div>
+        )}
           
           {/* Show agent selection and controls ONLY in editor mode, HIDE completely in dashboard mode */}
           {isEditorMode && (
@@ -260,7 +298,7 @@ export default function AgentSidebar({
                         <div className={`max-w-[85%] rounded-xl px-4 py-3 ${
                           msg.role === 'user' 
                             ? 'bg-[#1CBF79] text-white' 
-                            : 'bg-[#1b1b1e] text-gray-200 border border-[#0E2E33]'
+                            : 'bg-[#1b1b1e] text-white border border-[#0E2E33]'
                         }`}>
                           <div className="prose prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-1">
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -326,15 +364,16 @@ export default function AgentSidebar({
                     chatMessages.map(msg => {
                       const shouldShowButton = msg.role === 'assistant' && onInsertToEditor;
                       
-                      if (msg.role === 'assistant') {
-                        console.log('🔍 [Message Render]', {
-                          msgId: msg.id,
-                          role: msg.role,
-                          hasThinking: msg.content.includes('<think>'),
-                          hasOnInsertToEditor: !!onInsertToEditor,
-                          shouldShowButton,
-                        });
-                      }
+                      // Debug logging disabled for performance
+                      // if (msg.role === 'assistant') {
+                      //   console.log('🔍 [Message Render]', {
+                      //     msgId: msg.id,
+                      //     role: msg.role,
+                      //     hasThinking: msg.content.includes('<think>'),
+                      //     hasOnInsertToEditor: !!onInsertToEditor,
+                      //     shouldShowButton,
+                      //   });
+                      // }
                       
                       return (
                         <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
