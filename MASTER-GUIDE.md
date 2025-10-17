@@ -9,8 +9,61 @@ No new markdown files. Just maintain this one. Keep it organized.
 
 ## 🚀 QUICK START (30 SECONDS)
 
+### Development (Dev Mode)
 ```bash
 cd /root/the11
+./dev.sh
+```
+
+**Frontend runs on:** http://localhost:3333 ✅ (Default dev port)  
+**Backend runs on:** http://localhost:8000
+
+**Why 3333?** Port 3000 is commonly in use, so Next.js uses 3333 as the default alternative.
+
+### Production Build (Local Testing)
+```bash
+cd /root/the11/frontend
+pnpm build         # Creates optimized .next folder
+pnpm start         # Runs production build
+```
+
+**Frontend runs on:** http://localhost:3000 ✅ (Default prod port)
+
+### Production Deployment
+```bash
+# Set production env vars
+export NODE_ENV=production
+export NEXT_PUBLIC_BASE_URL=https://yourdomain.com
+
+# Build and run with PM2
+cd /root/the11/frontend
+pnpm build
+pm2 start "pnpm start" --name sow-frontend
+```
+
+**Will run on:** Port 3000 (or configure in production)
+
+---
+
+## 📝 Dev vs Production Port Explanation
+
+| Environment | Port | Command | When to Use |
+|------------|------|---------|------------|
+| **Dev Mode** | 3333 | `./dev.sh` or `PORT=3333 pnpm dev` | During development |
+| **Production Build (Local)** | 3000 | `pnpm start` | Testing prod locally |
+| **Production (Server)** | 80/443 | Docker or PM2 | Live server |
+
+**Why different ports?**
+- Port 3000: Standard Node.js default (used in production)
+- Port 3333: Alternative dev port (when 3000 is taken)
+- The `dev.sh` script explicitly sets `PORT=3333` to avoid conflicts
+
+**If port 3333 is taken:**
+```bash
+# Next.js will automatically find next available port
+# You'll see output like: "⚠ Port 3333 is in use, trying 3001 instead"
+# To fix it, kill the process:
+lsof -ti:3333 | xargs kill -9
 ./dev.sh
 ```
 
@@ -328,6 +381,184 @@ pnpm install
 ```
 
 **Result:** ✅ Build works, app starts successfully
+
+---
+
+## ❓ FREQUENTLY ASKED QUESTIONS (FAQ)
+
+### Q: Why is the app running on port 3001 instead of 3333?
+**A:** Port 3333 was already in use. Next.js automatically finds the next available port.
+
+**Solution:**
+```bash
+# Kill the process on 3333
+lsof -ti:3333 | xargs kill -9
+
+# Restart dev mode
+./dev.sh
+```
+
+The `dev.sh` script sets `PORT=3333`, but if that port is taken, Next.js will try 3334, 3335, etc.
+
+**Port Reference:**
+- **Dev:** 3333 (configured in dev.sh)
+- **Prod Local:** 3000 (default pnpm start)
+- **Prod Server:** 80/443 (via Docker or nginx)
+
+---
+
+### Q: Where are Delete and Rename buttons for SOWs in the sidebar?
+**A:** They're there! They appear on hover.
+
+**How to Use:**
+1. **Hover over a SOW** in the left sidebar
+2. **Two buttons appear:**
+   - 🟡 **Edit (pencil icon)** - Rename the SOW
+   - 🔴 **Delete (trash icon)** - Delete the SOW
+3. **Click the edit button** → Type new name → Press Enter
+4. **Click the delete button** → SOW is deleted from database and UI
+
+**File Location:** `/frontend/components/tailwind/sidebar.tsx` lines 140-155
+```typescript
+<div className="flex gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+  <button
+    className="p-1 rounded hover:bg-yellow-100 text-yellow-600 transition-colors"
+    onClick={(e)=>{e.stopPropagation();setRenamingId(doc.id);setRenameValue(doc.title);}}
+    title="Rename document"
+  >
+    <Edit3 className="h-4 w-4" />  ← Rename button
+  </button>
+  <button
+    className="p-1 rounded hover:bg-red-100 text-red-600 transition-colors"
+    onClick={(e)=>{e.stopPropagation();onDelete(doc.id);}}
+    title="Delete document"
+  >
+    <Trash2 className="h-4 w-4" />  ← Delete button
+  </button>
+</div>
+```
+
+**Features:**
+- ✅ Rename appears on hover (yellow pencil icon)
+- ✅ Delete appears on hover (red trash icon)
+- ✅ Rename with inline editing (click → type → Enter to save)
+- ✅ Delete removes from both database and UI immediately
+- ✅ Drag & drop icons also visible on hover
+
+---
+
+### Q: What's the difference between dev.sh, pnpm dev, and pnpm start?
+**A:**
+
+| Command | What It Does | When to Use |
+|---------|------------|-----------|
+| `./dev.sh` | Starts backend + frontend together | **Most common** - Use this |
+| `pnpm dev` | Starts only frontend with hot reload | Only if backend already running |
+| `pnpm build` | Creates optimized production build | Before `pnpm start` |
+| `pnpm start` | Runs production build (no hot reload) | Testing prod locally |
+| `pnpm build && pnpm start` | Build + run production mode | Full production testing |
+
+**Recommended workflow:**
+```bash
+# Development
+./dev.sh                          # Start both services with hot reload
+
+# Testing production locally
+cd frontend
+pnpm build                        # Create .next folder
+pnpm start                        # Run as production (port 3000)
+
+# Then test everything at http://localhost:3000 vs http://localhost:3333
+```
+
+---
+
+### Q: How do I know which port my app is actually on?
+**A:** Check the logs when the app starts:
+
+```bash
+# Dev mode (./dev.sh) will show:
+✅ SERVICES RUNNING
+🌐 Frontend: http://localhost:3333
+🔌 Backend:  http://localhost:8000
+
+# Or if port is taken:
+⚠ Port 3333 is in use, trying 3001 instead.
+  ▲ Next.js 15.1.4
+  - Local: http://localhost:3001
+```
+
+**Command to find it:**
+```bash
+# Check which process is running
+ps aux | grep "pnpm dev"
+ps aux | grep "next-server"
+
+# Check which port it's using
+lsof -i :3000
+lsof -i :3001
+lsof -i :3333
+```
+
+---
+
+### Q: Can I change the default port for dev mode?
+**A:** Yes!
+
+**Option 1: Modify dev.sh**
+```bash
+# In dev.sh, change this line:
+PORT=3333 pnpm dev
+
+# To:
+PORT=3000 pnpm dev
+```
+
+**Option 2: Override on command line**
+```bash
+PORT=5000 pnpm dev
+```
+
+**Option 3: Use environment variable**
+```bash
+export PORT=4000
+./dev.sh
+```
+
+---
+
+### Q: SOW isn't deleted even though I clicked delete button?
+**A:** Check these things:
+
+```bash
+# 1. Check if backend is running
+curl http://localhost:8000/health
+
+# 2. Test delete API manually
+curl -X DELETE http://localhost:3001/api/sow/{SOW_ID}
+
+# 3. Check backend logs
+tail -f /tmp/backend.log
+
+# 4. Check browser console for errors
+# Press F12 → Console tab → Look for red errors
+
+# 5. Verify database connection
+mysql -h 168.231.115.219 -u sg_sow_user -p'SG_sow_2025_SecurePass!' socialgarden_sow
+SELECT * FROM sows LIMIT 1;
+```
+
+---
+
+### Q: Can I rename a SOW directly in the editor tab?
+**A:** Not yet. You must:
+
+1. Hover over SOW name in **left sidebar**
+2. Click the **yellow pencil icon** that appears
+3. Type new name
+4. Press **Enter** to save
+
+**This is a design choice** - prevents accidental renames while editing. The title is auto-updated in the database when you change it.
 
 ---
 
