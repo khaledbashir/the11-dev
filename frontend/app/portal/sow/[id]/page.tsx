@@ -163,8 +163,32 @@ export default function ClientPortalPage() {
   };
 
   const handleDownloadPDF = async () => {
-    // Trigger PDF download
-    window.open(`/api/generate-pdf?sowId=${sowId}`, '_blank');
+    if (!sow) return;
+    
+    try {
+      // Trigger PDF download via GET request
+      const response = await fetch(`/api/generate-pdf?sowId=${sowId}`);
+      
+      if (!response.ok) {
+        console.error('Failed to generate PDF:', response.statusText);
+        alert('Failed to download PDF. Please try again.');
+        return;
+      }
+      
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${sow.clientName}-SOW.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      alert('Failed to download PDF. Please try again.');
+    }
   };
 
   const handleAcceptSOW = () => {
@@ -199,13 +223,13 @@ export default function ClientPortalPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0E0F0F] flex">
+    <div className="min-h-screen bg-[#0E0F0F] flex relative">
       {/* 🔥 SIDEBAR NAVIGATION - Like main app */}
       <aside className={`${sidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 bg-[#1A1A1D] border-r border-[#2A2A2D] flex flex-col overflow-hidden`}>
         {/* Logo Header */}
         <div className="p-6 border-b border-[#2A2A2D]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-lg flex items-center justify-center shadow-lg shadow-[#1CBF79]/20">
               <span className="text-white text-lg font-bold">SG</span>
             </div>
             <div>
@@ -304,9 +328,9 @@ export default function ClientPortalPage() {
       </aside>
 
       {/* 🔥 MAIN CONTENT AREA */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto max-w-full">
         {/* Top Bar */}
-        <header className="sticky top-0 z-40 bg-[#1A1A1D]/80 backdrop-blur-xl border-b border-[#2A2A2D]">
+        <header className="sticky top-0 z-40 bg-[#1A1A1D]/95 backdrop-blur-xl border-b border-[#2A2A2D] shadow-lg">
           <div className="px-8 py-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
@@ -318,15 +342,20 @@ export default function ClientPortalPage() {
                 </svg>
               </button>
               
-              <div>
-                <h1 className="text-xl font-bold text-white">{sow?.clientName}</h1>
-                <p className="text-sm text-gray-400">{sow?.title}</p>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-lg flex items-center justify-center shadow-lg shadow-[#1CBF79]/20">
+                  <span className="text-white font-bold text-sm">SG</span>
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-white">{sow?.clientName}</h1>
+                  <p className="text-sm text-gray-400 truncate max-w-md">{sow?.title}</p>
+                </div>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
               {accepted && (
-                <div className="flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-lg">
+                <div className="flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-lg shadow-lg shadow-green-500/10">
                   <CheckCircle className="w-4 h-4 text-green-400" />
                   <span className="text-sm font-semibold text-green-400">Accepted</span>
                 </div>
@@ -335,7 +364,7 @@ export default function ClientPortalPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-2 border-gray-600 text-gray-300 hover:bg-[#2A2A2D]"
+                className="gap-2 border-gray-600 text-gray-300 hover:bg-[#2A2A2D] hover:border-[#1CBF79]"
               >
                 <Share2 className="w-4 h-4" />
                 Share
@@ -345,70 +374,117 @@ export default function ClientPortalPage() {
         </header>
 
         {/* Content Area */}
-        <div className="p-8">
+        <div className="p-8 max-w-full">
           {renderTabContent()}
         </div>
       </main>
 
-      {/* 🔥 AI CHAT PANEL - Side drawer */}
+      {/* 🔥 AI CHAT PANEL - Slide in from right with overlay */}
       {showChat && (
-        <aside className="w-96 bg-[#1A1A1D] border-l border-[#2A2A2D] flex flex-col">
-          {/* Chat Header */}
-          <div className="p-6 border-b border-[#2A2A2D] bg-gradient-to-r from-purple-500/10 to-pink-500/10">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 text-white" />
+        <>
+          {/* Overlay backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300"
+            onClick={() => setShowChat(false)}
+          />
+          
+          {/* Sliding panel */}
+          <aside className="fixed right-0 top-0 bottom-0 w-[450px] bg-[#1A1A1D] border-l border-[#2A2A2D] flex flex-col z-50 shadow-2xl animate-slide-in">
+            {/* Chat Header */}
+            <div className="p-6 border-b border-[#2A2A2D] bg-gradient-to-r from-[#1CBF79]/10 to-[#15965E]/10">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-lg flex items-center justify-center shadow-lg shadow-[#1CBF79]/30">
+                    <Sparkles className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-bold text-lg">AI Assistant</h3>
+                    <p className="text-xs text-gray-400">Powered by Social Garden</p>
+                  </div>
                 </div>
-                <h3 className="text-white font-bold">AI Assistant</h3>
-              </div>
-              <button
-                onClick={() => setShowChat(false)}
-                className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
-              >
-                ✕
-              </button>
-            </div>
-            <p className="text-sm text-gray-400">Ask me anything about this proposal</p>
-          </div>
-
-          {/* Chat Content */}
-          <div className="flex-1 overflow-auto p-6 space-y-4">
-            {!sow?.embedId ? (
-              <div className="flex flex-col items-center justify-center h-full text-center">
-                <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mb-4 animate-pulse">
-                  <Sparkles className="w-8 h-8 text-white" />
-                </div>
-                <p className="text-white font-semibold mb-2">Loading AI Assistant...</p>
-                <p className="text-sm text-gray-400">Preparing knowledge base</p>
-              </div>
-            ) : (
-              <div id="social-garden-chat-container" className="h-full">
-                {/* AI widget loads here */}
-              </div>
-            )}
-          </div>
-
-          {/* Suggested Questions */}
-          <div className="p-4 border-t border-[#2A2A2D]">
-            <p className="text-xs text-gray-500 mb-3 font-semibold uppercase">Quick Questions</p>
-            <div className="space-y-2">
-              {[
-                "What's the total investment?",
-                "Timeline for deliverables?",
-                "What's included in social media?",
-              ].map((q, i) => (
                 <button
-                  key={i}
-                  className="w-full text-left text-xs p-3 rounded-lg bg-[#2A2A2D] hover:bg-[#3A3A3D] text-gray-300 transition-colors border border-gray-700 hover:border-[#1CBF79]"
+                  onClick={() => setShowChat(false)}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
                 >
-                  {q}
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
-              ))}
+              </div>
+              <p className="text-sm text-gray-400">Ask me anything about this proposal - pricing, timeline, deliverables, or scope.</p>
             </div>
-          </div>
-        </aside>
+
+            {/* Chat Content */}
+            <div className="flex-1 overflow-auto p-6 bg-[#0E0F0F]">
+              {!sow?.embedId ? (
+                <div className="flex flex-col items-center justify-center h-full text-center">
+                  <div className="w-20 h-20 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-2xl flex items-center justify-center mb-6 animate-pulse shadow-xl shadow-[#1CBF79]/30">
+                    <Sparkles className="w-10 h-10 text-white" />
+                  </div>
+                  <p className="text-white font-semibold text-lg mb-2">Loading AI Assistant...</p>
+                  <p className="text-sm text-gray-400">Analyzing {sow?.clientName}'s proposal</p>
+                  <div className="mt-6 flex gap-2">
+                    <div className="w-2 h-2 bg-[#1CBF79] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                    <div className="w-2 h-2 bg-[#1CBF79] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                    <div className="w-2 h-2 bg-[#1CBF79] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                  </div>
+                </div>
+              ) : (
+                <div id="social-garden-chat-container" className="h-full">
+                  {/* AI widget loads here */}
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center max-w-sm">
+                      <div className="w-16 h-16 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-2xl flex items-center justify-center mb-4 mx-auto shadow-lg shadow-[#1CBF79]/30">
+                        <Sparkles className="w-8 h-8 text-white" />
+                      </div>
+                      <p className="text-white font-bold text-lg mb-2">AI Ready!</p>
+                      <p className="text-sm text-gray-400 mb-6">Start by asking a question below</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Suggested Questions */}
+            <div className="p-6 border-t border-[#2A2A2D] bg-[#1A1A1D]">
+              <p className="text-xs text-gray-500 mb-3 font-semibold uppercase tracking-wider">Quick Questions</p>
+              <div className="space-y-2">
+                {[
+                  { icon: DollarSign, text: "What's the total investment?" },
+                  { icon: Clock, text: "Timeline for deliverables?" },
+                  { icon: FileText, text: "What's included in the scope?" },
+                ].map((q, i) => (
+                  <button
+                    key={i}
+                    className="w-full text-left text-sm p-3 rounded-lg bg-[#2A2A2D] hover:bg-[#3A3A3D] text-gray-300 transition-all border border-gray-700 hover:border-[#1CBF79] flex items-center gap-3 group"
+                  >
+                    <q.icon className="w-4 h-4 text-gray-500 group-hover:text-[#1CBF79] transition-colors" />
+                    <span>{q.text}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </aside>
+        </>
       )}
+      
+      {/* Add animation keyframes */}
+      <style jsx global>{`
+        @keyframes slide-in {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        
+        .animate-slide-in {
+          animation: slide-in 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 
@@ -558,19 +634,23 @@ export default function ClientPortalPage() {
 
       case 'content':
         return (
-          <div className="max-w-4xl">
-            <div className="bg-[#1A1A1D] border border-[#2A2A2D] rounded-2xl p-12">
+          <div className="max-w-5xl mx-auto">
+            <div className="bg-[#1A1A1D] border border-[#2A2A2D] rounded-2xl p-12 shadow-xl">
               <div 
                 className="prose prose-invert prose-lg max-w-none 
-                  prose-headings:text-white 
-                  prose-p:text-gray-300 
-                  prose-strong:text-white
-                  prose-a:text-[#1CBF79]
-                  prose-ul:text-gray-300
-                  prose-ol:text-gray-300
-                  prose-table:border-[#2A2A2D]
-                  prose-th:bg-[#2A2A2D] prose-th:text-white
-                  prose-td:border-[#2A2A2D] prose-td:text-gray-300"
+                  prose-headings:text-white prose-headings:font-bold
+                  prose-p:text-gray-300 prose-p:leading-relaxed
+                  prose-strong:text-white prose-strong:font-semibold
+                  prose-a:text-[#1CBF79] prose-a:no-underline hover:prose-a:underline
+                  prose-ul:text-gray-300 prose-ul:space-y-2
+                  prose-ol:text-gray-300 prose-ol:space-y-2
+                  prose-li:text-gray-300
+                  prose-table:w-full prose-table:border-collapse prose-table:my-8
+                  prose-thead:border-b-2 prose-thead:border-[#2A2A2D]
+                  prose-th:bg-[#2A2A2D] prose-th:text-white prose-th:font-bold prose-th:p-4 prose-th:text-left
+                  prose-td:border prose-td:border-[#2A2A2D] prose-td:text-gray-300 prose-td:p-4
+                  prose-tr:border-b prose-tr:border-[#2A2A2D]
+                  prose-tr:hover:bg-[#2A2A2D]/30 prose-tr:transition-colors"
                 dangerouslySetInnerHTML={{ __html: sow.htmlContent }}
               />
             </div>
@@ -579,35 +659,46 @@ export default function ClientPortalPage() {
 
       case 'pricing':
         return (
-          <div className="max-w-4xl space-y-6">
-            <div className="bg-gradient-to-r from-[#1CBF79]/20 to-blue-500/20 border border-[#1CBF79]/30 rounded-2xl p-8">
-              <h2 className="text-3xl font-bold text-white mb-2">Investment Breakdown</h2>
-              <p className="text-gray-400">Transparent pricing for exceptional value</p>
+          <div className="max-w-5xl mx-auto space-y-6">
+            <div className="bg-gradient-to-r from-[#1CBF79]/20 to-blue-500/20 border border-[#1CBF79]/30 rounded-2xl p-8 shadow-xl">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="p-3 bg-[#1CBF79]/20 rounded-xl">
+                  <DollarSign className="w-8 h-8 text-[#1CBF79]" />
+                </div>
+                <div>
+                  <h2 className="text-3xl font-bold text-white mb-1">Investment Breakdown</h2>
+                  <p className="text-gray-400">Transparent pricing for exceptional value</p>
+                </div>
+              </div>
             </div>
 
-            <div className="bg-[#1A1A1D] border border-[#2A2A2D] rounded-2xl overflow-hidden">
-              {/* Extract pricing table from HTML content */}
+            <div className="bg-[#1A1A1D] border border-[#2A2A2D] rounded-2xl overflow-hidden shadow-xl">
+              {/* Extract and style pricing table */}
               <div 
                 className="prose prose-invert max-w-none p-8
-                  prose-table:w-full
-                  prose-th:bg-[#2A2A2D] prose-th:text-white prose-th:p-4
-                  prose-td:border-[#2A2A2D] prose-td:text-gray-300 prose-td:p-4
-                  prose-tr:border-b prose-tr:border-[#2A2A2D]"
+                  prose-table:w-full prose-table:border-collapse
+                  prose-thead:border-b-2 prose-thead:border-[#1CBF79]/30
+                  prose-th:bg-gradient-to-r prose-th:from-[#2A2A2D] prose-th:to-[#2A2A2D]/80
+                  prose-th:text-white prose-th:font-bold prose-th:p-4 prose-th:text-left
+                  prose-td:border prose-td:border-[#2A2A2D] prose-td:text-gray-300 prose-td:p-4
+                  prose-tr:border-b prose-tr:border-[#2A2A2D]/50
+                  prose-tr:hover:bg-[#2A2A2D]/30 prose-tr:transition-colors
+                  prose-tbody:divide-y prose-tbody:divide-[#2A2A2D]"
                 dangerouslySetInnerHTML={{ __html: sow.htmlContent }}
               />
             </div>
 
-            <div className="bg-[#1A1A1D] border border-[#2A2A2D] rounded-2xl p-6">
+            <div className="bg-gradient-to-r from-[#1A1A1D] to-[#1A1A1D]/80 border-2 border-[#1CBF79]/30 rounded-2xl p-8 shadow-xl shadow-[#1CBF79]/10">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-xl font-bold text-white mb-1">Total Investment</h3>
-                  <p className="text-sm text-gray-400">All fees included</p>
+                  <h3 className="text-2xl font-bold text-white mb-2">Total Investment</h3>
+                  <p className="text-sm text-gray-400">All fees included • No hidden costs</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-4xl font-bold text-[#1CBF79]">
+                  <p className="text-5xl font-bold text-[#1CBF79] mb-1">
                     ${sow.totalInvestment.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
                   </p>
-                  <p className="text-sm text-gray-400">AUD (inc. GST)</p>
+                  <p className="text-sm text-gray-400 font-medium">AUD (inc. GST)</p>
                 </div>
               </div>
             </div>
