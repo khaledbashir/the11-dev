@@ -1258,14 +1258,19 @@ export default function Page() {
   };
 
   const handleExportPDF = async () => {
-    if (!currentDoc || !editorRef.current) return;
+    if (!currentDoc || !editorRef.current) {
+      toast.error('❌ No document selected');
+      return;
+    }
+    
+    toast.info('📄 Generating PDF...');
     
     try {
       // Get HTML directly from the editor (includes all formatting and custom nodes)
       const editorHTML = editorRef.current.getHTML();
       
       if (!editorHTML || editorHTML.trim() === '' || editorHTML === '<p></p>') {
-        alert('Document is empty. Please add content before exporting.');
+        toast.error('❌ Document is empty. Please add content before exporting.');
         return;
       }
       
@@ -1286,6 +1291,7 @@ export default function Page() {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('PDF service error:', errorText);
+        toast.error(`❌ PDF service error: ${response.status}`);
         throw new Error(`PDF service error: ${errorText}`);
       }
       
@@ -1300,21 +1306,28 @@ export default function Page() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       
+      toast.success('✅ PDF downloaded successfully!');
+      
     } catch (error) {
       console.error('Error exporting PDF:', error);
-      alert(`Error exporting PDF: ${error.message}. Please try again.`);
+      toast.error(`❌ Error exporting PDF: ${error.message}`);
     }
   };
 
   const handleExportExcel = () => {
-    if (!currentDoc) return;
+    if (!currentDoc) {
+      toast.error('❌ No document selected');
+      return;
+    }
+    
+    toast.info('📊 Generating Excel...');
     
     try {
       // Extract pricing data from document
       const pricingRows = extractPricingFromContent(currentDoc.content);
       
       if (pricingRows.length === 0) {
-        alert('No pricing table found in document. Please generate a SOW first.');
+        toast.error('❌ No pricing table found in document. Please generate a SOW first.');
         return;
       }
       
@@ -1328,9 +1341,11 @@ export default function Page() {
         pricingRows,
         ...sowData,
       }, filename);
+      
+      toast.success('✅ Excel downloaded successfully!');
     } catch (error) {
       console.error('Error exporting Excel:', error);
-      alert('Error exporting Excel. Please try again.');
+      toast.error(`❌ Error exporting Excel: ${error.message}`);
     }
   };
 
@@ -2077,10 +2092,69 @@ export default function Page() {
                   isSaving={false}
                   onExportPDF={handleExportPDF}
                   onExportExcel={handleExportExcel}
-                  onSharePortal={() => {
-                    const portalUrl = `${window.location.origin}/portal/sow/${currentDoc.id}`;
-                    navigator.clipboard.writeText(portalUrl);
-                    toast.success('✅ Portal link copied to clipboard!');
+                  onSharePortal={async () => {
+                    if (!currentDoc) {
+                      toast.error('❌ No document selected');
+                      return;
+                    }
+
+                    toast.info('📤 Preparing portal link...');
+
+                    try {
+                      // 1. First, embed the SOW to AnythingLLM
+                      const currentFolder = folders.find(f => f.id === currentDoc.folderId);
+                      
+                      if (!currentFolder || !currentFolder.workspaceSlug) {
+                        toast.error('❌ No workspace found for this SOW');
+                        return;
+                      }
+
+                      // Get HTML content from editor
+                      const htmlContent = editorRef.current?.getHTML() || '';
+                      
+                      if (!htmlContent || htmlContent === '<p></p>') {
+                        toast.error('❌ Document is empty. Add content before sharing.');
+                        return;
+                      }
+
+                      // Embed to AnythingLLM (both client and master workspaces)
+                      await anythingLLM.embedSOWInBothWorkspaces(
+                        currentFolder.workspaceSlug,
+                        currentDoc.title,
+                        htmlContent
+                      );
+
+                      // 2. Generate portal URL
+                      const portalUrl = `${window.location.origin}/portal/sow/${currentDoc.id}`;
+                      
+                      // 3. Copy to clipboard with fallback
+                      if (navigator.clipboard && navigator.clipboard.writeText) {
+                        await navigator.clipboard.writeText(portalUrl)
+                          .then(() => toast.success('✅ Portal link copied! SOW is now shareable.'))
+                          .catch(() => {
+                            // Fallback: Create temporary input and copy
+                            const input = document.createElement('input');
+                            input.value = portalUrl;
+                            document.body.appendChild(input);
+                            input.select();
+                            document.execCommand('copy');
+                            document.body.removeChild(input);
+                            toast.success('✅ Portal link copied! SOW is now shareable.');
+                          });
+                      } else {
+                        // Fallback for older browsers
+                        const input = document.createElement('input');
+                        input.value = portalUrl;
+                        document.body.appendChild(input);
+                        input.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(input);
+                        toast.success('✅ Portal link copied! SOW is now shareable.');
+                      }
+                    } catch (error) {
+                      console.error('Error sharing portal:', error);
+                      toast.error(`❌ Error preparing portal: ${error.message}`);
+                    }
                   }}
                 />
               )}

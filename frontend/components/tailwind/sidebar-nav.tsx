@@ -282,7 +282,7 @@ export default function SidebarNav({
           </button>
 
           {/* Workspace Name (truncated to prevent overflow) */}
-          <div className="flex-1 min-w-0 max-w-[140px]">
+          <div className="flex-1 min-w-0 max-w-[180px]">
             {renamingId === workspace.id ? (
               <Input
                 value={renameValue}
@@ -410,7 +410,7 @@ export default function SidebarNav({
         <FileText className="w-4 h-4 flex-shrink-0" />
 
         {/* SOW Name (truncated to prevent overflow) */}
-        <div className="flex-1 min-w-0 max-w-[120px]">
+        <div className="flex-1 min-w-0 max-w-[160px]">
           {renamingId === sow.id ? (
             <Input
               value={renameValue}
@@ -468,7 +468,7 @@ export default function SidebarNav({
   }
 
   return (
-    <div className="w-64 h-full bg-[#0E0F0F] border-r border-gray-800 flex flex-col relative">
+    <div className="w-80 h-full bg-[#0E0F0F] border-r border-gray-800 flex flex-col relative">
       {/* COLLAPSE BUTTON - Top Right Corner */}
       {onToggleSidebar && (
         <button
