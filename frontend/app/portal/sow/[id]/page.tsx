@@ -47,9 +47,27 @@ export default function ClientPortalPage() {
   const [socialPosts, setSocialPosts] = useState<number>(20);
   const [adSpend, setAdSpend] = useState<number>(2000);
 
+  // AI-Recommended Add-Ons
+  interface Recommendation {
+    id: number;
+    service_id: string;
+    service_name: string;
+    service_description: string;
+    recommended_price: number;
+    pricing_unit: string;
+    category: string;
+    ai_reasoning: string;
+    relevance_score: number;
+    is_selected: boolean;
+  }
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [selectedAddOns, setSelectedAddOns] = useState<number[]>([]);
+
   useEffect(() => {
     // Load SOW data
     loadSOW();
+    // Load AI recommendations
+    loadRecommendations();
   }, [sowId]);
 
   useEffect(() => {
@@ -174,6 +192,47 @@ export default function ClientPortalPage() {
     } catch (error) {
       console.error('Error loading SOW:', error);
       setLoading(false);
+    }
+  };
+
+  const loadRecommendations = async () => {
+    try {
+      const response = await fetch(`/api/sow/${sowId}/recommendations`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setRecommendations(data.recommendations);
+        // Pre-select previously selected add-ons
+        const preSelected = data.recommendations
+          .filter((r: Recommendation) => r.is_selected)
+          .map((r: Recommendation) => r.id);
+        setSelectedAddOns(preSelected);
+      }
+    } catch (error) {
+      console.error('Error loading recommendations:', error);
+    }
+  };
+
+  const handleToggleAddOn = async (recommendationId: number) => {
+    const isSelected = selectedAddOns.includes(recommendationId);
+    const newSelection = isSelected
+      ? selectedAddOns.filter(id => id !== recommendationId)
+      : [...selectedAddOns, recommendationId];
+    
+    setSelectedAddOns(newSelection);
+
+    // Update database
+    try {
+      await fetch(`/api/sow/${sowId}/recommendations`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recommendationIds: [recommendationId],
+          isSelected: !isSelected,
+        }),
+      });
+    } catch (error) {
+      console.error('Error updating recommendation:', error);
     }
   };
 
@@ -812,7 +871,12 @@ export default function ClientPortalPage() {
         const socialCost = socialPosts * 25; // $25 per social post
         const adManagementFee = adSpend * 0.15; // 15% of ad spend
         
-        const subtotal = baseServicesTotal + contentCost + socialCost + adManagementFee;
+        // Add-ons total (AI-recommended services)
+        const addOnsTotal = recommendations
+          .filter(r => selectedAddOns.includes(r.id))
+          .reduce((sum, r) => sum + r.recommended_price, 0);
+        
+        const subtotal = baseServicesTotal + contentCost + socialCost + adManagementFee + addOnsTotal;
         const gst = subtotal * 0.1; // 10% GST
         const calculatedTotal = subtotal + gst;
 
@@ -1025,6 +1089,17 @@ export default function ClientPortalPage() {
                         <span className="text-white font-medium">${(adSpend * 0.15).toLocaleString()}</span>
                       </div>
                     )}
+                    
+                    {/* Show selected add-ons in summary */}
+                    {selectedAddOns.length > 0 && recommendations.filter(r => selectedAddOns.includes(r.id)).map((rec) => (
+                      <div key={rec.id} className="flex items-center justify-between text-sm border-t border-purple-500/30 pt-3 mt-3">
+                        <span className="text-purple-300 flex items-center gap-2">
+                          <Sparkles className="w-3 h-3" />
+                          {rec.service_name}
+                        </span>
+                        <span className="text-purple-300 font-medium">${rec.recommended_price.toLocaleString()}</span>
+                      </div>
+                    ))}
                   </div>
 
                   <div className="space-y-2 mb-6">
@@ -1077,6 +1152,134 @@ export default function ClientPortalPage() {
                 </div>
               </div>
             </div>
+
+            {/* AI-Recommended Add-Ons Section */}
+            {recommendations.length > 0 && (
+              <div className="bg-gradient-to-br from-purple-500/10 via-pink-500/10 to-blue-500/10 border-2 border-purple-500/30 rounded-2xl p-8 mt-12">
+                <div className="flex items-start gap-4 mb-6">
+                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <Sparkles className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-2xl font-bold text-white mb-2">
+                      Recommended Add-Ons for You
+                    </h3>
+                    <p className="text-gray-400">
+                      Based on AI analysis of your business, these services could significantly boost your results
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                  {recommendations.map((rec) => {
+                    const isSelected = selectedAddOns.includes(rec.id);
+                    return (
+                      <div
+                        key={rec.id}
+                        className={`
+                          bg-[#1A1A1D] border-2 rounded-xl p-6 transition-all cursor-pointer
+                          ${isSelected 
+                            ? 'border-[#1CBF79] bg-[#1CBF79]/5' 
+                            : 'border-[#2A2A2D] hover:border-purple-500/50'
+                          }
+                        `}
+                        onClick={() => handleToggleAddOn(rec.id)}
+                      >
+                        <div className="flex items-start justify-between gap-6">
+                          {/* Left: Checkbox + Service Info */}
+                          <div className="flex items-start gap-4 flex-1">
+                            {/* Checkbox */}
+                            <div 
+                              className={`
+                                w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0 mt-1
+                                transition-all
+                                ${isSelected 
+                                  ? 'bg-[#1CBF79] border-[#1CBF79]' 
+                                  : 'border-[#2A2A2D] hover:border-purple-500/50'
+                                }
+                              `}
+                            >
+                              {isSelected && (
+                                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </div>
+
+                            {/* Service Details */}
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-2">
+                                <h4 className="text-lg font-bold text-white">{rec.service_name}</h4>
+                                <span className="px-2 py-1 bg-purple-500/20 text-purple-300 text-xs rounded font-medium">
+                                  {(rec.relevance_score * 100).toFixed(0)}% match
+                                </span>
+                              </div>
+
+                              <p className="text-sm text-gray-400 mb-3">
+                                {rec.service_description}
+                              </p>
+
+                              {/* AI Reasoning */}
+                              <div className="bg-[#0E0F0F] border border-[#2A2A2D] rounded-lg p-4">
+                                <div className="flex items-start gap-3">
+                                  <div className="w-6 h-6 bg-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <Sparkles className="w-4 h-4 text-purple-400" />
+                                  </div>
+                                  <div className="flex-1">
+                                    <p className="text-xs font-semibold text-purple-400 mb-1 uppercase tracking-wider">
+                                      Why this matters for you
+                                    </p>
+                                    <p className="text-sm text-gray-300 leading-relaxed">
+                                      {rec.ai_reasoning}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Right: Pricing */}
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-2xl font-bold text-[#1CBF79]">
+                              ${rec.recommended_price.toLocaleString()}
+                            </p>
+                            <p className="text-xs text-gray-500">per {rec.pricing_unit}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Add-Ons Summary */}
+                {selectedAddOns.length > 0 && (
+                  <div className="mt-6 bg-[#0E0F0F] border border-[#2A2A2D] rounded-xl p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h4 className="text-sm font-semibold text-white mb-1">
+                          Selected Add-Ons ({selectedAddOns.length})
+                        </h4>
+                        <p className="text-xs text-gray-400">These will be added to your total investment</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-2xl font-bold text-purple-400">
+                          +${addOnsTotal.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                        </p>
+                        <p className="text-xs text-gray-500">additional per month</p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setShowChat(true)}
+                      className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2"
+                    >
+                      <MessageCircle className="w-5 h-5" />
+                      Request Custom Quote for Selected Add-Ons
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Bottom CTA */}
             <div className="bg-gradient-to-r from-[#1CBF79]/10 via-blue-500/10 to-purple-500/10 border border-[#2A2A2D] rounded-2xl p-6">
