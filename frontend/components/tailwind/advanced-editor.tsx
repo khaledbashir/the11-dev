@@ -112,7 +112,7 @@ const TailwindAdvancedEditor = forwardRef(({
   if (!initialContent) return null;
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full overflow-hidden flex flex-col">
       <div className="flex absolute right-5 top-5 z-10 mb-5 gap-2">
         <div className="rounded-lg bg-accent px-2 py-1 text-sm text-muted-foreground">{saveStatus}</div>
         <div className={charsCount ? "rounded-lg bg-accent px-2 py-1 text-sm text-muted-foreground" : "hidden"}>
@@ -124,7 +124,7 @@ const TailwindAdvancedEditor = forwardRef(({
           immediatelyRender={false}
           initialContent={initialContent}
           extensions={extensions}
-          className="relative w-full h-full border-none bg-background"
+          className="relative w-full h-full border-none bg-background overflow-y-auto"
           onCreate={({ editor }) => setEditor(editor)}
           editorProps={{
             handleDOMEvents: {
@@ -134,7 +134,7 @@ const TailwindAdvancedEditor = forwardRef(({
             handleDrop: (view, event, _slice, moved) => handleImageDrop(view, event, moved, uploadFn),
             attributes: {
               class:
-                "prose prose-lg dark:prose-invert prose-headings:font-title font-default focus:outline-none max-w-full",
+                "prose prose-lg dark:prose-invert prose-headings:font-title font-default focus:outline-none max-w-full px-8 py-12",
             },
           }}
           onUpdate={({ editor }) => {

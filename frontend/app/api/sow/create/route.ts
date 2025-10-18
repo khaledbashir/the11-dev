@@ -10,31 +10,35 @@ export async function POST(req: NextRequest) {
   
   try {
     const body = await req.json();
-    
-    const {
-      title,
-      clientName,
-      clientEmail,
-      content,
-      totalInvestment,
-      folderId,
-      creatorEmail,
-      workspaceSlug,
-      embedId,
-    } = body;
+    console.log(' [SOW CREATE] Incoming body keys:', Object.keys(body));
 
-    // Validation - only title, clientName, and content are required
-    if (!title || !clientName || !content) {
-      console.error(' [SOW CREATE] Validation failed - missing fields', { title: !!title, clientName: !!clientName, content: !!content });
+    // Accept both camelCase and snake_case payloads from various callers
+    const title = body.title || body.title_text || body.name || null;
+    const clientName = body.clientName || body.client_name || body.client || null;
+    const clientEmail = body.clientEmail || body.client_email || null;
+    const content = body.content || body.body || body.sowContent || null;
+    const totalInvestment = body.totalInvestment ?? body.total_investment ?? 0;
+    const folderId = body.folderId || body.folder_id || null;
+    const creatorEmail = body.creatorEmail || body.creator_email || null;
+    const workspaceSlug = body.workspaceSlug || body.workspace_slug || body.workspace || null;
+    const embedId = body.embedId || body.embed_id || null;
+
+    // Validation - only title and content are strictly required for creating a draft SOW
+    const missing: string[] = [];
+    if (!title) missing.push('title');
+    if (!content) missing.push('content');
+
+    if (missing.length) {
+      console.error(' [SOW CREATE] Validation failed - missing fields', { missing, receivedKeys: Object.keys(body) });
       return NextResponse.json(
-        { error: 'Missing required fields: title, clientName, content' },
+        { error: `Missing required fields: ${missing.join(', ')}`, received: Object.keys(body) },
         { status: 400 }
       );
     }
     
 
     // Generate unique ID
-    const sowId = generateSOWId();
+  const sowId = generateSOWId();
     
     // Set expiration date (default: 30 days from now)
     const expiresAt = new Date();

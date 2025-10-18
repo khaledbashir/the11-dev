@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from "./ui/dialog";
@@ -16,7 +16,27 @@ import {
   LayoutDashboard,
   Sparkles,
   ChevronLeft,
+  GripVertical,
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface SOW {
   id: string;
@@ -47,6 +67,8 @@ interface SidebarNavProps {
   onRenameSOW: (id: string, title: string) => void;
   onDeleteSOW: (id: string) => void;
   onToggleSidebar?: () => void;
+  onReorderWorkspaces?: (workspaces: Workspace[]) => void;
+  onReorderSOWs?: (workspaceId: string, sows: SOW[]) => void;
 }
 
 export default function SidebarNav({
@@ -64,6 +86,8 @@ export default function SidebarNav({
   onRenameSOW,
   onDeleteSOW,
   onToggleSidebar,
+  onReorderWorkspaces,
+  onReorderSOWs,
 }: SidebarNavProps) {
   const [expandedWorkspaces, setExpandedWorkspaces] = useState<Set<string>>(
     new Set(workspaces.map(w => w.id))
@@ -74,6 +98,25 @@ export default function SidebarNav({
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
   const [showNewSOWModal, setShowNewSOWModal] = useState(false);
   const [newSOWWorkspaceId, setNewSOWWorkspaceId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [localWorkspaces, setLocalWorkspaces] = useState(workspaces);
+
+  // Update local workspaces when prop changes
+  useEffect(() => {
+    setLocalWorkspaces(workspaces);
+  }, [workspaces]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Require 8px of movement to start drag
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const toggleWorkspace = (id: string) => {
     const newExpanded = new Set(expandedWorkspaces);
@@ -96,6 +139,269 @@ export default function SidebarNav({
       setRenameValue("");
     }
   };
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+
+    if (!over || active.id === over.id) return;
+
+    // Check if dragging workspace or SOW
+    const activeWorkspace = localWorkspaces.find(w => w.id === active.id);
+    const overWorkspace = localWorkspaces.find(w => w.id === over.id);
+
+    if (activeWorkspace && overWorkspace) {
+      // Reordering workspaces
+      const oldIndex = localWorkspaces.findIndex(w => w.id === active.id);
+      const newIndex = localWorkspaces.findIndex(w => w.id === over.id);
+      const reordered = arrayMove(localWorkspaces, oldIndex, newIndex);
+      setLocalWorkspaces(reordered);
+      onReorderWorkspaces?.(reordered);
+    } else {
+      // Reordering SOWs within a workspace
+      const activeSOW = localWorkspaces.flatMap(w => w.sows).find(s => s.id === active.id);
+      const overSOW = localWorkspaces.flatMap(w => w.sows).find(s => s.id === over.id);
+      
+      if (activeSOW && overSOW && activeSOW.workspaceId === overSOW.workspaceId) {
+        const workspaceId = activeSOW.workspaceId;
+        const workspace = localWorkspaces.find(w => w.id === workspaceId);
+        
+        if (workspace) {
+          const oldIndex = workspace.sows.findIndex(s => s.id === active.id);
+          const newIndex = workspace.sows.findIndex(s => s.id === over.id);
+          const reorderedSOWs = arrayMove(workspace.sows, oldIndex, newIndex);
+          
+          const updatedWorkspaces = localWorkspaces.map(w =>
+            w.id === workspaceId ? { ...w, sows: reorderedSOWs } : w
+          );
+          setLocalWorkspaces(updatedWorkspaces);
+          onReorderSOWs?.(workspaceId, reorderedSOWs);
+        }
+      }
+    }
+  };
+
+  // Sortable Workspace Component
+  function SortableWorkspaceItem({ workspace }: { workspace: Workspace }) {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({ id: workspace.id });
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+    };
+
+    const isExpanded = expandedWorkspaces.has(workspace.id);
+
+    return (
+      <div ref={setNodeRef} style={style}>
+        {/* Workspace Item */}
+        <div className="flex items-center gap-1 px-2 py-1 hover:bg-gray-800/50 rounded-lg group">
+          {/* Drag Handle */}
+          <button
+            {...attributes}
+            {...listeners}
+            className="p-1 hover:bg-gray-700 rounded transition-colors flex-shrink-0 cursor-grab active:cursor-grabbing"
+            title="Drag to reorder"
+          >
+            <GripVertical className="w-4 h-4 text-gray-500" />
+          </button>
+
+          {/* Toggle Arrow */}
+          <button
+            onClick={() => toggleWorkspace(workspace.id)}
+            className="p-1 hover:bg-gray-700 rounded transition-colors flex-shrink-0"
+          >
+            {isExpanded ? (
+              <ChevronDown className="w-4 h-4 text-gray-500" />
+            ) : (
+              <ChevronRight className="w-4 h-4 text-gray-500" />
+            )}
+          </button>
+
+          {/* Workspace Name */}
+          <div className="flex-1 min-w-0">
+            {renamingId === workspace.id ? (
+              <Input
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onBlur={() => handleRename(workspace.id, true)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleRename(workspace.id, true);
+                }}
+                className="h-6 py-0 text-xs bg-gray-800 border-gray-600"
+                autoFocus
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <button
+                onClick={() => {
+                  onSelectWorkspace(workspace.id);
+                }}
+                className={`w-full text-left px-2 py-1 text-sm transition-colors truncate ${
+                  currentWorkspaceId === workspace.id 
+                    ? 'text-[#1CBF79] font-medium' 
+                    : 'text-gray-300 hover:text-white'
+                }`}
+              >
+                {workspace.name}
+              </button>
+            )}
+          </div>
+
+          {/* Action Buttons (visible on hover) */}
+          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+            {/* Add New Doc */}
+            <button
+              onClick={() => {
+                setNewSOWWorkspaceId(workspace.id);
+                setShowNewSOWModal(true);
+              }}
+              className="p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-[#1CBF79] transition-colors"
+              title="New Doc"
+            >
+              <Plus className="w-3 h-3" />
+            </button>
+
+            {/* Rename */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setRenamingId(workspace.id);
+                setRenameValue(workspace.name);
+              }}
+              className="p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-gray-300 transition-colors"
+              title="Rename"
+            >
+              <Edit3 className="w-3 h-3" />
+            </button>
+
+            {/* Delete */}
+            <button
+              onClick={() => onDeleteWorkspace(workspace.id)}
+              className="p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-red-500 transition-colors"
+              title="Delete"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+
+        {/* SOWs in Workspace (when expanded) */}
+        {isExpanded && (
+          <div className="ml-6 space-y-0.5">
+            <SortableContext items={workspace.sows.map(s => s.id)} strategy={verticalListSortingStrategy}>
+              {workspace.sows.map((sow) => (
+                <SortableSOWItem key={sow.id} sow={sow} />
+              ))}
+            </SortableContext>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Sortable SOW Component
+  function SortableSOWItem({ sow }: { sow: SOW }) {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({ id: sow.id });
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+    };
+
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className={`flex items-center gap-2 px-2 py-1 rounded-lg group transition-colors ${
+          currentSOWId === sow.id
+            ? "bg-[#0e2e33] text-white"
+            : "text-gray-400 hover:text-gray-300 hover:bg-gray-800/50"
+        }`}
+      >
+        {/* Drag Handle */}
+        <button
+          {...attributes}
+          {...listeners}
+          className="p-0.5 hover:bg-gray-700 rounded transition-colors flex-shrink-0 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100"
+          title="Drag to reorder"
+        >
+          <GripVertical className="w-3 h-3 text-gray-500" />
+        </button>
+
+        <FileText className="w-4 h-4 flex-shrink-0" />
+
+        {/* SOW Name */}
+        <div className="flex-1 min-w-0">
+          {renamingId === sow.id ? (
+            <Input
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              onBlur={() => handleRename(sow.id, false)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleRename(sow.id, false);
+              }}
+              className="h-6 py-0 text-xs bg-gray-800 border-gray-600"
+              autoFocus
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <button
+              onClick={() => onSelectSOW(sow.id)}
+              className="w-full text-left text-xs truncate"
+            >
+              {sow.name}
+            </button>
+          )}
+        </div>
+
+        {/* SOW Actions (visible on hover) */}
+        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+          {/* Rename */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setRenamingId(sow.id);
+              setRenameValue(sow.name);
+            }}
+            className="p-0.5 hover:bg-gray-700 rounded text-gray-400 hover:text-gray-300 transition-colors"
+            title="Rename"
+          >
+            <Edit3 className="w-3 h-3" />
+          </button>
+
+          {/* Delete */}
+          <button
+            onClick={() => onDeleteSOW(sow.id)}
+            className="p-0.5 hover:bg-gray-700 rounded text-gray-400 hover:text-red-500 transition-colors"
+            title="Delete"
+          >
+            <Trash2 className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-64 h-full bg-[#0E0F0F] border-r border-gray-800 flex flex-col relative">
@@ -142,6 +448,16 @@ export default function SidebarNav({
 
       {/* WORKSPACES SECTION */}
       <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Search Bar */}
+        <div className="flex-shrink-0 px-4 py-3 border-b border-gray-800">
+          <Input
+            placeholder="Search workspaces..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-8 text-xs bg-gray-900 border-gray-700 text-gray-300 placeholder:text-gray-600"
+          />
+        </div>
+        
         {/* Workspaces Header */}
         <div className="flex-shrink-0 px-4 py-3 border-b border-gray-800 flex items-center justify-between">
           <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">Workspaces</h3>
@@ -193,158 +509,28 @@ export default function SidebarNav({
         {/* Workspaces List */}
         <ScrollArea className="flex-1">
           <div className="p-2 space-y-1">
-            {workspaces.map((workspace) => {
-              const isExpanded = expandedWorkspaces.has(workspace.id);
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext 
+                items={localWorkspaces.map(w => w.id)} 
+                strategy={verticalListSortingStrategy}
+              >
+                {localWorkspaces
+                  .filter(workspace => 
+                    workspace.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    workspace.sows.some(sow => sow.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                  )
+                  .map((workspace) => (
+                    <SortableWorkspaceItem key={workspace.id} workspace={workspace} />
+                  ))}
+              </SortableContext>
+            </DndContext>
 
-              return (
-                <div key={workspace.id}>
-                  {/* Workspace Item */}
-                  <div className="flex items-center gap-1 px-2 py-1 hover:bg-gray-800/50 rounded-lg group">
-                    {/* Toggle Arrow */}
-                    <button
-                      onClick={() => toggleWorkspace(workspace.id)}
-                      className="p-1 hover:bg-gray-700 rounded transition-colors flex-shrink-0"
-                    >
-                      {isExpanded ? (
-                        <ChevronDown className="w-4 h-4 text-gray-500" />
-                      ) : (
-                        <ChevronRight className="w-4 h-4 text-gray-500" />
-                      )}
-                    </button>
-
-                    {/* Workspace Name */}
-                    <div className="flex-1 min-w-0">
-                      {renamingId === workspace.id ? (
-                        <Input
-                          value={renameValue}
-                          onChange={(e) => setRenameValue(e.target.value)}
-                          onBlur={() => handleRename(workspace.id, true)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") handleRename(workspace.id, true);
-                          }}
-                          className="h-6 py-0 text-xs bg-gray-800 border-gray-600"
-                          autoFocus
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      ) : (
-                        <button
-                          onClick={() => onSelectSOW("")}
-                          className="w-full text-left px-2 py-1 text-sm text-gray-300 hover:text-white transition-colors"
-                        >
-                          {workspace.name}
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Action Buttons (visible on hover) */}
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                      {/* Add SOW */}
-                      <button
-                        onClick={() => {
-                          setNewSOWWorkspaceId(workspace.id);
-                          setShowNewSOWModal(true);
-                        }}
-                        className="p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-[#1CBF79] transition-colors"
-                        title="New SOW"
-                      >
-                        <Plus className="w-3 h-3" />
-                      </button>
-
-                      {/* Rename */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setRenamingId(workspace.id);
-                          setRenameValue(workspace.name);
-                        }}
-                        className="p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-gray-300 transition-colors"
-                        title="Rename"
-                      >
-                        <Edit3 className="w-3 h-3" />
-                      </button>
-
-                      {/* Delete */}
-                      <button
-                        onClick={() => onDeleteWorkspace(workspace.id)}
-                        className="p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-red-500 transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* SOWs in Workspace (when expanded) */}
-                  {isExpanded && (
-                    <div className="ml-6 space-y-0.5">
-                      {workspace.sows.map((sow) => (
-                        <div
-                          key={sow.id}
-                          className={`flex items-center gap-2 px-2 py-1 rounded-lg group transition-colors ${
-                            currentSOWId === sow.id
-                              ? "bg-[#0e2e33] text-white"
-                              : "text-gray-400 hover:text-gray-300 hover:bg-gray-800/50"
-                          }`}
-                        >
-                          <FileText className="w-4 h-4 flex-shrink-0" />
-
-                          {/* SOW Name */}
-                          <div className="flex-1 min-w-0">
-                            {renamingId === sow.id ? (
-                              <Input
-                                value={renameValue}
-                                onChange={(e) => setRenameValue(e.target.value)}
-                                onBlur={() => handleRename(sow.id, false)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") handleRename(sow.id, false);
-                                }}
-                                className="h-6 py-0 text-xs bg-gray-800 border-gray-600"
-                                autoFocus
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            ) : (
-                              <button
-                                onClick={() => onSelectSOW(sow.id)}
-                                className="w-full text-left text-xs truncate"
-                              >
-                                {sow.name}
-                              </button>
-                            )}
-                          </div>
-
-                          {/* SOW Actions (visible on hover) */}
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                            {/* Rename */}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setRenamingId(sow.id);
-                                setRenameValue(sow.name);
-                              }}
-                              className="p-0.5 hover:bg-gray-700 rounded text-gray-400 hover:text-gray-300 transition-colors"
-                              title="Rename"
-                            >
-                              <Edit3 className="w-3 h-3" />
-                            </button>
-
-                            {/* Delete */}
-                            <button
-                              onClick={() => onDeleteSOW(sow.id)}
-                              className="p-0.5 hover:bg-gray-700 rounded text-gray-400 hover:text-red-500 transition-colors"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            {workspaces.length === 0 && (
+            {localWorkspaces.length === 0 && (
               <div className="px-4 py-8 text-center">
                 <p className="text-xs text-gray-600">No workspaces yet</p>
                 <p className="text-xs text-gray-700 mt-2">Click the + button to create one</p>
@@ -354,7 +540,7 @@ export default function SidebarNav({
         </ScrollArea>
       </div>
 
-      {/* New SOW Modal */}
+      {/* New Doc Modal */}
       <NewSOWModal
         isOpen={showNewSOWModal}
         onOpenChange={setShowNewSOWModal}
