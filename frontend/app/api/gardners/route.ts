@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import db from '@/lib/db';
+import { query } from '@/lib/db';
 import { anythingLLM } from '@/lib/anythingllm';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 3: Save to database
-    const result = await db.query(
+    const result = await query(
       `INSERT INTO gardners (id, workspace_slug, name, description, category, created_at, updated_at) 
        VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
       [id, actualSlug, name, description || null, category]
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
  */
 export async function GET() {
   try {
-    const gardners = await db.query(
+    const gardners = await query(
       `SELECT id, workspace_slug, name, description, category, created_at, updated_at 
        FROM gardners 
        ORDER BY created_at DESC`

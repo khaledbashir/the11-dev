@@ -10,6 +10,71 @@ Very importnant to spend only 10% documenting and 90% actualy working
 
 ## 🎉 LATEST UPDATES (October 18, 2025)
 
+### 21. ✅ FIXED: Portal Table Visibility - Dark Theme Contrast
+**Problem:** Pricing summary tables in portal had very faint gray text that was nearly unreadable on dark backgrounds.
+**Root Cause:** Table cells used `text-gray-300` which had insufficient contrast against `#1A1A1D` background.
+**Solution:** Enhanced table styling for better visibility:
+- Changed table text from `text-gray-300` to `text-white` with `font-medium`
+- Added `prose-tbody:text-gray-200` for body text
+- Enhanced header styling with green accent border: `border-[#1CBF79]/50`
+- Added darker table background: `bg-[#0E0F0F]`
+- Improved hover states: `hover:bg-[#1CBF79]/5` (subtle green tint)
+- Made cell borders more visible with proper spacing
+
+**Files Modified:**
+- `/frontend/app/portal/sow/[id]/page.tsx` - Updated prose table classes in content tab
+
+**Result:** ✅ Tables now have excellent readability with white text on dark backgrounds, proper borders, and subtle hover effects. Professional appearance matching portal design.
+
+### 20. ✅ FIXED: Embed Widget Chat Mode - Added Runtime Attributes
+**Problem:** Portal embed widget was operating in "query" mode (single question/answer) instead of "chat" mode (conversational) despite server-side embed creation setting chat_mode:'chat'.
+**Root Cause:** Hosted AnythingLLM widget may not respect server-side embed configuration without explicit runtime attributes.
+**Solution:** Added explicit runtime mode forcing via data attributes in TWO places:
+
+**1. Embed Script Generator** (`/frontend/lib/anythingllm.ts` line ~328):
+```typescript
+return `<script
+  data-embed-id="${embedId}"
+  data-base-api-url="${baseUrl}/api/embed"
+  data-mode="chat"              // NEW: Force chat mode
+  data-chat-mode="chat"         // NEW: Redundant for compatibility
+  // ... other attributes
+</script>`;
+```
+
+**2. Portal Runtime Injection** (`/frontend/app/portal/sow/[id]/page.tsx` lines ~85-87):
+```typescript
+script.setAttribute('data-embed-id', sow.embedId);
+script.setAttribute('data-base-api-url', '...');
+script.setAttribute('data-mode', 'chat');         // NEW
+script.setAttribute('data-chat-mode', 'chat');    // NEW
+```
+
+**Additional Fixes During Build:**
+- ✅ Installed missing `uuid` package dependency
+- ✅ Fixed Next.js 15 route parameter types (changed from `{ params: { id } }` to `context: { params: Promise<{ id }> }`)
+- ✅ Updated 8 dynamic route files with new async parameter pattern
+- ✅ Fixed database import in gardners route (changed from `db` to `{ query }`)
+- ✅ Removed console.log in JSX (TypeScript error)
+- ✅ Added 'ai-management' to viewMode type union
+
+**Files Modified:**
+- `/frontend/lib/anythingllm.ts` - Added data-mode attributes to embed script template
+- `/frontend/app/portal/sow/[id]/page.tsx` - Added setAttribute calls for runtime mode forcing
+- `/frontend/app/api/admin/services/[id]/route.ts` - Fixed route parameter types
+- `/frontend/app/api/gardners/[slug]/route.ts` - Fixed route parameter types
+- `/frontend/app/api/sow/[id]/recommendations/route.ts` - Fixed route parameter types
+- `/frontend/app/api/gardners/route.ts` - Fixed db import
+- `/frontend/components/tailwind/agent-sidebar-clean.tsx` - Removed debug console.logs
+- `/frontend/components/tailwind/resizable-layout.tsx` - Added 'ai-management' to viewMode type
+
+**Verification:**
+- ✅ Production build completes successfully (no TypeScript errors)
+- ⏳ Runtime testing: Check embed widget operates in chat mode (streaming, message history)
+- ⏳ Inspect script element for data-mode="chat" and data-chat-mode="chat" attributes
+
+**Result:** ✅ Code changes complete and build verified. Embed widget should now force chat mode via runtime attributes. Runtime testing recommended to confirm widget behavior.
+
 ### 19. ✅ FIXED: Production-Ready AnythingLLM Document Embedding 🚀
 **Problem:** SOW document embedding to AnythingLLM was disabled with temporary warnings. Previous attempt used non-existent `/api/v1/document/raw-text` endpoint incorrectly.  
 **Root Cause:** Misunderstood AnythingLLM API - it requires a two-step process, not single-step upload.  
@@ -60,36 +125,20 @@ await fetch(`${baseUrl}/api/v1/workspace/${workspaceSlug}/update`, {
 
 **Result:** ✅ SOWs now embed to AnythingLLM correctly! Documents are searchable, AI chat works, and the workflow is fully automated. No more temporary workarounds!
 
-### 18. ✅ ANALYZED: SmartQuote Integration Feasibility - Comprehensive Study 📊
-**Request:** Evaluate if SmartQuote (AI-assisted quoting tool with margin visibility and historical insights) should be integrated into SOW Generator or built as a standalone project.  
+### 18. ✅ ANALYZED: SmartQuote Integration Feasibility 📊
+**Request:** Evaluate if SmartQuote (AI-assisted quoting tool) should be integrated or built separately.  
 **Outcome:** **RECOMMEND INTEGRATION** - Platform is 70% ready, 2-3 weeks development effort.  
-**Key Findings:**
-- ✅ Database schema already supports it (`service_catalog`, `sow_recommendations`, `sows` tables)
-- ✅ Interactive pricing calculator (Update #17) provides perfect foundation
-- ✅ AnythingLLM can handle AI similarity engine without custom ML
-- ✅ 4 new tables needed: `historical_jobs`, `historical_tasks`, `quotes`, `quote_tasks`
-- ✅ Integration creates unified quoting → SOW → acceptance platform
 
-**Architecture Decision:**
-- **Option A (Recommended):** Add "Quote Builder" tab to client portal - seamless client experience
-- **Option B (Alternative):** Add "Quotes" section to Master Dashboard - internal tool first
+**📄 Full Analysis Document:** `/root/the11/SMARTQUOTE-FEASIBILITY-ANALYSIS.md`  
+*Complete 500+ line study with database schema, architecture options, 4-phase roadmap, ROI analysis & risk assessment*
 
-**Implementation Phases:**
-1. **Week 1:** Core quote builder with margin calculations (red/amber/green indicators)
-2. **Week 2:** AI-powered task suggestions using AnythingLLM vector search on historical jobs
-3. **Week 3:** WorkflowMax CSV export integration
-4. **Week 4 (Optional):** Client-facing interactive quote builder
+**Key Takeaways:**
+- ✅ Existing `service_catalog` & `sow_recommendations` tables ready to use
+- ✅ Interactive pricing calculator (Update #17) provides foundation
+- ✅ AnythingLLM can power AI similarity engine
+- ✅ Creates unified workflow: Quote → SOW → Client Acceptance
 
-**Business Impact:**
-- Reduce quote creation time by 50% (AI suggestions from past jobs)
-- Increase profitability through margin-based pricing visibility
-- Seamless conversion: Quote → SOW → Client Acceptance
-- Historical learning: Every completed SOW trains the AI for better estimates
-
-**Files Created:**
-- `/root/the11/SMARTQUOTE-FEASIBILITY-ANALYSIS.md` - Full 500+ line analysis with database schema, ROI calculations, risk assessment, and implementation roadmap
-
-**Result:** ✅ Comprehensive feasibility study complete. SmartQuote integration is highly feasible and strategically aligned. Ready for stakeholder review and Phase 1 kickoff.
+**Result:** ✅ Feasibility study complete. Ready for stakeholder review and Phase 1 kickoff.
 
 ### 17. ✅ IMPLEMENTED: Interactive Pricing Calculator - Game-Changing Client Experience 🎯
 **Problem:** Pricing tab was static and boring - just dumping HTML content. Clients couldn't explore different packages or see real-time pricing adjustments.  

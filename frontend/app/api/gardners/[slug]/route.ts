@@ -4,15 +4,13 @@ import { query } from '@/lib/db';
 const ANYTHINGLLM_URL = process.env.ANYTHINGLLM_URL || 'https://ahmad-anything-llm.840tjq.easypanel.host';
 const ANYTHINGLLM_API_KEY = process.env.ANYTHINGLLM_API_KEY || '0G0WTZ3-6ZX4D20-H35VBRG-9059WPA';
 
-interface RouteContext {
-  params: {
-    slug: string;
-  };
-}
-
 // GET - Get single Gardner by slug
-export async function GET(request: NextRequest, { params }: RouteContext) {
+export async function GET(
+  request: NextRequest, 
+  context: { params: Promise<{ slug: string }> }
+) {
   try {
+    const params = await context.params;
     const { slug } = params;
     console.log('🌱 [Gardner Get] Fetching Gardner:', slug);
 
@@ -68,8 +66,12 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
 }
 
 // PUT - Update Gardner
-export async function PUT(request: NextRequest, { params }: RouteContext) {
+export async function PUT(
+  request: NextRequest, 
+  context: { params: Promise<{ slug: string }> }
+) {
   try {
+    const params = await context.params;
     const { slug } = params;
     const body = await request.json();
     
@@ -135,8 +137,12 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
 }
 
 // DELETE - Delete Gardner
-export async function DELETE(request: NextRequest, { params }: RouteContext) {
+export async function DELETE(
+  request: NextRequest, 
+  context: { params: Promise<{ slug: string }> }
+) {
   try {
+    const params = await context.params;
     const { slug } = params;
     console.log('🌱 [Gardner Delete] Deleting Gardner:', slug);
 

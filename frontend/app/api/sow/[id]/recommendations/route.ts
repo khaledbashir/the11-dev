@@ -16,8 +16,9 @@ const dbConfig = {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const params = await context.params;
   const sowId = params.id;
   let connection;
 
@@ -74,9 +75,10 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const sowId = params.id;
+  const routeParams = await context.params;
+  const sowId = routeParams.id;
   let connection;
 
   try {
@@ -103,8 +105,8 @@ export async function PUT(
       AND sow_id = ?
     `;
 
-    const params = [isSelected, ...recommendationIds, sowId];
-    const [result]: any = await connection.execute(query, params);
+    const queryParams = [isSelected, ...recommendationIds, sowId];
+    const [result]: any = await connection.execute(query, queryParams);
 
     return NextResponse.json({
       success: true,
