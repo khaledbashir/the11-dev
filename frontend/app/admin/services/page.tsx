@@ -13,6 +13,7 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Service {
   id: string;
@@ -128,16 +129,16 @@ export default function ServiceCatalogPage() {
       const data = await res.json();
 
       if (data.success) {
-        alert(editingService ? 'Service updated!' : 'Service created!');
+        toast.success(editingService ? 'Service updated successfully!' : 'Service created successfully!');
         setShowModal(false);
         resetForm();
         loadServices();
       } else {
-        alert(`Error: ${data.message}`);
+        toast.error(`Error: ${data.message}`);
       }
     } catch (error) {
       console.error('Failed to save service:', error);
-      alert('Failed to save service');
+      toast.error('Failed to save service. Please try again.');
     }
   };
 
@@ -152,14 +153,14 @@ export default function ServiceCatalogPage() {
       const data = await res.json();
 
       if (data.success) {
-        alert('Service deleted!');
+        toast.success('Service deleted successfully!');
         loadServices();
       } else {
-        alert(`Error: ${data.message}`);
+        toast.error(`Error: ${data.message}`);
       }
     } catch (error) {
       console.error('Failed to delete service:', error);
-      alert('Failed to delete service');
+      toast.error('Failed to delete service. Please try again.');
     }
   };
 
@@ -229,8 +230,8 @@ export default function ServiceCatalogPage() {
                 <Package className="w-5 h-5 text-blue-500" />
               </div>
               <div>
-                <p className="text-gray-400 text-sm">Total Services</p>
-                <p className="text-2xl font-bold">{totalServices}</p>
+                <p className="text-sm font-medium text-gray-300">Total Services</p>
+                <p className="text-2xl font-bold text-white">{totalServices}</p>
               </div>
             </div>
           </div>
@@ -241,8 +242,8 @@ export default function ServiceCatalogPage() {
                 <TrendingUp className="w-5 h-5 text-[#1CBF79]" />
               </div>
               <div>
-                <p className="text-gray-400 text-sm">Active Services</p>
-                <p className="text-2xl font-bold">{activeServices}</p>
+                <p className="text-sm font-medium text-gray-300">Active Services</p>
+                <p className="text-2xl font-bold text-white">{activeServices}</p>
               </div>
             </div>
           </div>
@@ -253,9 +254,9 @@ export default function ServiceCatalogPage() {
                 <DollarSign className="w-5 h-5 text-purple-500" />
               </div>
               <div>
-                <p className="text-gray-400 text-sm">Total Catalog Value</p>
-                <p className="text-2xl font-bold">
-                  ${totalValue.toLocaleString()}
+                <p className="text-sm font-medium text-gray-300">Total Catalog Value</p>
+                <p className="text-2xl font-bold text-white">
+                  ${totalValue.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </div>
             </div>
@@ -336,7 +337,7 @@ export default function ServiceCatalogPage() {
                     </p>
                     <div className="flex items-center gap-4 text-sm">
                       <span className="text-[#1CBF79] font-bold text-lg">
-                        ${service.base_price.toLocaleString()} / {service.pricing_unit}
+                        ${service.base_price.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / {service.pricing_unit}
                       </span>
                     </div>
                   </div>
