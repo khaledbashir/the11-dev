@@ -172,60 +172,55 @@ Metadata:
 - Type: Statement of Work
       `.trim();
 
-      // NOTE: AnythingLLM doesn't have a raw-text upload endpoint
-      // For now, we'll skip document embedding and just save to database
-      // Future: Could use /api/v1/document/upload-link with a temporary URL
-      
-      console.warn(`⚠️ Document embedding to AnythingLLM is temporarily disabled`);
-      console.warn(`   Reason: /api/v1/document/raw-text endpoint doesn't exist`);
-      console.warn(`   SOW "${sowTitle}" is saved to database and working fine!`);
-      
-      // Return early - SOW is already in database, embedding is optional
-      return;
-
-      // Keep the old code below for reference (unreachable)
-      const uploadResponse = await fetch(`${this.baseUrl}/api/v1/document/raw-text`, {
+      // Step 1: Process raw text as document using AnythingLLM API
+      const rawTextResponse = await fetch(`${this.baseUrl}/api/v1/document/raw-text`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify({
           textContent: enrichedContent,
           metadata: {
             title: sowTitle,
+            docAuthor: metadata.docAuthor || 'Social Garden',
+            description: metadata.description || 'Statement of Work',
+            docSource: metadata.docSource || 'SOW Generator',
             ...metadata,
           },
         }),
       });
 
-      if (!uploadResponse.ok) {
-        throw new Error(`Failed to upload document: ${uploadResponse.statusText}`);
+      if (!rawTextResponse.ok) {
+        const errorText = await rawTextResponse.text();
+        throw new Error(`Failed to process document: ${rawTextResponse.status} ${errorText}`);
       }
 
-      const uploadData: DocumentResponse = await uploadResponse.json();
+      const rawTextData = await rawTextResponse.json();
       
-      if (!uploadData.success) {
-        throw new Error(uploadData.message || 'Upload failed');
+      if (!rawTextData.success || !rawTextData.documents?.[0]?.location) {
+        throw new Error(rawTextData.error || 'Document processing failed - no location returned');
       }
 
-      console.log(`✅ Document uploaded: ${uploadData.documentId}`);
+      const documentLocation = rawTextData.documents[0].location;
+      console.log(`✅ Document processed: ${documentLocation}`);
 
-      // Update workspace to include this document
-      const updateResponse = await fetch(
+      // Step 2: Add document to workspace
+      const workspaceUpdateResponse = await fetch(
         `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/update`,
         {
           method: 'POST',
           headers: this.getHeaders(),
           body: JSON.stringify({
-            adds: [uploadData.documentId],
+            adds: [documentLocation],
           }),
         }
       );
 
-      if (!updateResponse.ok) {
-        console.warn('⚠️ Document uploaded but failed to add to workspace');
-        return false;
+      if (!workspaceUpdateResponse.ok) {
+        throw new Error(`Failed to add document to workspace: ${workspaceUpdateResponse.statusText}`);
       }
 
+      const updateResult = await workspaceUpdateResponse.json();
       console.log(`✅ Document added to workspace: ${workspaceSlug}`);
+      
       return true;
     } catch (error) {
       console.error('❌ Error embedding SOW:', error);
@@ -347,55 +342,49 @@ Metadata:
     try {
       console.log(`📚 Embedding Social Garden knowledge base into workspace: ${workspaceSlug}`);
 
-      // NOTE: AnythingLLM doesn't have a raw-text upload endpoint
-      // Knowledge base embedding is temporarily disabled
-      console.warn(`⚠️ Knowledge base embedding is temporarily disabled`);
-      console.warn(`   Reason: /api/v1/document/raw-text endpoint doesn't exist`);
-      console.warn(`   Workspace "${workspaceSlug}" works fine without it!`);
-      
-      return false; // Indicate embedding failed, but not critical
-
-      // Keep the old code below for reference (unreachable)
-      const uploadResponse = await fetch(`${this.baseUrl}/api/v1/document/raw-text`, {
+      // Step 1: Process knowledge base as raw text document
+      const rawTextResponse = await fetch(`${this.baseUrl}/api/v1/document/raw-text`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify({
           textContent: SOCIAL_GARDEN_KNOWLEDGE_BASE,
           metadata: {
             title: 'Social Garden - Company Knowledge Base',
-            source: 'Social Garden Internal Documentation',
-            type: 'Company Information',
-            priority: 'high', // Make this available for all queries
+            docAuthor: 'Social Garden',
+            description: 'Social Garden Internal Documentation',
+            docSource: 'Company Information',
           },
         }),
       });
 
-      if (!uploadResponse.ok) {
-        throw new Error(`Failed to upload knowledge base: ${uploadResponse.statusText}`);
+      if (!rawTextResponse.ok) {
+        const errorText = await rawTextResponse.text();
+        throw new Error(`Failed to process knowledge base: ${rawTextResponse.status} ${errorText}`);
       }
 
-      const uploadData: DocumentResponse = await uploadResponse.json();
+      const rawTextData = await rawTextResponse.json();
       
-      if (!uploadData.success) {
-        throw new Error(uploadData.message || 'Knowledge base upload failed');
+      if (!rawTextData.success || !rawTextData.documents?.[0]?.location) {
+        throw new Error(rawTextData.error || 'Knowledge base processing failed');
       }
 
-      console.log(`✅ Company knowledge base uploaded: ${uploadData.documentId}`);
+      const documentLocation = rawTextData.documents[0].location;
+      console.log(`✅ Knowledge base processed: ${documentLocation}`);
 
-      // Add knowledge base to workspace
-      const updateResponse = await fetch(
+      // Step 2: Add knowledge base to workspace
+      const workspaceUpdateResponse = await fetch(
         `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/update`,
         {
           method: 'POST',
           headers: this.getHeaders(),
           body: JSON.stringify({
-            adds: [uploadData.documentId],
+            adds: [documentLocation],
           }),
         }
       );
 
-      if (!updateResponse.ok) {
-        console.warn('⚠️ Knowledge base uploaded but failed to add to workspace');
+      if (!workspaceUpdateResponse.ok) {
+        console.warn('⚠️ Knowledge base processed but failed to add to workspace');
         return false;
       }
 
