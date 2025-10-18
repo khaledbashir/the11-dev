@@ -110,11 +110,12 @@ export default function ClientPortalPage() {
             ? JSON.parse(sowData.content) 
             : sowData.content;
           
-          // Import TipTap generateHTML function
+          // Import TipTap generateHTML function and ALL extensions used in the editor
           const { generateHTML } = await import('@tiptap/html');
-          const StarterKit = (await import('@tiptap/starter-kit')).default;
+          const { defaultExtensions } = await import('@/components/tailwind/extensions');
           
-          htmlContent = generateHTML(contentData, [StarterKit]);
+          // Generate HTML with all extensions to support custom nodes like editablePricingTable
+          htmlContent = generateHTML(contentData, defaultExtensions);
         } catch (error) {
           console.error('Error converting content to HTML:', error);
           // Fallback: if it's already HTML, use it directly
