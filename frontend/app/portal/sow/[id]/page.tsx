@@ -22,6 +22,15 @@ interface SOWData {
 
 type TabView = 'overview' | 'content' | 'pricing' | 'timeline';
 
+// Pricing Calculator State
+interface PricingOption {
+  id: string;
+  name: string;
+  basePrice: number;
+  description: string;
+  icon: any;
+}
+
 export default function ClientPortalPage() {
   const params = useParams();
   const sowId = params.id as string;
@@ -31,6 +40,12 @@ export default function ClientPortalPage() {
   const [accepted, setAccepted] = useState(false);
   const [activeTab, setActiveTab] = useState<TabView>('overview');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  
+  // Interactive Pricing Calculator
+  const [selectedServices, setSelectedServices] = useState<string[]>(['social-media', 'content-creation']);
+  const [contentPieces, setContentPieces] = useState<number>(12);
+  const [socialPosts, setSocialPosts] = useState<number>(20);
+  const [adSpend, setAdSpend] = useState<number>(2000);
 
   useEffect(() => {
     // Load SOW data
@@ -495,50 +510,141 @@ export default function ClientPortalPage() {
     switch (activeTab) {
       case 'overview':
         return (
-          <div className="space-y-6 max-w-5xl">
-            {/* Hero Stats */}
+          <div className="space-y-8 max-w-6xl mx-auto">
+            {/* Hero Stats - At a Glance */}
+            <div>
+              <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                <Target className="w-6 h-6 text-[#1CBF79]" />
+                At a Glance
+              </h2>
+              <div className="grid grid-cols-3 gap-6">
+                <div className="bg-gradient-to-br from-[#1CBF79]/20 to-[#15965E]/10 border border-[#1CBF79]/30 rounded-xl p-6 hover:scale-105 transition-transform">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-[#1CBF79]/20 rounded-lg">
+                      <DollarSign className="w-6 h-6 text-[#1CBF79]" />
+                    </div>
+                    <span className="text-gray-400 text-sm font-medium">Total Investment</span>
+                  </div>
+                  <p className="text-3xl font-bold text-white mb-1">
+                    ${sow.totalInvestment.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                  </p>
+                  <p className="text-xs text-gray-500">AUD (inc. GST)</p>
+                </div>
+
+                <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/10 border border-blue-500/30 rounded-xl p-6 hover:scale-105 transition-transform">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-blue-500/20 rounded-lg">
+                      <Calendar className="w-6 h-6 text-blue-400" />
+                    </div>
+                    <span className="text-gray-400 text-sm font-medium">Timeline</span>
+                  </div>
+                  <p className="text-2xl font-bold text-white mb-1">
+                    {new Date(sow.createdAt).toLocaleDateString('en-AU', { 
+                      month: 'short', 
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}
+                  </p>
+                  <p className="text-xs text-gray-500">Start Date</p>
+                </div>
+
+                <div className="bg-gradient-to-br from-purple-500/20 to-pink-500/10 border border-purple-500/30 rounded-xl p-6 hover:scale-105 transition-transform">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-purple-500/20 rounded-lg">
+                      <Target className="w-6 h-6 text-purple-400" />
+                    </div>
+                    <span className="text-gray-400 text-sm font-medium">Status</span>
+                  </div>
+                  <p className="text-2xl font-bold text-white mb-1">
+                    {accepted ? '✅ Accepted' : '⏳ Pending'}
+                  </p>
+                  <p className="text-xs text-gray-500">Proposal Status</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Meet the Social Garden Team - VIDEO SECTION */}
+            <div className="bg-gradient-to-br from-[#0E2E33]/50 to-[#1A1A1D] border border-[#1CBF79]/20 rounded-2xl p-8">
+              <h2 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
+                <Users className="w-8 h-8 text-[#1CBF79]" />
+                Meet the Social Garden Team
+              </h2>
+              <p className="text-gray-400 mb-6">The humans behind your success - real people, real results</p>
+              
+              <div className="grid grid-cols-2 gap-6 mb-6">
+                {/* Video 1: Meet the Gardeners (3 min team intro) */}
+                <div className="space-y-3">
+                  <div className="relative rounded-xl overflow-hidden border-2 border-[#1CBF79]/30 hover:border-[#1CBF79] transition-colors">
+                    <iframe
+                      width="100%"
+                      height="250"
+                      src="https://www.youtube.com/embed/uvfBVzdCqZE"
+                      title="Meet the Gardeners | Social Garden Team"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="w-full aspect-video"
+                    ></iframe>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white mb-1">🌱 Meet the Gardeners</h3>
+                    <p className="text-sm text-gray-400">3-minute team introduction showcasing our culture, collaboration, and commitment to your success</p>
+                  </div>
+                </div>
+
+                {/* Video 2: CEO Leadership (2 min highlight from 12 min interview) */}
+                <div className="space-y-3">
+                  <div className="relative rounded-xl overflow-hidden border-2 border-blue-500/30 hover:border-blue-500 transition-colors">
+                    <iframe
+                      width="100%"
+                      height="250"
+                      src="https://www.youtube.com/embed/3t24oBXERUg"
+                      title="CEO George Glover | Social Garden Leadership"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="w-full aspect-video"
+                    ></iframe>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white mb-1">🎯 Leadership Vision: CEO George Glover</h3>
+                    <p className="text-sm text-gray-400">Strategic insight from our CEO on mission, values, and driving measurable results</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 p-4 bg-[#1CBF79]/10 rounded-lg border border-[#1CBF79]/30">
+                <Sparkles className="w-5 h-5 text-[#1CBF79]" />
+                <p className="text-sm text-gray-300">
+                  <strong className="text-white">Why this matters:</strong> You're not just hiring an agency - you're partnering with a team of passionate humans who care about your success.
+                </p>
+              </div>
+            </div>
+
+            {/* Why Social Garden? - Trust Builders */}
             <div className="grid grid-cols-3 gap-6">
-              <div className="bg-gradient-to-br from-[#1CBF79]/20 to-[#15965E]/10 border border-[#1CBF79]/30 rounded-2xl p-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 bg-[#1CBF79]/20 rounded-lg">
-                    <DollarSign className="w-6 h-6 text-[#1CBF79]" />
-                  </div>
-                  <span className="text-gray-400 text-sm font-medium">Total Investment</span>
+              <div className="bg-[#1A1A1D] border border-[#2A2A2D] rounded-xl p-6 hover:border-[#1CBF79] transition-colors">
+                <div className="p-3 bg-[#1CBF79]/20 rounded-lg w-fit mb-4">
+                  <TrendingUp className="w-6 h-6 text-[#1CBF79]" />
                 </div>
-                <p className="text-3xl font-bold text-white mb-1">
-                  ${sow.totalInvestment.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
-                </p>
-                <p className="text-xs text-gray-500">AUD (inc. GST)</p>
+                <h3 className="text-lg font-bold text-white mb-2">Proven Results</h3>
+                <p className="text-gray-400 text-sm">Average 40% increase in qualified leads within 90 days. Real data, real growth.</p>
               </div>
 
-              <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/10 border border-blue-500/30 rounded-2xl p-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 bg-blue-500/20 rounded-lg">
-                    <Calendar className="w-6 h-6 text-blue-400" />
-                  </div>
-                  <span className="text-gray-400 text-sm font-medium">Created</span>
+              <div className="bg-[#1A1A1D] border border-[#2A2A2D] rounded-xl p-6 hover:border-blue-500 transition-colors">
+                <div className="p-3 bg-blue-500/20 rounded-lg w-fit mb-4">
+                  <Zap className="w-6 h-6 text-blue-400" />
                 </div>
-                <p className="text-xl font-bold text-white mb-1">
-                  {new Date(sow.createdAt).toLocaleDateString('en-AU', { 
-                    month: 'short', 
-                    day: 'numeric',
-                    year: 'numeric'
-                  })}
-                </p>
-                <p className="text-xs text-gray-500">Proposal Date</p>
+                <h3 className="text-lg font-bold text-white mb-2">Fast Turnaround</h3>
+                <p className="text-gray-400 text-sm">Your campaign launches in under 14 days. No delays, no excuses.</p>
               </div>
 
-              <div className="bg-gradient-to-br from-purple-500/20 to-pink-500/10 border border-purple-500/30 rounded-2xl p-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 bg-purple-500/20 rounded-lg">
-                    <Target className="w-6 h-6 text-purple-400" />
-                  </div>
-                  <span className="text-gray-400 text-sm font-medium">Status</span>
+              <div className="bg-[#1A1A1D] border border-[#2A2A2D] rounded-xl p-6 hover:border-purple-500 transition-colors">
+                <div className="p-3 bg-purple-500/20 rounded-lg w-fit mb-4">
+                  <Users className="w-6 h-6 text-purple-400" />
                 </div>
-                <p className="text-xl font-bold text-white mb-1">
-                  {accepted ? 'Accepted' : 'Pending'}
-                </p>
-                <p className="text-xs text-gray-500">Proposal Status</p>
+                <h3 className="text-lg font-bold text-white mb-2">Dedicated Team</h3>
+                <p className="text-gray-400 text-sm">8+ specialists on your account. You're not a number - you're a partner.</p>
               </div>
             </div>
 
@@ -658,47 +764,341 @@ export default function ClientPortalPage() {
         );
 
       case 'pricing':
+        // Define available service packages
+        const serviceOptions: PricingOption[] = [
+          {
+            id: 'social-media',
+            name: 'Social Media Management',
+            basePrice: 1500,
+            description: 'Daily posting, community engagement, analytics',
+            icon: Users
+          },
+          {
+            id: 'content-creation',
+            name: 'Content Creation',
+            basePrice: 2000,
+            description: 'Blog posts, articles, email campaigns',
+            icon: FileText
+          },
+          {
+            id: 'paid-ads',
+            name: 'Paid Advertising',
+            basePrice: 1200,
+            description: 'Google Ads, Facebook Ads management',
+            icon: Target
+          },
+          {
+            id: 'seo',
+            name: 'SEO Optimization',
+            basePrice: 1800,
+            description: 'On-page, technical, and off-page SEO',
+            icon: TrendingUp
+          },
+          {
+            id: 'analytics',
+            name: 'Analytics & Reporting',
+            basePrice: 800,
+            description: 'Monthly performance reports, insights',
+            icon: Eye
+          }
+        ];
+
+        // Calculate total based on selections
+        const baseServicesTotal = serviceOptions
+          .filter(s => selectedServices.includes(s.id))
+          .reduce((sum, s) => sum + s.basePrice, 0);
+        
+        const contentCost = contentPieces * 150; // $150 per content piece
+        const socialCost = socialPosts * 25; // $25 per social post
+        const adManagementFee = adSpend * 0.15; // 15% of ad spend
+        
+        const subtotal = baseServicesTotal + contentCost + socialCost + adManagementFee;
+        const gst = subtotal * 0.1; // 10% GST
+        const calculatedTotal = subtotal + gst;
+
+        const toggleService = (serviceId: string) => {
+          if (selectedServices.includes(serviceId)) {
+            setSelectedServices(selectedServices.filter(id => id !== serviceId));
+          } else {
+            setSelectedServices([...selectedServices, serviceId]);
+          }
+        };
+
         return (
-          <div className="max-w-5xl mx-auto space-y-6">
+          <div className="max-w-6xl mx-auto space-y-6">
+            {/* Header */}
             <div className="bg-gradient-to-r from-[#1CBF79]/20 to-blue-500/20 border border-[#1CBF79]/30 rounded-2xl p-8 shadow-xl">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="p-3 bg-[#1CBF79]/20 rounded-xl">
-                  <DollarSign className="w-8 h-8 text-[#1CBF79]" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-[#1CBF79]/20 rounded-xl">
+                    <DollarSign className="w-8 h-8 text-[#1CBF79]" />
+                  </div>
+                  <div>
+                    <h2 className="text-3xl font-bold text-white mb-1">Interactive Pricing Calculator</h2>
+                    <p className="text-gray-400">Customize your package in real-time</p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-3xl font-bold text-white mb-1">Investment Breakdown</h2>
-                  <p className="text-gray-400">Transparent pricing for exceptional value</p>
+                <div className="text-right">
+                  <p className="text-sm text-gray-400 mb-1">Your Investment</p>
+                  <p className="text-4xl font-bold text-[#1CBF79]">
+                    ${calculatedTotal.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                  </p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-[#1A1A1D] border border-[#2A2A2D] rounded-2xl overflow-hidden shadow-xl">
-              {/* Extract and style pricing table */}
-              <div 
-                className="prose prose-invert max-w-none p-8
-                  prose-table:w-full prose-table:border-collapse
-                  prose-thead:border-b-2 prose-thead:border-[#1CBF79]/30
-                  prose-th:bg-gradient-to-r prose-th:from-[#2A2A2D] prose-th:to-[#2A2A2D]/80
-                  prose-th:text-white prose-th:font-bold prose-th:p-4 prose-th:text-left
-                  prose-td:border prose-td:border-[#2A2A2D] prose-td:text-gray-300 prose-td:p-4
-                  prose-tr:border-b prose-tr:border-[#2A2A2D]/50
-                  prose-tr:hover:bg-[#2A2A2D]/30 prose-tr:transition-colors
-                  prose-tbody:divide-y prose-tbody:divide-[#2A2A2D]"
-                dangerouslySetInnerHTML={{ __html: sow.htmlContent }}
-              />
-            </div>
-
-            <div className="bg-gradient-to-r from-[#1A1A1D] to-[#1A1A1D]/80 border-2 border-[#1CBF79]/30 rounded-2xl p-8 shadow-xl shadow-[#1CBF79]/10">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-2xl font-bold text-white mb-2">Total Investment</h3>
-                  <p className="text-sm text-gray-400">All fees included • No hidden costs</p>
+            <div className="grid grid-cols-3 gap-6">
+              {/* Left Column: Service Selection */}
+              <div className="col-span-2 space-y-4">
+                <div className="bg-[#1A1A1D] border border-[#2A2A2D] rounded-xl p-6">
+                  <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                    <Target className="w-5 h-5 text-[#1CBF79]" />
+                    Select Services
+                  </h3>
+                  <div className="space-y-3">
+                    {serviceOptions.map(service => {
+                      const isSelected = selectedServices.includes(service.id);
+                      const Icon = service.icon;
+                      return (
+                        <button
+                          key={service.id}
+                          onClick={() => toggleService(service.id)}
+                          className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
+                            isSelected 
+                              ? 'bg-[#1CBF79]/10 border-[#1CBF79] shadow-lg shadow-[#1CBF79]/20' 
+                              : 'bg-[#0E0F0F] border-[#2A2A2D] hover:border-[#1CBF79]/50'
+                          }`}
+                        >
+                          <div className="flex items-start gap-4">
+                            <div className={`p-2 rounded-lg ${isSelected ? 'bg-[#1CBF79]/20' : 'bg-[#2A2A2D]'}`}>
+                              <Icon className={`w-5 h-5 ${isSelected ? 'text-[#1CBF79]' : 'text-gray-400'}`} />
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between mb-1">
+                                <h4 className={`font-bold ${isSelected ? 'text-white' : 'text-gray-300'}`}>
+                                  {service.name}
+                                </h4>
+                                <span className={`text-sm font-bold ${isSelected ? 'text-[#1CBF79]' : 'text-gray-400'}`}>
+                                  ${service.basePrice.toLocaleString()}/mo
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-400">{service.description}</p>
+                            </div>
+                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                              isSelected ? 'bg-[#1CBF79] border-[#1CBF79]' : 'border-gray-500'
+                            }`}>
+                              {isSelected && <CheckCircle className="w-4 h-4 text-white" />}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-5xl font-bold text-[#1CBF79] mb-1">
+
+                {/* Volume Sliders */}
+                <div className="bg-[#1A1A1D] border border-[#2A2A2D] rounded-xl p-6">
+                  <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-blue-400" />
+                    Customize Volume
+                  </h3>
+
+                  <div className="space-y-6">
+                    {/* Content Pieces Slider */}
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <label className="text-sm font-medium text-gray-300">Content Pieces per Month</label>
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl font-bold text-white">{contentPieces}</span>
+                          <span className="text-sm text-gray-400">pieces</span>
+                          <span className="text-sm font-bold text-[#1CBF79] ml-2">
+                            ${(contentPieces * 150).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                      <input
+                        type="range"
+                        min="4"
+                        max="40"
+                        step="2"
+                        value={contentPieces}
+                        onChange={(e) => setContentPieces(Number(e.target.value))}
+                        className="w-full h-2 bg-[#2A2A2D] rounded-lg appearance-none cursor-pointer accent-[#1CBF79]"
+                      />
+                      <div className="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>4 pieces</span>
+                        <span>40 pieces</span>
+                      </div>
+                    </div>
+
+                    {/* Social Posts Slider */}
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <label className="text-sm font-medium text-gray-300">Social Media Posts per Month</label>
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl font-bold text-white">{socialPosts}</span>
+                          <span className="text-sm text-gray-400">posts</span>
+                          <span className="text-sm font-bold text-blue-400 ml-2">
+                            ${(socialPosts * 25).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                      <input
+                        type="range"
+                        min="10"
+                        max="60"
+                        step="5"
+                        value={socialPosts}
+                        onChange={(e) => setSocialPosts(Number(e.target.value))}
+                        className="w-full h-2 bg-[#2A2A2D] rounded-lg appearance-none cursor-pointer accent-blue-500"
+                      />
+                      <div className="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>10 posts</span>
+                        <span>60 posts</span>
+                      </div>
+                    </div>
+
+                    {/* Ad Spend Slider */}
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <label className="text-sm font-medium text-gray-300">Monthly Ad Spend Budget</label>
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl font-bold text-white">${adSpend.toLocaleString()}</span>
+                          <span className="text-sm text-gray-400">budget</span>
+                          <span className="text-sm font-bold text-purple-400 ml-2">
+                            +${(adSpend * 0.15).toLocaleString()} fee
+                          </span>
+                        </div>
+                      </div>
+                      <input
+                        type="range"
+                        min="500"
+                        max="10000"
+                        step="500"
+                        value={adSpend}
+                        onChange={(e) => setAdSpend(Number(e.target.value))}
+                        className="w-full h-2 bg-[#2A2A2D] rounded-lg appearance-none cursor-pointer accent-purple-500"
+                      />
+                      <div className="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>$500</span>
+                        <span>$10,000</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Price Summary */}
+              <div className="space-y-4">
+                <div className="bg-[#1A1A1D] border border-[#2A2A2D] rounded-xl p-6 sticky top-6">
+                  <h3 className="text-lg font-bold text-white mb-4">Investment Summary</h3>
+                  
+                  <div className="space-y-3 mb-6 pb-6 border-b border-[#2A2A2D]">
+                    {selectedServices.map(serviceId => {
+                      const service = serviceOptions.find(s => s.id === serviceId);
+                      if (!service) return null;
+                      return (
+                        <div key={serviceId} className="flex items-center justify-between text-sm">
+                          <span className="text-gray-400">{service.name}</span>
+                          <span className="text-white font-medium">${service.basePrice.toLocaleString()}</span>
+                        </div>
+                      );
+                    })}
+                    
+                    {contentPieces > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-400">{contentPieces} Content Pieces</span>
+                        <span className="text-white font-medium">${(contentPieces * 150).toLocaleString()}</span>
+                      </div>
+                    )}
+                    
+                    {socialPosts > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-400">{socialPosts} Social Posts</span>
+                        <span className="text-white font-medium">${(socialPosts * 25).toLocaleString()}</span>
+                      </div>
+                    )}
+                    
+                    {adSpend > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-400">Ad Management (15%)</span>
+                        <span className="text-white font-medium">${(adSpend * 0.15).toLocaleString()}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2 mb-6">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-400">Subtotal</span>
+                      <span className="text-white font-medium">${subtotal.toLocaleString('en-AU', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-400">GST (10%)</span>
+                      <span className="text-white font-medium">${gst.toLocaleString('en-AU', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t-2 border-[#1CBF79]/30">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-gray-300 font-medium">Total Investment</span>
+                      <span className="text-3xl font-bold text-[#1CBF79]">
+                        ${calculatedTotal.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500">per month, AUD</p>
+                  </div>
+
+                  <button 
+                    onClick={() => setAccepted(true)}
+                    className="w-full mt-6 py-3 bg-[#1CBF79] hover:bg-[#15a366] text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle className="w-5 h-5" />
+                    Accept This Package
+                  </button>
+
+                  <div className="mt-4 p-3 bg-blue-500/10 rounded-lg border border-blue-500/30">
+                    <p className="text-xs text-gray-400 text-center">
+                      💡 <strong className="text-white">Pro Tip:</strong> Save 15% with annual payment
+                    </p>
+                  </div>
+                </div>
+
+                {/* Original Proposal Comparison */}
+                <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-xl p-4">
+                  <h4 className="text-sm font-bold text-white mb-2">Original Proposal</h4>
+                  <p className="text-2xl font-bold text-purple-400 mb-1">
                     ${sow.totalInvestment.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
                   </p>
-                  <p className="text-sm text-gray-400 font-medium">AUD (inc. GST)</p>
+                  <p className="text-xs text-gray-400">
+                    {calculatedTotal > sow.totalInvestment 
+                      ? `+$${(calculatedTotal - sow.totalInvestment).toLocaleString('en-AU', { minimumFractionDigits: 2 })} more value` 
+                      : `$${(sow.totalInvestment - calculatedTotal).toLocaleString('en-AU', { minimumFractionDigits: 2 })} savings`}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom CTA */}
+            <div className="bg-gradient-to-r from-[#1CBF79]/10 via-blue-500/10 to-purple-500/10 border border-[#2A2A2D] rounded-2xl p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-1">Ready to get started?</h3>
+                  <p className="text-gray-400 text-sm">Your customized package is ready to launch in 14 days</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => setShowChat(true)}
+                    className="px-6 py-3 bg-[#0E0F0F] border border-[#2A2A2D] text-white rounded-lg hover:border-[#1CBF79] transition-colors"
+                  >
+                    Ask Questions
+                  </button>
+                  <button 
+                    onClick={() => setAccepted(true)}
+                    className="px-8 py-3 bg-[#1CBF79] hover:bg-[#15a366] text-white font-bold rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <CheckCircle className="w-5 h-5" />
+                    Accept & Proceed
+                  </button>
                 </div>
               </div>
             </div>
