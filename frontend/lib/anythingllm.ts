@@ -124,13 +124,20 @@ export class AnythingLLMService {
       );
 
       if (!response.ok) {
-        throw new Error(`Failed to list threads: ${response.statusText}`);
+        // Silently return empty array for 404s or errors
+        return [];
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        // Got HTML instead of JSON - endpoint doesn't exist or auth failed
+        return [];
       }
 
       const data = await response.json();
       return data.threads || [];
     } catch (error) {
-      console.error(`❌ Error listing threads for ${workspaceSlug}:`, error);
+      // Silently fail - most workspaces don't have threads
       return [];
     }
   }
