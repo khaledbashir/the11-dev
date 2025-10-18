@@ -17,7 +17,7 @@ interface ResizableLayoutProps {
   aiChatOpen?: boolean;
   onToggleSidebar?: () => void;
   onToggleAiChat?: () => void;
-  viewMode?: 'editor' | 'dashboard' | 'gardner-studio'; // NEW: Context awareness
+  viewMode?: 'editor' | 'dashboard' | 'gardner-studio' | 'ai-management'; // NEW: Context awareness
 }
 
 export function ResizableLayout({

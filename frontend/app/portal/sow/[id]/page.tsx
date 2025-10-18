@@ -82,6 +82,9 @@ export default function ClientPortalPage() {
         // Use the dynamically generated embed ID for this client's workspace
         script.setAttribute('data-embed-id', sow.embedId);
         script.setAttribute('data-base-api-url', 'https://socialgarden-anything-llm.vo0egb.easypanel.host/api/embed');
+  // Force chat mode at runtime
+  script.setAttribute('data-mode', 'chat');
+  script.setAttribute('data-chat-mode', 'chat');
         
         // 🎨 SOCIAL GARDEN BRANDING - NO AnythingLLM mentions!
         script.setAttribute('data-assistant-name', 'Social Garden AI Assistant'); // Rebrand!
@@ -833,12 +836,13 @@ export default function ClientPortalPage() {
                   prose-ul:text-gray-300 prose-ul:space-y-2
                   prose-ol:text-gray-300 prose-ol:space-y-2
                   prose-li:text-gray-300
-                  prose-table:w-full prose-table:border-collapse prose-table:my-8
-                  prose-thead:border-b-2 prose-thead:border-[#2A2A2D]
-                  prose-th:bg-[#2A2A2D] prose-th:text-white prose-th:font-bold prose-th:p-4 prose-th:text-left
-                  prose-td:border prose-td:border-[#2A2A2D] prose-td:text-gray-300 prose-td:p-4
+                  prose-table:w-full prose-table:border-collapse prose-table:my-8 prose-table:bg-[#0E0F0F]
+                  prose-thead:border-b-2 prose-thead:border-[#1CBF79]/50
+                  prose-th:bg-[#1A1A1D] prose-th:text-white prose-th:font-bold prose-th:p-4 prose-th:text-left prose-th:border prose-th:border-[#2A2A2D]
+                  prose-tbody:bg-[#0E0F0F]
+                  prose-td:bg-[#0E0F0F] prose-td:border prose-td:border-[#2A2A2D] prose-td:text-gray-200 prose-td:p-4
                   prose-tr:border-b prose-tr:border-[#2A2A2D]
-                  prose-tr:hover:bg-[#2A2A2D]/30 prose-tr:transition-colors"
+                  prose-tr:hover:bg-[#1CBF79]/10 prose-tr:transition-colors"
                 dangerouslySetInnerHTML={{ __html: sow.htmlContent }}
               />
             </div>

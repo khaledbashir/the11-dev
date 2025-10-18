@@ -324,6 +324,8 @@ Metadata:
     return `<script
   data-embed-id="${embedId}"
   data-base-api-url="${baseUrl}/api/embed"
+  data-mode="chat"
+  data-chat-mode="chat"
   data-button-color="${buttonColor}"
   data-assistant-name="${assistantName}"
   data-chat-icon="${chatIcon}"
