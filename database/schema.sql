@@ -16,10 +16,10 @@ DROP TABLE IF EXISTS sows;
 CREATE TABLE sows (
   id VARCHAR(255) PRIMARY KEY,
   title VARCHAR(500) NOT NULL,
-  client_name VARCHAR(255) NOT NULL,
+  client_name VARCHAR(255), -- Allow NULL for draft SOWs
   client_email VARCHAR(255),
   content LONGTEXT NOT NULL, -- Full SOW content (HTML or JSON)
-  total_investment DECIMAL(12,2) NOT NULL,
+  total_investment DECIMAL(12,2) DEFAULT 0, -- Allow NULL, default to 0
   
   -- Status tracking
   status ENUM('draft', 'sent', 'viewed', 'accepted', 'declined') DEFAULT 'draft',

@@ -55,7 +55,7 @@ echo "  ✅ Backend running (PID: $BACKEND_PID)"
 echo "  📋 Logs: tail -f /tmp/backend.log"
 
 cd ..
-sleep 2
+sleep 3
 
 # Check if backend is actually running
 if ! lsof -ti:8000 > /dev/null; then
@@ -63,6 +63,14 @@ if ! lsof -ti:8000 > /dev/null; then
     echo "❌ ERROR: Backend failed to start!"
     echo "📋 Check logs: tail -f /tmp/backend.log"
     exit 1
+fi
+
+# Verify backend is responding
+echo "  🔍 Verifying backend health..."
+if curl -s http://127.0.0.1:8000/docs > /dev/null 2>&1; then
+    echo "  ✅ Backend is healthy and responding"
+else
+    echo "  ⚠️  Backend started but not responding yet (may take a few more seconds)"
 fi
 
 echo ""

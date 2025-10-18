@@ -13,14 +13,14 @@ class PDFRequest(BaseModel):
     html_content: str
     filename: str = "document"
 
-# HTML template with Social Garden branding
+# HTML template - Clean template with only logo and footer
 SOW_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Social Garden - Statement of Work</title>
+    <title>Statement of Work</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         {{ css_content }}
@@ -30,10 +30,8 @@ SOW_TEMPLATE = """
     <div class="sow-document">
         <div class="sow-header">
             {% if logo_base64 %}
-            <img src="data:image/png;base64,{{ logo_base64 }}" alt="Social Garden Logo" class="sow-logo">
+            <img src="data:image/png;base64,{{ logo_base64 }}" alt="Company Logo" class="sow-logo">
             {% endif %}
-            <h1>Social Garden</h1>
-            <p>Marketing Automation & Growth Specialists</p>
         </div>
 
         <div class="sow-content">
@@ -81,22 +79,8 @@ body {
 .sow-logo {
     max-width: 180px;
     height: auto;
-    margin-bottom: 1rem;
-}
-
-.sow-header h1 {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 2.5rem;
-    font-weight: 700;
-    color: #0e2e33;
-    margin: 0.5rem 0;
-}
-
-.sow-header p {
-    color: #0e2e33;
-    font-size: 1.1rem;
-    margin: 0;
-    font-weight: 500;
+    margin: 0 auto;
+    display: block;
 }
 
 h1, h2, h3, h4, h5, h6 {

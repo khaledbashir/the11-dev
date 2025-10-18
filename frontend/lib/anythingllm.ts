@@ -847,14 +847,14 @@ When asked for analytics, provide clear, actionable insights with specific numbe
   /**
    * Embed a newly created SOW in BOTH client workspace AND master dashboard
    * This ensures SOWs are tracked in the master dashboard for analytics
+   * @param clientWorkspaceSlug - The client's workspace slug
    * @param sowTitle - The title of the SOW
    * @param sowContent - The markdown content of the SOW
-   * @param clientWorkspaceSlug - The client's workspace slug
    */
   async embedSOWInBothWorkspaces(
+    clientWorkspaceSlug: string,
     sowTitle: string,
-    sowContent: string,
-    clientWorkspaceSlug: string
+    sowContent: string
   ): Promise<boolean> {
     try {
       console.log(`📊 Embedding SOW in both workspaces...`);
