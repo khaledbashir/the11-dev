@@ -391,26 +391,17 @@ export default function SidebarNav({
       <div
         ref={setNodeRef}
         style={style}
-        className={`flex items-center gap-2 px-2 py-1 rounded-lg group transition-colors ${
+        className={`flex items-center gap-2 px-2 py-1.5 rounded-lg group transition-colors ${
           currentSOWId === sow.id
             ? "bg-[#0e2e33] text-white"
             : "text-gray-400 hover:text-gray-300 hover:bg-gray-800/50"
         }`}
       >
-        {/* Drag Handle */}
-        <button
-          {...attributes}
-          {...listeners}
-          className="p-0.5 hover:bg-gray-700 rounded transition-colors flex-shrink-0 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100"
-          title="Drag to reorder"
-        >
-          <GripVertical className="w-3 h-3 text-gray-500" />
-        </button>
-
+        {/* Doc Icon */}
         <FileText className="w-4 h-4 flex-shrink-0" />
 
-        {/* SOW Name (truncated to prevent overflow) */}
-        <div className="flex-1 min-w-0 max-w-[160px]">
+        {/* SOW Name - Clickable, max 6 chars with "..." */}
+        <div className="flex-1 min-w-0 overflow-hidden">
           {renamingId === sow.id ? (
             <Input
               value={renameValue}
@@ -425,17 +416,20 @@ export default function SidebarNav({
             />
           ) : (
             <button
-              onClick={() => onSelectSOW(sow.id)}
-              className="w-full text-left text-xs truncate"
+              onClick={() => {
+                console.log('🔍 SOW clicked:', sow.id, sow.name);
+                onSelectSOW(sow.id);
+              }}
+              className="w-full text-left text-xs hover:text-[#1CBF79] transition-colors"
               title={sow.name}
             >
-              {sow.name}
+              {sow.name.length > 6 ? sow.name.substring(0, 6) + '...' : sow.name}
             </button>
           )}
         </div>
 
-        {/* SOW Actions - ALWAYS VISIBLE with guaranteed space */}
-        <div className="flex gap-1 flex-shrink-0 ml-1">
+        {/* Action Buttons - ALWAYS VISIBLE */}
+        <div className="flex items-center gap-1.5 flex-shrink-0 ml-auto">
           {/* Rename */}
           <button
             onClick={(e) => {
@@ -443,10 +437,10 @@ export default function SidebarNav({
               setRenamingId(sow.id);
               setRenameValue(sow.name);
             }}
-            className="p-1 bg-gray-700/50 hover:bg-blue-500/30 rounded text-blue-400 hover:text-white transition-all"
-            title="Rename"
+            className="p-1 text-blue-400 hover:bg-blue-500/30 hover:text-blue-300 rounded transition-all flex-shrink-0"
+            title="Rename SOW"
           >
-            <Edit3 className="w-3.5 h-3.5" />
+            <Edit3 className="w-4 h-4" />
           </button>
 
           {/* Delete */}
@@ -457,10 +451,10 @@ export default function SidebarNav({
                 onDeleteSOW(sow.id);
               }
             }}
-            className="p-1 bg-gray-700/50 hover:bg-red-500/30 rounded text-red-400 hover:text-white transition-all"
-            title="Delete"
+            className="p-1 text-red-400 hover:bg-red-500/30 hover:text-red-300 rounded transition-all flex-shrink-0"
+            title="Delete SOW"
           >
-            <Trash2 className="w-3.5 h-3.5" />
+            <Trash2 className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -468,7 +462,7 @@ export default function SidebarNav({
   }
 
   return (
-    <div className="w-80 h-full bg-[#0E0F0F] border-r border-gray-800 flex flex-col relative">
+    <div className="w-80 h-full bg-[#0E0F0F] border-r border-gray-800 flex flex-col relative sidebar-nav-container">
       {/* COLLAPSE BUTTON - Top Right Corner */}
       {onToggleSidebar && (
         <button
