@@ -463,10 +463,23 @@ export default function Page() {
           
           // Create document objects for each SOW from database
           for (const sow of workspaceSOWs) {
+            // Parse content if it's a JSON string, otherwise use as-is
+            let parsedContent = defaultEditorContent;
+            if (sow.content) {
+              try {
+                parsedContent = typeof sow.content === 'string' 
+                  ? JSON.parse(sow.content) 
+                  : sow.content;
+              } catch (e) {
+                console.warn('⚠️ Failed to parse SOW content:', sow.id);
+                parsedContent = defaultEditorContent;
+              }
+            }
+            
             documentsFromDB.push({
               id: sow.id,
               title: sow.title || 'Untitled SOW',
-              content: sow.content || defaultEditorContent,
+              content: parsedContent,
               folderId: ws.id,
               workspaceSlug: ws.slug,
               syncedAt: sow.updated_at,
@@ -509,6 +522,24 @@ export default function Page() {
   }, [mounted]);
 
   // Note: SOWs are now saved to database via API calls, not localStorage
+
+  // ✨ NEW: When currentSOWId changes, load the corresponding document and switch to editor view
+  useEffect(() => {
+    if (!currentSOWId) return;
+    
+    console.log('📄 Loading document for SOW:', currentSOWId);
+    
+    // Find the document in the documents array
+    const doc = documents.find(d => d.id === currentSOWId);
+    
+    if (doc) {
+      console.log('✅ Found document:', doc.title);
+      setCurrentDocId(doc.id);
+      setViewMode('editor'); // Switch to editor view
+    } else {
+      console.warn('⚠️ Document not found for SOW:', currentSOWId);
+    }
+  }, [currentSOWId, documents]);
 
   // Auto-save SOW content to database with debouncing
   useEffect(() => {

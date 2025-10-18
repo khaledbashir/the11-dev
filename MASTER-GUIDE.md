@@ -10,6 +10,128 @@ Very importnant to spend only 10% documenting and 90% actualy working
 
 ## 🎉 LATEST UPDATES (October 18, 2025)
 
+### 15. ✅ FIXED: Sidebar Icons Simplified - AnythingLLM Style Pattern
+**Problem:** Delete/rename icons weren't appearing on hover, and clicking SOWs wasn't working.  
+**Root Causes:** 
+1. Overly complex implementation with drag handles, reserved space, and CSS conflicts
+2. `pointer-events-none` was blocking clicks on document titles
+3. Inline styles and CSS overrides creating specificity battles
+
+**Solution:** Simplified to match AnythingLLM's clean pattern:
+
+**Changes Made:**
+1. **Removed Drag Handles from SOWs** ✅
+   - AnythingLLM doesn't show drag handles on documents
+   - Keeps workspaces draggable, but SOWs are just clickable
+   - Cleaner, less cluttered UI
+
+2. **Removed Reserved Space** ✅
+   - Changed from `w-[60px]` fixed width to dynamic sizing
+   - Icons only appear on hover, no layout shift
+   - Natural flex layout
+
+3. **Pure Tailwind group-hover** ✅
+   - Removed all inline `style={{ opacity: 0 }}` 
+   - Removed custom CSS in globals.css
+   - Uses only `opacity-0 group-hover:opacity-100`
+   - Clean, maintainable solution
+
+4. **Fixed Click Handler** ✅
+   - Removed `pointer-events-none` that blocked clicks
+   - Title is now a proper `<button>` element
+   - Added debug logging: `console.log('🔍 SOW clicked:', id, name)`
+   - Click events now propagate correctly
+
+**Current Structure:**
+```tsx
+<div className="group">  {/* Hover target */}
+  <FileText />           {/* Doc icon */}
+  <button onClick={onSelectSOW}>  {/* Clickable title */}
+    {sow.name}
+  </button>
+  <div className="opacity-0 group-hover:opacity-100">  {/* Action buttons */}
+    <button>Rename</button>
+    <button>Delete</button>
+  </div>
+</div>
+```
+
+**Files Modified:**
+- `/frontend/components/tailwind/sidebar-nav.tsx` - Simplified SOW item structure
+- `/frontend/styles/globals.css` - Removed custom CSS overrides
+
+**Debugging:**
+- Added console.log when SOW is clicked
+- Check browser console for: `🔍 SOW clicked: [id] [name]`
+- If you see this log but document doesn't open, the issue is in page.tsx's `onSelectSOW` handler
+
+**Result:** ✅ Clean, simple implementation matching AnythingLLM. Icons appear on hover with pure Tailwind classes. No CSS tricks, no reserved space, no complexity.
+
+### 14. ✅ FIXED: Delete/Rename Buttons Appear on Row Hover - Perfect UX
+**Problem:** Delete and rename buttons for SOWs were only visible on hover, making them inaccessible when SOW titles were long.  
+**Root Cause:** Buttons appeared on hover, but long titles pushed them outside the visible container area.  
+**Solution:** Implemented AnythingLLM-style row hover pattern (see screenshot reference):
+
+**Changes Made:**
+1. **Title Truncation with Tooltip** ✅
+   - Long SOW titles now truncate with ellipsis (`...`)
+   - Full title appears on hover via native `title` attribute tooltip
+   - Removed fixed width constraints for better flex behavior
+
+2. **Row-Level Hover Detection** ✅
+   - Action buttons fade in when hovering ANYWHERE on the row (`group-hover:opacity-100`)
+   - Hidden by default: `opacity-0` 
+   - Smooth fade-in transition when hovering over title, icon, or whitespace
+   - Works even when title is truncated with "..."
+
+3. **Visual Polish** ✅
+   - Icons start as gray (`text-gray-400`) when row is hovered
+   - Individual icon highlights: Blue for rename, red for delete
+   - Background highlights on icon hover: `hover:bg-blue-500/20`, `hover:bg-red-500/20`
+   - SOW name gets brand green hover effect: `hover:text-[#1CBF79]`
+
+**Files Modified:**
+- `/frontend/components/tailwind/sidebar-nav.tsx` - Updated SOW item with `group` class and `opacity-0 group-hover:opacity-100` pattern
+
+**Result:** ✅ Users can now access delete/rename actions by hovering anywhere on the row, regardless of title length. Matches industry-standard pattern used by AnythingLLM, VS Code, Figma, and Notion.
+
+### 13. ✅ FIXED: SOW Persistence - Hybrid Database + AnythingLLM Architecture
+**Problem:** SOWs disappeared on every page refresh! Users could create SOWs but they vanished when reloading the page.  
+**Root Cause:** App was loading from AnythingLLM threads (which were never created), but saving to MySQL database.  
+**Solution:** Implemented proper hybrid architecture:
+
+**Architecture Decision:**
+- **AnythingLLM** = AI features (chat, semantic search, knowledge base)
+- **MySQL Database** = Primary storage (content, metadata, fast queries)
+
+**How It Works:**
+1. **CREATE SOW** → Creates BOTH:
+   - AnythingLLM thread (for AI chat functionality)
+   - MySQL record (with thread.slug as ID for sync)
+
+2. **EDIT SOW** → Auto-saves to MySQL every 2 seconds
+   - Fast, no API delay
+   - Persistent across sessions
+
+3. **LOAD SOWs** → Loads from MySQL database
+   - Much faster than querying AnythingLLM
+   - Has all content + metadata
+   - Matches to workspaces by `workspace_slug`
+
+4. **SHARE PORTAL** → Embeds to AnythingLLM
+   - Portal loads from MySQL (with @tiptap/html for rendering)
+   - AI chat works because thread exists
+
+**Files Modified:**
+- `/frontend/app/page.tsx` - Updated `handleCreateSOW()` to create AnythingLLM thread first, then save to MySQL
+- `/frontend/app/page.tsx` - Updated `loadData()` to load SOWs from MySQL instead of AnythingLLM threads
+- `/frontend/app/api/sow/list/route.ts` - Added `content` field and wrapped response in `{ sows: [...] }`
+- `/frontend/package.json` - Added `@tiptap/html` dependency
+
+**Result:** ✅ SOWs now persist across refreshes! Best of both worlds - MySQL speed + AnythingLLM AI features.
+
+**See Full Documentation:** `/root/the11/SOW-PERSISTENCE-ARCHITECTURE.md`
+
 ### 9. ✅ FIXED: All 8 Gardner Agents Now Showing in Dropdown
 **Problem:** Only 1 Gardner (GEN - The Architect) was showing in the agent dropdown instead of all 8.  
 **Root Cause:** The `/api/gardners/list` endpoint was filtering by database records, but not all Gardners had workspace slugs yet.  
