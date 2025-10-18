@@ -38,11 +38,11 @@ export function NewSOWModal({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="bg-gray-900 border-gray-700">
         <DialogHeader>
-          <DialogTitle className="text-white">New SOW</DialogTitle>
+          <DialogTitle className="text-white">New Doc</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <Input
-            placeholder="e.g., Q3 Marketing Campaign SOW"
+            placeholder="e.g., Q3 Marketing Campaign Plan"
             className="bg-gray-800 border-gray-700 text-white placeholder-gray-500"
             value={sowName}
             onChange={(e) => setSowName(e.target.value)}
@@ -62,7 +62,7 @@ export function NewSOWModal({
               disabled={!sowName.trim()}
               className="bg-[#1CBF79] hover:bg-[#15a366] text-white"
             >
-              Create SOW
+              Create Doc
             </Button>
           </div>
         </div>

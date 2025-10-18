@@ -534,98 +534,53 @@ export default function Page() {
   }, [currentDocId]);
 
   useEffect(() => {
-    // Load agents from DATABASE (not localStorage!)
-    const loadAgentsFromDB = async () => {
+    // 🌱 Load GARDNERS from AnythingLLM (not old agents table!)
+    const loadGardnersAsAgents = async () => {
       try {
-        const response = await fetch('/api/agents');
-        if (!response.ok) throw new Error('Failed to load agents');
+        console.log('🌱 Loading Gardners from AnythingLLM...');
+        const response = await fetch('/api/gardners/list');
+        if (!response.ok) throw new Error('Failed to load Gardners');
         
-        let loadedAgents: Agent[] = await response.json();
+        const { gardners } = await response.json();
+        console.log(`✅ Loaded ${gardners.length} Gardners:`, gardners.map((g: any) => g.name));
         
-        // 🔥 FIX: Remove duplicate "The Architect" agents
-        // Find all agents with "Architect" in the name
-        const architectAgents = loadedAgents.filter(agent => 
-          agent.name.includes('Architect') || agent.id === 'architect'
+        // Convert Gardners to Agent format for compatibility
+        const gardnerAgents: Agent[] = gardners.map((gardner: any) => ({
+          id: gardner.slug,
+          name: gardner.name,
+          systemPrompt: gardner.systemPrompt || '',
+          model: 'anythingllm', // All Gardners use AnythingLLM
+        }));
+        
+        setAgents(gardnerAgents);
+        
+        // Set default to "GEN - The Architect" (priority), then any gardner with "gen", then first available
+        const genArchitect = gardnerAgents.find(a => 
+          a.name === 'GEN - The Architect' || a.id === 'gen-the-architect'
         );
+        const anyGenGardner = gardnerAgents.find(a => a.id.includes('gen'));
+        const defaultAgentId = genArchitect?.id || anyGenGardner?.id || gardnerAgents[0]?.id || 'gen-the-architect';
         
-        if (architectAgents.length > 1) {
-          console.log(`🧹 Found ${architectAgents.length} Architect agents, cleaning up duplicates...`);
-          
-          // Keep only the one with id="architect", delete the rest
-          for (const agent of architectAgents) {
-            if (agent.id !== 'architect') {
-              await fetch(`/api/agents/${agent.id}`, { method: 'DELETE' });
-              console.log(`🗑️ Deleted duplicate agent: ${agent.name} (${agent.id})`);
-            }
-          }
-          
-          // Reload agents after cleanup
-          const cleanResponse = await fetch('/api/agents');
-          loadedAgents = await cleanResponse.json();
-        }
-        
-        // Ensure THE SINGLE Architect agent exists with correct settings
-        const architectIndex = loadedAgents.findIndex(agent => agent.id === "architect");
-        if (architectIndex >= 0) {
-          // Update existing architect if needed
-          if (loadedAgents[architectIndex].model !== "anythingllm" || 
-              loadedAgents[architectIndex].systemPrompt !== THE_ARCHITECT_SYSTEM_PROMPT) {
-            await fetch('/api/agents/architect', {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                model: "anythingllm",
-                systemPrompt: THE_ARCHITECT_SYSTEM_PROMPT
-              })
-            });
-            loadedAgents[architectIndex].model = "anythingllm";
-            loadedAgents[architectIndex].systemPrompt = THE_ARCHITECT_SYSTEM_PROMPT;
-          }
-          console.log('✅ The Architect agent loaded from database');
-        } else {
-          // Create new architect agent in database WITH EXPLICIT ID
-          const architectAgent = {
-            id: "architect",  // EXPLICIT ID to prevent duplicates
-            name: "The Architect (SOW Generator)",
-            systemPrompt: THE_ARCHITECT_SYSTEM_PROMPT,
-            model: "anythingllm"
-          };
-          
-          await fetch('/api/agents', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(architectAgent)
-          });
-          
-          loadedAgents.unshift(architectAgent);
-          console.log('✅ Created The Architect agent in database');
-        }
-        
-        setAgents(loadedAgents);
+        console.log(`🎯 [Agent Selection] Default agent set to: ${defaultAgentId}`);
         
         // Load current agent preference from database
         const prefResponse = await fetch('/api/preferences/current_agent_id');
         if (prefResponse.ok) {
           const { value } = await prefResponse.json();
-          setCurrentAgentId(value || "architect");
+          setCurrentAgentId(value || defaultAgentId);
         } else {
-          setCurrentAgentId("architect");
+          setCurrentAgentId(defaultAgentId);
         }
         
       } catch (error) {
-        console.error('❌ Failed to load agents from database:', error);
-        // Fallback: create default architect in state only
-        setAgents([{
-          id: "architect",
-          name: "The Architect (SOW Generator)",
-          systemPrompt: THE_ARCHITECT_SYSTEM_PROMPT,
-          model: "anythingllm"
-        }]);
-        setCurrentAgentId("architect");
+        console.error('❌ Failed to load Gardners:', error);
+        // Fallback: show empty state
+        setAgents([]);
+        setCurrentAgentId(null);
       }
     };
     
-    loadAgentsFromDB();
+    loadGardnersAsAgents();
   }, []);
 
   // Save current agent preference to database
@@ -1114,6 +1069,20 @@ export default function Page() {
     }
   };
 
+  const handleReorderWorkspaces = (reorderedWorkspaces: Workspace[]) => {
+    setWorkspaces(reorderedWorkspaces);
+    // Optionally save order to localStorage or database
+    localStorage.setItem('workspace-order', JSON.stringify(reorderedWorkspaces.map(w => w.id)));
+  };
+
+  const handleReorderSOWs = (workspaceId: string, reorderedSOWs: SOW[]) => {
+    setWorkspaces(prev => prev.map(ws =>
+      ws.id === workspaceId ? { ...ws, sows: reorderedSOWs } : ws
+    ));
+    // Optionally save order to localStorage or database
+    localStorage.setItem(`sow-order-${workspaceId}`, JSON.stringify(reorderedSOWs.map(s => s.id)));
+  };
+
   // ==================== END WORKSPACE & SOW HANDLERS ====================
 
   // AnythingLLM Integration
@@ -1495,20 +1464,12 @@ export default function Page() {
   const handleSelectAgent = async (id: string) => {
     setCurrentAgentId(id);
     
-    // Load chat messages from DATABASE
-    try {
-      const response = await fetch(`/api/agents/${id}/messages`);
-      if (response.ok) {
-        const messages = await response.json();
-        setChatMessages(messages);
-        console.log(`✅ Loaded ${messages.length} messages from database for agent ${id}`);
-      } else {
-        setChatMessages([]);
-      }
-    } catch (error) {
-      console.error('❌ Failed to load messages:', error);
-      setChatMessages([]);
-    }
+    // ⚠️ REMOVED DATABASE CALLS - AnythingLLM handles message storage via threads
+    // Chat history is maintained by AnythingLLM's workspace threads system
+    // No need to duplicate in MySQL database
+    setChatMessages([]); // Start fresh - AnythingLLM maintains history in its threads
+    
+    console.log(`✅ Agent selected: ${id}. Chat history managed by AnythingLLM threads.`);
   };
 
   const handleUpdateAgent = async (id: string, updates: Partial<Agent>) => {
@@ -1708,14 +1669,7 @@ export default function Page() {
           };
           setChatMessages(prev => [...prev, confirmMessage]);
           
-          // Save to DATABASE
-          if (currentAgentId) {
-            await fetch(`/api/agents/${currentAgentId}/messages`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(confirmMessage)
-            });
-          }
+          // ⚠️ REMOVED DATABASE SAVE - AnythingLLM handles all message storage
           return;
         } catch (error) {
           console.error("Error inserting content:", error);
@@ -1727,14 +1681,7 @@ export default function Page() {
           };
           setChatMessages(prev => [...prev, errorMessage]);
           
-          // Save to DATABASE
-          if (currentAgentId) {
-            await fetch(`/api/agents/${currentAgentId}/messages`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(errorMessage)
-            });
-          }
+          // ⚠️ REMOVED DATABASE SAVE - AnythingLLM handles all message storage
           return;
         }
       }
@@ -1750,14 +1697,7 @@ export default function Page() {
     const newMessages = [...chatMessages, userMessage];
     setChatMessages(newMessages);
     
-    // Save user message to DATABASE (only in editor mode with agent)
-    if (!isDashboardMode && currentAgentId) {
-      await fetch(`/api/agents/${currentAgentId}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userMessage)
-      }).catch(err => console.error('Failed to save user message:', err));
-    }
+    // ⚠️ REMOVED DATABASE SAVE - AnythingLLM handles all message storage
 
     const currentAgent = agents.find(a => a.id === currentAgentId);
     
@@ -1879,14 +1819,7 @@ export default function Page() {
           const updatedMessages = [...newMessages, aiMessage];
           setChatMessages(updatedMessages);
           
-          // Save to DATABASE (only in editor mode)
-          if (!isDashboardMode && currentAgentId) {
-            await fetch(`/api/agents/${currentAgentId}/messages`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(aiMessage)
-            });
-          }
+          // ⚠️ REMOVED DATABASE SAVE - AnythingLLM handles all message storage
           return;
         }
 
@@ -1905,15 +1838,8 @@ export default function Page() {
         const updatedMessages = [...newMessages, aiMessage];
         setChatMessages(updatedMessages);
         
-        // Save AI message to DATABASE (only in editor mode)
-        if (!isDashboardMode && currentAgentId) {
-          await fetch(`/api/agents/${currentAgentId}/messages`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(aiMessage)
-          }).catch(err => console.error('Failed to save AI message:', err));
-        }
-        console.log('💾 Chat messages saved to database, total messages:', updatedMessages.length);
+        // ⚠️ REMOVED DATABASE SAVE - AnythingLLM handles all message storage
+        console.log('✅ Chat messages managed by AnythingLLM, total in UI:', updatedMessages.length);
       } catch (error) {
         console.error("❌ Chat API error:", error);
         const errorMessage: ChatMessage = {
@@ -1925,14 +1851,7 @@ export default function Page() {
         const updatedMessages = [...newMessages, errorMessage];
         setChatMessages(updatedMessages);
         
-        // Save error message to DATABASE (only in editor mode)
-        if (!isDashboardMode && currentAgentId) {
-          await fetch(`/api/agents/${currentAgentId}/messages`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(errorMessage)
-          }).catch(err => console.error('Failed to save error message:', err));
-        }
+        // ⚠️ REMOVED DATABASE SAVE - AnythingLLM handles all message storage
       } finally {
         setIsChatLoading(false);
       }
@@ -1976,6 +1895,8 @@ export default function Page() {
             onDeleteSOW={handleDeleteSOW}
             onViewChange={handleViewChange}
             onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+            onReorderWorkspaces={handleReorderWorkspaces}
+            onReorderSOWs={handleReorderSOWs}
           />
         }
         mainPanel={
@@ -1991,7 +1912,7 @@ export default function Page() {
               )}
               
               {/* Main Content Area */}
-              <div className="flex-1 overflow-hidden">
+              <div className="flex-1 overflow-auto">
                 {currentDoc ? (
                   <div className="w-full h-full">
                     <TailwindAdvancedEditor

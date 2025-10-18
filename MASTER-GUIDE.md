@@ -8,6 +8,79 @@ Very importnant to spend only 10% documenting and 90% actualy working
 
 ---
 
+## 🎉 LATEST UPDATES (October 18, 2025)
+
+### 9. ✅ FIXED: All 8 Gardner Agents Now Showing in Dropdown
+**Problem:** Only 1 Gardner (GEN - The Architect) was showing in the agent dropdown instead of all 8.  
+**Root Cause:** The `/api/gardners/list` endpoint was filtering by database records, but not all Gardners had workspace slugs yet.  
+**Solution:** 
+- Modified `/frontend/app/api/gardners/list/route.ts` to return explicit list of all 8 Gardner slugs
+- Updated `/frontend/lib/workspace-config.ts` to handle all Gardner workspace slugs
+- All 8 Gardners now appear: GEN - The Architect, Property Marketing Pro, Ad Copy Machine, CRM Communication Specialist, Case Study Crafter, Landing Page Persuader, SEO Content Strategist, Proposal & Audit Specialist
+
+### 10. ✅ IMPLEMENTED: Drag-and-Drop for Workspaces and Documents
+**Problem:** Users couldn't reorder workspaces or documents in the sidebar.  
+**Solution:** Full @dnd-kit integration with visual drag handles
+
+**Features:**
+- **Workspace Reordering:** Drag handle (`::` icon) always visible on left of workspace names
+- **Document Reordering:** Drag handle appears on hover for each document
+- **Visual Feedback:** 
+  - Cursor changes: `grab` → `grabbing`
+  - Dragged items become 50% transparent
+  - Smooth CSS transitions during reorder
+- **Persistence:** Order saved to localStorage automatically
+- **Nested DnD:** Documents can only be reordered within their own workspace (can't drag to different workspaces)
+
+**Files Modified:**
+- `/frontend/components/tailwind/sidebar-nav.tsx` - Added DndContext, SortableWorkspaceItem, and SortableSOWItem components
+- `/frontend/app/page.tsx` - Added `handleReorderWorkspaces()` and `handleReorderSOWs()` handlers
+
+**Technical Stack:**
+```typescript
+import { DndContext, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
+import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+```
+
+**Usage:**
+- Click and hold the `::` handle to drag
+- 8px activation distance prevents accidental drags
+- Keyboard navigation supported (Tab, Enter/Space, Arrow keys)
+
+### 11. ✅ UPDATED: Terminology Changed from "SOW" to "Doc" in UI
+**Problem:** UI showed "SOW" terminology which was confusing for users.  
+**Solution:** Updated all user-facing labels to use "Doc" instead
+
+**Changes:**
+- "New SOW" button → "New Doc" button
+- "Create SOW" modal → "Create Doc" modal
+- Modal placeholder: "Q3 Marketing Campaign SOW" → "Q3 Marketing Campaign Plan"
+- Button text: "Create SOW" → "Create Doc"
+
+**Files Modified:**
+- `/frontend/components/tailwind/sidebar-nav.tsx` - Button labels and comments
+- `/frontend/components/tailwind/new-sow-modal.tsx` - Modal title, placeholders, and button text
+
+**Backend/Database:** Unchanged - still uses `sows` tables and `/api/sow/*` endpoints for consistency
+
+### 12. ✅ FIXED: Editor Scrolling Issue
+**Problem:** Editor content couldn't scroll properly - users had to zoom out to see all content.  
+**Root Cause:** Editor wrapper had `overflow-hidden` instead of `overflow-auto`, and EditorContent lacked proper scroll styles.  
+**Solution:** 
+- Changed editor wrapper: `overflow-hidden` → `overflow-hidden flex flex-col`
+- Added `overflow-y-auto` to EditorContent className
+- Added padding to editor prose content: `px-8 py-12`
+- Changed page.tsx editor container: `overflow-hidden` → `overflow-auto`
+
+**Files Modified:**
+- `/frontend/components/tailwind/advanced-editor.tsx` - Fixed overflow and padding
+- `/frontend/app/page.tsx` - Changed container from `overflow-hidden` to `overflow-auto`
+
+**Impact:** Editor now scrolls properly without requiring zoom adjustments! 🎉
+
+---
+
 ## 🔥 CRITICAL FIXES COMPLETED (October 17, 2025)
 
 ### 1. ✅ FIXED: Workspace Creation JSON Parsing Error
@@ -1848,6 +1921,93 @@ lsof -ti:8000 | xargs kill -9
 # Restart
 ./dev.sh
 ```
+
+---
+
+## 🔧 EASYPANEL PORT TROUBLESHOOTING BLUEPRINT
+
+**Copy/paste this to any AI when you have Easypanel port issues:**
+
+---
+
+**PROBLEM:** I have a Docker service deployed on Easypanel. The service shows as "healthy" and all containers are green, but I get "Service Not Reachable" when accessing the domain.
+
+**MY SERVER INFO:**
+- Server IP: `168.231.115.219`
+- Easypanel runs on port 3000
+- Docker Swarm is enabled
+
+**COMMANDS TO RUN:**
+
+1. **Show me ALL running containers and their port mappings:**
+```bash
+docker ps -a
+```
+
+2. **Show the environment variables for the problematic service:**
+```bash
+# Replace SERVICE_NAME with your service name
+docker inspect SERVICE_NAME | grep -A 30 "Env"
+```
+
+3. **Check what port the app is ACTUALLY listening on inside the container:**
+```bash
+# Replace CONTAINER_ID with the container ID from step 1
+docker exec CONTAINER_ID curl -s http://localhost:3000 || echo "Port 3000 not responding"
+docker exec CONTAINER_ID curl -s http://localhost:8080 || echo "Port 8080 not responding"
+```
+
+4. **Check the Easypanel domain configuration:**
+   - Go to: `http://SERVER_IP:3000/projects/PROJECT_NAME/app/APP_NAME/domains`
+   - Screenshot the "Destination Port" setting
+
+**WHAT TO FIX:**
+
+The issue is usually one of these:
+
+1. **Port Mapping Mismatch:**
+   - Docker publishes: `4000:4000` (external:internal)
+   - But app listens on: `3000` internally
+   - **FIX:** Change mapping to `4000:3000` in Easypanel
+
+2. **Environment Variable Conflict:**
+   - App has `PORT=4000` and `NODE_PORT=3000`
+   - **FIX:** Remove conflicting `PORT` variable, keep only `NODE_PORT=3000`
+
+3. **Domain Points to Wrong Port:**
+   - Easypanel domain configured for port `4000`
+   - But app listens on port `3000`
+   - **FIX:** Update domain "Destination Port" to match internal port
+
+**EXACT STEPS TO FIX IN EASYPANEL:**
+
+1. Go to: Projects → [Your Project] → Services → [Your Service]
+2. Click "Domains" tab
+3. Edit the domain:
+   - **Protocol:** HTTP
+   - **Destination Port:** [INTERNAL_PORT] (the port your app listens on inside container)
+4. Click "Ports" or "Published Ports"
+5. DELETE existing port mapping
+6. ADD new mapping:
+   - **Published Port:** [EXTERNAL_PORT] (any available port like 4000)
+   - **Target Port:** [INTERNAL_PORT] (must match what app listens on)
+7. Click "Redeploy"
+
+**VERIFICATION:**
+
+After redeploying, run:
+```bash
+docker ps | grep SERVICE_NAME
+curl -I https://your-domain.easypanel.host
+```
+
+Should return `200 OK` or redirect, not timeout.
+
+---
+
+**END OF BLUEPRINT** - Give this to any AI and they'll fix it! 🚀
+
+---
 
 ### Database Connection Errors
 ```bash

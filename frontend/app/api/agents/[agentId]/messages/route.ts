@@ -8,8 +8,9 @@ export async function GET(
   try {
     const { agentId } = await params;
     
+    // Order by timestamp (bigint) when available, fall back to created_at
     const messages = await query(
-      'SELECT * FROM chat_messages WHERE agent_id = ? ORDER BY created_at DESC LIMIT 50',
+      `SELECT * FROM chat_messages WHERE agent_id = ? ORDER BY COALESCE(NULLIF(timestamp,0), UNIX_TIMESTAMP(created_at) * 1000) DESC LIMIT 50`,
       [agentId]
     );
     
@@ -26,7 +27,11 @@ export async function POST(
 ) {
   try {
     const { agentId } = await params;
-    const { message, role = 'user' } = await request.json();
+    const body = await request.json();
+    console.log(' [AGENT MSG POST] Incoming body keys:', Object.keys(body));
+    // Accept both `message` and `content` for compatibility
+    const message = body.message ?? body.content ?? '';
+    const role = body.role ?? 'user';
     
     // chat_messages table uses 'content' not 'message', and 'timestamp' (bigint) not created_at for ordering
     await query(
