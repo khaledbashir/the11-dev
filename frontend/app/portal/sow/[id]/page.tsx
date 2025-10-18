@@ -2,7 +2,11 @@
 
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Sparkles, Download, CheckCircle, MessageCircle, ArrowLeft } from 'lucide-react';
+import { 
+  Sparkles, Download, CheckCircle, MessageCircle, ArrowLeft, 
+  FileText, DollarSign, Calendar, Eye, Share2, Clock,
+  Target, TrendingUp, Users, Zap, Home
+} from 'lucide-react';
 import { Button } from '@/components/tailwind/ui/button';
 
 interface SOWData {
@@ -16,6 +20,8 @@ interface SOWData {
   embedId?: string;
 }
 
+type TabView = 'overview' | 'content' | 'pricing' | 'timeline';
+
 export default function ClientPortalPage() {
   const params = useParams();
   const sowId = params.id as string;
@@ -23,6 +29,8 @@ export default function ClientPortalPage() {
   const [loading, setLoading] = useState(true);
   const [showChat, setShowChat] = useState(false);
   const [accepted, setAccepted] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabView>('overview');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
     // Load SOW data
@@ -191,229 +199,443 @@ export default function ClientPortalPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-      {/* Header */}
-      <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-50 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-[#0e2e33] rounded-xl flex items-center justify-center">
-              <span className="text-white text-xl font-bold">SG</span>
+    <div className="min-h-screen bg-[#0E0F0F] flex">
+      {/* 🔥 SIDEBAR NAVIGATION - Like main app */}
+      <aside className={`${sidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 bg-[#1A1A1D] border-r border-[#2A2A2D] flex flex-col overflow-hidden`}>
+        {/* Logo Header */}
+        <div className="p-6 border-b border-[#2A2A2D]">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-lg flex items-center justify-center">
+              <span className="text-white text-lg font-bold">SG</span>
             </div>
             <div>
-              <h1 className="text-lg font-bold text-slate-900 dark:text-white">Social Garden</h1>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Statement of Work</p>
+              <h2 className="text-white font-bold text-sm">Social Garden</h2>
+              <p className="text-gray-400 text-xs">Client Portal</p>
             </div>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              onClick={() => setShowChat(!showChat)}
-              variant="outline"
-              className="gap-2 border-[#20e28f] text-[#0e2e33] hover:bg-[#20e28f]/10"
-            >
-              <Sparkles className="w-4 h-4" />
-              {showChat ? 'Hide' : 'Ask'} AI
-            </Button>
-            <Button
-              onClick={handleDownloadPDF}
-              variant="outline"
-              className="gap-2"
-            >
-              <Download className="w-4 h-4" />
-              Download PDF
-            </Button>
-            {!accepted && (
-              <Button
-                onClick={handleAcceptSOW}
-                className="gap-2 bg-[#0e2e33] hover:bg-[#0e2e33]/90"
-              >
-                <CheckCircle className="w-4 h-4" />
-                Accept SOW
-              </Button>
-            )}
           </div>
         </div>
-      </header>
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className={`${showChat ? 'lg:col-span-2' : 'lg:col-span-3'}`}>
-            {/* Hero Section */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-8 mb-8 border-t-4 border-[#0e2e33]">
-              <div className="flex items-start justify-between mb-6">
-                <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Proposal For</p>
-                  <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">{sow.clientName}</h2>
-                  <p className="text-slate-600 dark:text-slate-400">{sow.title}</p>
-                </div>
-                {accepted && (
-                  <div className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4" />
-                    Accepted
-                  </div>
-                )}
-              </div>
+        {/* Navigation Tabs */}
+        <nav className="flex-1 p-4 space-y-2">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+              activeTab === 'overview' 
+                ? 'bg-[#1CBF79] text-white shadow-lg shadow-[#1CBF79]/20' 
+                : 'text-gray-400 hover:bg-[#2A2A2D] hover:text-white'
+            }`}
+          >
+            <Home className="w-5 h-5" />
+            <span className="font-medium">Overview</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('content')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+              activeTab === 'content' 
+                ? 'bg-[#1CBF79] text-white shadow-lg shadow-[#1CBF79]/20' 
+                : 'text-gray-400 hover:bg-[#2A2A2D] hover:text-white'
+            }`}
+          >
+            <FileText className="w-5 h-5" />
+            <span className="font-medium">Full Document</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('pricing')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+              activeTab === 'pricing' 
+                ? 'bg-[#1CBF79] text-white shadow-lg shadow-[#1CBF79]/20' 
+                : 'text-gray-400 hover:bg-[#2A2A2D] hover:text-white'
+            }`}
+          >
+            <DollarSign className="w-5 h-5" />
+            <span className="font-medium">Pricing</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('timeline')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+              activeTab === 'timeline' 
+                ? 'bg-[#1CBF79] text-white shadow-lg shadow-[#1CBF79]/20' 
+                : 'text-gray-400 hover:bg-[#2A2A2D] hover:text-white'
+            }`}
+          >
+            <Clock className="w-5 h-5" />
+            <span className="font-medium">Timeline</span>
+          </button>
+
+          <div className="pt-4 mt-4 border-t border-[#2A2A2D]">
+            <button
+              onClick={() => setShowChat(!showChat)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                showChat 
+                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/20' 
+                  : 'text-gray-400 hover:bg-[#2A2A2D] hover:text-white'
+              }`}
+            >
+              <Sparkles className="w-5 h-5" />
+              <span className="font-medium">AI Assistant</span>
+            </button>
+          </div>
+        </nav>
+
+        {/* Footer Actions */}
+        <div className="p-4 border-t border-[#2A2A2D] space-y-2">
+          <Button
+            onClick={handleDownloadPDF}
+            variant="outline"
+            className="w-full gap-2 border-gray-600 text-gray-300 hover:bg-[#2A2A2D] hover:text-white"
+          >
+            <Download className="w-4 h-4" />
+            Download PDF
+          </Button>
+          
+          {!accepted && (
+            <Button
+              onClick={handleAcceptSOW}
+              className="w-full gap-2 bg-[#1CBF79] hover:bg-[#15965E] text-white shadow-lg shadow-[#1CBF79]/20"
+            >
+              <CheckCircle className="w-4 h-4" />
+              Accept Proposal
+            </Button>
+          )}
+        </div>
+      </aside>
+
+      {/* 🔥 MAIN CONTENT AREA */}
+      <main className="flex-1 overflow-auto">
+        {/* Top Bar */}
+        <header className="sticky top-0 z-40 bg-[#1A1A1D]/80 backdrop-blur-xl border-b border-[#2A2A2D]">
+          <div className="px-8 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="p-2 hover:bg-[#2A2A2D] rounded-lg transition-colors text-gray-400 hover:text-white"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
               
-              <div className="grid grid-cols-2 gap-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-                <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Total Investment</p>
-                  <p className="text-3xl font-bold text-[#0e2e33] dark:text-[#20e28f]">
-                    ${sow.totalInvestment.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">AUD (inc. GST)</p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Created</p>
-                  <p className="text-lg font-semibold text-slate-900 dark:text-white">
-                    {new Date(sow.createdAt).toLocaleDateString('en-AU', { 
-                      year: 'numeric', 
-                      month: 'long', 
-                      day: 'numeric' 
-                    })}
-                  </p>
-                </div>
+              <div>
+                <h1 className="text-xl font-bold text-white">{sow?.clientName}</h1>
+                <p className="text-sm text-gray-400">{sow?.title}</p>
               </div>
             </div>
 
-            {/* SOW Content */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-8">
+            <div className="flex items-center gap-3">
+              {accepted && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-lg">
+                  <CheckCircle className="w-4 h-4 text-green-400" />
+                  <span className="text-sm font-semibold text-green-400">Accepted</span>
+                </div>
+              )}
+              
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 border-gray-600 text-gray-300 hover:bg-[#2A2A2D]"
+              >
+                <Share2 className="w-4 h-4" />
+                Share
+              </Button>
+            </div>
+          </div>
+        </header>
+
+        {/* Content Area */}
+        <div className="p-8">
+          {renderTabContent()}
+        </div>
+      </main>
+
+      {/* 🔥 AI CHAT PANEL - Side drawer */}
+      {showChat && (
+        <aside className="w-96 bg-[#1A1A1D] border-l border-[#2A2A2D] flex flex-col">
+          {/* Chat Header */}
+          <div className="p-6 border-b border-[#2A2A2D] bg-gradient-to-r from-purple-500/10 to-pink-500/10">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="text-white font-bold">AI Assistant</h3>
+              </div>
+              <button
+                onClick={() => setShowChat(false)}
+                className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-sm text-gray-400">Ask me anything about this proposal</p>
+          </div>
+
+          {/* Chat Content */}
+          <div className="flex-1 overflow-auto p-6 space-y-4">
+            {!sow?.embedId ? (
+              <div className="flex flex-col items-center justify-center h-full text-center">
+                <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mb-4 animate-pulse">
+                  <Sparkles className="w-8 h-8 text-white" />
+                </div>
+                <p className="text-white font-semibold mb-2">Loading AI Assistant...</p>
+                <p className="text-sm text-gray-400">Preparing knowledge base</p>
+              </div>
+            ) : (
+              <div id="social-garden-chat-container" className="h-full">
+                {/* AI widget loads here */}
+              </div>
+            )}
+          </div>
+
+          {/* Suggested Questions */}
+          <div className="p-4 border-t border-[#2A2A2D]">
+            <p className="text-xs text-gray-500 mb-3 font-semibold uppercase">Quick Questions</p>
+            <div className="space-y-2">
+              {[
+                "What's the total investment?",
+                "Timeline for deliverables?",
+                "What's included in social media?",
+              ].map((q, i) => (
+                <button
+                  key={i}
+                  className="w-full text-left text-xs p-3 rounded-lg bg-[#2A2A2D] hover:bg-[#3A3A3D] text-gray-300 transition-colors border border-gray-700 hover:border-[#1CBF79]"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          </div>
+        </aside>
+      )}
+    </div>
+  );
+
+  // 🔥 RENDER TAB CONTENT
+  function renderTabContent() {
+    if (!sow) return null;
+
+    switch (activeTab) {
+      case 'overview':
+        return (
+          <div className="space-y-6 max-w-5xl">
+            {/* Hero Stats */}
+            <div className="grid grid-cols-3 gap-6">
+              <div className="bg-gradient-to-br from-[#1CBF79]/20 to-[#15965E]/10 border border-[#1CBF79]/30 rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 bg-[#1CBF79]/20 rounded-lg">
+                    <DollarSign className="w-6 h-6 text-[#1CBF79]" />
+                  </div>
+                  <span className="text-gray-400 text-sm font-medium">Total Investment</span>
+                </div>
+                <p className="text-3xl font-bold text-white mb-1">
+                  ${sow.totalInvestment.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                </p>
+                <p className="text-xs text-gray-500">AUD (inc. GST)</p>
+              </div>
+
+              <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/10 border border-blue-500/30 rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 bg-blue-500/20 rounded-lg">
+                    <Calendar className="w-6 h-6 text-blue-400" />
+                  </div>
+                  <span className="text-gray-400 text-sm font-medium">Created</span>
+                </div>
+                <p className="text-xl font-bold text-white mb-1">
+                  {new Date(sow.createdAt).toLocaleDateString('en-AU', { 
+                    month: 'short', 
+                    day: 'numeric',
+                    year: 'numeric'
+                  })}
+                </p>
+                <p className="text-xs text-gray-500">Proposal Date</p>
+              </div>
+
+              <div className="bg-gradient-to-br from-purple-500/20 to-pink-500/10 border border-purple-500/30 rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 bg-purple-500/20 rounded-lg">
+                    <Target className="w-6 h-6 text-purple-400" />
+                  </div>
+                  <span className="text-gray-400 text-sm font-medium">Status</span>
+                </div>
+                <p className="text-xl font-bold text-white mb-1">
+                  {accepted ? 'Accepted' : 'Pending'}
+                </p>
+                <p className="text-xs text-gray-500">Proposal Status</p>
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="bg-gradient-to-r from-[#1CBF79]/10 via-blue-500/10 to-purple-500/10 border border-[#2A2A2D] rounded-2xl p-8">
+              <h2 className="text-2xl font-bold text-white mb-4">What would you like to do?</h2>
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={() => setActiveTab('content')}
+                  className="p-6 bg-[#1A1A1D] border border-[#2A2A2D] rounded-xl hover:border-[#1CBF79] transition-all group"
+                >
+                  <FileText className="w-8 h-8 text-[#1CBF79] mb-3 group-hover:scale-110 transition-transform" />
+                  <h3 className="text-white font-bold mb-2">Read Full Proposal</h3>
+                  <p className="text-sm text-gray-400">View complete scope of work</p>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('pricing')}
+                  className="p-6 bg-[#1A1A1D] border border-[#2A2A2D] rounded-xl hover:border-blue-500 transition-all group"
+                >
+                  <TrendingUp className="w-8 h-8 text-blue-400 mb-3 group-hover:scale-110 transition-transform" />
+                  <h3 className="text-white font-bold mb-2">View Pricing</h3>
+                  <p className="text-sm text-gray-400">Detailed cost breakdown</p>
+                </button>
+
+                <button
+                  onClick={() => setShowChat(true)}
+                  className="p-6 bg-[#1A1A1D] border border-[#2A2A2D] rounded-xl hover:border-purple-500 transition-all group"
+                >
+                  <Sparkles className="w-8 h-8 text-purple-400 mb-3 group-hover:scale-110 transition-transform" />
+                  <h3 className="text-white font-bold mb-2">Ask AI Questions</h3>
+                  <p className="text-sm text-gray-400">Get instant answers</p>
+                </button>
+
+                <button
+                  onClick={handleDownloadPDF}
+                  className="p-6 bg-[#1A1A1D] border border-[#2A2A2D] rounded-xl hover:border-pink-500 transition-all group"
+                >
+                  <Download className="w-8 h-8 text-pink-400 mb-3 group-hover:scale-110 transition-transform" />
+                  <h3 className="text-white font-bold mb-2">Download PDF</h3>
+                  <p className="text-sm text-gray-400">Save for your records</p>
+                </button>
+              </div>
+            </div>
+
+            {/* Why Social Garden */}
+            <div className="bg-[#1A1A1D] border border-[#2A2A2D] rounded-2xl p-8">
+              <h2 className="text-2xl font-bold text-white mb-6">Why Choose Social Garden?</h2>
+              <div className="grid grid-cols-2 gap-6">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-[#1CBF79]/10 rounded-lg flex-shrink-0">
+                    <Zap className="w-6 h-6 text-[#1CBF79]" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-bold mb-2">Fast Turnaround</h3>
+                    <p className="text-sm text-gray-400">Quick delivery without compromising quality</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-blue-500/10 rounded-lg flex-shrink-0">
+                    <Users className="w-6 h-6 text-blue-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-bold mb-2">Dedicated Team</h3>
+                    <p className="text-sm text-gray-400">Your own account manager and specialists</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-purple-500/10 rounded-lg flex-shrink-0">
+                    <Target className="w-6 h-6 text-purple-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-bold mb-2">Results-Focused</h3>
+                    <p className="text-sm text-gray-400">We measure success by your ROI</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-pink-500/10 rounded-lg flex-shrink-0">
+                    <TrendingUp className="w-6 h-6 text-pink-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-bold mb-2">Proven Track Record</h3>
+                    <p className="text-sm text-gray-400">100+ successful campaigns delivered</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'content':
+        return (
+          <div className="max-w-4xl">
+            <div className="bg-[#1A1A1D] border border-[#2A2A2D] rounded-2xl p-12">
               <div 
-                className="prose prose-slate dark:prose-invert max-w-none"
+                className="prose prose-invert prose-lg max-w-none 
+                  prose-headings:text-white 
+                  prose-p:text-gray-300 
+                  prose-strong:text-white
+                  prose-a:text-[#1CBF79]
+                  prose-ul:text-gray-300
+                  prose-ol:text-gray-300
+                  prose-table:border-[#2A2A2D]
+                  prose-th:bg-[#2A2A2D] prose-th:text-white
+                  prose-td:border-[#2A2A2D] prose-td:text-gray-300"
+                dangerouslySetInnerHTML={{ __html: sow.htmlContent }}
+              />
+            </div>
+          </div>
+        );
+
+      case 'pricing':
+        return (
+          <div className="max-w-4xl space-y-6">
+            <div className="bg-gradient-to-r from-[#1CBF79]/20 to-blue-500/20 border border-[#1CBF79]/30 rounded-2xl p-8">
+              <h2 className="text-3xl font-bold text-white mb-2">Investment Breakdown</h2>
+              <p className="text-gray-400">Transparent pricing for exceptional value</p>
+            </div>
+
+            <div className="bg-[#1A1A1D] border border-[#2A2A2D] rounded-2xl overflow-hidden">
+              {/* Extract pricing table from HTML content */}
+              <div 
+                className="prose prose-invert max-w-none p-8
+                  prose-table:w-full
+                  prose-th:bg-[#2A2A2D] prose-th:text-white prose-th:p-4
+                  prose-td:border-[#2A2A2D] prose-td:text-gray-300 prose-td:p-4
+                  prose-tr:border-b prose-tr:border-[#2A2A2D]"
                 dangerouslySetInnerHTML={{ __html: sow.htmlContent }}
               />
             </div>
 
-            {/* Questions Section */}
-            <div className="mt-8 bg-gradient-to-r from-[#0e2e33] to-[#0a2328] rounded-2xl p-8 text-white">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <MessageCircle className="w-6 h-6" />
-                </div>
+            <div className="bg-[#1A1A1D] border border-[#2A2A2D] rounded-2xl p-6">
+              <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-xl font-bold mb-2">Have Questions?</h3>
-                  <p className="text-white/80 mb-4">
-                    Our AI assistant has analyzed this entire proposal and can answer any questions you have about scope, pricing, deliverables, or timelines.
+                  <h3 className="text-xl font-bold text-white mb-1">Total Investment</h3>
+                  <p className="text-sm text-gray-400">All fees included</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-4xl font-bold text-[#1CBF79]">
+                    ${sow.totalInvestment.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
                   </p>
-                  <Button
-                    onClick={() => setShowChat(true)}
-                    variant="secondary"
-                    className="bg-white text-[#0e2e33] hover:bg-white/90"
-                  >
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Ask AI About This Proposal
-                  </Button>
+                  <p className="text-sm text-gray-400">AUD (inc. GST)</p>
                 </div>
               </div>
             </div>
           </div>
+        );
 
-          {/* AI Chat Sidebar */}
-          {showChat && (
-            <div className="lg:col-span-1">
-              <div className="sticky top-24">
-                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl overflow-hidden border border-slate-200 dark:border-slate-700">
-                  <div className="bg-gradient-to-r from-[#0e2e33] to-[#0a2328] p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="w-5 h-5 text-[#20e28f]" />
-                        <h3 className="text-white font-bold">AI Assistant</h3>
-                      </div>
-                      <Button
-                        onClick={() => setShowChat(false)}
-                        variant="ghost"
-                        size="sm"
-                        className="text-white hover:bg-white/10"
-                      >
-                        ✕
-                      </Button>
-                    </div>
-                    <p className="text-white/70 text-sm mt-1">Ask me anything about this proposal</p>
-                  </div>
-                  
-                  {/* Social Garden AI Chat Widget */}
-                  <div 
-                    id="social-garden-chat-container" 
-                    className="h-[600px] bg-slate-50 dark:bg-slate-900 relative overflow-hidden"
-                  >
-                    {/* Chat interface will load here via script */}
-                    {!sow.embedId ? (
-                      <div className="flex items-center justify-center h-full text-slate-500 text-sm">
-                        <div className="text-center">
-                          <Sparkles className="w-8 h-8 mx-auto mb-2 text-[#20e28f] animate-pulse" />
-                          <p>Loading AI Assistant...</p>
-                          <p className="text-xs mt-1">Preparing {sow.clientName}'s knowledge base</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center h-full text-slate-500 text-sm">
-                        <div className="text-center">
-                          <CheckCircle className="w-8 h-8 mx-auto mb-2 text-[#20e28f]" />
-                          <p className="font-semibold">AI Ready!</p>
-                          <p className="text-xs mt-1">Click "Ask AI" to start chatting</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Custom CSS to hide AnythingLLM branding in widget */}
-                  <style jsx global>{`
-                    /* Hide any "Powered by AnythingLLM" or similar branding */
-                    [data-embed-id] a[href*="anythingllm.com"],
-                    [data-embed-id] *[class*="powered"],
-                    [data-embed-id] *[class*="branding"],
-                    iframe[src*="anythingllm"] + div a[href*="anythingllm.com"] {
-                      display: none !important;
-                      visibility: hidden !important;
-                      opacity: 0 !important;
-                    }
-                    
-                    /* Ensure Social Garden colors */
-                    [data-embed-id] {
-                      --primary-color: #0e2e33;
-                      --accent-color: #20e28f;
-                    }
-                  `}</style>
-
-                  {/* Suggested Questions */}
-                  <div className="p-4 border-t border-slate-200 dark:border-slate-700">
-                    <p className="text-xs text-slate-600 dark:text-slate-400 mb-2 font-semibold">Try asking:</p>
-                    <div className="space-y-2">
-                      {[
-                        "What's the total investment?",
-                        "How many hours for social media?",
-                        "What deliverables are included?",
-                        "When does the project start?"
-                      ].map((q, i) => (
-                        <button
-                          key={i}
-                          className="w-full text-left text-xs p-2 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 transition-colors"
-                        >
-                          {q}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
+      case 'timeline':
+        return (
+          <div className="max-w-4xl space-y-6">
+            <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30 rounded-2xl p-8">
+              <h2 className="text-3xl font-bold text-white mb-2">Project Timeline</h2>
+              <p className="text-gray-400">Milestones and deliverables schedule</p>
             </div>
-          )}
-        </div>
-      </div>
 
-      {/* Footer */}
-      <footer className="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 mt-16">
-        <div className="max-w-6xl mx-auto px-4 py-8 text-center">
-          <p className="text-slate-600 dark:text-slate-400 mb-2">
-            <strong className="text-slate-900 dark:text-white">Social Garden Pty Ltd</strong>
-          </p>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            marketing@socialgarden.com.au | www.socialgarden.com.au
-          </p>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-4">
-            This document is confidential and intended solely for the addressee.
-          </p>
-        </div>
-      </footer>
-    </div>
-  );
+            <div className="bg-[#1A1A1D] border border-[#2A2A2D] rounded-2xl p-8">
+              <p className="text-gray-400 mb-6">Timeline information extracted from your proposal:</p>
+              <div 
+                className="prose prose-invert max-w-none
+                  prose-headings:text-white 
+                  prose-p:text-gray-300"
+                dangerouslySetInnerHTML={{ __html: sow.htmlContent }}
+              />
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  }
 }
