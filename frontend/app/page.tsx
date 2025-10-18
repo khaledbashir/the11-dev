@@ -1684,7 +1684,8 @@ export default function Page() {
         console.log('🤖 Embedding SOW in workspaces...');
         try {
           const clientWorkspaceSlug = getWorkspaceForAgent(currentAgentId);
-          const success = await anythingLLM.embedSOWInBothWorkspaces(docTitle, cleanedContent, clientWorkspaceSlug);
+          // Fixed parameter order: (workspaceSlug, title, content)
+          const success = await anythingLLM.embedSOWInBothWorkspaces(clientWorkspaceSlug, docTitle, cleanedContent);
           
           if (success) {
             console.log('✅ SOW embedded in both workspaces successfully');
@@ -1807,7 +1808,8 @@ export default function Page() {
             console.log('🤖 Embedding SOW in AnythingLLM workspaces...');
             try {
               const clientWorkspaceSlug = getWorkspaceForAgent(currentAgentId);
-              const success = await anythingLLM.embedSOWInBothWorkspaces(docTitle, cleanedMessage, clientWorkspaceSlug);
+              // Fixed parameter order: (workspaceSlug, title, content)
+              const success = await anythingLLM.embedSOWInBothWorkspaces(clientWorkspaceSlug, docTitle, cleanedMessage);
               
               if (success) {
                 console.log('✅ SOW embedded in both AnythingLLM workspaces');

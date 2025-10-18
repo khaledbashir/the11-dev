@@ -172,7 +172,18 @@ Metadata:
 - Type: Statement of Work
       `.trim();
 
-      // Upload as raw text
+      // NOTE: AnythingLLM doesn't have a raw-text upload endpoint
+      // For now, we'll skip document embedding and just save to database
+      // Future: Could use /api/v1/document/upload-link with a temporary URL
+      
+      console.warn(`⚠️ Document embedding to AnythingLLM is temporarily disabled`);
+      console.warn(`   Reason: /api/v1/document/raw-text endpoint doesn't exist`);
+      console.warn(`   SOW "${sowTitle}" is saved to database and working fine!`);
+      
+      // Return early - SOW is already in database, embedding is optional
+      return;
+
+      // Keep the old code below for reference (unreachable)
       const uploadResponse = await fetch(`${this.baseUrl}/api/v1/document/raw-text`, {
         method: 'POST',
         headers: this.getHeaders(),
@@ -336,7 +347,15 @@ Metadata:
     try {
       console.log(`📚 Embedding Social Garden knowledge base into workspace: ${workspaceSlug}`);
 
-      // Upload company knowledge base as raw text
+      // NOTE: AnythingLLM doesn't have a raw-text upload endpoint
+      // Knowledge base embedding is temporarily disabled
+      console.warn(`⚠️ Knowledge base embedding is temporarily disabled`);
+      console.warn(`   Reason: /api/v1/document/raw-text endpoint doesn't exist`);
+      console.warn(`   Workspace "${workspaceSlug}" works fine without it!`);
+      
+      return false; // Indicate embedding failed, but not critical
+
+      // Keep the old code below for reference (unreachable)
       const uploadResponse = await fetch(`${this.baseUrl}/api/v1/document/raw-text`, {
         method: 'POST',
         headers: this.getHeaders(),
