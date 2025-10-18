@@ -36,6 +36,7 @@ export default function ClientPortalPage() {
   const sowId = params.id as string;
   const [sow, setSOW] = useState<SOWData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showChat, setShowChat] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const [activeTab, setActiveTab] = useState<TabView>('overview');
@@ -125,20 +126,30 @@ export default function ClientPortalPage() {
   const loadSOW = async () => {
     try {
       setLoading(true);
+      setError(null);
       
       // Fetch SOW from database API
       const response = await fetch(`/api/sow/${sowId}`);
       
       if (!response.ok) {
-        console.error('Failed to fetch SOW:', response.statusText);
+        if (response.status === 404) {
+          setError('This proposal could not be found. It may have been removed or the link is incorrect.');
+        } else {
+          setError(`Failed to load proposal: ${response.statusText}`);
+        }
         setLoading(false);
         return;
       }
       
       const data = await response.json();
       
-      if (data.sow) {
-        const sowData = data.sow;
+      if (!data.sow) {
+        setError('No proposal data found.');
+        setLoading(false);
+        return;
+      }
+      
+      const sowData = data.sow;
         
         // Extract client name from title or use client_name field
         const clientName = sowData.client_name || sowData.title.split(':')[1]?.split('-')[0]?.trim() || 'Client';
@@ -186,11 +197,11 @@ export default function ClientPortalPage() {
           workspaceSlug,
           embedId
         });
-      }
       
       setLoading(false);
     } catch (error) {
       console.error('Error loading SOW:', error);
+      setError('An unexpected error occurred while loading the proposal.');
       setLoading(false);
     }
   };
@@ -272,25 +283,37 @@ export default function ClientPortalPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center">
+      <div className="min-h-screen bg-[#0E0F0F] flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#0e2e33] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-600 dark:text-slate-300">Loading your proposal...</p>
+          <div className="w-16 h-16 border-4 border-[#1CBF79] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading your proposal...</p>
         </div>
       </div>
     );
   }
 
-  if (!sow) {
+  if (error || !sow) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">SOW Not Found</h1>
-          <p className="text-slate-600 dark:text-slate-300 mb-8">This proposal doesn't exist or has been removed.</p>
-          <Button onClick={() => window.location.href = '/'}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Go Back
-          </Button>
+      <div className="min-h-screen bg-[#0E0F0F] flex items-center justify-center p-6">
+        <div className="max-w-md text-center">
+          <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-10 h-10 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h1 className="text-3xl font-bold text-white mb-3">Proposal Not Found</h1>
+          <p className="text-gray-400 mb-6">
+            {error || "This proposal doesn't exist or has been removed."}
+          </p>
+          <div className="bg-[#1A1A1D] border border-[#2A2A2D] rounded-lg p-4 mb-6">
+            <p className="text-sm text-gray-400 mb-2">Need help?</p>
+            <p className="text-xs text-gray-500">
+              Contact your account manager or email{' '}
+              <a href="mailto:hello@socialgarden.com.au" className="text-[#1CBF79] hover:underline">
+                hello@socialgarden.com.au
+              </a>
+            </p>
+          </div>
         </div>
       </div>
     );
