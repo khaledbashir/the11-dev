@@ -386,6 +386,17 @@ export default function AgentSidebar({
                             {/* Show thinking section with streaming support */}
                             {msg.role === 'assistant' && (
                               <div className="mb-4">
+                                {/* Debug: DETAILED log to see if <think> tags exist */}
+                                {msg.content.includes('<think>') && console.log('✅ HAS THINKING TAGS!', {
+                                  messageId: msg.id,
+                                  thinkingPreview: msg.content.match(/<think>([\s\S]{0,100})/)?.[1] || 'none',
+                                  isStreaming: streamingMessageId === msg.id
+                                })}
+                                {!msg.content.includes('<think>') && console.log('❌ NO THINKING TAGS', {
+                                  messageId: msg.id,
+                                  contentStart: msg.content.substring(0, 100),
+                                  isStreaming: streamingMessageId === msg.id
+                                })}
                                 <StreamingThoughtAccordion 
                                   content={msg.content}
                                   messageId={msg.id}

@@ -29,6 +29,15 @@ export function StreamingThoughtAccordion({
     const extractedThinking = thinkingMatch ? thinkingMatch[1].trim() : "";
     const cleanedContent = content.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
 
+    // DEBUG: Log extraction
+    if (extractedThinking) {
+      console.log('🎯 [Accordion] THINKING EXTRACTED:', {
+        thinkingLength: extractedThinking.length,
+        thinkingPreview: extractedThinking.substring(0, 100),
+        hasThinkingContent: extractedThinking.length > 0
+      });
+    }
+
     setThinking(extractedThinking);
     setActualContent(cleanedContent);
 

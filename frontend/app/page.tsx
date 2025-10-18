@@ -1655,21 +1655,60 @@ export default function Page() {
           );
           console.log('✅ Document updated successfully');
           
+          // 💾 SAVE TO DATABASE
+          console.log('💾 Saving SOW to database...');
+          try {
+            const saveResponse = await fetch('/api/sow/update', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                id: currentDocId,
+                title: docTitle,
+                content: JSON.stringify(content),
+              }),
+            });
+            
+            if (saveResponse.ok) {
+              console.log('✅ SOW saved to database successfully');
+            } else {
+              console.warn('⚠️ Failed to save SOW to database');
+            }
+          } catch (saveError) {
+            console.error('❌ Database save error:', saveError);
+          }
+          
           // Also update the editor directly
           if (editorRef.current) {
             editorRef.current.insertContent(content);
+          }
+          
+          // Embed SOW in both client workspace and master dashboard
+          const currentAgent = agents.find(a => a.id === currentAgentId);
+          const useAnythingLLM = currentAgent?.model === 'anythingllm';
+          
+          if (useAnythingLLM && currentAgentId) {
+            console.log('🤖 Embedding SOW in AnythingLLM workspaces...');
+            try {
+              const clientWorkspaceSlug = getWorkspaceForAgent(currentAgentId);
+              const success = await anythingLLM.embedSOWInBothWorkspaces(docTitle, cleanedMessage, clientWorkspaceSlug);
+              
+              if (success) {
+                console.log('✅ SOW embedded in both AnythingLLM workspaces');
+              }
+            } catch (embedError) {
+              console.error('⚠️ AnythingLLM embedding error:', embedError);
+            }
           }
           
           // Add confirmation message
           const confirmMessage: ChatMessage = {
             id: `msg${Date.now()}`,
             role: 'assistant',
-            content: "✅ SOW has been inserted into the editor and the document has been named!",
+            content: "✅ SOW has been inserted into the editor, saved to database, and embedded in AnythingLLM!",
             timestamp: Date.now(),
           };
           setChatMessages(prev => [...prev, confirmMessage]);
           
-          // ⚠️ REMOVED DATABASE SAVE - AnythingLLM handles all message storage
           return;
         } catch (error) {
           console.error("Error inserting content:", error);
@@ -1752,51 +1791,151 @@ export default function Page() {
             : 'EDITOR_MODE'
         });
 
-        const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: effectiveAgent.model,
-          workspace: workspaceSlug, // Only used for non-dashboard routes
-          messages: [
-            { role: "system", content: effectiveAgent.systemPrompt },
-            ...newMessages.map(m => ({ role: m.role, content: m.content })),
-          ],
-        }),
-      });
+        // 🌊 STREAMING SUPPORT: Use stream-chat endpoint for AnythingLLM
+        const shouldStream = useAnythingLLM;
+        const streamEndpoint = endpoint.replace('/chat', '/stream-chat');
+        
+        if (shouldStream) {
+          // ✨ STREAMING MODE: Real-time response with thinking display
+          const aiMessageId = `msg${Date.now() + 1}`;
+          let accumulatedContent = '';
+          
+          // Create initial empty AI message
+          const initialAIMessage: ChatMessage = {
+            id: aiMessageId,
+            role: 'assistant',
+            content: '',
+            timestamp: Date.now(),
+          };
+          setChatMessages(prev => [...prev, initialAIMessage]);
+          setStreamingMessageId(aiMessageId);
 
-        console.log('📥 Response Status:', response.status, response.statusText);
-        const data = await response.json();
-        console.log('📄 Response Data Structure:', {
-          hasChoices: !!data.choices,
-          choicesLength: data.choices?.length,
-          hasMessage: !!data.choices?.[0]?.message,
-          messageContent: data.choices?.[0]?.message?.content?.substring(0, 100),
-          rawDataKeys: Object.keys(data)
-        });
-        console.log('📦 Full Response Data:', data);
+          const response = await fetch(streamEndpoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: effectiveAgent.model,
+              workspace: workspaceSlug,
+              messages: [
+                { role: "system", content: effectiveAgent.systemPrompt },
+                ...newMessages.map(m => ({ role: m.role, content: m.content })),
+              ],
+            }),
+          });
 
-        if (!response.ok) {
-          let errorMessage = "Sorry, there was an error processing your request.";
+          if (!response.ok) {
+            const errorText = await response.text();
+            let errorMessage = "Sorry, there was an error processing your request.";
 
-          // Different error messages for AnythingLLM vs OpenRouter
-          if (isDashboardMode || useAnythingLLM) {
-            // AnythingLLM-specific errors
             if (response.status === 400) {
               errorMessage = "⚠️ AnythingLLM error: Invalid request. Please check the workspace configuration.";
             } else if (response.status === 401 || response.status === 403) {
               errorMessage = "⚠️ AnythingLLM authentication failed. Please check the API key configuration.";
             } else if (response.status === 404) {
               errorMessage = `⚠️ AnythingLLM workspace '${workspaceSlug}' not found. Please verify it exists.`;
-            } else if (data.error?.message) {
-              errorMessage = `AnythingLLM Error: ${data.error.message}`;
-            } else {
-              errorMessage = `AnythingLLM Error: ${response.status} ${response.statusText}`;
             }
-          } else {
-            // OpenRouter-specific errors
+
+            setChatMessages(prev => 
+              prev.map(msg => msg.id === aiMessageId 
+                ? { ...msg, content: errorMessage }
+                : msg
+              )
+            );
+            setStreamingMessageId(null);
+            return;
+          }
+
+          // Read the SSE stream
+          const reader = response.body?.getReader();
+          const decoder = new TextDecoder();
+
+          if (!reader) {
+            console.error('❌ No response body reader available');
+            setStreamingMessageId(null);
+            return;
+          }
+
+          try {
+            let buffer = '';
+            while (true) {
+              const { done, value } = await reader.read();
+              
+              if (done) {
+                console.log('✅ Stream complete');
+                setStreamingMessageId(null);
+                break;
+              }
+
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || '';
+
+              for (const line of lines) {
+                if (!line.trim() || !line.startsWith('data: ')) continue;
+                
+                try {
+                  const jsonStr = line.substring(6); // Remove 'data: ' prefix
+                  const data = JSON.parse(jsonStr);
+                  
+                  // Handle different message types from AnythingLLM stream
+                  if (data.type === 'textResponseChunk' && data.textResponse) {
+                    accumulatedContent += data.textResponse;
+                    
+                    // Update the message content in real-time
+                    setChatMessages(prev =>
+                      prev.map(msg =>
+                        msg.id === aiMessageId
+                          ? { ...msg, content: accumulatedContent }
+                          : msg
+                      )
+                    );
+                  } else if (data.type === 'textResponse') {
+                    // Final response (fallback for non-chunked)
+                    accumulatedContent = data.content || data.textResponse || '';
+                    setChatMessages(prev =>
+                      prev.map(msg =>
+                        msg.id === aiMessageId
+                          ? { ...msg, content: accumulatedContent }
+                          : msg
+                      )
+                    );
+                  }
+                } catch (parseError) {
+                  console.error('Failed to parse SSE data:', parseError);
+                }
+              }
+            }
+          } catch (streamError) {
+            console.error('❌ Stream reading error:', streamError);
+            setStreamingMessageId(null);
+          }
+
+          console.log('✅ Streaming complete, total content length:', accumulatedContent.length);
+        } else {
+          // 📦 NON-STREAMING MODE: Standard fetch for OpenRouter
+          const response = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: effectiveAgent.model,
+              workspace: workspaceSlug,
+              messages: [
+                { role: "system", content: effectiveAgent.systemPrompt },
+                ...newMessages.map(m => ({ role: m.role, content: m.content })),
+              ],
+            }),
+          });
+
+          console.log('📥 Response Status:', response.status, response.statusText);
+          const data = await response.json();
+
+          if (!response.ok) {
+            let errorMessage = "Sorry, there was an error processing your request.";
+
             if (response.status === 400) {
               errorMessage = "⚠️ OpenRouter API key not configured. Please set the OPENROUTER_API_KEY environment variable to enable AI chat functionality.";
             } else if (response.status === 402) {
@@ -1808,38 +1947,26 @@ export default function Page() {
             } else if (data.error?.message) {
               errorMessage = `API Error: ${data.error.message}`;
             }
+
+            const aiMessage: ChatMessage = {
+              id: `msg${Date.now() + 1}`,
+              role: 'assistant',
+              content: errorMessage,
+              timestamp: Date.now(),
+            };
+            setChatMessages(prev => [...prev, aiMessage]);
+            return;
           }
 
           const aiMessage: ChatMessage = {
             id: `msg${Date.now() + 1}`,
             role: 'assistant',
-            content: errorMessage,
+            content: data.choices?.[0]?.message?.content || "Sorry, I couldn't generate a response.",
             timestamp: Date.now(),
           };
-          const updatedMessages = [...newMessages, aiMessage];
-          setChatMessages(updatedMessages);
-          
-          // ⚠️ REMOVED DATABASE SAVE - AnythingLLM handles all message storage
-          return;
+          setChatMessages(prev => [...prev, aiMessage]);
+          console.log('✅ Non-streaming response complete');
         }
-
-        const aiMessage: ChatMessage = {
-          id: `msg${Date.now() + 1}`,
-          role: 'assistant',
-          content: data.choices?.[0]?.message?.content || "Sorry, I couldn't generate a response.",
-          timestamp: Date.now(),
-        };
-        console.log('✅ AI Message Created:', {
-          id: aiMessage.id,
-          role: aiMessage.role,
-          contentLength: aiMessage.content.length,
-          contentPreview: aiMessage.content.substring(0, 100) + '...'
-        });
-        const updatedMessages = [...newMessages, aiMessage];
-        setChatMessages(updatedMessages);
-        
-        // ⚠️ REMOVED DATABASE SAVE - AnythingLLM handles all message storage
-        console.log('✅ Chat messages managed by AnythingLLM, total in UI:', updatedMessages.length);
       } catch (error) {
         console.error("❌ Chat API error:", error);
         const errorMessage: ChatMessage = {

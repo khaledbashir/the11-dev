@@ -261,10 +261,11 @@ export default function SidebarNav({
           </div>
 
           {/* Action Buttons (visible on hover) */}
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+          <div className="flex gap-1 opacity-30 group-hover:opacity-100 transition-opacity flex-shrink-0">
             {/* Add New Doc */}
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 setNewSOWWorkspaceId(workspace.id);
                 setShowNewSOWModal(true);
               }}
@@ -289,7 +290,10 @@ export default function SidebarNav({
 
             {/* Delete */}
             <button
-              onClick={() => onDeleteWorkspace(workspace.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeleteWorkspace(workspace.id);
+              }}
               className="p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-red-500 transition-colors"
               title="Delete"
             >
@@ -376,7 +380,7 @@ export default function SidebarNav({
         </div>
 
         {/* SOW Actions (visible on hover) */}
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+        <div className="flex gap-1 opacity-30 group-hover:opacity-100 transition-opacity flex-shrink-0">
           {/* Rename */}
           <button
             onClick={(e) => {
@@ -392,7 +396,10 @@ export default function SidebarNav({
 
           {/* Delete */}
           <button
-            onClick={() => onDeleteSOW(sow.id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDeleteSOW(sow.id);
+            }}
             className="p-0.5 hover:bg-gray-700 rounded text-gray-400 hover:text-red-500 transition-colors"
             title="Delete"
           >
