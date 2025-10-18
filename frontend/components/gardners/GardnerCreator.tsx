@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { X, Sparkles, Loader2 } from 'lucide-react';
 import { GARDNER_TEMPLATES, type GardnerTemplate } from '@/lib/gardner-templates';
+import { toast } from 'sonner';
 
 interface GardnerCreatorProps {
   isOpen: boolean;
@@ -44,7 +45,7 @@ export default function GardnerCreator({ isOpen, onClose, onSuccess }: GardnerCr
 
   const handleCreate = async () => {
     if (!name || !systemPrompt) {
-      alert('Please provide a name and system prompt');
+      toast.error('Please provide a name and system prompt');
       return;
     }
 
@@ -71,6 +72,7 @@ export default function GardnerCreator({ isOpen, onClose, onSuccess }: GardnerCr
 
       const data = await response.json();
       console.log('✅ Gardner created:', data);
+      toast.success(`Gardner "${name}" created successfully!`);
 
       // Reset form
       setStep('template');
@@ -85,7 +87,7 @@ export default function GardnerCreator({ isOpen, onClose, onSuccess }: GardnerCr
       onClose();
     } catch (error) {
       console.error('❌ Error creating Gardner:', error);
-      alert(error instanceof Error ? error.message : 'Failed to create Gardner');
+      toast.error(error instanceof Error ? error.message : 'Failed to create Gardner');
     } finally {
       setIsCreating(false);
     }

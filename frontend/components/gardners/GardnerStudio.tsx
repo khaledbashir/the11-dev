@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Sparkles, Loader2 } from 'lucide-react';
 import GardnerCard from './GardnerCard';
 import GardnerCreator from './GardnerCreator';
+import { toast } from 'sonner';
 
 interface Gardner {
   id: string;
@@ -58,16 +59,17 @@ export default function GardnerStudio({ onSelectGardner }: GardnerStudioProps) {
       // Remove from UI
       setGardners(prev => prev.filter(g => g.slug !== slug));
       console.log('✅ Gardner deleted:', slug);
+      toast.success('Gardner deleted successfully!');
     } catch (error) {
       console.error('❌ Error deleting Gardner:', error);
-      alert('Failed to delete Gardner');
+      toast.error('Failed to delete Gardner. Please try again.');
     }
   };
 
   const handleEdit = (gardner: Gardner) => {
     // TODO: Open edit modal
     console.log('Edit Gardner:', gardner);
-    alert('Edit functionality coming soon!');
+    toast.info('Edit functionality coming soon!');
   };
 
   const handleChat = (slug: string) => {

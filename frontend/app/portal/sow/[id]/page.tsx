@@ -8,6 +8,7 @@ import {
   Target, TrendingUp, Users, Zap, Home
 } from 'lucide-react';
 import { Button } from '@/components/tailwind/ui/button';
+import { toast } from 'sonner';
 
 interface SOWData {
   id: string;
@@ -259,7 +260,7 @@ export default function ClientPortalPage() {
       
       if (!response.ok) {
         console.error('Failed to generate PDF:', response.statusText);
-        alert('Failed to download PDF. Please try again.');
+        toast.error('Failed to download PDF. Please try again.');
         return;
       }
       
@@ -273,9 +274,10 @@ export default function ClientPortalPage() {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
+      toast.success('PDF downloaded successfully!');
     } catch (error) {
       console.error('Error downloading PDF:', error);
-      alert('Failed to download PDF. Please try again.');
+      toast.error('Failed to download PDF. Please try again.');
     }
   };
 
