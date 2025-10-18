@@ -332,6 +332,7 @@ interface Workspace {
   id: string;
   name: string;
   sows: SOW[];
+  workspace_slug?: string;
 }
 
 export default function Page() {
@@ -358,19 +359,10 @@ export default function Page() {
   const [showGuidedSetup, setShowGuidedSetup] = useState(false);
   const [viewMode, setViewMode] = useState<'editor' | 'dashboard' | 'gardner-studio'>('dashboard'); // NEW: View mode - START WITH DASHBOARD
   
-  // Workspace & SOW state (NEW)
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([
-    {
-      id: 'ws-1',
-      name: 'My Workspace',
-      sows: [
-        { id: 'sow-1', name: 'Q1 Project Proposal', workspaceId: 'ws-1' },
-        { id: 'sow-2', name: 'Development Retainer', workspaceId: 'ws-1' },
-      ]
-    }
-  ]);
-  const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string>('ws-1');
-  const [currentSOWId, setCurrentSOWId] = useState<string | null>('sow-1');
+  // Workspace & SOW state (NEW) - Start empty, load from AnythingLLM
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string>('');
+  const [currentSOWId, setCurrentSOWId] = useState<string | null>(null);
   const editorRef = useRef<any>(null);
 
   // Dashboard AI workspace selector state
@@ -448,6 +440,7 @@ export default function Page() {
             id: ws.id,
             name: ws.name,
             sows: sows,
+            workspace_slug: ws.slug, // ✅ Add slug for categorization
           });
           
           // Add to folders array (folders = workspaces)
