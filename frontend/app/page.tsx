@@ -418,29 +418,38 @@ export default function Page() {
         const anythingllmWorkspaces = await anythingLLM.listWorkspaces();
         console.log('✅ Loaded workspaces from AnythingLLM:', anythingllmWorkspaces.length);
         
-        const workspacesFromAnythingLLM: Workspace[] = [];
-        const documentsFromAnythingLLM: Document[] = [];
+        // ✅ LOAD SOWS FROM DATABASE (single source of truth for content)
+        const sowsResponse = await fetch('/api/sow/list');
+        const { sows: dbSOWs } = await sowsResponse.json();
+        console.log('✅ Loaded SOWs from database:', dbSOWs.length);
+        
+        const workspacesWithSOWs: Workspace[] = [];
+        const documentsFromDB: Document[] = [];
         const foldersFromAnythingLLM: Folder[] = [];
         
-        // For each workspace, load its threads (SOWs)
+        // Create workspace objects with SOWs from database
         for (const ws of anythingllmWorkspaces) {
-          console.log(`📁 Loading threads for workspace: ${ws.name} (${ws.slug})`);
+          console.log(`📁 Processing workspace: ${ws.name} (${ws.slug})`);
           
-          const threads = await anythingLLM.listThreads(ws.slug);
-          console.log(`   ✅ Found ${threads.length} threads`);
+          // Find SOWs that belong to this workspace (or have no workspace)
+          const workspaceSOWs = dbSOWs.filter((sow: any) => 
+            sow.workspace_slug === ws.slug || !sow.workspace_slug
+          );
           
-          const sows: SOW[] = threads.map(thread => ({
-            id: thread.slug,
-            name: thread.name,
+          const sows: SOW[] = workspaceSOWs.map((sow: any) => ({
+            id: sow.id,
+            name: sow.title || 'Untitled SOW',
             workspaceId: ws.id,
           }));
           
+          console.log(`   ✅ Found ${sows.length} SOWs in this workspace`);
+          
           // Add to workspaces array
-          workspacesFromAnythingLLM.push({
+          workspacesWithSOWs.push({
             id: ws.id,
             name: ws.name,
             sows: sows,
-            workspace_slug: ws.slug, // ✅ Add slug for categorization
+            workspace_slug: ws.slug,
           });
           
           // Add to folders array (folders = workspaces)
@@ -452,44 +461,43 @@ export default function Page() {
             syncedAt: new Date().toISOString(),
           });
           
-          // Create document objects for each thread
-          for (const thread of threads) {
-            documentsFromAnythingLLM.push({
-              id: thread.slug,
-              title: thread.name,
-              content: defaultEditorContent, // Will load content when selected
+          // Create document objects for each SOW from database
+          for (const sow of workspaceSOWs) {
+            documentsFromDB.push({
+              id: sow.id,
+              title: sow.title || 'Untitled SOW',
+              content: sow.content || defaultEditorContent,
               folderId: ws.id,
               workspaceSlug: ws.slug,
-              threadSlug: thread.slug,
-              syncedAt: new Date().toISOString(),
+              syncedAt: sow.updated_at,
             });
           }
         }
         
-        console.log('✅ Total workspaces loaded:', workspacesFromAnythingLLM.length);
-        console.log('✅ Total SOWs loaded:', documentsFromAnythingLLM.length);
+        console.log('✅ Total workspaces loaded:', workspacesWithSOWs.length);
+        console.log('✅ Total SOWs loaded:', documentsFromDB.length);
         
         // Update state
-        setWorkspaces(workspacesFromAnythingLLM);
+        setWorkspaces(workspacesWithSOWs);
         setFolders(foldersFromAnythingLLM);
-        setDocuments(documentsFromAnythingLLM);
+        setDocuments(documentsFromDB);
         
         // Set current workspace to first one if available
-        if (workspacesFromAnythingLLM.length > 0 && !currentWorkspaceId) {
-          setCurrentWorkspaceId(workspacesFromAnythingLLM[0].id);
-          if (workspacesFromAnythingLLM[0].sows.length > 0) {
-            setCurrentSOWId(workspacesFromAnythingLLM[0].sows[0].id);
+        if (workspacesWithSOWs.length > 0 && !currentWorkspaceId) {
+          setCurrentWorkspaceId(workspacesWithSOWs[0].id);
+          if (workspacesWithSOWs[0].sows.length > 0) {
+            setCurrentSOWId(workspacesWithSOWs[0].sows[0].id);
           }
         }
         
         // Show guided setup if no workspaces in AnythingLLM
-        if (!hasCompletedSetup && workspacesFromAnythingLLM.length === 0) {
+        if (!hasCompletedSetup && workspacesWithSOWs.length === 0) {
           setTimeout(() => setShowGuidedSetup(true), 1000);
         }
         
       } catch (error) {
-        console.error('❌ Error loading from AnythingLLM:', error);
-        toast.error('Failed to load workspaces from AnythingLLM');
+        console.error('❌ Error loading data:', error);
+        toast.error('Failed to load workspaces and SOWs');
       }
       
       if (savedCurrent) {
@@ -1025,57 +1033,80 @@ export default function Page() {
   };
 
   const handleCreateSOW = async (workspaceId: string, sowName: string) => {
-    const newId = `sow-${Date.now()}`;
-    const newSOW: SOW = {
-      id: newId,
-      name: sowName,
-      workspaceId
-    };
-    setWorkspaces(prev => prev.map(ws => 
-      ws.id === workspaceId ? { ...ws, sows: [...ws.sows, newSOW] } : ws
-    ));
-    setCurrentSOWId(newId);
-    
-    // AUTOMATICALLY SWITCH TO EDITOR VIEW AND CREATE NEW DOCUMENT
-    setViewMode('editor');
-    
-    // Create a new document with the SOW name as title
-    const newDocId = `doc${Date.now()}`;
-    const newDoc: Document = {
-      id: newDocId,
-      title: sowName, // Use the SOW name as the document title
-      content: defaultEditorContent,
-      folderId: undefined,
-      workspaceSlug: undefined,
-    };
-    
-    // Save to database
     try {
+      // Find the workspace to get its slug
+      const workspace = workspaces.find(ws => ws.id === workspaceId);
+      if (!workspace) {
+        toast.error('Workspace not found');
+        return;
+      }
+
+      console.log(`🆕 Creating new SOW: "${sowName}" in workspace: ${workspace.name} (${workspace.workspace_slug})`);
+
+      // Step 1: Create AnythingLLM thread (PRIMARY source of truth)
+      const thread = await anythingLLM.createThread(workspace.workspace_slug, sowName);
+      if (!thread) {
+        toast.error('Failed to create SOW thread in AnythingLLM');
+        return;
+      }
+
+      console.log(`✅ AnythingLLM thread created: ${thread.slug}`);
+
+      // Step 2: Save to database (for metrics, tracking, portal)
       const saveResponse = await fetch('/api/sow/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: newDoc.title,
-          content: newDoc.content,
+          id: thread.slug, // Use thread slug as ID for consistency
+          title: sowName,
+          content: defaultEditorContent,
           client_name: '',
           client_email: '',
           total_investment: 0,
+          workspace_slug: workspace.workspace_slug,
+          folder_id: workspaceId,
         }),
       });
-      
-      if (saveResponse.ok) {
-        const savedDoc = await saveResponse.json();
-        newDoc.id = savedDoc.id;
+
+      if (!saveResponse.ok) {
+        console.warn('⚠️ Failed to save SOW to database, but thread exists in AnythingLLM');
       }
+
+      const savedDoc = await saveResponse.json();
+      console.log(`✅ SOW saved to database: ${savedDoc.id}`);
+
+      // Step 3: Update local state
+      const newSOW: SOW = {
+        id: thread.slug,
+        name: sowName,
+        workspaceId
+      };
+
+      setWorkspaces(prev => prev.map(ws => 
+        ws.id === workspaceId ? { ...ws, sows: [...ws.sows, newSOW] } : ws
+      ));
+      setCurrentSOWId(thread.slug);
+
+      // Step 4: Create document object and switch to editor
+      const newDoc: Document = {
+        id: thread.slug,
+        title: sowName,
+        content: defaultEditorContent,
+        folderId: workspaceId,
+        workspaceSlug: workspace.workspace_slug,
+        threadSlug: thread.slug,
+        syncedAt: new Date().toISOString(),
+      };
+
+      setDocuments(prev => [...prev, newDoc]);
+      setCurrentDocId(thread.slug);
+      setViewMode('editor');
+
+      toast.success(`✅ SOW "${sowName}" created in ${workspace.name}!`);
     } catch (error) {
-      console.error('Error saving SOW:', error);
+      console.error('❌ Error creating SOW:', error);
+      toast.error('Failed to create SOW');
     }
-    
-    // Add to documents and set as current
-    setDocuments(prev => [...prev, newDoc]);
-    setCurrentDocId(newDoc.id);
-    
-    toast.success(`✅ SOW "${sowName}" created and opened in editor!`);
   };
 
   const handleRenameSOW = (sowId: string, newName: string) => {

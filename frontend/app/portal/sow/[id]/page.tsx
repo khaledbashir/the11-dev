@@ -85,34 +85,62 @@ export default function ClientPortalPage() {
     try {
       setLoading(true);
       
-      // For now, load from localStorage (will switch to AnythingLLM later)
-      const docs = JSON.parse(localStorage.getItem('documents') || '[]');
-      const doc = docs.find((d: any) => d.id === sowId);
+      // Fetch SOW from database API
+      const response = await fetch(`/api/sow/${sowId}`);
       
-      if (doc) {
-        // Extract client name from title
-        const clientName = doc.title.split(':')[1]?.split('-')[0]?.trim() || 'Client';
-        const workspaceSlug = clientName.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
+      if (!response.ok) {
+        console.error('Failed to fetch SOW:', response.statusText);
+        setLoading(false);
+        return;
+      }
+      
+      const data = await response.json();
+      
+      if (data.sow) {
+        const sowData = data.sow;
         
-        // Mock total investment (will extract from pricing table later)
-        const totalInvestment = 45230.00;
+        // Extract client name from title or use client_name field
+        const clientName = sowData.client_name || sowData.title.split(':')[1]?.split('-')[0]?.trim() || 'Client';
+        const workspaceSlug = sowData.workspace_slug || clientName.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
+        
+        // Convert TipTap JSON to HTML if needed
+        let htmlContent = '';
+        try {
+          const contentData = typeof sowData.content === 'string' 
+            ? JSON.parse(sowData.content) 
+            : sowData.content;
+          
+          // Import TipTap generateHTML function
+          const { generateHTML } = await import('@tiptap/html');
+          const StarterKit = (await import('@tiptap/starter-kit')).default;
+          
+          htmlContent = generateHTML(contentData, [StarterKit]);
+        } catch (error) {
+          console.error('Error converting content to HTML:', error);
+          // Fallback: if it's already HTML, use it directly
+          htmlContent = typeof sowData.content === 'string' && sowData.content.startsWith('<') 
+            ? sowData.content 
+            : '<p>Error loading content</p>';
+        }
         
         // Get or create embed ID for this client's workspace
-        let embedId = undefined;
-        try {
-          const { anythingLLM } = await import('@/lib/anythingllm');
-          embedId = await anythingLLM.getOrCreateEmbedId(workspaceSlug) || undefined;
-        } catch (error) {
-          console.error('Error getting embed ID:', error);
+        let embedId = sowData.embed_id;
+        if (!embedId) {
+          try {
+            const { anythingLLM } = await import('@/lib/anythingllm');
+            embedId = await anythingLLM.getOrCreateEmbedId(workspaceSlug) || undefined;
+          } catch (error) {
+            console.error('Error getting embed ID:', error);
+          }
         }
         
         setSOW({
-          id: doc.id,
-          title: doc.title,
+          id: sowData.id,
+          title: sowData.title,
           clientName,
-          htmlContent: doc.content, // This will need conversion from TipTap JSON to HTML
-          totalInvestment,
-          createdAt: new Date().toISOString(),
+          htmlContent,
+          totalInvestment: parseFloat(sowData.total_investment) || 0,
+          createdAt: sowData.created_at,
           workspaceSlug,
           embedId
         });

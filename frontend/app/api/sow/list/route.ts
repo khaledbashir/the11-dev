@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
       SELECT 
         id,
         title,
+        content,
         client_name,
         client_email,
         total_investment,
@@ -42,7 +43,7 @@ export async function GET(req: NextRequest) {
 
     const sows = await query(sql, params);
 
-    return NextResponse.json(sows || []);
+    return NextResponse.json({ sows: sows || [] });
   } catch (error) {
     console.error('Error fetching SOWs:', error);
     return NextResponse.json(
