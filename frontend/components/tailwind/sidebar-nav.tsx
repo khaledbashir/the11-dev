@@ -207,12 +207,12 @@ export default function SidebarNav({
     return (
       <div ref={setNodeRef} style={style}>
         {/* Workspace Item */}
-        <div className="flex items-center gap-1 px-2 py-1 hover:bg-gray-800/50 rounded-lg group">
+        <div className="flex items-center gap-1 px-2 py-1 hover:bg-gray-800/50 rounded-lg group relative">
           {/* Drag Handle */}
           <button
             {...attributes}
             {...listeners}
-            className="p-1 hover:bg-gray-700 rounded transition-colors flex-shrink-0 cursor-grab active:cursor-grabbing"
+            className="p-1 hover:bg-gray-700 rounded transition-colors flex-shrink-0 cursor-grab active:cursor-grabbing opacity-30 group-hover:opacity-100"
             title="Drag to reorder"
           >
             <GripVertical className="w-4 h-4 text-gray-500" />
@@ -260,8 +260,8 @@ export default function SidebarNav({
             )}
           </div>
 
-          {/* Action Buttons (visible on hover) */}
-          <div className="flex gap-1 opacity-30 group-hover:opacity-100 transition-opacity flex-shrink-0">
+          {/* Action Buttons (ALWAYS VISIBLE FOR DEBUGGING) */}
+          <div className="flex gap-1 opacity-100 transition-all duration-200 flex-shrink-0 ml-auto">
             {/* Add New Doc */}
             <button
               onClick={(e) => {
@@ -269,10 +269,10 @@ export default function SidebarNav({
                 setNewSOWWorkspaceId(workspace.id);
                 setShowNewSOWModal(true);
               }}
-              className="p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-[#1CBF79] transition-colors"
+              className="p-1 hover:bg-[#1CBF79]/20 rounded text-gray-400 hover:text-[#1CBF79] transition-colors"
               title="New Doc"
             >
-              <Plus className="w-3 h-3" />
+              <Plus className="w-3.5 h-3.5" />
             </button>
 
             {/* Rename */}
@@ -282,22 +282,24 @@ export default function SidebarNav({
                 setRenamingId(workspace.id);
                 setRenameValue(workspace.name);
               }}
-              className="p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-gray-300 transition-colors"
+              className="p-1 hover:bg-blue-500/20 rounded text-gray-400 hover:text-blue-400 transition-colors"
               title="Rename"
             >
-              <Edit3 className="w-3 h-3" />
+              <Edit3 className="w-3.5 h-3.5" />
             </button>
 
             {/* Delete */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onDeleteWorkspace(workspace.id);
+                if (confirm(`Delete workspace "${workspace.name}"? This will delete all SOWs inside.`)) {
+                  onDeleteWorkspace(workspace.id);
+                }
               }}
-              className="p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-red-500 transition-colors"
+              className="p-1 hover:bg-red-500/20 rounded text-gray-400 hover:text-red-400 transition-colors"
               title="Delete"
             >
-              <Trash2 className="w-3 h-3" />
+              <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
@@ -379,8 +381,8 @@ export default function SidebarNav({
           )}
         </div>
 
-        {/* SOW Actions (visible on hover) */}
-        <div className="flex gap-1 opacity-30 group-hover:opacity-100 transition-opacity flex-shrink-0">
+        {/* SOW Actions (ALWAYS VISIBLE FOR DEBUGGING) */}
+        <div className="flex gap-1 opacity-100 transition-all duration-200 flex-shrink-0 ml-auto">
           {/* Rename */}
           <button
             onClick={(e) => {
@@ -388,7 +390,7 @@ export default function SidebarNav({
               setRenamingId(sow.id);
               setRenameValue(sow.name);
             }}
-            className="p-0.5 hover:bg-gray-700 rounded text-gray-400 hover:text-gray-300 transition-colors"
+            className="p-0.5 hover:bg-blue-500/20 rounded text-gray-400 hover:text-blue-400 transition-colors"
             title="Rename"
           >
             <Edit3 className="w-3 h-3" />
@@ -398,9 +400,11 @@ export default function SidebarNav({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onDeleteSOW(sow.id);
+              if (confirm(`Delete SOW "${sow.name}"?`)) {
+                onDeleteSOW(sow.id);
+              }
             }}
-            className="p-0.5 hover:bg-gray-700 rounded text-gray-400 hover:text-red-500 transition-colors"
+            className="p-0.5 hover:bg-red-500/20 rounded text-gray-400 hover:text-red-400 transition-colors"
             title="Delete"
           >
             <Trash2 className="w-3 h-3" />

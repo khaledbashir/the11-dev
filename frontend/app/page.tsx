@@ -417,74 +417,86 @@ export default function Page() {
     if (!mounted) return;
     
     const loadData = async () => {
-      console.log('📂 Starting to load data from database...');
+      console.log('� Loading workspaces from AnythingLLM (single source of truth)...');
       const savedCurrent = localStorage.getItem("currentDocId");
       const hasCompletedSetup = localStorage.getItem("sow-guided-setup-completed");
       
-      // Load documents from database API
-      let loadedSOWs: Document[] = [];
       try {
-        const response = await fetch('/api/sow/list');
-        if (response.ok) {
-          loadedSOWs = await response.json();
-          console.log('✅ Loaded SOWs from database:', loadedSOWs.length);
-          setDocuments(loadedSOWs);
-        } else {
-          console.warn('⚠️ Failed to load SOWs, creating empty list');
-          setDocuments([]);
-        }
-      } catch (error) {
-        console.error('❌ Error loading SOWs:', error);
-        setDocuments([]);
-      }
-      
-      // FETCH FOLDERS FROM DATABASE AND CONVERT TO WORKSPACES
-      try {
-        const response = await fetch('/api/folders');
-        if (response.ok) {
-          const dbFolders = await response.json();
-          console.log('✅ Loaded folders from database:', dbFolders.length);
-          console.log('📁 Folder names:', dbFolders.map((f: any) => f.name).join(', '));
-          setFolders(dbFolders);
+        // ✅ LOAD FROM ANYTHINGLLM (SINGLE SOURCE OF TRUTH)
+        const anythingllmWorkspaces = await anythingLLM.listWorkspaces();
+        console.log('✅ Loaded workspaces from AnythingLLM:', anythingllmWorkspaces.length);
+        
+        const workspacesFromAnythingLLM: Workspace[] = [];
+        const documentsFromAnythingLLM: Document[] = [];
+        const foldersFromAnythingLLM: Folder[] = [];
+        
+        // For each workspace, load its threads (SOWs)
+        for (const ws of anythingllmWorkspaces) {
+          console.log(`📁 Loading threads for workspace: ${ws.name} (${ws.slug})`);
           
-          // ✨ CRITICAL FIX: Convert folders to workspaces and associate SOWs
-          const workspacesFromDB: Workspace[] = dbFolders.map((folder: any) => {
-            // Find all SOWs that belong to this folder
-            const folderSOWs = loadedSOWs
-              .filter(sow => sow.folderId === folder.id)
-              .map(sow => ({
-                id: sow.id,
-                name: sow.title || 'Untitled SOW',
-                workspaceId: folder.id
-              }));
-            
-            return {
-              id: folder.id,
-              name: folder.name,
-              sows: folderSOWs
-            };
+          const threads = await anythingLLM.listThreads(ws.slug);
+          console.log(`   ✅ Found ${threads.length} threads`);
+          
+          const sows: SOW[] = threads.map(thread => ({
+            id: thread.slug,
+            name: thread.name,
+            workspaceId: ws.id,
+          }));
+          
+          // Add to workspaces array
+          workspacesFromAnythingLLM.push({
+            id: ws.id,
+            name: ws.name,
+            sows: sows,
           });
           
-          console.log('🔄 Converted folders to workspaces:', workspacesFromDB);
-          setWorkspaces(workspacesFromDB);
+          // Add to folders array (folders = workspaces)
+          foldersFromAnythingLLM.push({
+            id: ws.id,
+            name: ws.name,
+            workspaceSlug: ws.slug,
+            workspaceId: ws.id,
+            syncedAt: new Date().toISOString(),
+          });
           
-          // Set current workspace to first one if available
-          if (workspacesFromDB.length > 0 && !currentWorkspaceId) {
-            setCurrentWorkspaceId(workspacesFromDB[0].id);
-            if (workspacesFromDB[0].sows.length > 0) {
-              setCurrentSOWId(workspacesFromDB[0].sows[0].id);
-            }
+          // Create document objects for each thread
+          for (const thread of threads) {
+            documentsFromAnythingLLM.push({
+              id: thread.slug,
+              title: thread.name,
+              content: defaultEditorContent, // Will load content when selected
+              folderId: ws.id,
+              workspaceSlug: ws.slug,
+              threadSlug: thread.slug,
+              syncedAt: new Date().toISOString(),
+            });
           }
-          
-          // Show guided setup if no folders in database
-          if (!hasCompletedSetup && dbFolders.length === 0) {
-            setTimeout(() => setShowGuidedSetup(true), 1000);
-          }
-        } else {
-          console.error('❌ Failed to load folders from database');
         }
+        
+        console.log('✅ Total workspaces loaded:', workspacesFromAnythingLLM.length);
+        console.log('✅ Total SOWs loaded:', documentsFromAnythingLLM.length);
+        
+        // Update state
+        setWorkspaces(workspacesFromAnythingLLM);
+        setFolders(foldersFromAnythingLLM);
+        setDocuments(documentsFromAnythingLLM);
+        
+        // Set current workspace to first one if available
+        if (workspacesFromAnythingLLM.length > 0 && !currentWorkspaceId) {
+          setCurrentWorkspaceId(workspacesFromAnythingLLM[0].id);
+          if (workspacesFromAnythingLLM[0].sows.length > 0) {
+            setCurrentSOWId(workspacesFromAnythingLLM[0].sows[0].id);
+          }
+        }
+        
+        // Show guided setup if no workspaces in AnythingLLM
+        if (!hasCompletedSetup && workspacesFromAnythingLLM.length === 0) {
+          setTimeout(() => setShowGuidedSetup(true), 1000);
+        }
+        
       } catch (error) {
-        console.error('❌ Error loading folders:', error);
+        console.error('❌ Error loading from AnythingLLM:', error);
+        toast.error('Failed to load workspaces from AnythingLLM');
       }
       
       if (savedCurrent) {
@@ -877,22 +889,48 @@ export default function Page() {
   // ==================== WORKSPACE & SOW HANDLERS (NEW) ====================
   const handleCreateWorkspace = async (workspaceName: string) => {
     try {
-      // 🔥 CRITICAL FIX: Create folder in DATABASE first
-      console.log('📁 Creating folder/workspace in database:', workspaceName);
+      console.log('📁 Creating workspace:', workspaceName);
+      
+      // 🏢 STEP 1: Create AnythingLLM workspace FIRST
+      console.log('🏢 Creating AnythingLLM workspace...');
+      const workspace = await anythingLLM.createOrGetClientWorkspace(workspaceName);
+      const embedId = await anythingLLM.getOrCreateEmbedId(workspace.slug);
+      console.log('✅ AnythingLLM workspace created:', workspace.slug);
+      
+      // 💾 STEP 2: Save folder to DATABASE with workspace info
+      console.log('💾 Saving folder to database with AnythingLLM mapping...');
       const folderResponse = await fetch('/api/folders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: workspaceName }),
+        body: JSON.stringify({ 
+          name: workspaceName,
+          workspaceSlug: workspace.slug,
+          workspaceId: workspace.id,
+          embedId: embedId,
+        }),
       });
 
       if (!folderResponse.ok) {
-        throw new Error('Failed to create folder');
+        const errorData = await folderResponse.json();
+        throw new Error(errorData.details || 'Failed to create folder in database');
       }
 
       const folderData = await folderResponse.json();
       const folderId = folderData.id;
-      console.log('✅ Folder created with ID:', folderId);
+      console.log('✅ Folder saved to database with ID:', folderId);
 
+      // Create folder in local state with AnythingLLM mapping
+      const newFolder: Folder = {
+        id: folderId,
+        name: workspaceName,
+        workspaceSlug: workspace.slug,
+        workspaceId: workspace.id,
+        embedId: embedId,
+        syncedAt: new Date().toISOString(),
+      };
+      
+      setFolders(prev => [...prev, newFolder]);
+      
       // Create workspace in local state
       const newWorkspace: Workspace = {
         id: folderId, // Use database folder ID
@@ -926,6 +964,11 @@ export default function Page() {
       const sowId = sowData.id || sowData.sowId;
       console.log('✅ SOW created with ID:', sowId);
 
+      // 🧵 STEP 3: Create AnythingLLM thread for this SOW
+      console.log('🧵 Creating AnythingLLM thread...');
+      const thread = await anythingLLM.createThread(workspace.slug, sowTitle);
+      console.log('✅ AnythingLLM thread created:', thread.slug);
+
       // Create SOW object for local state
       const newSOW: SOW = {
         id: sowId,
@@ -944,17 +987,21 @@ export default function Page() {
       // AUTOMATICALLY SWITCH TO EDITOR VIEW
       setViewMode('editor');
       
-      // Add document to local state
+      // Add document to local state with AnythingLLM mapping
       const newDoc: Document = {
         id: sowId,
         title: sowTitle,
         content: defaultEditorContent,
         folderId: folderId,
-        workspaceSlug: undefined,
+        workspaceSlug: workspace.slug,
+        threadSlug: thread.slug,
+        syncedAt: new Date().toISOString(),
       };
 
       setDocuments(prev => [...prev, newDoc]);
       setCurrentDocId(sowId);
+      
+      toast.success(`✅ Workspace "${workspaceName}" created with AnythingLLM integration!`);
       
       toast.success(`✅ Created workspace "${workspaceName}" with blank SOW ready to edit!`);
     } catch (error) {
@@ -2035,6 +2082,13 @@ export default function Page() {
                   title={currentDoc.title || "Untitled Statement of Work"}
                   saveStatus="saved"
                   isSaving={false}
+                  onExportPDF={handleExportPDF}
+                  onExportExcel={handleExportExcel}
+                  onSharePortal={() => {
+                    const portalUrl = `${window.location.origin}/portal/sow/${currentDoc.id}`;
+                    navigator.clipboard.writeText(portalUrl);
+                    toast.success('✅ Portal link copied to clipboard!');
+                  }}
                 />
               )}
               

@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, AlertCircle, Loader2 } from "lucide-react";
+import { Check, AlertCircle, Loader2, Download, FileSpreadsheet, Share2 } from "lucide-react";
 import { Button } from "./ui/button";
 
 interface DocumentStatusBarProps {
@@ -8,6 +8,9 @@ interface DocumentStatusBarProps {
   saveStatus: "unsaved" | "saving" | "saved";
   onSave?: () => void;
   isSaving?: boolean;
+  onExportPDF?: () => void;
+  onExportExcel?: () => void;
+  onSharePortal?: () => void;
 }
 
 export function DocumentStatusBar({
@@ -15,6 +18,9 @@ export function DocumentStatusBar({
   saveStatus,
   onSave,
   isSaving = false,
+  onExportPDF,
+  onExportExcel,
+  onSharePortal,
 }: DocumentStatusBarProps) {
   const statusConfig = {
     unsaved: {
@@ -45,8 +51,52 @@ export function DocumentStatusBar({
       {/* Title */}
       <h2 className="text-lg font-semibold text-white truncate">{title}</h2>
 
-      {/* Status + Save Button */}
-      <div className="flex items-center gap-4">
+      {/* Actions Section */}
+      <div className="flex items-center gap-3">
+        {/* Export Buttons */}
+        <div className="flex items-center gap-2">
+          {onExportPDF && (
+            <Button
+              onClick={onExportPDF}
+              variant="outline"
+              size="sm"
+              className="bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border-gray-600 transition-colors"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export PDF
+            </Button>
+          )}
+          
+          {onExportExcel && (
+            <Button
+              onClick={onExportExcel}
+              variant="outline"
+              size="sm"
+              className="bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border-gray-600 transition-colors"
+            >
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              Export Excel
+            </Button>
+          )}
+          
+          {onSharePortal && (
+            <Button
+              onClick={onSharePortal}
+              variant="outline"
+              size="sm"
+              className="bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border-gray-600 transition-colors"
+            >
+              <Share2 className="w-4 h-4 mr-2" />
+              Share Portal
+            </Button>
+          )}
+        </div>
+
+        {/* Separator */}
+        {(onExportPDF || onExportExcel || onSharePortal) && (onSave || saveStatus) && (
+          <div className="h-6 w-px bg-gray-700"></div>
+        )}
+        
         {/* Status Indicator */}
         <div className={`flex items-center gap-2 px-3 py-1 rounded ${config.bgColor}`}>
           <IconComponent

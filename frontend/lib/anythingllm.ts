@@ -112,6 +112,30 @@ export class AnythingLLMService {
   }
 
   /**
+   * List all threads in a workspace
+   */
+  async listThreads(workspaceSlug: string): Promise<any[]> {
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/threads`,
+        {
+          headers: this.getHeaders(),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to list threads: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.threads || [];
+    } catch (error) {
+      console.error(`❌ Error listing threads for ${workspaceSlug}:`, error);
+      return [];
+    }
+  }
+
+  /**
    * Embed SOW document into workspace
    * Converts HTML to text and uploads
    */
