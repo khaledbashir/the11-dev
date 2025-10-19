@@ -202,9 +202,10 @@ Metadata:
       const documentLocation = rawTextData.documents[0].location;
       console.log(`✅ Document processed: ${documentLocation}`);
 
-      // Step 2: Add document to workspace
-      const workspaceUpdateResponse = await fetch(
-        `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/update`,
+      // Step 2: EMBED document in workspace (not just update)
+      // Using /update-embeddings endpoint (NOT /update)
+      const workspaceEmbedResponse = await fetch(
+        `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/update-embeddings`,
         {
           method: 'POST',
           headers: this.getHeaders(),
@@ -214,12 +215,12 @@ Metadata:
         }
       );
 
-      if (!workspaceUpdateResponse.ok) {
-        throw new Error(`Failed to add document to workspace: ${workspaceUpdateResponse.statusText}`);
+      if (!workspaceEmbedResponse.ok) {
+        throw new Error(`Failed to embed document in workspace: ${workspaceEmbedResponse.statusText}`);
       }
 
-      const updateResult = await workspaceUpdateResponse.json();
-      console.log(`✅ Document added to workspace: ${workspaceSlug}`);
+      const embedResult = await workspaceEmbedResponse.json();
+      console.log(`✅ Document EMBEDDED in workspace: ${workspaceSlug}`);
       
       return true;
     } catch (error) {
@@ -496,9 +497,13 @@ Ready to explore your project details? Ask me anything!`;
    * Create a new thread in a workspace
    * Each SOW becomes a thread for isolated chat history
    */
-  async createThread(workspaceSlug: string, threadName: string): Promise<{ slug: string; id: string } | null> {
+  async createThread(workspaceSlug: string, threadName?: string): Promise<{ slug: string; id: string } | null> {
     try {
-      console.log(`🆕 Creating thread "${threadName}" in workspace: ${workspaceSlug}`);
+      // Follow AnythingLLM pattern: threads auto-name based on first message
+      // Don't pre-name threads - let them be named by first chat content
+      const autoThreadName = `Thread ${new Date().toLocaleString()}`;
+      
+      console.log(`🆕 Creating thread in workspace: ${workspaceSlug} (will auto-name on first message)`);
       
       const response = await fetch(
         `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/thread/new`,
@@ -506,7 +511,7 @@ Ready to explore your project details? Ask me anything!`;
           method: 'POST',
           headers: this.getHeaders(),
           body: JSON.stringify({
-            name: threadName,
+            name: autoThreadName,  // AnythingLLM will auto-update this on first chat message
           }),
         }
       );
@@ -519,7 +524,7 @@ Ready to explore your project details? Ask me anything!`;
       }
 
       const data = await response.json();
-      console.log(`✅ Thread created: ${data.thread.slug} (ID: ${data.thread.id})`);
+      console.log(`✅ Thread created: ${data.thread.slug} (ID: ${data.thread.id}) - will auto-name on first message`);
       
       return {
         slug: data.thread.slug,

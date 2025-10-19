@@ -72,9 +72,9 @@ export default function AgentSidebar({
   onInsertToEditor,
   streamingMessageId,
   viewMode = 'editor', // Default to editor mode
-  dashboardChatTarget = 'sow-master-dashboard', // Default to master view
+  dashboardChatTarget = 'sow-master-dashboard-54307162', // Default to master dashboard
   onDashboardWorkspaceChange,
-  availableWorkspaces = [{ slug: 'sow-master-dashboard', name: 'Master View' }],
+  availableWorkspaces = [{ slug: 'sow-master-dashboard-54307162', name: '🎯 All SOWs (Master)' }],
 }: AgentSidebarProps) {
   const [chatInput, setChatInput] = useState("");
   const [models, setModels] = useState<OpenRouterModel[]>([]);
@@ -163,8 +163,8 @@ export default function AgentSidebar({
   const isEditorMode = viewMode === 'editor';
 
   // Get current workspace name for dashboard title
-  const currentWorkspaceName = availableWorkspaces.find(w => w.slug === dashboardChatTarget)?.name || 'Master View';
-  const isMasterView = dashboardChatTarget === 'sow-master-dashboard';
+  const currentWorkspaceName = availableWorkspaces.find(w => w.slug === dashboardChatTarget)?.name || '🎯 All SOWs (Master)';
+  const isMasterView = dashboardChatTarget === 'sow-master-dashboard-54307162';
 
   return (
     <div className="h-full w-full bg-[#0e0f0f] border-l border-[#0E2E33] overflow-hidden flex flex-col">
@@ -214,7 +214,7 @@ export default function AgentSidebar({
           </div>
         )}
           
-          {/* Show agent selection and controls ONLY in editor mode, HIDE completely in dashboard mode */}
+          {/* Show agent selection ONLY in editor mode, HIDE Settings and Create Agent buttons (moved to admin) */}
           {isEditorMode && (
             <div className="flex items-center gap-3">
               <Select value={currentAgentId || undefined} onValueChange={onSelectAgent}>
@@ -230,7 +230,8 @@ export default function AgentSidebar({
                 </SelectContent>
               </Select>
 
-              <Dialog open={showSettings} onOpenChange={setShowSettings}>
+              {/* ❌ HIDDEN: Settings button moved to Admin Panel */}
+              {/* <Dialog open={showSettings} onOpenChange={setShowSettings}>
                 <DialogTrigger asChild>
                   <Button size="sm" className="h-10 px-3 bg-[#1CBF79] hover:bg-[#15a366] text-white font-semibold border-0" title="Agent Settings">
                     <Settings className="h-4 w-4 mr-2" />
@@ -258,9 +259,10 @@ export default function AgentSidebar({
                     <p>No agent selected</p>
                   )}
                 </DialogContent>
-              </Dialog>
+              </Dialog> */}
 
-              <Dialog>
+              {/* ❌ HIDDEN: Create Agent button - agents are admin-only */}
+              {/* <Dialog>
                 <DialogTrigger asChild>
                   <Button size="sm" className="h-10 px-3 bg-[#1CBF79] hover:bg-[#15a366] text-white font-semibold border-0" title="Create New Agent">
                     <Plus className="h-4 w-4 mr-2" />
@@ -273,7 +275,7 @@ export default function AgentSidebar({
                   </DialogHeader>
                   <CreateAgentForm models={models} onCreateAgent={onCreateAgent} />
                 </DialogContent>
-              </Dialog>
+              </Dialog> */}
             </div>
           )}
         </div>

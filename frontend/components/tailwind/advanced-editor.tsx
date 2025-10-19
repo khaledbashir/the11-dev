@@ -188,15 +188,15 @@ const TailwindAdvancedEditor = forwardRef(({
           </EditorBubble>
           
           {editor && <TableMenu editor={editor} />}
+          
+          {/* Floating AI Assistant Bar - Inside EditorContent for proper context */}
+          <FloatingAIBar editor={editor} />
         </EditorContent>
-
-        {/* Floating AI Assistant Bar - Always visible at bottom */}
-        <FloatingAIBar />
       </EditorRoot>
-    </div>
-  );
-});
+      </div>
+    );
+  });
 
-TailwindAdvancedEditor.displayName = "TailwindAdvancedEditor";
+  TailwindAdvancedEditor.displayName = "TailwindAdvancedEditor";
 
 export default TailwindAdvancedEditor;

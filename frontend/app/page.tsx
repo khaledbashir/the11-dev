@@ -330,7 +330,7 @@ interface Folder {
   parentId?: string;
   workspaceSlug?: string;
   workspaceId?: string;
-  embedId?: string;
+  embedId?: number;  // Numeric ID from AnythingLLM
   syncedAt?: string;
 }
 
@@ -392,10 +392,10 @@ export default function Page() {
   const [currentSOWId, setCurrentSOWId] = useState<string | null>(null);
   const editorRef = useRef<any>(null);
 
-  // Dashboard AI workspace selector state
-  const [dashboardChatTarget, setDashboardChatTarget] = useState<string>('sow-master-dashboard');
+  // Dashboard AI workspace selector state - Master dashboard is the default
+  const [dashboardChatTarget, setDashboardChatTarget] = useState<string>('sow-master-dashboard-54307162');
   const [availableWorkspaces, setAvailableWorkspaces] = useState<Array<{slug: string, name: string}>>([
-    { slug: 'sow-master-dashboard', name: 'Master View' }
+    { slug: 'sow-master-dashboard-54307162', name: '🎯 All SOWs (Master)' }
   ]);
 
   // Initialize master dashboard on app load
@@ -413,13 +413,15 @@ export default function Page() {
 
   // Fetch available workspaces for dashboard chat selector from loaded workspaces
   useEffect(() => {
-    // Build workspace list from loaded workspaces
+    // Build workspace list: Master dashboard + client workspaces
     const workspaceList = [
-      { slug: 'sow-master-dashboard', name: 'Master View' },
-      ...workspaces.map(ws => ({
-        slug: ws.id, // Use folder ID as slug
-        name: ws.name
-      }))
+      { slug: 'sow-master-dashboard-54307162', name: '🎯 All SOWs (Master)' },
+      ...workspaces
+        .filter(ws => ws.workspace_slug) // Only include workspaces with workspace_slug
+        .map(ws => ({
+          slug: ws.workspace_slug || '', // Use workspace_slug
+          name: `📁 ${ws.name}` // Prefix with folder icon
+        }))
     ];
     
     setAvailableWorkspaces(workspaceList);
@@ -679,6 +681,8 @@ export default function Page() {
 
   const handleSelectDoc = (id: string) => {
     setCurrentDocId(id);
+    // Clear chat messages for clean state when switching documents
+    setChatMessages([]);
     // Switch to editor view when selecting a document
     if (viewMode !== 'editor') {
       setViewMode('editor');
@@ -705,7 +709,8 @@ export default function Page() {
       // 🧵 Create AnythingLLM thread for this SOW (if workspace exists)
       if (workspaceSlug) {
         console.log(`🔗 Creating thread in workspace: ${workspaceSlug}`);
-        const thread = await anythingLLM.createThread(workspaceSlug, title);
+        // Don't pass thread name - AnythingLLM auto-names based on first chat message
+        const thread = await anythingLLM.createThread(workspaceSlug);
         if (thread) {
           newDoc = {
             ...newDoc,
@@ -713,6 +718,12 @@ export default function Page() {
             threadId: thread.id,
             syncedAt: new Date().toISOString(),
           };
+          
+          // 📊 Embed SOW in BOTH client workspace AND master dashboard
+          console.log(`📊 Embedding new SOW in both workspaces: ${workspaceSlug}`);
+          const sowContent = JSON.stringify(defaultEditorContent);
+          await anythingLLM.embedSOWInBothWorkspaces(workspaceSlug, title, sowContent);
+          
           toast.success(`✅ SOW created with chat thread in ${parentFolder?.name || 'workspace'}`);
         } else {
           console.warn('⚠️ Thread creation failed - SOW created without thread');
@@ -994,7 +1005,8 @@ export default function Page() {
       const newWorkspace: Workspace = {
         id: folderId, // Use database folder ID
         name: workspaceName,
-        sows: []
+        sows: [],
+        workspace_slug: workspace.slug  // Add workspace slug here!
       };
       
       // IMMEDIATELY CREATE A BLANK SOW (NO MODAL, NO USER INPUT)
@@ -1025,8 +1037,15 @@ export default function Page() {
 
       // 🧵 STEP 3: Create AnythingLLM thread for this SOW
       console.log('🧵 Creating AnythingLLM thread...');
-      const thread = await anythingLLM.createThread(workspace.slug, sowTitle);
-      console.log('✅ AnythingLLM thread created:', thread.slug);
+      // Don't pass thread name - AnythingLLM auto-names based on first chat message
+      const thread = await anythingLLM.createThread(workspace.slug);
+      console.log('✅ AnythingLLM thread created:', thread.slug, '(will auto-name on first message)');
+
+      // 📊 STEP 4: Embed SOW in BOTH client workspace AND master dashboard
+      console.log('📊 Embedding SOW in both workspaces...');
+      const sowContent = JSON.stringify(defaultEditorContent);
+      await anythingLLM.embedSOWInBothWorkspaces(workspace.slug, sowTitle, sowContent);
+      console.log('✅ SOW embedded in both workspaces');
 
       // Create SOW object for local state
       const newSOW: SOW = {
@@ -1059,6 +1078,9 @@ export default function Page() {
 
       setDocuments(prev => [...prev, newDoc]);
       setCurrentDocId(sowId);
+      
+      // Clear chat messages for clean state when switching to new workspace
+      setChatMessages([]);
       
       toast.success(`✅ Workspace "${workspaceName}" created with AnythingLLM integration!`);
       
@@ -1099,16 +1121,24 @@ export default function Page() {
         return;
       }
 
+      // Validate that workspace has a slug
+      if (!workspace.workspace_slug) {
+        console.error('❌ Workspace missing workspace_slug:', workspace);
+        toast.error('Workspace slug not found. Please try again.');
+        return;
+      }
+
       console.log(`🆕 Creating new SOW: "${sowName}" in workspace: ${workspace.name} (${workspace.workspace_slug})`);
 
       // Step 1: Create AnythingLLM thread (PRIMARY source of truth)
-      const thread = await anythingLLM.createThread(workspace.workspace_slug, sowName);
+      // Don't pass thread name - AnythingLLM auto-names based on first chat message
+      const thread = await anythingLLM.createThread(workspace.workspace_slug);
       if (!thread) {
         toast.error('Failed to create SOW thread in AnythingLLM');
         return;
       }
 
-      console.log(`✅ AnythingLLM thread created: ${thread.slug}`);
+      console.log(`✅ AnythingLLM thread created: ${thread.slug} (will auto-name on first message)`);
 
       // Step 2: Save to database (for metrics, tracking, portal)
       const saveResponse = await fetch('/api/sow/create', {
@@ -1957,7 +1987,7 @@ export default function Page() {
         const useAnythingLLM = effectiveAgent.model === 'anythingllm';
         
         // 🎯 WORKSPACE SELECTOR ROUTING:
-        // Master View → /api/dashboard/chat (hardcoded to sow-master-dashboard)
+        // Master View → /api/dashboard/chat (hardcoded to sow-master-dashboard-54307162)
         // Client Workspace → /api/anythingllm/chat (with selected workspace slug)
         // Editor Mode → existing logic
         let endpoint: string;
@@ -1965,7 +1995,7 @@ export default function Page() {
 
         if (isDashboardMode && useAnythingLLM) {
           // Dashboard mode routing
-          if (dashboardChatTarget === 'sow-master-dashboard') {
+          if (dashboardChatTarget === 'sow-master-dashboard-54307162') {
             // Master view: use dedicated dashboard route
             endpoint = '/api/dashboard/chat';
             workspaceSlug = undefined; // Not needed, hardcoded in route
@@ -1991,7 +2021,7 @@ export default function Page() {
           agentModel: effectiveAgent.model,
           agentName: effectiveAgent.name,
           routeType: isDashboardMode 
-            ? (dashboardChatTarget === 'sow-master-dashboard' ? 'MASTER_DASHBOARD' : 'CLIENT_WORKSPACE')
+            ? (dashboardChatTarget === 'sow-master-dashboard-54307162' ? 'MASTER_DASHBOARD' : 'CLIENT_WORKSPACE')
             : 'EDITOR_MODE'
         });
 
