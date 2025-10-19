@@ -16,14 +16,25 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { name, workspaceSlug, workspaceId, embedId } = body;
     
-    console.log('📝 Creating folder with data:', { name, workspaceSlug, workspaceId, embedId, embedIdType: typeof embedId });
+    console.log('📝 Creating folder with data:', { 
+      name, 
+      workspaceSlug, 
+      workspaceId, 
+      embedId, 
+      embedIdType: typeof embedId,
+      embedIdValue: embedId ? (typeof embedId === 'object' ? JSON.stringify(embedId) : embedId) : 'null/undefined'
+    });
     
     // Generate UUID for folder id
     const folderId = crypto.randomUUID();
     
+    // Ensure embedId is a number or null
+    const finalEmbedId = typeof embedId === 'number' ? embedId : (embedId ? parseInt(embedId, 10) : null);
+    console.log('✅ Final embed ID:', { finalEmbedId, type: typeof finalEmbedId });
+    
     await query(
       'INSERT INTO folders (id, name, workspace_slug, workspace_id, embed_id) VALUES (?, ?, ?, ?, ?)',
-      [folderId, name, workspaceSlug || null, workspaceId || null, embedId || null]
+      [folderId, name, workspaceSlug || null, workspaceId || null, finalEmbedId]
     );
     
     return NextResponse.json({ 

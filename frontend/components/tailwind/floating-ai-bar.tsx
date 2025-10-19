@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useEditor } from "novel";
+import { useAISettings } from "@/context/ai-settings";
 import { 
   Sparkles, 
   X, 
@@ -17,65 +18,72 @@ import {
   RotateCcw
 } from "lucide-react";
 import { toast } from "sonner";
+import { SelectionToolbar } from "./selection-toolbar";
+
+import { type EditorInstance } from "novel";
 
 interface FloatingAIBarProps {
   onGenerate?: (prompt: string, mode: 'replace' | 'insert') => void;
+  editor?: EditorInstance | null;
 }
 
-export function FloatingAIBar({ onGenerate }: FloatingAIBarProps) {
-  const { editor } = useEditor();
-  const [isVisible, setIsVisible] = useState(false);
+export function FloatingAIBar({ onGenerate, editor: editorProp }: FloatingAIBarProps) {
+  const { editor: editorContext } = useEditor();
+  const editor = editorProp || editorContext;
+  const { settings, getVisibleQuickActions } = useAISettings();
+  
+  // Two separate visibility states for the two modes
+  const [showToolbar, setShowToolbar] = useState(false); // Selection toolbar
+  const [isVisible, setIsVisible] = useState(false); // Full floating bar
+  const [triggerSource, setTriggerSource] = useState<'selection' | 'slash'>('slash'); // What triggered the bar
+  
   const [hasSelection, setHasSelection] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [completion, setCompletion] = useState("");
   const [showActions, setShowActions] = useState(false);
-  const [triggerSource, setTriggerSource] = useState<'selection' | 'slash'>('selection');
+  const [showActionsDropdown, setShowActionsDropdown] = useState(false);
+  
   const inputRef = useRef<HTMLInputElement>(null);
+  const selectionRef = useRef<{ from: number; to: number } | null>(null);
+
+  // Helper function to get icon component by name
+  const getIcon = (iconName: string) => {
+    const iconMap: { [key: string]: React.ComponentType<any> } = {
+      Sparkles,
+      ArrowDownWideNarrow,
+      WrapText,
+      Briefcase,
+      MessageCircle,
+      List,
+      FileText,
+      RotateCcw
+    };
+    return iconMap[iconName] || Sparkles;
+  };
 
   // Log editor status
   useEffect(() => {
     console.log("🔍 [FloatingAIBar] Component mounted, editor:", editor ? "available" : "not available");
   }, [editor]);
 
-  // Quick actions - matching your image exactly
-  const quickActions = [
-    { label: "Improve Writing", icon: Sparkles, prompt: "Improve the writing quality and clarity" },
-    { label: "Shorten", icon: ArrowDownWideNarrow, prompt: "Make this shorter and more concise" },
-    { label: "Elaborate", icon: WrapText, prompt: "Add more details and expand this" },
-    { label: "More formal", icon: Briefcase, prompt: "Rewrite in a more formal, professional tone" },
-    { label: "More casual", icon: MessageCircle, prompt: "Rewrite in a casual, friendly tone" },
-    { label: "Bulletize", icon: List, prompt: "Convert this into bullet points" },
-    { label: "Summarize", icon: FileText, prompt: "Create a concise summary" },
-    { label: "Rewrite", icon: RotateCcw, prompt: "Rewrite this in a different way" },
-  ];
-
-  // Monitor text selection
+  // Monitor text selection - Show toolbar only when text is selected
   useEffect(() => {
-    if (!editor) {
-      console.log("⚠️ [FloatingAIBar] No editor available");
-      return;
-    }
-
-    console.log("✅ [FloatingAIBar] Editor connected, monitoring selection");
+    if (!editor) return;
 
     const updateSelection = () => {
       const { from, to } = editor.state.selection;
       const hasText = from !== to;
-      console.log("📝 [FloatingAIBar] Selection update:", { from, to, hasText, isVisible });
-      setHasSelection(hasText);
       
+      // Store the selection when text is selected
       if (hasText) {
-        console.log("🎯 [FloatingAIBar] Showing bar (selection)");
-        setTriggerSource('selection');
-        setIsVisible(true);
-        setShowActions(true); // Show quick actions for selections
-      } else if (triggerSource === 'selection' && !isVisible) {
-        console.log("🔒 [FloatingAIBar] Hiding bar (no selection)");
-        setIsVisible(false);
-        setPrompt("");
-        setCompletion("");
-        setShowActions(false);
+        selectionRef.current = { from, to };
+        setHasSelection(true);
+        // Only show toolbar if we're NOT already in the full floating bar
+        setShowToolbar(!isVisible && hasText);
+      } else {
+        setHasSelection(false);
+        setShowToolbar(false);
       }
     };
 
@@ -86,47 +94,26 @@ export function FloatingAIBar({ onGenerate }: FloatingAIBarProps) {
       editor.off('selectionUpdate', updateSelection);
       editor.off('update', updateSelection);
     };
-  }, [editor, isVisible, triggerSource]);
+  }, [editor, isVisible]);
 
-  // Monitor for /ai command
+  // Monitor for /ai command - Opens full floating bar
   useEffect(() => {
     if (!editor) return;
 
-    console.log("✅ [FloatingAIBar] Monitoring for /ai command and slash menu");
-
     // Listen for custom event from slash command
-    const handleOpenAIBar = (event: CustomEvent) => {
-      console.log("🎯 [FloatingAIBar] Opened via slash command!");
+    const handleOpenAIBar = () => {
+      setShowToolbar(false); // Hide selection toolbar
       setTriggerSource('slash');
       setIsVisible(true);
       setHasSelection(false);
-      setShowActions(false); // Don't show quick actions for slash command
+      setShowActions(false); // Don't show quick actions for slash command mode
+      setPrompt(""); // Clear any previous prompt
     };
 
     window.addEventListener('open-ai-bar', handleOpenAIBar as EventListener);
 
-    const checkForSlashCommand = () => {
-      const { from } = editor.state.selection;
-      const textBefore = editor.state.doc.textBetween(Math.max(0, from - 10), from, '\n');
-      
-      // Check if user typed /ai
-      if (textBefore.endsWith('/ai ')) {
-        console.log("🎯 [FloatingAIBar] /ai command detected!");
-        setTriggerSource('slash');
-        setIsVisible(true);
-        setHasSelection(false);
-        setShowActions(false);
-        
-        // Remove the /ai command
-        editor.chain().focus().deleteRange({ from: from - 4, to: from }).run();
-      }
-    };
-
-    editor.on('update', checkForSlashCommand);
-
     return () => {
       window.removeEventListener('open-ai-bar', handleOpenAIBar as EventListener);
-      editor.off('update', checkForSlashCommand);
     };
   }, [editor]);
 
@@ -137,10 +124,25 @@ export function FloatingAIBar({ onGenerate }: FloatingAIBarProps) {
     }
   }, [isVisible, completion]);
 
+  // Handler for toolbar "Ask AI" button
+  const handleToolbarAskAI = () => {
+    setShowToolbar(false); // Hide toolbar
+    setTriggerSource('selection'); // Mark as selection mode
+    setIsVisible(true); // Show full bar
+    setShowActions(true); // Show quick actions
+    setPrompt(""); // Clear prompt
+  };
+
   // Get selected text
   const getSelectedText = () => {
     if (!editor) return "";
     try {
+      // Use stored selection if available (preserved during input)
+      if (selectionRef.current) {
+        const { from, to } = selectionRef.current;
+        return editor.state.doc.textBetween(from, to, " ");
+      }
+      // Fallback to current editor selection
       const { from, to } = editor.state.selection;
       return editor.state.doc.textBetween(from, to, " ");
     } catch {
@@ -167,9 +169,9 @@ export function FloatingAIBar({ onGenerate }: FloatingAIBarProps) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             prompt: "",
-            option: "continue",
+            option: "generate",
             command: finalPrompt,
-            model: "anthropic/claude-3.5-sonnet",
+            model: settings.aiModel,
           }),
         });
 
@@ -195,7 +197,12 @@ export function FloatingAIBar({ onGenerate }: FloatingAIBarProps) {
         setShowActions(false);
       } catch (error) {
         console.error("Generation error:", error);
-        toast.error("Failed to generate");
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        if (errorMsg.includes('402')) {
+          toast.error("API credit limit reached. Please check your OpenRouter account.");
+        } else {
+          toast.error("Failed to generate");
+        }
         setCompletion("");
       } finally {
         setIsLoading(false);
@@ -222,7 +229,7 @@ export function FloatingAIBar({ onGenerate }: FloatingAIBarProps) {
           prompt: selectedText,
           option: "zap",
           command: finalPrompt,
-          model: "anthropic/claude-3.5-sonnet",
+          model: settings.aiModel,
         }),
       });
 
@@ -248,7 +255,12 @@ export function FloatingAIBar({ onGenerate }: FloatingAIBarProps) {
       setShowActions(false);
     } catch (error) {
       console.error("Generation error:", error);
-      toast.error("Failed to generate");
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      if (errorMsg.includes('402')) {
+        toast.error("API credit limit reached. Please check your OpenRouter account.");
+      } else {
+        toast.error("Failed to generate");
+      }
       setCompletion("");
     } finally {
       setIsLoading(false);
@@ -262,17 +274,21 @@ export function FloatingAIBar({ onGenerate }: FloatingAIBarProps) {
       // Insert at cursor for slash commands
       const { from } = editor.state.selection;
       editor.chain().focus().insertContentAt(from, completion).run();
-      toast.success("Text inserted");
+      toast.success("Text replaced");
     } else {
-      // Replace selection
-      const { from, to } = editor.state.selection;
+      // Replace selection (use stored selection from selection mode)
+      const selRange = selectionRef.current || editor.state.selection;
+      const { from, to } = selRange;
       editor.chain().focus().insertContentAt({ from, to }, completion).run();
       toast.success("Text replaced");
     }
     
+    selectionRef.current = null;
     setCompletion("");
     setPrompt("");
     setIsVisible(false);
+    setShowToolbar(false);
+    setTriggerSource('slash');
   };
 
   const handleInsert = () => {
@@ -284,6 +300,8 @@ export function FloatingAIBar({ onGenerate }: FloatingAIBarProps) {
     setCompletion("");
     setPrompt("");
     setIsVisible(false);
+    setShowToolbar(false);
+    setTriggerSource('slash');
   };
 
   const handleQuickAction = (actionPrompt: string) => {
@@ -292,89 +310,81 @@ export function FloatingAIBar({ onGenerate }: FloatingAIBarProps) {
   };
 
   if (!editor) {
-    console.log("⚠️ [FloatingAIBar] Waiting for editor to be ready...");
     return null;
   }
 
-  if (!isVisible) return null;
-
   return (
     <>
-      {/* Fixed Bottom Bar - Exact match to your image */}
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 duration-300">
-        <div className="bg-gradient-to-r from-blue-50/95 via-blue-100/95 to-blue-50/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-blue-200/50 overflow-hidden w-[580px]">
+      {/* Selection Toolbar - Shows only when text is highlighted */}
+      <SelectionToolbar 
+        isVisible={showToolbar && hasSelection}
+        onAskAI={handleToolbarAskAI}
+      />
+
+      {/* Full Floating Bar - Shows when user uses /ai command or clicks "Ask AI" */}
+      {isVisible && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 duration-300">
+          <div className="bg-gradient-to-br from-[#1FE18E]/95 via-white/95 to-[#0e2e33]/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-[#1FE18E]/30 w-[580px]">
           
           {/* Main Input Area */}
           {!completion && (
-            <div className="p-5">
+            <div className="p-5 overflow-y-auto max-h-[90vh]">
               {/* Header with suggestions label */}
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <Wand2 className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm font-medium text-gray-700">
+                  <Wand2 className="h-4 w-4 text-[#0e2e33]" />
+                  <span className="text-sm font-medium text-[#0e2e33]">
                     {hasSelection ? "AI WRITING ASSISTANT" : "Help me write"}
                   </span>
                   {hasSelection && (
-                    <span className="text-xs text-gray-500">1 word selected</span>
+                    <span className="text-xs text-gray-600">with AI</span>
                   )}
                 </div>
                 <button
                   onClick={() => setIsVisible(false)}
-                  className="p-1.5 hover:bg-blue-200/50 rounded-lg transition-colors"
+                  className="p-1.5 hover:bg-[#1FE18E]/20 rounded-lg transition-colors"
                   title="Close (ESC)"
                 >
-                  <X className="h-4 w-4 text-gray-500" />
+                  <X className="h-4 w-4 text-[#0e2e33]" />
                 </button>
               </div>
 
-              {/* SUGGESTIONS Section (only if text selected) */}
-              {hasSelection && showActions && (
+              {/* QUICK ACTIONS Dropdown */}
+              {showActions && settings.quickActionsEnabled && (
                 <div className="mb-4">
-                  <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-1">
-                    SUGGESTIONS
-                  </div>
                   <button
-                    onClick={() => handleQuickAction("Improve the writing quality and clarity")}
-                    className="w-full px-4 py-2.5 bg-white hover:bg-blue-50 rounded-xl text-left text-sm text-gray-700 border border-gray-200 hover:border-blue-300 transition-all flex items-center gap-2"
+                    onClick={() => setShowActionsDropdown(!showActionsDropdown)}
+                    className="w-full px-4 py-2.5 bg-white/40 hover:bg-white/60 rounded-xl text-left text-sm text-[#0e2e33] border border-[#1FE18E]/50 transition-all flex items-center justify-between backdrop-blur-sm"
                   >
-                    <Sparkles className="h-4 w-4 text-blue-600" />
-                    Improve Writing
+                    <span className="flex items-center gap-2">
+                      <Wand2 className="h-4 w-4 text-[#1FE18E]" />
+                      Quick Actions
+                    </span>
+                    <ChevronDown className={`h-4 w-4 text-[#0e2e33] transition-transform ${showActionsDropdown ? 'rotate-180' : ''}`} />
                   </button>
-                </div>
-              )}
 
-              {/* QUICK ACTIONS Section */}
-              {showActions && (
-                <div className="mb-4">
-                  <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-1">
-                    QUICK ACTIONS
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {quickActions.slice(1, 5).map((action, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => handleQuickAction(action.prompt)}
-                        disabled={isLoading}
-                        className="px-3 py-3 bg-white hover:bg-blue-50 rounded-xl text-center text-xs font-medium text-gray-700 border border-gray-200 hover:border-blue-300 transition-all disabled:opacity-50 flex flex-col items-center gap-1.5"
-                      >
-                        <action.icon className="h-4 w-4 text-blue-600" />
-                        <span>{action.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-4 gap-2 mt-2">
-                    {quickActions.slice(5).map((action, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => handleQuickAction(action.prompt)}
-                        disabled={isLoading}
-                        className="px-3 py-3 bg-white hover:bg-blue-50 rounded-xl text-center text-xs font-medium text-gray-700 border border-gray-200 hover:border-blue-300 transition-all disabled:opacity-50 flex flex-col items-center gap-1.5"
-                      >
-                        <action.icon className="h-4 w-4 text-blue-600" />
-                        <span>{action.label}</span>
-                      </button>
-                    ))}
-                  </div>
+                  {/* Dropdown Menu - Fixed positioning to avoid clipping */}
+                  {showActionsDropdown && (
+                    <div className="fixed left-1/2 -translate-x-1/2 mt-2 w-[548px] bg-white/90 rounded-xl border border-[#1FE18E]/30 shadow-lg z-50 backdrop-blur-sm max-h-60 overflow-y-auto" style={{bottom: 'calc(100vh - 280px)'}}>
+                      {getVisibleQuickActions().map((action, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            handleQuickAction(action.prompt);
+                            setShowActionsDropdown(false);
+                          }}
+                          disabled={isLoading}
+                          className="w-full px-4 py-2.5 text-left text-sm text-[#0e2e33] hover:bg-[#1FE18E]/10 border-b border-[#1FE18E]/10 last:border-b-0 flex items-center gap-3 transition-colors disabled:opacity-50 hover:disabled:bg-white/90"
+                        >
+                          {(() => {
+                            const Icon = getIcon(action.icon);
+                            return <Icon className="h-4 w-4 text-[#1FE18E] flex-shrink-0" />;
+                          })()}
+                          <span>{action.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -396,16 +406,15 @@ export function FloatingAIBar({ onGenerate }: FloatingAIBarProps) {
                   }}
                   placeholder='What do you want to do? (e.g., "make it sound professional")'
                   disabled={isLoading}
-                  className="w-full px-4 py-3 text-sm bg-white text-gray-700 placeholder-gray-400 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent disabled:opacity-50 pr-24"
+                  className="w-full px-4 py-3 text-sm bg-white/60 text-[#0e2e33] placeholder-[#0e2e33]/40 border border-[#1FE18E]/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1FE18E] focus:border-transparent disabled:opacity-50 pr-24 backdrop-blur-sm"
                 />
                 
-                {/* Model indicator */}
+                {/* Generate Button */}
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                  <span className="text-xs text-gray-400">GLM-4.5 Air (Free)</span>
                   <button
                     onClick={() => handleGenerate()}
                     disabled={!prompt.trim() || isLoading}
-                    className="p-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-lg transition-colors disabled:opacity-50"
+                    className="p-2 bg-[#1FE18E] hover:bg-[#1FE18E]/90 disabled:bg-gray-300 text-[#0e2e33] rounded-lg transition-colors disabled:opacity-50 font-medium"
                     title="Generate (Enter)"
                   >
                     {isLoading ? (
@@ -423,7 +432,7 @@ export function FloatingAIBar({ onGenerate }: FloatingAIBarProps) {
           {completion && (
             <div className="p-5">
               {/* Preview Text */}
-              <div className="mb-4 p-4 bg-white rounded-xl text-sm text-gray-700 max-h-40 overflow-y-auto border border-gray-200">
+              <div className="mb-4 p-4 bg-white/60 rounded-xl text-sm text-[#0e2e33] max-h-40 overflow-y-auto border border-[#1FE18E]/20 backdrop-blur-sm">
                 {completion}
               </div>
 
@@ -435,20 +444,20 @@ export function FloatingAIBar({ onGenerate }: FloatingAIBarProps) {
                     setPrompt("");
                     if (inputRef.current) inputRef.current.focus();
                   }}
-                  className="px-4 py-2 text-sm text-gray-600 hover:bg-blue-50 rounded-lg transition-colors font-medium"
+                  className="px-4 py-2 text-sm text-[#0e2e33] hover:bg-[#1FE18E]/10 rounded-lg transition-colors font-medium"
                 >
-                  Refine with a prompt
+                  Refine
                 </button>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleInsert}
-                    className="px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-medium"
+                    className="px-4 py-2 text-sm text-[#1FE18E] hover:bg-[#1FE18E]/10 rounded-lg transition-colors font-medium border border-[#1FE18E]/30"
                   >
                     Insert
                   </button>
                   <button
                     onClick={handleReplace}
-                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
+                    className="px-5 py-2 bg-[#1FE18E] hover:bg-[#1FE18E]/90 text-[#0e2e33] text-sm font-medium rounded-lg transition-colors shadow-sm"
                   >
                     Replace
                   </button>
@@ -457,7 +466,8 @@ export function FloatingAIBar({ onGenerate }: FloatingAIBarProps) {
             </div>
           )}
         </div>
-      </div>
+        </div>
+      )}
     </>
   );
 }

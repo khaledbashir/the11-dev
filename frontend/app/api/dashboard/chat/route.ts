@@ -49,10 +49,10 @@ export async function POST(request: NextRequest) {
     const systemMessage = messages.find((m: any) => m.role === 'system');
     const systemPrompt = systemMessage?.content || '';
 
-    // Combine system prompt with user message
-    const messageToSend = systemPrompt 
-      ? `SYSTEM INSTRUCTIONS:\n${systemPrompt}\n\nUSER REQUEST:\n${lastMessage.content}`
-      : lastMessage.content;
+    // Send the user message directly WITHOUT combining with system prompt
+    // AnythingLLM handles system prompt via workspace config
+    // Preserving the raw message allows @agent mentions and other syntax to work
+    const messageToSend = lastMessage.content;
 
     console.log('📤 [DASHBOARD CHAT] Sending to AnythingLLM...');
     console.log('📍 [DASHBOARD CHAT] Full URL:', `${ANYTHINGLLM_URL}/api/v1/workspace/${DASHBOARD_WORKSPACE}/stream-chat`);

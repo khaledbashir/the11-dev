@@ -32,7 +32,7 @@ export interface Folder {
   // 🏢 Workspace Integration (Folders=Workspaces)
   workspaceSlug?: string;  // AnythingLLM workspace slug
   workspaceId?: string;    // AnythingLLM workspace ID
-  embedId?: string;        // Chat widget embed ID for this client
+  embedId?: number;        // Chat widget embed ID for this client (numeric ID from AnythingLLM)
   syncedAt?: string;       // Last sync timestamp
 }
 

@@ -38,15 +38,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-
-    // Combine system prompt with user message if system prompt exists
-    const messageToSend = systemPrompt 
-      ? `SYSTEM INSTRUCTIONS:\n${systemPrompt}\n\nUSER REQUEST:\n${lastMessage.content}`
-      : lastMessage.content;
+    // Send the user message directly WITHOUT combining with system prompt
+    // AnythingLLM handles system prompt via workspace config
+    // Preserving the raw message allows @agent mentions and other syntax to work
+    const messageToSend = lastMessage.content;
 
     // Send chat request to AnythingLLM workspace
     console.log(`🚀 [AnythingLLM API] Sending to workspace: ${effectiveWorkspaceSlug}`);
     console.log(`📍 [AnythingLLM API] Full URL: ${ANYTHINGLLM_URL}/api/v1/workspace/${effectiveWorkspaceSlug}/chat`);
+    console.log(`📨 [AnythingLLM API] User message:`, messageToSend.substring(0, 100));
     
     const response = await fetch(`${ANYTHINGLLM_URL}/api/v1/workspace/${effectiveWorkspaceSlug}/chat`, {
       method: 'POST',
