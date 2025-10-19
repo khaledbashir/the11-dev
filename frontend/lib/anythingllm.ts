@@ -239,7 +239,7 @@ Metadata:
    * Get or create embed ID for workspace
    * Returns the embed UUID needed for the widget script
    */
-  async getOrCreateEmbedId(workspaceSlug: string): Promise<string | null> {
+  async getOrCreateEmbedId(workspaceSlug: string): Promise<number | null> {
     try {
       // First, check if embed already exists for this workspace
       const listResponse = await fetch(`${this.baseUrl}/api/v1/embed`, {
@@ -250,8 +250,8 @@ Metadata:
         const { embeds } = await listResponse.json();
         const existing = embeds?.find((e: any) => e.workspace?.slug === workspaceSlug);
         if (existing) {
-          console.log(`✅ Using existing embed: ${existing.uuid}`);
-          return existing.uuid;
+          console.log(`✅ Using existing embed ID: ${existing.id}`);
+          return existing.id;
         }
       }
 
@@ -292,8 +292,8 @@ Metadata:
       console.log(`📄 Embed response body:`, responseText.substring(0, 200));
       
       const data = JSON.parse(responseText);
-      console.log(`✅ Embed created:`, data);
-      return data.embed?.uuid || null;
+      console.log(`✅ Embed created with ID: ${data.embed?.id}`);
+      return data.embed?.id || null;
     } catch (error) {
       console.error('❌ Error getting/creating embed:', error);
       console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');

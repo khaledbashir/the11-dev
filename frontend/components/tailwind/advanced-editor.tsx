@@ -9,6 +9,7 @@ import {
   type EditorInstance,
   EditorRoot,
   type JSONContent,
+  EditorBubble,
 } from "novel";
 import { ImageResizer, handleCommandNavigation } from "novel/extensions";
 import { handleImageDrop, handleImagePaste } from "novel/plugins";
@@ -21,11 +22,11 @@ import { MathSelector } from "./selectors/math-selector";
 import { NodeSelector } from "./selectors/node-selector";
 import { Separator } from "./ui/separator";
 
-import GenerativeMenuSwitch from "./generative/generative-menu-switch";
 import { uploadFn } from "./image-upload";
 import { TextButtons } from "./selectors/text-buttons";
 import { slashCommand, suggestionItems } from "./slash-command";
 import { TableMenu } from "./extensions/table-menu";
+import { FloatingAIBar } from "./floating-ai-bar";
 
 const hljs = require("highlight.js");
 
@@ -165,7 +166,14 @@ const TailwindAdvancedEditor = forwardRef(({
             </EditorCommandList>
           </EditorCommand>
 
-          <GenerativeMenuSwitch open={openAI} onOpenChange={setOpenAI}>
+          {/* Text formatting bubble menu - NO Ask AI button */}
+          <EditorBubble
+            tippyOptions={{
+              placement: "top",
+              hideOnClick: false,
+            }}
+            className="flex w-fit max-w-[90vw] overflow-hidden rounded border border-muted bg-background shadow-xl"
+          >
             <Separator orientation="vertical" />
             <NodeSelector open={openNode} onOpenChange={setOpenNode} />
             <Separator orientation="vertical" />
@@ -177,10 +185,13 @@ const TailwindAdvancedEditor = forwardRef(({
             <TextButtons />
             <Separator orientation="vertical" />
             <ColorSelector open={openColor} onOpenChange={setOpenColor} />
-          </GenerativeMenuSwitch>
+          </EditorBubble>
           
           {editor && <TableMenu editor={editor} />}
         </EditorContent>
+
+        {/* Floating AI Assistant Bar - Always visible at bottom */}
+        <FloatingAIBar />
       </EditorRoot>
     </div>
   );

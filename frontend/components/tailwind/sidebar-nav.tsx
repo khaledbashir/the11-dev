@@ -282,8 +282,8 @@ export default function SidebarNav({
             )}
           </button>
 
-          {/* Workspace Name (truncated to prevent overflow) */}
-          <div className="flex-1 min-w-0 max-w-[180px]">
+          {/* Workspace Name (truncated to 5 chars max) */}
+          <div className="flex-1 min-w-0 max-w-[80px]">
             {renamingId === workspace.id ? (
               <Input
                 value={renameValue}
@@ -301,14 +301,14 @@ export default function SidebarNav({
                 onClick={() => {
                   onSelectWorkspace(workspace.id);
                 }}
-                className={`w-full text-left px-2 py-1 text-sm transition-colors truncate ${
+                className={`w-full text-left px-2 py-1 text-sm transition-colors ${
                   currentWorkspaceId === workspace.id 
                     ? 'text-[#1CBF79] font-medium' 
                     : 'text-gray-300 hover:text-white'
                 }`}
                 title={workspace.name}
               >
-                {workspace.name}
+                {workspace.name.length > 5 ? workspace.name.substring(0, 5) + '...' : workspace.name}
               </button>
             )}
           </div>
@@ -401,8 +401,8 @@ export default function SidebarNav({
         {/* Doc Icon */}
         <FileText className="w-4 h-4 flex-shrink-0" />
 
-        {/* SOW Name - Clickable, max 6 chars with "..." */}
-        <div className="flex-1 min-w-0 overflow-hidden">
+        {/* SOW Name - Clickable, max 5 chars with "..." */}
+        <div className="flex-1 min-w-0 max-w-[60px]">
           {renamingId === sow.id ? (
             <Input
               value={renameValue}
@@ -424,7 +424,7 @@ export default function SidebarNav({
               className="w-full text-left text-xs hover:text-[#1CBF79] transition-colors"
               title={sow.name}
             >
-              {sow.name.length > 6 ? sow.name.substring(0, 6) + '...' : sow.name}
+              {sow.name.length > 5 ? sow.name.substring(0, 5) + '...' : sow.name}
             </button>
           )}
         </div>

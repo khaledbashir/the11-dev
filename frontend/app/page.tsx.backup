@@ -432,64 +432,64 @@ export default function Page() {
   }, []);
 
   useEffect(() => {
-    console.log('Loading workspace data, mounted:', mounted);
+    console.log('🔍 useEffect running, mounted:', mounted);
     if (!mounted) return;
     
     const loadData = async () => {
-      console.log('Loading folders and SOWs from database...');
+      console.log('� Loading workspaces from AnythingLLM (single source of truth)...');
       const savedCurrent = localStorage.getItem("currentDocId");
       const hasCompletedSetup = localStorage.getItem("sow-guided-setup-completed");
       
       try {
-        // LOAD FOLDERS FROM DATABASE
-        const foldersResponse = await fetch('/api/folders');
-        const foldersData = await foldersResponse.json();
-        console.log('Loaded folders from database:', foldersData.length);
+        // ✅ LOAD FROM ANYTHINGLLM (SINGLE SOURCE OF TRUTH)
+        const anythingllmWorkspaces = await anythingLLM.listWorkspaces();
+        console.log('✅ Loaded workspaces from AnythingLLM:', anythingllmWorkspaces.length);
         
-        // LOAD SOWS FROM DATABASE
+        // ✅ LOAD SOWS FROM DATABASE (single source of truth for content)
         const sowsResponse = await fetch('/api/sow/list');
         const { sows: dbSOWs } = await sowsResponse.json();
-        console.log('Loaded SOWs from database:', dbSOWs.length);
+        console.log('✅ Loaded SOWs from database:', dbSOWs.length);
         
         const workspacesWithSOWs: Workspace[] = [];
         const documentsFromDB: Document[] = [];
-        const foldersFromDB: Folder[] = [];
+        const foldersFromAnythingLLM: Folder[] = [];
         
         // Create workspace objects with SOWs from database
-        for (const folder of foldersData) {
-          console.log(`Processing folder: ${folder.name} (ID: ${folder.id})`);
+        for (const ws of anythingllmWorkspaces) {
+          console.log(`📁 Processing workspace: ${ws.name} (${ws.slug})`);
           
-          // Find SOWs that belong to this folder
-          const folderSOWs = dbSOWs.filter((sow: any) => sow.folder_id === folder.id);
+          // Find SOWs that belong to this workspace (or have no workspace)
+          const workspaceSOWs = dbSOWs.filter((sow: any) => 
+            sow.workspace_slug === ws.slug || !sow.workspace_slug
+          );
           
-          const sows: SOW[] = folderSOWs.map((sow: any) => ({
+          const sows: SOW[] = workspaceSOWs.map((sow: any) => ({
             id: sow.id,
             name: sow.title || 'Untitled SOW',
-            workspaceId: folder.id,
+            workspaceId: ws.id,
           }));
           
-          console.log(`   Found ${sows.length} SOWs in this folder`);
+          console.log(`   ✅ Found ${sows.length} SOWs in this workspace`);
           
           // Add to workspaces array
           workspacesWithSOWs.push({
-            id: folder.id,
-            name: folder.name,
+            id: ws.id,
+            name: ws.name,
             sows: sows,
-            workspace_slug: folder.workspace_slug,
+            workspace_slug: ws.slug,
           });
           
-          // Add to folders array
-          foldersFromDB.push({
-            id: folder.id,
-            name: folder.name,
-            workspaceSlug: folder.workspace_slug,
-            workspaceId: folder.workspace_id,
-            embedId: folder.embed_id,
-            syncedAt: folder.updated_at || folder.created_at,
+          // Add to folders array (folders = workspaces)
+          foldersFromAnythingLLM.push({
+            id: ws.id,
+            name: ws.name,
+            workspaceSlug: ws.slug,
+            workspaceId: ws.id,
+            syncedAt: new Date().toISOString(),
           });
           
           // Create document objects for each SOW from database
-          for (const sow of folderSOWs) {
+          for (const sow of workspaceSOWs) {
             // Parse content if it's a JSON string, otherwise use as-is
             let parsedContent = defaultEditorContent;
             if (sow.content) {
@@ -498,7 +498,7 @@ export default function Page() {
                   ? JSON.parse(sow.content) 
                   : sow.content;
               } catch (e) {
-                console.warn('Failed to parse SOW content:', sow.id);
+                console.warn('⚠️ Failed to parse SOW content:', sow.id);
                 parsedContent = defaultEditorContent;
               }
             }
@@ -507,19 +507,19 @@ export default function Page() {
               id: sow.id,
               title: sow.title || 'Untitled SOW',
               content: parsedContent,
-              folderId: folder.id,
-              workspaceSlug: folder.workspace_slug,
+              folderId: ws.id,
+              workspaceSlug: ws.slug,
               syncedAt: sow.updated_at,
             });
           }
         }
         
-        console.log('Total workspaces loaded:', workspacesWithSOWs.length);
-        console.log('Total SOWs loaded:', documentsFromDB.length);
+        console.log('✅ Total workspaces loaded:', workspacesWithSOWs.length);
+        console.log('✅ Total SOWs loaded:', documentsFromDB.length);
         
         // Update state
         setWorkspaces(workspacesWithSOWs);
-        setFolders(foldersFromDB);
+        setFolders(foldersFromAnythingLLM);
         setDocuments(documentsFromDB);
         
         // Set current workspace to first one if available
@@ -530,13 +530,13 @@ export default function Page() {
           }
         }
         
-        // Show guided setup if no workspaces
+        // Show guided setup if no workspaces in AnythingLLM
         if (!hasCompletedSetup && workspacesWithSOWs.length === 0) {
           setTimeout(() => setShowGuidedSetup(true), 1000);
         }
         
       } catch (error) {
-        console.error('Error loading data:', error);
+        console.error('❌ Error loading data:', error);
         toast.error('Failed to load workspaces and SOWs');
       }
       

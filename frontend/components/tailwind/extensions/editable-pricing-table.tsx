@@ -103,10 +103,11 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
   const [rows, setRows] = useState<PricingRow[]>(node.attrs.rows || []);
   const [discount, setDiscount] = useState(node.attrs.discount || 0);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [showTotal, setShowTotal] = useState(node.attrs.showTotal !== undefined ? node.attrs.showTotal : true);
 
   useEffect(() => {
-    updateAttributes({ rows, discount });
-  }, [rows, discount]);
+    updateAttributes({ rows, discount, showTotal });
+  }, [rows, discount, showTotal]);
 
   const updateRow = (index: number, field: keyof PricingRow, value: string | number) => {
     const newRows = [...rows];
@@ -226,11 +227,9 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-[#0e2e33] text-white">
-                <th className="border border-border px-3 py-2 text-left text-sm">Role</th>
-                <th className="border border-border px-3 py-2 text-left text-sm">Description</th>
-                <th className="border border-border px-3 py-2 text-left text-sm w-24">Hours</th>
-                <th className="border border-border px-3 py-2 text-left text-sm w-24">Rate</th>
-                <th className="border border-border px-3 py-2 text-right text-sm w-32">Cost</th>
+                <th className="border border-border px-3 py-2 text-left text-sm">ROLE</th>
+                <th className="border border-border px-3 py-2 text-left text-sm w-24">HOURS</th>
+                <th className="border border-border px-3 py-2 text-right text-sm w-32">TOTAL COST + GST</th>
                 <th className="border border-border px-3 py-2 text-center text-sm w-16">Actions</th>
               </tr>
             </thead>
@@ -268,33 +267,12 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
                   </td>
                   <td className="border border-border p-2">
                     <input
-                      type="text"
-                      value={row.description}
-                      onChange={(e) => updateRow(index, 'description', e.target.value)}
-                      placeholder="Description..."
-                      
-                      className="w-full px-2 py-1 text-sm !text-black bg-muted dark:bg-gray-700 border border-border rounded focus:outline-none focus:border-[#0e2e33] placeholder:text-gray-500"
-                    />
-                  </td>
-                  <td className="border border-border p-2">
-                    <input
                       type="number"
                       value={row.hours || ''}
                       onChange={(e) => updateRow(index, 'hours', parseFloat(e.target.value) || 0)}
                       placeholder="0"
                       min="0"
                       step="0.5"
-                      
-                      className="w-full px-2 py-1 text-sm !text-foreground dark:text-gray-100 bg-muted dark:bg-gray-800 border border-border rounded focus:outline-none focus:border-[#0e2e33] placeholder:text-gray-400"
-                    />
-                  </td>
-                  <td className="border border-border p-2">
-                    <input
-                      type="number"
-                      value={row.rate || ''}
-                      onChange={(e) => updateRow(index, 'rate', parseFloat(e.target.value) || 0)}
-                      placeholder="$0"
-                      min="0"
                       
                       className="w-full px-2 py-1 text-sm !text-foreground dark:text-gray-100 bg-muted dark:bg-gray-800 border border-border rounded focus:outline-none focus:border-[#0e2e33] placeholder:text-gray-400"
                     />
@@ -344,19 +322,42 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
                     <span>-${calculateDiscount().toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm text-foreground dark:text-gray-100">
-                    <span>After Discount:</span>
+                    <span>Subtotal after Discount:</span>
                     <span className="font-semibold">${calculateSubtotalAfterDiscount().toFixed(2)}</span>
                   </div>
                 </>
               )}
-              <div className="flex justify-between text-sm text-foreground dark:text-gray-100">
-                <span>GST (10%):</span>
-                <span>${calculateGST().toFixed(2)}</span>
+              
+              {/* Toggle Button for Total Price */}
+              <div className="flex justify-end pt-2">
+                <button
+                  onClick={() => setShowTotal(!showTotal)}
+                  className="px-3 py-1 text-xs bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded transition-colors"
+                  title={showTotal ? "Hide total price" : "Show total price"}
+                >
+                  {showTotal ? "Hide Total" : "Show Total"}
+                </button>
               </div>
-              <div className="flex justify-between text-base font-bold text-foreground dark:text-gray-100 border-t border-border pt-2 mt-2">
-                <span>Total Project Value:</span>
-                <span className="text-[#0e2e33]">${calculateTotal().toFixed(2)}</span>
-              </div>
+
+              {/* Show price as "+GST" OR with GST included */}
+              {showTotal && (
+                <>
+                  <div className="border-t border-border pt-2 mt-2 space-y-1">
+                    <div className="flex justify-between text-base font-bold text-foreground dark:text-gray-100">
+                      <span>Total Project Value:</span>
+                      <span className="text-[#0e2e33]">${calculateSubtotalAfterDiscount().toFixed(2)} <span className="text-sm font-normal">+GST</span></span>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                      <span>GST (10%):</span>
+                      <span>${calculateGST().toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 italic">
+                      <span>Total incl. GST:</span>
+                      <span>${calculateTotal().toFixed(2)}</span>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -379,6 +380,9 @@ export const EditablePricingTable = Node.create({
       },
       discount: {
         default: 0,
+      },
+      showTotal: {
+        default: true,
       },
     };
   },
