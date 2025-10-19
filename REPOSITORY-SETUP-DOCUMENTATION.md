@@ -23,7 +23,7 @@ This document outlines the dual-repository setup for the Social Garden SOW Gener
 ### **Development Repository** (`the11-dev`)
 - **GitHub URL:** `https://github.com/khaledbashir/the11-dev.git`
 - **Purpose:** Experimental development and feature testing
-- **Main Branch:** `dev/ui-and-features` - Current development branch
+- **Main Branch:** `production-latest` - Current production-ready branch
 - **Status:** ✅ Ready for experimentation and new features
 
 ---
@@ -45,13 +45,13 @@ git push origin main
 ### **For Development/Experimentation:**
 ```bash
 # Switch to dev branch
-git checkout dev/ui-and-features
+git checkout production-latest
 
 # Set remote to dev repo
 git remote set-url origin https://github.com/khaledbashir/the11-dev.git
 
 # Push experimental changes
-git push origin dev/ui-and-features
+git push origin production-latest
 ```
 
 ### **Syncing Updates:**
@@ -203,7 +203,7 @@ ANYTHINGLLM_API_KEY=your_key
 
 ### **Branch Strategy:**
 - `main` (production repo) → Stable, production-ready
-- `dev/ui-and-features` (dev repo) → Active development
+- `production-latest` (dev repo) → Active development and latest production code
 - Feature branches → For specific feature development
 
 ### **Backup & Recovery:**
