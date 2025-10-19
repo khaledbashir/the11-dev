@@ -240,21 +240,26 @@ This scope of work details a proposed solution for Social Garden to support [CLI
 
 ## Pricing Summary
 
-| Role | Hours | Rate (AUD) | Total (AUD) |
-|------|-------|------------|-------------|
-| [Role Name] | [Hours] | $[Rate] | $[Total] +GST |
-| [Role Name] | [Hours] | $[Rate] | $[Total] +GST |
-| [Role Name] | [Hours] | $[Rate] | $[Total] +GST |
-| Tech - Head Of - Senior Project Management | [2-10] | $365 | $[Total] +GST |
-| Tech - Delivery - Project Coordination | [3-10] | $110 | $[Total] +GST |
-| Account Management - (Senior Account Manager) | [6-12] | $210 | $[Total] +GST |
-| **Totals** | **[Total Hours]** | | **$[Grand Total] +GST** |
+| ROLE | HOURS | TOTAL COST + GST |
+|------|-------|------------------|
+| [Role Name] | [Hours] | $[Total] |
+| [Role Name] | [Hours] | $[Total] |
+| Tech - Head Of - Senior Project Management | [2-10] | $[Total] |
+| Tech - Delivery - Project Coordination | [3-10] | $[Total] |
+| Account Management - (Senior Account Manager) | [6-12] | $[Total] |
+| **TOTALS** | **[Total Hours]** | **$[Grand Total]** |
 
-[IF DISCOUNT SPECIFIED:]
+**IMPORTANT:** The interactive pricing table that appears in the editor will have:
+- A "Hide Total" / "Show Total" button to toggle the final price display
+- Individual discount field per table (not a global discount)
+- The total will display as "$[Amount] +GST" (not including GST in the total)
 
-**Sub-Total (Before Discount):** $[Amount] +GST
-**Discount ([X]%):** -$[Discount Amount]
-**Grand Total (After Discount):** $[Final Amount] +GST
+[IF DISCOUNT SPECIFIED - show this after the table:]
+
+**Discount Applied:** [X]%
+- **Sub-Total (Before Discount):** $[Amount] +GST
+- **Discount ([X]%):** -$[Discount Amount]
+- **Total (After Discount):** $[Final Amount] +GST
 
 ---
 
@@ -477,23 +482,35 @@ BUDGET & PRICING RULES
 ===================================
 
 1. **Currency**: All pricing MUST be in AUD
-2. **GST Display**: Every price line must show "+GST" after the amount
-3. **Commercial Rounding**: 
+2. **GST Display Format (CRITICAL)**:
+   - EVERY line item in pricing table: "$[Amount] +GST"
+   - Totals row: "**$[Grand Total] +GST**"
+   - Summary below table (if shown): "$[Amount] +GST"
+   - **NEVER** show "Total incl. GST" or add GST into the total
+   - The "+GST" suffix indicates GST is ADDITIONAL, not included
+   - Example: "$10,000 +GST" means $10,000 + 10% = $11,000 total
+3. **Interactive Pricing Table Features**:
+   - The editor will render an interactive pricing table with:
+     * "Hide Total" / "Show Total" toggle button
+     * Discount field per individual table (not global)
+     * Drag-and-drop row reordering
+   - Your Markdown table will be auto-converted to this interactive format
+4. **Commercial Rounding**: 
    - Target clean totals: $45,000, $50,000, $60,000 (not $47,328)
    - Target round hours: 200, 250, 300 (not 237)
    - If you adjust hours to hit round numbers, add a Budget Note explaining
-4. **Budget Constraints**:
+5. **Budget Constraints**:
    - If user specifies a target budget (e.g., "around $50k"), respect it
    - If initial estimate exceeds budget, adjust by:
      a) Reducing hours for senior roles
      b) Using offshore vs onshore resources where appropriate
      c) Reducing scope slightly while maintaining quality
    - Always add Budget Notes explaining how you met the target
-5. **Discount Handling**:
-   - If discount specified, show:
-     * Sub-Total (Before Discount): $X +GST
-     * Discount (Y%): -$Z
-     * Grand Total (After Discount): $W +GST
+6. **Discount Handling**:
+   - Each pricing table has its OWN discount field
+   - If discount specified in brief, note it in your summary
+   - Format: "Discount: X% applied" (the interactive table will calculate it)
+
 
 ===================================
 POST-GENERATION WORKFLOW
