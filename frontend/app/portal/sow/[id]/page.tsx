@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { 
   Sparkles, Download, CheckCircle, MessageCircle, ArrowLeft, 
   FileText, DollarSign, Calendar, Eye, Share2, Clock,
@@ -48,6 +48,7 @@ export default function ClientPortalPage() {
   const [contentPieces, setContentPieces] = useState<number>(12);
   const [socialPosts, setSocialPosts] = useState<number>(20);
   const [adSpend, setAdSpend] = useState<number>(2000);
+  const [dynamicServices, setDynamicServices] = useState<PricingOption[]>([]);
 
   // AI-Recommended Add-Ons
   interface Recommendation {
@@ -65,6 +66,32 @@ export default function ClientPortalPage() {
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [selectedAddOns, setSelectedAddOns] = useState<number[]>([]);
 
+  // Calculate total investment (for accept handler and display)
+  const calculatedTotal = useMemo(() => {
+    const serviceOptions = dynamicServices.length > 0 ? dynamicServices : [
+      { id: 'social-media', name: 'Social Media Management', basePrice: 1500, description: '', icon: Users },
+      { id: 'content-creation', name: 'Content Creation', basePrice: 2000, description: '', icon: FileText },
+      { id: 'paid-ads', name: 'Paid Advertising', basePrice: 1200, description: '', icon: Target },
+      { id: 'seo', name: 'SEO Optimization', basePrice: 1800, description: '', icon: TrendingUp },
+      { id: 'analytics', name: 'Analytics & Reporting', basePrice: 800, description: '', icon: Eye }
+    ];
+    
+    const baseServicesTotal = serviceOptions
+      .filter(s => selectedServices.includes(s.id))
+      .reduce((sum, s) => sum + s.basePrice, 0);
+    
+    const contentCost = contentPieces * 150;
+    const socialCost = socialPosts * 25;
+    const adManagementFee = adSpend * 0.15;
+    const addOnsTotal = recommendations
+      .filter(r => selectedAddOns.includes(r.id))
+      .reduce((sum, r) => sum + r.recommended_price, 0);
+    
+    const subtotal = baseServicesTotal + contentCost + socialCost + adManagementFee + addOnsTotal;
+    const gst = subtotal * 0.1;
+    return subtotal + gst;
+  }, [selectedServices, contentPieces, socialPosts, adSpend, dynamicServices, recommendations, selectedAddOns]);
+
   useEffect(() => {
     // Load SOW data
     loadSOW();
@@ -72,60 +99,41 @@ export default function ClientPortalPage() {
     loadRecommendations();
   }, [sowId]);
 
+  // 🔥 SWITCHED TO OPENROUTER - Direct AI chat without document embedding
+  // AnythingLLM was showing "no relevant information" because workspace was empty
+  // OpenRouter gives instant responses about SOW content without needing RAG
+  const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [isChatLoading, setIsChatLoading] = useState(false);
+
+  // Load dynamic services from admin panel
   useEffect(() => {
-    // Inject AnythingLLM embed script with Social Garden branding
-    if (sow?.embedId && showChat) {
-      const existingScript = document.getElementById('anythingllm-embed-script');
-      if (!existingScript) {
-        const script = document.createElement('script');
-        script.id = 'anythingllm-embed-script';
+    const loadDynamicServices = async () => {
+      try {
+        const response = await fetch('/api/admin/services');
+        const data = await response.json();
         
-        // Use the dynamically generated embed ID for this client's workspace
-        script.setAttribute('data-embed-id', sow.embedId);
-        script.setAttribute('data-base-api-url', 'https://socialgarden-anything-llm.vo0egb.easypanel.host/api/embed');
-  // Force chat mode at runtime
-  script.setAttribute('data-mode', 'chat');
-  script.setAttribute('data-chat-mode', 'chat');
-        
-        // 🎨 SOCIAL GARDEN BRANDING - NO AnythingLLM mentions!
-        script.setAttribute('data-assistant-name', 'Social Garden AI Assistant'); // Rebrand!
-        script.setAttribute('data-button-color', '#0e2e33'); // Social Garden dark teal
-        script.setAttribute('data-text-color', '#ffffff'); // White text
-        script.setAttribute('data-chat-icon', 'sparkles'); // Sparkles icon (matches brand)
-        
-        // Positioning for sidebar integration
-        script.setAttribute('data-position', 'custom'); // We control the position
-        script.setAttribute('data-window-width', '100%'); // Full width in sidebar
-        script.setAttribute('data-window-height', '600px'); // Fixed height
-        script.setAttribute('data-open-on-load', 'on'); // Auto-open when loaded
-        
-        // Default prompt suggestions
-        script.setAttribute('data-prompt-suggestions', JSON.stringify([
-          "What's the total investment?",
-          "How many hours for social media?",
-          "What deliverables are included?",
-          "When does the project start?"
-        ]));
-        
-        script.src = 'https://socialgarden-anything-llm.vo0egb.easypanel.host/embed/anythingllm-chat-widget.min.js';
-        
-        document.body.appendChild(script);
-        
-        console.log(`✅ Social Garden AI Chat loaded for ${sow.clientName}`);
-      }
-    }
-    
-    // Cleanup script when component unmounts or chat closes
-    return () => {
-      if (!showChat) {
-        const script = document.getElementById('anythingllm-embed-script');
-        if (script) {
-          script.remove();
-          console.log('🧹 Social Garden AI Chat removed');
+        if (data.success && data.services) {
+          const activeServices = data.services
+            .filter((s: any) => s.is_active)
+            .map((s: any) => ({
+              id: s.id,
+              name: s.name,
+              basePrice: parseFloat(s.base_price),
+              description: s.description,
+              icon: Target, // Default icon
+            }));
+          
+          setDynamicServices(activeServices);
+          console.log('✅ Loaded', activeServices.length, 'services from admin panel');
         }
+      } catch (error) {
+        console.error('Error loading dynamic services:', error);
       }
     };
-  }, [sow, showChat]);
+
+    loadDynamicServices();
+  }, []);
 
   const loadSOW = async () => {
     try {
@@ -228,6 +236,34 @@ export default function ClientPortalPage() {
     }
   };
 
+  const handleAcceptSOW = async () => {
+    if (!sow) return;
+    
+    try {
+      const response = await fetch(`/api/sow/${sowId}/accept`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientName: sow.clientName,
+          totalInvestment: calculatedTotal,
+          selectedServices,
+          addOns: selectedAddOns,
+        }),
+      });
+
+      if (response.ok) {
+        setAccepted(true);
+        toast.success('🎉 Proposal accepted! We\'ll be in touch shortly to get started.');
+      } else {
+        const data = await response.json();
+        toast.error(data.message || 'Failed to accept proposal. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error accepting proposal:', error);
+      toast.error('Failed to accept proposal. Please contact us directly.');
+    }
+  };
+
   const handleToggleAddOn = async (recommendationId: number) => {
     const isSelected = selectedAddOns.includes(recommendationId);
     const newSelection = isSelected
@@ -281,9 +317,74 @@ export default function ClientPortalPage() {
     }
   };
 
-  const handleAcceptSOW = () => {
-    // Will implement e-signature modal in Phase 2
-    setAccepted(true);
+  // 🔥 OPENROUTER CHAT HANDLER - Direct AI without RAG
+  const handleSendChatMessage = async () => {
+    if (!chatInput.trim() || !sow) return;
+    
+    const userMessage = chatInput.trim();
+    setChatInput('');
+    setIsChatLoading(true);
+    
+    // Add user message to chat
+    const newMessages = [
+      ...chatMessages,
+      { role: 'user' as const, content: userMessage }
+    ];
+    setChatMessages(newMessages);
+    
+    try {
+      // Call OpenRouter API with SOW context
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'google/gemini-2.0-flash-exp:free', // 🆓 FREE on OpenRouter!
+          messages: [
+            {
+              role: 'system',
+              content: `You are the Social Garden AI Assistant for ${sow.clientName}'s proposal.
+
+**Your SOW Document:**
+${sow.htmlContent}
+
+**Key Details:**
+- Client: ${sow.clientName}
+- Total Investment: $${sow.totalInvestment.toLocaleString('en-AU', { minimumFractionDigits: 2 })} AUD
+- Title: ${sow.title}
+
+**Instructions:**
+- Answer questions about this specific SOW
+- Be professional, friendly, and helpful
+- Cite specific details from the SOW when relevant
+- If asked about pricing, deliverables, or timeline, extract from the SOW content above
+- Keep responses concise and clear`
+            },
+            ...newMessages
+          ]
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to get AI response');
+      }
+      
+      const data = await response.json();
+      const assistantMessage = data.choices[0].message.content;
+      
+      setChatMessages([
+        ...newMessages,
+        { role: 'assistant' as const, content: assistantMessage }
+      ]);
+    } catch (error) {
+      console.error('Error sending chat message:', error);
+      toast.error('Failed to get AI response. Please try again.');
+      setChatMessages([
+        ...newMessages,
+        { role: 'assistant' as const, content: 'Sorry, I encountered an error. Please try again.' }
+      ]);
+    } finally {
+      setIsChatLoading(false);
+    }
   };
 
   if (loading) {
@@ -331,13 +432,11 @@ export default function ClientPortalPage() {
         {/* Logo Header */}
         <div className="p-6 border-b border-[#2A2A2D]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-lg flex items-center justify-center shadow-lg shadow-[#1CBF79]/20">
-              <span className="text-white text-lg font-bold">SG</span>
-            </div>
-            <div>
-              <h2 className="text-white font-bold text-sm">Social Garden</h2>
-              <p className="text-gray-400 text-xs">Client Portal</p>
-            </div>
+            <img 
+              src="/assets/Logo-Dark-Green.png" 
+              alt="Social Garden" 
+              className="h-10 w-auto"
+            />
           </div>
         </div>
 
@@ -429,8 +528,8 @@ export default function ClientPortalPage() {
         </div>
       </aside>
 
-      {/* 🔥 MAIN CONTENT AREA */}
-      <main className="flex-1 overflow-auto max-w-full">
+      {/* 🔥 MAIN CONTENT AREA - Adjust width when chat is open */}
+      <main className={`flex-1 overflow-auto transition-all duration-300 ${showChat ? 'mr-[450px]' : 'mr-0'}`}>
         {/* Top Bar */}
         <header className="sticky top-0 z-40 bg-[#1A1A1D]/95 backdrop-blur-xl border-b border-[#2A2A2D] shadow-lg">
           <div className="px-8 py-4 flex items-center justify-between">
@@ -481,94 +580,157 @@ export default function ClientPortalPage() {
         </div>
       </main>
 
-      {/* 🔥 AI CHAT PANEL - Slide in from right with overlay */}
-      {showChat && (
-        <>
-          {/* Overlay backdrop */}
-          <div 
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300"
-            onClick={() => setShowChat(false)}
-          />
-          
-          {/* Sliding panel */}
-          <aside className="fixed right-0 top-0 bottom-0 w-[450px] bg-[#1A1A1D] border-l border-[#2A2A2D] flex flex-col z-50 shadow-2xl animate-slide-in">
-            {/* Chat Header */}
-            <div className="p-6 border-b border-[#2A2A2D] bg-gradient-to-r from-[#1CBF79]/10 to-[#15965E]/10">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-lg flex items-center justify-center shadow-lg shadow-[#1CBF79]/30">
-                    <Sparkles className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-white font-bold text-lg">AI Assistant</h3>
-                    <p className="text-xs text-gray-400">Powered by Social Garden</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowChat(false)}
-                  className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+      {/* 🔥 AI CHAT PANEL - Responsive sidebar (no overlay on desktop) */}
+      <aside 
+        className={`fixed right-0 top-0 bottom-0 bg-[#1A1A1D] border-l border-[#2A2A2D] flex flex-col shadow-2xl transition-all duration-300 z-50 ${
+          showChat ? 'w-[450px]' : 'w-0'
+        } overflow-hidden`}
+      >
+        {/* Chat Header */}
+        <div className="p-6 border-b border-[#2A2A2D] bg-gradient-to-r from-[#1CBF79]/10 to-[#15965E]/10 flex-shrink-0">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-lg flex items-center justify-center shadow-lg shadow-[#1CBF79]/30">
+                <Sparkles className="w-6 h-6 text-white" />
               </div>
-              <p className="text-sm text-gray-400">Ask me anything about this proposal - pricing, timeline, deliverables, or scope.</p>
+              <div>
+                <h3 className="text-white font-bold text-lg">AI Assistant</h3>
+                <p className="text-xs text-gray-400">Powered by Social Garden</p>
+              </div>
             </div>
+            <button
+              onClick={() => setShowChat(false)}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <p className="text-sm text-gray-400">Ask me anything about this proposal - pricing, timeline, deliverables, or scope.</p>
+        </div>
 
-            {/* Chat Content */}
-            <div className="flex-1 overflow-auto p-6 bg-[#0E0F0F]">
-              {!sow?.embedId ? (
-                <div className="flex flex-col items-center justify-center h-full text-center">
-                  <div className="w-20 h-20 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-2xl flex items-center justify-center mb-6 animate-pulse shadow-xl shadow-[#1CBF79]/30">
-                    <Sparkles className="w-10 h-10 text-white" />
-                  </div>
-                  <p className="text-white font-semibold text-lg mb-2">Loading AI Assistant...</p>
-                  <p className="text-sm text-gray-400">Analyzing {sow?.clientName}'s proposal</p>
-                  <div className="mt-6 flex gap-2">
-                    <div className="w-2 h-2 bg-[#1CBF79] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                    <div className="w-2 h-2 bg-[#1CBF79] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                    <div className="w-2 h-2 bg-[#1CBF79] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                  </div>
+        {/* Chat Content - Scrollable */}
+        <div className="flex-1 overflow-y-auto p-6 bg-[#0E0F0F] space-y-4">
+          {chatMessages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              <div className="w-20 h-20 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-2xl flex items-center justify-center mb-6 shadow-xl shadow-[#1CBF79]/30">
+                <Sparkles className="w-10 h-10 text-white" />
+              </div>
+              <p className="text-white font-semibold text-lg mb-2">AI Assistant Ready!</p>
+              <p className="text-sm text-gray-400 mb-6">Ask me anything about your proposal</p>
+              <div className="space-y-2 w-full max-w-xs">
+                <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Try asking:</p>
+                <div className="text-left space-y-1 text-sm text-gray-400">
+                  <p>• "What's the total investment?"</p>
+                  <p>• "What deliverables are included?"</p>
+                  <p>• "When does the project start?"</p>
                 </div>
-              ) : (
-                <div id="social-garden-chat-container" className="h-full">
-                  {/* AI widget loads here */}
-                  <div className="flex items-center justify-center h-full">
-                    <div className="text-center max-w-sm">
-                      <div className="w-16 h-16 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-2xl flex items-center justify-center mb-4 mx-auto shadow-lg shadow-[#1CBF79]/30">
-                        <Sparkles className="w-8 h-8 text-white" />
-                      </div>
-                      <p className="text-white font-bold text-lg mb-2">AI Ready!</p>
-                      <p className="text-sm text-gray-400 mb-6">Start by asking a question below</p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {chatMessages.map((msg, idx) => (
+                <div
+                  key={idx}
+                  className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  {msg.role === 'assistant' && (
+                    <div className="w-8 h-8 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Sparkles className="w-5 h-5 text-white" />
+                    </div>
+                  )}
+                  <div
+                    className={`max-w-[80%] rounded-lg p-4 ${
+                      msg.role === 'user'
+                        ? 'bg-[#1CBF79] text-white'
+                        : 'bg-[#1A1A1D] text-gray-200 border border-[#2A2A2D]'
+                    }`}
+                  >
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                  </div>
+                  {msg.role === 'user' && (
+                    <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <span className="text-white font-bold text-sm">You</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {isChatLoading && (
+                <div className="flex gap-3 justify-start">
+                  <div className="w-8 h-8 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Sparkles className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="bg-[#1A1A1D] border border-[#2A2A2D] rounded-lg p-4">
+                    <div className="flex gap-1">
+                      <div className="w-2 h-2 bg-[#1CBF79] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                      <div className="w-2 h-2 bg-[#1CBF79] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                      <div className="w-2 h-2 bg-[#1CBF79] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                     </div>
                   </div>
                 </div>
               )}
             </div>
+          )}
+        </div>
 
-            {/* Suggested Questions */}
-            <div className="p-6 border-t border-[#2A2A2D] bg-[#1A1A1D]">
-              <p className="text-xs text-gray-500 mb-3 font-semibold uppercase tracking-wider">Quick Questions</p>
-              <div className="space-y-2">
-                {[
-                  { icon: DollarSign, text: "What's the total investment?" },
-                  { icon: Clock, text: "Timeline for deliverables?" },
-                  { icon: FileText, text: "What's included in the scope?" },
-                ].map((q, i) => (
-                  <button
-                    key={i}
-                    className="w-full text-left text-sm p-3 rounded-lg bg-[#2A2A2D] hover:bg-[#3A3A3D] text-gray-300 transition-all border border-gray-700 hover:border-[#1CBF79] flex items-center gap-3 group"
-                  >
-                    <q.icon className="w-4 h-4 text-gray-500 group-hover:text-[#1CBF79] transition-colors" />
-                    <span>{q.text}</span>
-                  </button>
-                ))}
-              </div>
+        {/* Suggested Questions + Text Input */}
+        <div className="border-t border-[#2A2A2D] bg-[#1A1A1D] flex-shrink-0">
+          <div className="p-4">
+            {chatMessages.length === 0 && (
+              <>
+                <p className="text-xs text-gray-500 mb-2 font-semibold uppercase tracking-wider">Quick Questions</p>
+                <div className="space-y-2 mb-4">
+                  {[
+                    { icon: DollarSign, text: "What's the total investment?" },
+                    { icon: Clock, text: "Timeline for deliverables?" },
+                    { icon: FileText, text: "What's included in the scope?" },
+                  ].map((q, i) => (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        setChatInput(q.text);
+                        handleSendChatMessage();
+                      }}
+                      className="w-full text-left text-xs p-2 rounded-lg bg-[#2A2A2D] hover:bg-[#3A3A3D] text-gray-300 transition-all border border-gray-700 hover:border-[#1CBF79] flex items-center gap-2 group"
+                    >
+                      <q.icon className="w-3 h-3 text-gray-500 group-hover:text-[#1CBF79] transition-colors" />
+                      <span>{q.text}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+            
+            {/* Text Input Field */}
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Type your question here..."
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                className="w-full px-4 py-3 pr-12 bg-[#0E0F0F] border border-[#2A2A2D] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#1CBF79] transition-colors"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey && chatInput.trim()) {
+                    e.preventDefault();
+                    handleSendChatMessage();
+                  }
+                }}
+                disabled={isChatLoading}
+              />
+              <button 
+                onClick={handleSendChatMessage}
+                disabled={isChatLoading || !chatInput.trim()}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-[#1CBF79] hover:bg-[#15a366] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+              </button>
             </div>
-          </aside>
-        </>
-      )}
+          </div>
+        </div>
+      </aside>
       
       {/* Add animation keyframes */}
       <style jsx global>{`
@@ -610,12 +772,12 @@ export default function ClientPortalPage() {
                     <div className="p-2 bg-[#1CBF79]/20 rounded-lg">
                       <DollarSign className="w-6 h-6 text-[#1CBF79]" />
                     </div>
-                    <span className="text-gray-400 text-sm font-medium">Total Investment</span>
+                    <span className="text-sm font-medium text-gray-200">Total Investment</span>
                   </div>
                   <p className="text-3xl font-bold text-white mb-1">
-                    ${sow.totalInvestment.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                    ${(sow.totalInvestment || calculatedTotal).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
-                  <p className="text-xs text-gray-500">AUD (inc. GST)</p>
+                  <p className="text-xs text-gray-400">AUD (inc. GST)</p>
                 </div>
 
                 <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/10 border border-blue-500/30 rounded-xl p-6 hover:scale-105 transition-transform">
@@ -852,8 +1014,8 @@ export default function ClientPortalPage() {
         );
 
       case 'pricing':
-        // Define available service packages
-        const serviceOptions: PricingOption[] = [
+        // Load services from admin panel (will be populated via useEffect)
+        const serviceOptions: PricingOption[] = dynamicServices.length > 0 ? dynamicServices : [
           {
             id: 'social-media',
             name: 'Social Media Management',
@@ -905,10 +1067,10 @@ export default function ClientPortalPage() {
           .filter(r => selectedAddOns.includes(r.id))
           .reduce((sum, r) => sum + r.recommended_price, 0);
         
+        // Calculate subtotal and GST for display (total comes from useMemo)
         const subtotal = baseServicesTotal + contentCost + socialCost + adManagementFee + addOnsTotal;
-        const gst = subtotal * 0.1; // 10% GST
-        const calculatedTotal = subtotal + gst;
-
+        const gst = subtotal * 0.1;
+        
         const toggleService = (serviceId: string) => {
           if (selectedServices.includes(serviceId)) {
             setSelectedServices(selectedServices.filter(id => id !== serviceId));

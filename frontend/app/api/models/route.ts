@@ -1,23 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
-  // Using AnythingLLM now - return list of available models
-  // These are the models available through AnythingLLM workspace "pop"
+  // OpenRouter free models for AI Writing Assistant
   const models = [
     {
-      id: 'anythingllm-gpt4',
-      name: 'GPT-4 (via AnythingLLM)',
-      provider: 'anythingllm',
+      id: 'z-ai/glm-4.5-air:free',
+      name: 'GLM-4.5 Air (Free)',
+      provider: 'openrouter',
+      pricing: { prompt: '0', completion: '0' }
     },
     {
-      id: 'anythingllm-gpt35',
-      name: 'GPT-3.5 (via AnythingLLM)',
-      provider: 'anythingllm',
+      id: 'google/gemini-2.0-flash-exp:free',
+      name: 'Gemini 2.0 Flash (Free)',
+      provider: 'openrouter',
+      pricing: { prompt: '0', completion: '0' }
     },
     {
-      id: 'anythingllm-claude',
-      name: 'Claude (via AnythingLLM)',
-      provider: 'anythingllm',
+      id: 'meta-llama/llama-3.2-3b-instruct:free',
+      name: 'Llama 3.2 3B (Free)',
+      provider: 'openrouter',
+      pricing: { prompt: '0', completion: '0' }
+    },
+    {
+      id: 'qwen/qwen-2-7b-instruct:free',
+      name: 'Qwen 2 7B (Free)',
+      provider: 'openrouter',
+      pricing: { prompt: '0', completion: '0' }
     },
   ];
 

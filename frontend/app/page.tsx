@@ -357,7 +357,7 @@ export default function Page() {
     lastShared?: string;
   } | null>(null);
   const [showGuidedSetup, setShowGuidedSetup] = useState(false);
-  const [viewMode, setViewMode] = useState<'editor' | 'dashboard' | 'gardner-studio'>('dashboard'); // NEW: View mode - START WITH DASHBOARD
+  const [viewMode, setViewMode] = useState<'editor' | 'dashboard' | 'gardner-studio' | 'ai-management'>('dashboard'); // NEW: View mode - START WITH DASHBOARD
   
   // Workspace & SOW state (NEW) - Start empty, load from AnythingLLM
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
@@ -1161,11 +1161,13 @@ export default function Page() {
     }
   };
 
-  const handleViewChange = (view: 'dashboard' | 'gardner-studio' | 'editor') => {
+  const handleViewChange = (view: 'dashboard' | 'gardner-studio' | 'editor' | 'ai-management') => {
     if (view === 'gardner-studio') {
       setViewMode('gardner-studio');
     } else if (view === 'dashboard') {
       setViewMode('dashboard');
+    } else if (view === 'ai-management') {
+      setViewMode('ai-management');
     } else {
       setViewMode('editor');
     }
@@ -1707,12 +1709,35 @@ export default function Page() {
     }
   };
 
+  const [currentRequestController, setCurrentRequestController] = useState<AbortController | null>(null);
+  const [lastMessageSentTime, setLastMessageSentTime] = useState<number>(0);
+  const MESSAGE_RATE_LIMIT = 1000; // Wait at least 1 second between messages to avoid rate limiting
+
   const handleSendMessage = async (message: string) => {
     // In dashboard mode, we don't need an agent selected - use dashboard workspace directly
     const isDashboardMode = viewMode === 'dashboard';
     
     if (!message.trim()) return;
     if (!isDashboardMode && !currentAgentId) return; // Only require agent in editor mode
+
+    // Rate limiting: prevent sending messages too quickly
+    const now = Date.now();
+    if (now - lastMessageSentTime < MESSAGE_RATE_LIMIT) {
+      console.warn(`⏱️ Rate limit: Please wait before sending another message. (${Math.ceil((MESSAGE_RATE_LIMIT - (now - lastMessageSentTime)) / 1000)}s)`);
+      toast.error("⏱️ Please wait a moment before sending another message.");
+      return;
+    }
+    setLastMessageSentTime(now);
+
+    // Cancel any previous ongoing request to avoid flooding the API
+    if (currentRequestController) {
+      console.log('🛑 Cancelling previous request to avoid rate limiting...');
+      currentRequestController.abort();
+    }
+
+    // Create new AbortController for this request
+    const controller = new AbortController();
+    setCurrentRequestController(controller);
 
     setIsChatLoading(true);
 
@@ -1859,12 +1884,13 @@ export default function Page() {
 
     const currentAgent = agents.find(a => a.id === currentAgentId);
     
-    // In dashboard mode, we use a simulated agent configuration
+    // In dashboard mode, we use a simulated agent configuration with OpenRouter
+    // 🔧 Changed from 'anythingllm' to use OpenRouter directly (no RAG needed)
     const effectiveAgent = isDashboardMode ? {
       id: 'dashboard',
       name: 'Dashboard AI',
-      systemPrompt: 'You are a helpful assistant that answers questions about the user\'s dashboard data, SOWs, clients, and metrics. Provide insights and analytics based on the context.',
-      model: 'anythingllm'
+      systemPrompt: 'You are a helpful AI assistant for the Social Garden SOW Generator platform. You help users with creating SOWs, understanding features, and general questions. Be helpful, friendly, and concise.',
+      model: 'google/gemini-2.0-flash-exp:free' // 🆓 FREE on OpenRouter - no cost!
     } : currentAgent;
     
     if (effectiveAgent) {
@@ -1934,6 +1960,7 @@ export default function Page() {
             headers: {
               "Content-Type": "application/json",
             },
+            signal: controller.signal, // 🛑 Allow cancellation of this request
             body: JSON.stringify({
               model: effectiveAgent.model,
               workspace: workspaceSlug,
@@ -2039,6 +2066,7 @@ export default function Page() {
             headers: {
               "Content-Type": "application/json",
             },
+            signal: controller.signal, // 🛑 Allow cancellation of this request
             body: JSON.stringify({
               model: effectiveAgent.model,
               workspace: workspaceSlug,
@@ -2088,18 +2116,33 @@ export default function Page() {
         }
       } catch (error) {
         console.error("❌ Chat API error:", error);
-        const errorMessage: ChatMessage = {
+        
+        // Check if the error is an AbortError (request was cancelled)
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.log('ℹ️ Request was cancelled to prevent rate limiting');
+          return;
+        }
+
+        // Check for rate limiting errors
+        let errorMessage = "❌ Network error: Unable to reach AI service. Please check your connection and try again.";
+        if (error instanceof Error && error.message.includes('429')) {
+          errorMessage = "⏱️ Rate limit exceeded: Please wait a moment before trying again.";
+          toast.error("⏱️ Rate limited - waiting before retry...");
+        }
+
+        const errorMsg: ChatMessage = {
           id: `msg${Date.now() + 1}`,
           role: 'assistant',
-          content: "❌ Network error: Unable to reach AI service. Please check your connection and try again.",
+          content: errorMessage,
           timestamp: Date.now(),
         };
-        const updatedMessages = [...newMessages, errorMessage];
+        const updatedMessages = [...newMessages, errorMsg];
         setChatMessages(updatedMessages);
         
         // ⚠️ REMOVED DATABASE SAVE - AnythingLLM handles all message storage
       } finally {
         setIsChatLoading(false);
+        setCurrentRequestController(null); // Clean up the controller
       }
     } else {
       setIsChatLoading(false);
@@ -2245,6 +2288,16 @@ export default function Page() {
             </div>
           ) : viewMode === 'dashboard' ? (
             <EnhancedDashboard />
+          ) : viewMode === 'ai-management' ? (
+            <div className="w-full h-full bg-[#0E0F0F]">
+              <iframe
+                src="https://ahmad-anything-llm.840tjq.easypanel.host/"
+                className="w-full h-full border-0"
+                title="AI Management"
+                sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-pointer-lock allow-top-navigation allow-top-navigation-by-user-activation"
+                style={{ width: '100%', height: '100%', display: 'block', border: 'none' }}
+              />
+            </div>
           ) : (
             <GardnerStudio onSelectGardner={(slug) => {
               // TODO: Route to Gardner chat
@@ -2254,7 +2307,7 @@ export default function Page() {
           )
         }
         rightPanel={
-          // ✨ HIDE AI Chat panel completely in Gardner Studio mode
+          // ✨ HIDE AI Chat panel completely in Gardner Studio and AI Management modes
           // Only show in editor and dashboard modes for a cleaner, context-appropriate UX
           viewMode === 'editor' || viewMode === 'dashboard' ? (
             <AgentSidebar

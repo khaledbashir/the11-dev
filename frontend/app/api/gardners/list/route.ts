@@ -24,7 +24,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { workspaces } = await workspacesResponse.json();
+    const responseText = await workspacesResponse.text();
+    let workspaces;
+    
+    try {
+      const data = JSON.parse(responseText);
+      workspaces = data.workspaces;
+    } catch (parseError) {
+      console.error('❌ [Gardner List] Failed to parse AnythingLLM response (got HTML?):', responseText.substring(0, 200));
+      return NextResponse.json(
+        { error: 'Invalid response from AnythingLLM (check API URL and key)' },
+        { status: 502 }
+      );
+    }
 
     if (!workspaces || workspaces.length === 0) {
       console.log('📭 [Gardner List] No workspaces found in AnythingLLM');

@@ -7,11 +7,11 @@ import {
   StarterKit,
   TaskItem,
   TaskList,
-  TiptapLink,
   Twitter,
-  UpdatedImage,
   Youtube,
 } from "novel/extensions";
+import Link from "@tiptap/extension-link";
+import Image from "@tiptap/extension-image";
 
 import { Color } from "@tiptap/extension-color";
 import { TextStyle } from "@tiptap/extension-text-style";
@@ -29,7 +29,7 @@ import { common, createLowlight } from "lowlight";
 const aiHighlight = AIHighlight;
 //You can overwrite the placeholder with your own configuration
 const placeholder = Placeholder;
-const tiptapLink = TiptapLink.configure({
+const tiptapLink = Link.configure({
   HTMLAttributes: {
     class: cx(
       "text-muted-foreground underline underline-offset-[3px] hover:text-primary transition-colors cursor-pointer",
@@ -37,7 +37,7 @@ const tiptapLink = TiptapLink.configure({
   },
 });
 
-const updatedImage = UpdatedImage.configure({
+const updatedImage = Image.configure({
   HTMLAttributes: {
     class: cx("rounded-lg border border-muted"),
   },

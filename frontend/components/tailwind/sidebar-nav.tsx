@@ -17,6 +17,7 @@ import {
   Sparkles,
   ChevronLeft,
   GripVertical,
+  Settings,
 } from "lucide-react";
 import {
   DndContext,
@@ -53,8 +54,8 @@ interface Workspace {
 }
 
 interface SidebarNavProps {
-  currentView: "dashboard" | "gardner-studio" | "editor";
-  onViewChange: (view: "dashboard" | "gardner-studio" | "editor") => void;
+  currentView: "dashboard" | "gardner-studio" | "editor" | "ai-management";
+  onViewChange: (view: "dashboard" | "gardner-studio" | "editor" | "ai-management") => void;
   
   workspaces: Workspace[];
   currentWorkspaceId: string;
@@ -475,6 +476,15 @@ export default function SidebarNav({
         </button>
       )}
 
+      {/* LOGO HEADER */}
+      <div className="flex-shrink-0 p-6 border-b border-gray-800">
+        <img 
+          src="/images/logo-light.png" 
+          alt="Social Garden" 
+          className="h-10 w-auto"
+        />
+      </div>
+
       {/* STATIC LINKS SECTION */}
       <div className="flex-shrink-0 p-4 space-y-2 border-b border-gray-800">
         {/* Dashboard Link */}
@@ -501,6 +511,19 @@ export default function SidebarNav({
         >
           <Sparkles className="w-5 h-5 flex-shrink-0" />
           <span className="text-sm font-medium">Gardner Studio</span>
+        </button>
+
+        {/* AI Management Link */}
+        <button
+          onClick={() => onViewChange("ai-management")}
+          className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-colors ${
+            currentView === "ai-management"
+              ? "bg-[#0e2e33] text-white"
+              : "text-gray-400 hover:text-gray-300 hover:bg-gray-900/50"
+          }`}
+        >
+          <Settings className="w-5 h-5 flex-shrink-0" />
+          <span className="text-sm font-medium">AI Management</span>
         </button>
       </div>
 

@@ -57,7 +57,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const workspaceData = await workspaceResponse.json();
+    const responseText = await workspaceResponse.text();
+    let workspaceData;
+    
+    try {
+      workspaceData = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('❌ [Gardner Create] Failed to parse response (got HTML?):', responseText.substring(0, 200));
+      return NextResponse.json(
+        { error: 'Invalid response from AnythingLLM (check API URL and key)' },
+        { status: 502 }
+      );
+    }
     const workspaceSlug = workspaceData.workspace.slug;
 
     console.log('✅ [Gardner Create] Workspace created:', workspaceSlug);
