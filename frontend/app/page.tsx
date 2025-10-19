@@ -1097,18 +1097,48 @@ export default function Page() {
     ));
   };
 
-  const handleDeleteWorkspace = (workspaceId: string) => {
-    setWorkspaces(prev => prev.filter(ws => ws.id !== workspaceId));
-    // If we deleted the current workspace, switch to first available
-    if (currentWorkspaceId === workspaceId) {
-      const remaining = workspaces.filter(ws => ws.id !== workspaceId);
-      if (remaining.length > 0) {
-        setCurrentWorkspaceId(remaining[0].id);
-        setCurrentSOWId(remaining[0].sows[0]?.id || null);
-      } else {
-        setCurrentWorkspaceId('');
-        setCurrentSOWId(null);
+  const handleDeleteWorkspace = async (workspaceId: string) => {
+    try {
+      const workspace = workspaces.find(ws => ws.id === workspaceId);
+      
+      if (!workspace) {
+        toast.error('Workspace not found');
+        return;
       }
+
+      // 💾 Delete from database first
+      const dbResponse = await fetch(`/api/workspaces/${workspaceId}`, {
+        method: 'DELETE',
+      });
+
+      if (!dbResponse.ok) {
+        throw new Error('Failed to delete workspace from database');
+      }
+
+      // 🏢 Delete AnythingLLM workspace (cascades to all threads)
+      if (workspace.workspace_slug) {
+        await anythingLLM.deleteWorkspace(workspace.workspace_slug);
+      }
+
+      // Update state
+      setWorkspaces(prev => prev.filter(ws => ws.id !== workspaceId));
+      
+      // If we deleted the current workspace, switch to first available
+      if (currentWorkspaceId === workspaceId) {
+        const remaining = workspaces.filter(ws => ws.id !== workspaceId);
+        if (remaining.length > 0) {
+          setCurrentWorkspaceId(remaining[0].id);
+          setCurrentSOWId(remaining[0].sows[0]?.id || null);
+        } else {
+          setCurrentWorkspaceId('');
+          setCurrentSOWId(null);
+        }
+      }
+
+      toast.success(`✅ Workspace "${workspace.name}" deleted`);
+    } catch (error) {
+      console.error('Error deleting workspace:', error);
+      toast.error('Failed to delete workspace');
     }
   };
 

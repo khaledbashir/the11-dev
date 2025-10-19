@@ -32,9 +32,10 @@ async function handlePDFGeneration(body: any) {
     const pdfServiceUrl = process.env.NEXT_PUBLIC_PDF_SERVICE_URL || 'http://localhost:8000';
     
     
-    // Forward request to PDF service with timeout
+    // Forward request to PDF service with timeout (increased to 60s for large documents)
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    const timeoutMs = 60000; // 60 second timeout (increased from 30s)
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
     
     try {
       const response = await fetch(`${pdfServiceUrl}/generate-pdf`, {
@@ -52,7 +53,12 @@ async function handlePDFGeneration(body: any) {
         const error = await response.text();
         console.error('❌ PDF service error:', error);
         return NextResponse.json(
-          { error: `PDF service error: ${error}` },
+          { 
+            error: `PDF service error: ${error}`,
+            status: response.status,
+            serviceUrl: pdfServiceUrl,
+            timestamp: new Date().toISOString()
+          },
           { status: response.status }
         );
       }
@@ -70,12 +76,35 @@ async function handlePDFGeneration(body: any) {
     } catch (fetchError: any) {
       clearTimeout(timeout);
       console.error('❌ Fetch error:', fetchError.message);
+      
+      // Provide detailed error information for debugging
+      const errorDetails = {
+        message: fetchError.message,
+        name: fetchError.name,
+        isTimeout: fetchError.name === 'AbortError',
+        timeoutMs: timeoutMs,
+        serviceUrl: pdfServiceUrl,
+        timestamp: new Date().toISOString()
+      };
+      
+      if (fetchError.name === 'AbortError') {
+        console.error('❌ PDF generation timeout after', timeoutMs / 1000, 'seconds');
+      }
+      
       throw fetchError;
     }
   } catch (error: any) {
     console.error('❌ PDF generation error:', error.message, error.cause);
     return NextResponse.json(
-      { error: `fetch failed: ${error.message}` },
+      { 
+        error: `fetch failed: ${error.message}`,
+        details: {
+          message: error.message,
+          name: error.name,
+          cause: error.cause?.toString(),
+          timestamp: new Date().toISOString()
+        }
+      },
       { status: 500 }
     );
   }

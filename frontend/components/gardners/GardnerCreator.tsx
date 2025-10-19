@@ -16,20 +16,14 @@ export default function GardnerCreator({ isOpen, onClose, onSuccess }: GardnerCr
   const [selectedTemplate, setSelectedTemplate] = useState<GardnerTemplate | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   
-  // Form state
+  // Form state - SIMPLIFIED (backend auto-configures temperature, chat history, mode)
   const [name, setName] = useState('');
   const [systemPrompt, setSystemPrompt] = useState('');
-  const [temperature, setTemperature] = useState(0.7);
-  const [chatHistory, setChatHistory] = useState(20);
-  const [chatMode, setChatMode] = useState<'chat' | 'query'>('chat');
 
   const handleTemplateSelect = (template: GardnerTemplate) => {
     setSelectedTemplate(template);
     setName(template.name);
     setSystemPrompt(template.systemPrompt);
-    setTemperature(template.temperature);
-    setChatHistory(template.chatHistory);
-    setChatMode(template.chatMode);
     setStep('customize');
   };
 
@@ -37,9 +31,6 @@ export default function GardnerCreator({ isOpen, onClose, onSuccess }: GardnerCr
     setSelectedTemplate(null);
     setName('');
     setSystemPrompt('');
-    setTemperature(0.7);
-    setChatHistory(20);
-    setChatMode('chat');
     setStep('customize');
   };
 
@@ -59,9 +50,7 @@ export default function GardnerCreator({ isOpen, onClose, onSuccess }: GardnerCr
           name,
           category: selectedTemplate?.category || 'custom',
           systemPrompt,
-          temperature,
-          chatHistory,
-          chatMode,
+          // Temperature, chat history, and chat mode are now auto-configured by backend
         }),
       });
 
@@ -71,7 +60,7 @@ export default function GardnerCreator({ isOpen, onClose, onSuccess }: GardnerCr
       }
 
       const data = await response.json();
-      console.log('✅ Gardner created:', data);
+      console.log('✅ Gardner created with predefined config:', data);
       toast.success(`Gardner "${name}" created successfully!`);
 
       // Reset form
@@ -79,9 +68,6 @@ export default function GardnerCreator({ isOpen, onClose, onSuccess }: GardnerCr
       setSelectedTemplate(null);
       setName('');
       setSystemPrompt('');
-      setTemperature(0.7);
-      setChatHistory(20);
-      setChatMode('chat');
 
       onSuccess();
       onClose();
@@ -158,7 +144,7 @@ export default function GardnerCreator({ isOpen, onClose, onSuccess }: GardnerCr
             </>
           ) : (
             <>
-              {/* Customize Form */}
+              {/* Customize Form - SIMPLIFIED */}
               <div className="space-y-6">
                 {/* Name */}
                 <div>
@@ -191,76 +177,11 @@ export default function GardnerCreator({ isOpen, onClose, onSuccess }: GardnerCr
                   </p>
                 </div>
 
-                {/* Settings Grid */}
-                <div className="grid grid-cols-2 gap-6">
-                  {/* Temperature */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Temperature: {temperature}
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.1"
-                      value={temperature}
-                      onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                      className="w-full"
-                    />
-                    <div className="flex justify-between text-xs text-gray-500 mt-1">
-                      <span>Precise (0)</span>
-                      <span>Creative (1)</span>
-                    </div>
-                  </div>
-
-                  {/* Chat History */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Chat History
-                    </label>
-                    <input
-                      type="number"
-                      value={chatHistory}
-                      onChange={(e) => setChatHistory(parseInt(e.target.value))}
-                      min="5"
-                      max="100"
-                      className="w-full px-4 py-3 bg-[#0e1713] border border-[#1a2f23] rounded-lg text-white focus:outline-none focus:border-emerald-500/50"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Number of previous messages to remember (5-100)
-                    </p>
-                  </div>
-                </div>
-
-                {/* Chat Mode */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Chat Mode
-                  </label>
-                  <div className="flex gap-4">
-                    <button
-                      onClick={() => setChatMode('chat')}
-                      className={`flex-1 px-4 py-3 rounded-lg border transition-all ${
-                        chatMode === 'chat'
-                          ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
-                          : 'bg-[#0e1713] border-[#1a2f23] text-gray-400 hover:border-emerald-500/30'
-                      }`}
-                    >
-                      <div className="font-medium">Chat</div>
-                      <div className="text-xs mt-1 opacity-70">Uses general knowledge + documents</div>
-                    </button>
-                    <button
-                      onClick={() => setChatMode('query')}
-                      className={`flex-1 px-4 py-3 rounded-lg border transition-all ${
-                        chatMode === 'query'
-                          ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
-                          : 'bg-[#0e1713] border-[#1a2f23] text-gray-400 hover:border-emerald-500/30'
-                      }`}
-                    >
-                      <div className="font-medium">Query</div>
-                      <div className="text-xs mt-1 opacity-70">Only uses embedded documents</div>
-                    </button>
-                  </div>
+                {/* Info: Auto-configured settings */}
+                <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                  <p className="text-sm text-emerald-300">
+                    ✓ Chat configuration automatically optimized. Edit provider & model after creation if needed.
+                  </p>
                 </div>
               </div>
             </>
