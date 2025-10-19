@@ -1,0 +1,53 @@
+2025-10-18T12:23:24: INFO:     Started server process [1137780]
+2025-10-18T12:23:24: INFO:     Waiting for application startup.
+2025-10-18T12:23:24: INFO:     Application startup complete.
+2025-10-18T12:23:24: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-18T22:27:53: WARNING:  Invalid HTTP request received.
+2025-10-19T03:30:55: INFO:     167.94.138.53:48642 - "GET / HTTP/1.1" 404 Not Found
+2025-10-19T03:30:57: WARNING:  Invalid HTTP request received.
+2025-10-19T03:31:05: WARNING:  Invalid HTTP request received.
+2025-10-19T03:31:07: INFO:     167.94.138.53:59266 - "GET /wiki HTTP/1.1" 404 Not Found
+2025-10-19T03:44:55: INFO:     Shutting down
+2025-10-19T03:44:56: INFO:     Waiting for application shutdown.
+2025-10-19T03:44:56: INFO:     Application shutdown complete.
+2025-10-19T03:44:56: INFO:     Finished server process [1137780]
+2025-10-19T03:44:59: INFO:     Started server process [1263298]
+2025-10-19T03:44:59: INFO:     Waiting for application startup.
+2025-10-19T03:44:59: INFO:     Application startup complete.
+2025-10-19T03:44:59: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-19T03:46:25: INFO:     Shutting down
+2025-10-19T03:46:25: INFO:     Waiting for application shutdown.
+2025-10-19T03:46:25: INFO:     Application shutdown complete.
+2025-10-19T03:46:25: INFO:     Finished server process [1263298]
+2025-10-19T03:46:27: INFO:     Started server process [1263774]
+2025-10-19T03:46:27: INFO:     Waiting for application startup.
+2025-10-19T03:46:27: INFO:     Application startup complete.
+2025-10-19T03:46:27: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-19T03:47:34: INFO:     127.0.0.1:59086 - "GET /health HTTP/1.1" 200 OK
+2025-10-19T03:48:41: INFO:     127.0.0.1:55750 - "GET /health HTTP/1.1" 200 OK
+2025-10-19T04:31:00: === DEBUG: Received HTML Content ===
+2025-10-19T04:31:00: <h1>Scope of Work: [Client Name] - HubSpot Integration &amp; Landing Pages</h1><h2>Overview</h2><p>This scope of work details a proposed solution for Social Garden to support [CLIENT] with HubSpot integration and the development of three targeted landing pages to enhance lead generation and streamline marketing efforts.</p><h2>What does the scope include?</h2><p>• HubSpot account setup and configuration</p><p>• Integration with existing website and CRM systems</p><p>• Development of 3 custom lan
+2025-10-19T04:31:00: === Has table tag: True ===
+2025-10-19T04:31:01: INFO:     127.0.0.1:37738 - "POST /generate-pdf HTTP/1.1" 200 OK
+2025-10-19T05:44:13: INFO:     192.159.99.101:49070 - "GET / HTTP/1.1" 404 Not Found
+2025-10-19T09:18:53: INFO:     198.235.24.203:57596 - "GET / HTTP/1.1" 404 Not Found
+2025-10-19T09:42:41: WARNING:  Invalid HTTP request received.
+2025-10-19T09:42:42: WARNING:  Invalid HTTP request received.
+2025-10-19T09:42:42: INFO:     162.243.39.243:37642 - "GET / HTTP/1.1" 404 Not Found
+2025-10-19T09:42:42: INFO:     162.243.39.243:37658 - "GET /login HTTP/1.1" 404 Not Found
+2025-10-19T09:57:04: INFO:     127.0.0.1:39632 - "POST /generate-pdf HTTP/1.1" 422 Unprocessable Entity
+2025-10-19T11:18:49: INFO:     162.142.125.198:52906 - "GET / HTTP/1.1" 404 Not Found
+2025-10-19T11:19:00: INFO:     162.142.125.198:47084 - "GET / HTTP/1.1" 404 Not Found
+2025-10-19T11:19:01: WARNING:  Invalid HTTP request received.
+2025-10-19T11:19:07: WARNING:  Invalid HTTP request received.
+2025-10-19T11:19:08: INFO:     162.142.125.198:39216 - "GET /security.txt HTTP/1.1" 404 Not Found
+2025-10-19T12:32:28: WARNING:  Invalid HTTP request received.
+2025-10-19T12:32:29: WARNING:  Invalid HTTP request received.
+2025-10-19T12:43:50: INFO:     Shutting down
+2025-10-19T12:43:50: INFO:     Waiting for application shutdown.
+2025-10-19T12:43:50: INFO:     Application shutdown complete.
+2025-10-19T12:43:50: INFO:     Finished server process [1263774]
+2025-10-19T12:43:53: INFO:     Started server process [1306408]
+2025-10-19T12:43:53: INFO:     Waiting for application startup.
+2025-10-19T12:43:53: INFO:     Application startup complete.
+2025-10-19T12:43:53: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)

@@ -1,0 +1,25 @@
+2025-10-19T04:00:15: ❌ [AnythingLLM Stream] Error: [ResponseAborted: ]
+2025-10-19T04:34:30:  ⚠ metadataBase property in metadata export is not set for resolving social open graph or twitter images, using "https://socialgarden.com.au". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
+2025-10-19T04:34:55: OpenRouter API error: 429 {
+2025-10-19T04:34:55:   error: {
+2025-10-19T04:34:55:     message: 'Provider returned error',
+2025-10-19T04:34:55:     code: 429,
+2025-10-19T04:34:55:     metadata: {
+2025-10-19T04:34:55:       raw: 'google/gemini-2.0-flash-exp:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations',
+2025-10-19T04:34:55:       provider_name: 'Google'
+2025-10-19T04:34:55:     }
+2025-10-19T04:34:55:   },
+2025-10-19T04:34:55:   user_id: 'user_2Wdqux2W7madg3F08mmxKY2RDie'
+2025-10-19T04:34:55: }
+2025-10-19T09:56:43: OpenRouter API error: 429 {
+2025-10-19T09:56:43:   error: {
+2025-10-19T09:56:43:     message: 'Provider returned error',
+2025-10-19T09:56:43:     code: 429,
+2025-10-19T09:56:43:     metadata: {
+2025-10-19T09:56:43:       raw: 'google/gemini-2.0-flash-exp:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations',
+2025-10-19T09:56:43:       provider_name: 'Google'
+2025-10-19T09:56:43:     }
+2025-10-19T09:56:43:   },
+2025-10-19T09:56:43:   user_id: 'user_2Wdqux2W7madg3F08mmxKY2RDie'
+2025-10-19T09:56:43: }
+2025-10-19T09:57:04: ❌ PDF service error: {"detail":[{"type":"missing","loc":["body","html_content"],"msg":"Field required","input":{"sowId":"sow-mgx7iir2-nx7xs"},"url":"https://errors.pydantic.dev/2.5/v/missing"}]}
