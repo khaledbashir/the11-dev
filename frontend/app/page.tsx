@@ -2012,7 +2012,13 @@ export default function Page() {
             : undefined;
         }
 
-        console.log('🎯 [Dashboard Chat Routing]', {
+        // ⚠️ FORCE GEN-THE-ARCHITECT FOR SOW EDITOR MODE
+        // Never route SOW editor chat to client workspaces or Gardner agents
+        if (!isDashboardMode && useAnythingLLM) {
+          workspaceSlug = 'gen-the-architect'; // Always use Gen workspace for SOW generation
+        }
+
+        console.log('🎯 [Chat Routing]', {
           isDashboardMode,
           useAnythingLLM,
           dashboardChatTarget,
@@ -2022,7 +2028,7 @@ export default function Page() {
           agentName: effectiveAgent.name,
           routeType: isDashboardMode 
             ? (dashboardChatTarget === 'sow-master-dashboard-54307162' ? 'MASTER_DASHBOARD' : 'CLIENT_WORKSPACE')
-            : 'EDITOR_MODE'
+            : 'SOW_GENERATION'
         });
 
         // 🌊 STREAMING SUPPORT: Use stream-chat endpoint for AnythingLLM
