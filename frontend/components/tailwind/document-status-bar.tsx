@@ -47,7 +47,7 @@ export function DocumentStatusBar({
   const IconComponent = config.icon;
 
   return (
-    <div className="h-14 bg-gray-900 border-b border-gray-700 flex items-center justify-between px-6 flex-shrink-0">
+    <div className="h-14 bg-[#0E0F0F] border-b border-[#2A2A2D] flex items-center justify-between px-6 flex-shrink-0">
       {/* Title */}
       <h2 className="text-lg font-semibold text-white truncate">{title}</h2>
 
@@ -60,7 +60,7 @@ export function DocumentStatusBar({
               onClick={onExportPDF}
               variant="outline"
               size="sm"
-              className="bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border-gray-600 transition-colors"
+              className="bg-[#1A1A1D] hover:bg-[#2A2A2D] text-gray-300 hover:text-white border-[#2A2A2D] transition-colors"
             >
               <Download className="w-4 h-4 mr-2" />
               Export PDF
@@ -72,7 +72,7 @@ export function DocumentStatusBar({
               onClick={onExportExcel}
               variant="outline"
               size="sm"
-              className="bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border-gray-600 transition-colors"
+              className="bg-[#1A1A1D] hover:bg-[#2A2A2D] text-gray-300 hover:text-white border-[#2A2A2D] transition-colors"
             >
               <FileSpreadsheet className="w-4 h-4 mr-2" />
               Export Excel
@@ -84,7 +84,7 @@ export function DocumentStatusBar({
               onClick={onSharePortal}
               variant="outline"
               size="sm"
-              className="bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border-gray-600 transition-colors"
+              className="bg-[#1A1A1D] hover:bg-[#2A2A2D] text-gray-300 hover:text-white border-[#2A2A2D] transition-colors"
             >
               <Share2 className="w-4 h-4 mr-2" />
               Share Portal
@@ -94,7 +94,7 @@ export function DocumentStatusBar({
 
         {/* Separator */}
         {(onExportPDF || onExportExcel || onSharePortal) && (onSave || saveStatus) && (
-          <div className="h-6 w-px bg-gray-700"></div>
+          <div className="h-6 w-px bg-[#2A2A2D]"></div>
         )}
         
         {/* Status Indicator */}

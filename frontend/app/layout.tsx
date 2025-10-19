@@ -22,14 +22,23 @@ const description =
 export const metadata: Metadata = {
   title,
   description,
+  icons: {
+    icon: [
+      { url: '/favicon.png', type: 'image/png' },
+      { url: '/images/logo-light.png', type: 'image/png' }
+    ],
+    apple: '/images/logo-light.png',
+  },
   openGraph: {
     title,
     description,
+    images: ['/images/logo-light.png'],
   },
   twitter: {
     title,
     description,
     card: "summary_large_image",
+    images: ['/images/logo-light.png'],
   },
   metadataBase: new URL("https://socialgarden.com.au"),
 };

@@ -7,15 +7,9 @@ import { match } from "ts-pattern";
 export const runtime = "edge";
 
 export async function POST(req: NextRequest): Promise<Response> {
-  // Check if AnythingLLM credentials are set
-  if (!process.env.ANYTHINGLLM_API_KEY || process.env.ANYTHINGLLM_API_KEY === "") {
-    return new Response("Missing ANYTHINGLLM_API_KEY - make sure to add it to your .env file.", {
-      status: 400,
-    });
-  }
-  
-  if (!process.env.ANYTHINGLLM_WORKSPACE_SLUG || process.env.ANYTHINGLLM_WORKSPACE_SLUG === "") {
-    return new Response("Missing ANYTHINGLLM_WORKSPACE_SLUG - make sure to add it to your .env file.", {
+  // Check if OpenRouter API key is set
+  if (!process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY === "") {
+    return new Response("Missing OPENROUTER_API_KEY - make sure to add it to your .env file.", {
       status: 400,
     });
   }
@@ -23,7 +17,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   // Rate limiting disabled - KV client type incompatibility with Ratelimit
   // Can be re-enabled with proper Redis client setup
 
-  const { prompt, option, command, model = "anthropic/claude-3.5-sonnet" } = await req.json();
+  const { prompt, option, command, model = "z-ai/glm-4.5-air:free" } = await req.json();
 
   const messages = match(option)
     .with("continue", () => [
@@ -33,7 +27,7 @@ export async function POST(req: NextRequest): Promise<Response> {
           "You are an AI writing assistant that continues existing text based on context from prior text. " +
           "Give more weight/priority to the later characters than the beginning ones. " +
           "Limit your response to no more than 200 characters, but make sure to construct complete sentences." +
-          "Use Markdown formatting when appropriate.",
+          "Output ONLY the continuation text, no explanations or commentary.",
       },
       {
         role: "user",
@@ -45,8 +39,8 @@ export async function POST(req: NextRequest): Promise<Response> {
         role: "system",
         content:
           "You are an AI writing assistant that improves existing text. " +
-          "Limit your response to no more than 200 characters, but make sure to construct complete sentences." +
-          "Use Markdown formatting when appropriate.",
+          "Output ONLY the improved version, no explanations or commentary. " +
+          "Limit your response to no more than 200 characters, but make sure to construct complete sentences.",
       },
       {
         role: "user",
@@ -57,7 +51,8 @@ export async function POST(req: NextRequest): Promise<Response> {
       {
         role: "system",
         content:
-          "You are an AI writing assistant that shortens existing text. " + "Use Markdown formatting when appropriate.",
+          "You are an AI writing assistant that shortens existing text. " + 
+          "Output ONLY the shortened version, no explanations or commentary.",
       },
       {
         role: "user",
@@ -69,7 +64,7 @@ export async function POST(req: NextRequest): Promise<Response> {
         role: "system",
         content:
           "You are an AI writing assistant that lengthens existing text. " +
-          "Use Markdown formatting when appropriate.",
+          "Output ONLY the expanded version, no explanations or commentary.",
       },
       {
         role: "user",
@@ -81,8 +76,8 @@ export async function POST(req: NextRequest): Promise<Response> {
         role: "system",
         content:
           "You are an AI writing assistant that fixes grammar and spelling errors in existing text. " +
-          "Limit your response to no more than 200 characters, but make sure to construct complete sentences." +
-          "Use Markdown formatting when appropriate.",
+          "Output ONLY the corrected text, no explanations or commentary. " +
+          "Limit your response to no more than 200 characters, but make sure to construct complete sentences.",
       },
       {
         role: "user",
@@ -93,59 +88,56 @@ export async function POST(req: NextRequest): Promise<Response> {
       {
         role: "system",
         content:
-          "You are an AI writing assistant that generates text based on a prompt. " +
-          "You take an input from the user and a command for manipulating the text" +
-          "Use Markdown formatting when appropriate.",
+          "You are an AI writing assistant that transforms text based on user commands. " +
+          "Output ONLY the transformed text, no explanations, commentary, or meta-descriptions. " +
+          "Just apply the command to the text and return the result directly.",
       },
       {
         role: "user",
-        content: `For this text: ${prompt}. You have to respect the command: ${command}`,
+        content: `Text: ${prompt}\n\nCommand: ${command}\n\nOutput only the transformed text:`,
       },
     ])
     .run();
 
   try {
-    // Build the prompt message for AnythingLLM
-    const fullPrompt = match(option)
-      .with("continue", () => `Continue this text: ${prompt}`)
-      .with("improve", () => `Improve this text: ${prompt}`)
-      .with("shorter", () => `Make this shorter: ${prompt}`)
-      .with("longer", () => `Make this longer: ${prompt}`)
-      .with("fix", () => `Fix grammar and spelling: ${prompt}`)
-      .with("zap", () => `${command}: ${prompt}`)
-      .run();
+    // Use OpenRouter for direct LLM completion (no RAG/document search needed)
+    const openRouterApiKey = process.env.OPENROUTER_API_KEY;
+    
+    if (!openRouterApiKey) {
+      return new Response("Missing OPENROUTER_API_KEY in .env", {
+        status: 400,
+      });
+    }
 
-    const anythingllmUrl = process.env.ANYTHINGLLM_URL || "https://ahmad-anything-llm.840tjq.easypanel.host";
-    const workspaceSlug = process.env.ANYTHINGLLM_WORKSPACE_SLUG || "pop";
-    const apiKey = process.env.ANYTHINGLLM_API_KEY;
-
-    // Call AnythingLLM stream-chat endpoint (correct endpoint for streaming)
-    // POST /v1/workspace/{slug}/stream-chat
+    // Call OpenRouter streaming API directly
     const response = await fetch(
-      `${anythingllmUrl}/api/v1/workspace/${workspaceSlug}/stream-chat`,
+      "https://openrouter.ai/api/v1/chat/completions",
       {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          'Authorization': `Bearer ${openRouterApiKey}`,
           'Content-Type': 'application/json',
+          'HTTP-Referer': process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:5000',
+          'X-Title': 'Social Garden SOW Generator',
         },
         body: JSON.stringify({
-          message: fullPrompt,
+          model: model || 'google/gemini-2.0-flash-exp:free',
+          messages: messages,
+          stream: true,
         }),
       }
     );
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`AnythingLLM error: ${response.status}`, errorText);
+      console.error(`OpenRouter error: ${response.status}`, errorText);
       return new Response(
-        JSON.stringify({ error: `AnythingLLM API error: ${response.status}` }),
+        JSON.stringify({ error: `OpenRouter API error: ${response.status}` }),
         { status: response.status, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    // Handle streaming response from AnythingLLM
-    // stream-chat returns Server-Sent Events (SSE) format
+    // Handle OpenRouter streaming response (SSE format)
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
     
@@ -180,39 +172,32 @@ export async function POST(req: NextRequest): Promise<Response> {
                 if (data === '[DONE]') continue;
                 
                 try {
-                  // Try to parse as JSON
+                  // Parse OpenRouter response format
                   const json = JSON.parse(data);
-                  // AnythingLLM stream-chat returns: { "id": "...", "textResponse": "..." }
-                  const text = json.textResponse || json.text || json.message || '';
-                  if (text) {
-                    controller.enqueue(encoder.encode(text));
+                  // OpenRouter streaming format: { "choices": [{ "delta": { "content": "..." } }] }
+                  const content = json.choices?.[0]?.delta?.content || '';
+                  if (content) {
+                    controller.enqueue(encoder.encode(content));
                   }
                 } catch (e) {
-                  // If not valid JSON, try sending as plain text
-                  if (data && data !== '') {
-                    controller.enqueue(encoder.encode(data));
-                  }
+                  // Skip invalid JSON
                 }
               }
             }
           }
           
           // Process any remaining data in buffer
-          if (buffer.trim()) {
-            if (buffer.startsWith('data: ')) {
-              const data = buffer.slice(6).trim();
-              if (data !== '[DONE]') {
-                try {
-                  const json = JSON.parse(data);
-                  const text = json.textResponse || json.text || json.message || '';
-                  if (text) {
-                    controller.enqueue(encoder.encode(text));
-                  }
-                } catch (e) {
-                  if (data) {
-                    controller.enqueue(encoder.encode(data));
-                  }
+          if (buffer.trim() && buffer.startsWith('data: ')) {
+            const data = buffer.slice(6).trim();
+            if (data !== '[DONE]') {
+              try {
+                const json = JSON.parse(data);
+                const content = json.choices?.[0]?.delta?.content || '';
+                if (content) {
+                  controller.enqueue(encoder.encode(content));
                 }
+              } catch (e) {
+                // Skip invalid JSON
               }
             }
           }
@@ -233,9 +218,9 @@ export async function POST(req: NextRequest): Promise<Response> {
       },
     });
   } catch (error) {
-    console.error('AnythingLLM API error:', error);
+    console.error('OpenRouter API error:', error);
     return new Response(
-      JSON.stringify({ error: 'Failed to get response from AnythingLLM' }),
+      JSON.stringify({ error: 'Failed to get response from OpenRouter' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }

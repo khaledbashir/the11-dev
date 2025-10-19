@@ -13,7 +13,12 @@ import {
   Keyboard,
   History,
   BookOpen,
-  AlertCircle
+  AlertCircle,
+  Lightbulb,
+  Copy,
+  ThumbsUp,
+  ThumbsDown,
+  RotateCcw
 } from "lucide-react";
 import { useEditor } from "novel";
 import { addAIHighlight } from "novel/extensions";
@@ -55,7 +60,7 @@ export function AISelector({ onOpenChange }: AISelectorProps) {
   const { editor } = useEditor();
   const [prompt, setPrompt] = useState("");
   const [models, setModels] = useState<OpenRouterModel[]>([]);
-  const [selectedModel, setSelectedModel] = useState("anthropic/claude-3.5-sonnet");
+  const [selectedModel, setSelectedModel] = useState("z-ai/glm-4.5-air:free");
   const [loadingModels, setLoadingModels] = useState(false);
   const [showFreeOnly, setShowFreeOnly] = useState(false);
   const [isClient, setIsClient] = useState(false);
@@ -79,7 +84,12 @@ export function AISelector({ onOpenChange }: AISelectorProps) {
   useEffect(() => {
     setIsClient(true);
     const savedModel = localStorage.getItem("ai-selector-model");
-    if (savedModel) {
+    // Validate saved model - if it's an old AnythingLLM model, reset to default
+    if (savedModel && savedModel.startsWith('anythingllm-')) {
+      console.log('🔄 Clearing old AnythingLLM model from localStorage');
+      localStorage.removeItem("ai-selector-model");
+      setSelectedModel("z-ai/glm-4.5-air:free"); // Reset to default
+    } else if (savedModel) {
       setSelectedModel(savedModel);
     }
     const savedFreeOnly = localStorage.getItem("ai-selector-free-only") === "true";
@@ -333,290 +343,414 @@ export function AISelector({ onOpenChange }: AISelectorProps) {
 
   const selectedModelData = models.find(m => m.id === selectedModel);
 
+  // Quick action templates for instant inspiration
+  const quickActions: Array<{ icon: React.ReactNode; label: string; prompt: string }> = [
+    { icon: <Sparkles className="h-3.5 w-3.5" />, label: "Improve", prompt: "Make this better and more polished" },
+    { icon: <BookOpen className="h-3.5 w-3.5" />, label: "Expand", prompt: "Expand on this with more detail and examples" },
+    { icon: <Zap className="h-3.5 w-3.5" />, label: "Simplify", prompt: "Make this simpler and easier to understand" },
+    { icon: <AlertCircle className="h-3.5 w-3.5" />, label: "Fix", prompt: "Fix any grammar, spelling, or style issues" },
+  ];
+
   // Safety check
   if (!editor) {
-    return (
-      <div className="w-[500px] bg-background border-2 border-destructive rounded-xl shadow-2xl overflow-hidden p-4">
-        <div className="flex items-center gap-2 text-destructive">
-          <AlertCircle className="h-5 w-5" />
-          <span className="font-medium">Editor not ready. Please refresh the page.</span>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
-    <div className="w-[500px] bg-background border-2 border-border rounded-xl shadow-2xl overflow-hidden">
-      {/* Header with shortcuts and close button */}
-      <div className="bg-[#0e2e33] px-4 py-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-white" />
-          <span className="text-sm font-semibold text-white">AI Writing Assistant</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-xs text-white/90">
-            <kbd className="px-2 py-0.5 bg-white/20 rounded text-[10px]">Ctrl+Enter</kbd>
-            <span>to generate</span>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 hover:bg-white/20 text-white"
-            onClick={() => onOpenChange(false)}
-            title="Close (Esc)"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Context Info */}
-      {textContext && textContext.wordCount > 0 && !hasCompletion && !isLoading && (
-        <div className="px-4 py-2 bg-muted/50 border-b border-border text-xs">
-          <div className="flex items-center gap-4 flex-wrap">
-            <Badge variant="outline" className="text-xs bg-background text-foreground border-border">
-              {textContext.wordCount} words
-            </Badge>
-            <Badge variant="outline" className="text-xs bg-background text-foreground border-border">
-              {formatReadingTime(textContext.estimatedReadingTime)}
-            </Badge>
-            <Badge variant="outline" className="text-xs bg-background text-foreground border-border">
-              {textContext.tone}
-            </Badge>
-            <Badge variant="outline" className="text-xs bg-background text-foreground border-border" title={getReadabilityLevel(textContext.readabilityScore)}>
-              Readability: {textContext.readabilityScore}/100
-            </Badge>
-          </div>
-        </div>
-      )}      {/* Completion Display */}
-      {hasCompletion && (
-        <div className="max-h-[350px] border-b border-border bg-muted/30">
-          <ScrollArea className="h-full">
-            <div className="prose prose-sm dark:prose-invert p-4 max-w-none">
-              <Markdown 
-                className="text-foreground"
-                components={{
-                  p: ({node, ...props}) => <p className="text-foreground my-2" {...props} />,
-                  h1: ({node, ...props}) => <h1 className="text-foreground font-bold text-xl mt-4 mb-2" {...props} />,
-                  h2: ({node, ...props}) => <h2 className="text-foreground font-bold text-lg mt-3 mb-2" {...props} />,
-                  h3: ({node, ...props}) => <h3 className="text-foreground font-semibold text-base mt-2 mb-1" {...props} />,
-                  ul: ({node, ...props}) => <ul className="text-foreground list-disc pl-5 my-2" {...props} />,
-                  ol: ({node, ...props}) => <ol className="text-foreground list-decimal pl-5 my-2" {...props} />,
-                  li: ({node, ...props}) => <li className="text-foreground my-1" {...props} />,
-                  table: ({node, ...props}) => <table className="text-foreground border-collapse border border-[#0e2e33] my-3 w-full text-sm rounded-md overflow-hidden shadow-sm" {...props} />,
-                  thead: ({node, ...props}) => <thead className="bg-[#0e2e33]" {...props} />,
-                  tbody: ({node, ...props}) => <tbody className="[&>tr:nth-child(even)]:bg-muted/30 [&>tr:hover]:bg-accent/50" {...props} />,
-                  th: ({node, ...props}) => <th className="text-white border border-[#0a2328] px-3 py-2 font-semibold text-left text-xs uppercase tracking-wide" {...props} />,
-                  td: ({node, ...props}) => <td className="text-foreground border border-border px-3 py-2 text-sm" {...props} />,
-                  tr: ({node, ...props}) => <tr className="transition-colors" {...props} />,
-                  code: ({node, inline, ...props}: any) => 
-                    inline 
-                      ? <code className="text-foreground bg-muted px-1 py-0.5 rounded text-sm" {...props} />
-                      : <code className="text-foreground bg-muted block p-3 rounded my-2 overflow-x-auto" {...props} />,
-                  blockquote: ({node, ...props}) => <blockquote className="text-muted-foreground border-l-4 border-border pl-4 italic my-2" {...props} />,
-                  strong: ({node, ...props}) => <strong className="text-foreground font-bold" {...props} />,
-                  em: ({node, ...props}) => <em className="text-foreground italic" {...props} />,
-                }}
-              >
-                {completion}
-              </Markdown>
-            </div>
-          </ScrollArea>
-        </div>
-      )}
-
-      {/* Success Animation */}
-      {showSuccess && !isLoading && (
-        <SuccessAnimation 
-          message="Content generated successfully!" 
-          className="mx-4 mt-4"
-        />
-      )}
-
-      {/* Error State */}
-      {error && !isLoading && (
-        <ErrorState 
-          error={error}
-          onRetry={handleRetry}
-          onDismiss={() => setError(null)}
-          className="mx-4 mt-4"
-        />
-      )}
-
-      {/* Loading State */}
-      {isLoading && (
-        <LoadingState 
-          stage={loadingStage}
-          className="mx-4 my-4"
-        />
-      )}
-
-      {/* Main Input Area */}
-      {!isLoading && (
-        <div className="p-4 space-y-3">
-          {/* Smart Suggestions */}
-          {!hasCompletion && smartSuggestions.length > 0 && (
-            <SmartSuggestions 
-              suggestions={smartSuggestions}
-              onSelectTemplate={handleTemplateSelect}
-            />
-          )}
-
-          {/* Prompt Input */}
-          <div className="relative">
-            <Input
-              ref={inputRef}
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleGenerate();
-                }
-              }}
-              placeholder="Tell AI what to do... (e.g., 'turn this into a table', 'make it funny', 'fix grammar')"
-              className="pr-10 h-11 bg-background text-foreground border-input placeholder:text-muted-foreground"
-              disabled={isLoading}
-            />
-            <Button
-              size="icon"
-              className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 bg-primary hover:bg-primary/90 text-primary-foreground"
-              onClick={handleGenerate}
-              disabled={!prompt.trim() || isLoading}
-            >
-              <ArrowUp className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {/* Model Selector */}
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              className="flex-1 justify-between h-9 text-xs"
-              onClick={() => setShowModelPicker(!showModelPicker)}
-            >
+    <>
+      {/* Backdrop overlay - click to close, press Esc to close */}
+      <div 
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 animate-in fade-in duration-200"
+        onClick={() => onOpenChange(false)}
+      />
+      
+      {/* Bottom-center modal - Sleek, minimal design */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-5 duration-300 w-full px-4 sm:px-0">
+        <div className="w-full sm:w-[650px] lg:w-[700px] max-w-[95vw] mx-auto bg-gradient-to-br from-[#0F1117] to-[#1C1F26] border border-[#30363D] rounded-2xl shadow-2xl overflow-hidden">
+          {/* Minimal header with status */}
+          <div className="px-4 py-3 flex items-center justify-between border-b border-[#21262D] bg-[#0D1117]">
+            <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
-                <Sparkles className="h-3 w-3 text-primary" />
-                <span className="truncate">{selectedModelData?.name || "Select Model"}</span>
+                <div className="w-1.5 h-1.5 bg-gradient-to-r from-[#1CBF79] to-[#0e2e33] rounded-full animate-pulse"></div>
+                <span className="text-xs font-semibold text-gray-100 tracking-wide">AI WRITING ASSISTANT</span>
               </div>
-              <span className="text-muted-foreground text-[10px]">
-                {filteredModels.length} models
-              </span>
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-9 w-9 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950"
-              onClick={() => onOpenChange(false)}
-              title="Close AI Assistant (Esc)"
-            >
-              <X className="h-4 w-4 text-red-600 dark:text-red-400" />
-            </Button>
+              {selectedText && (
+                <span className="text-xs text-gray-500 ml-2">
+                  {textContext?.wordCount || 0} {textContext?.wordCount === 1 ? 'word' : 'words'} selected
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <kbd className="hidden sm:inline-flex px-2 py-0.5 bg-[#161B22] border border-[#30363D] rounded text-[10px] text-gray-400 font-mono">ESC</kbd>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 hover:bg-[#21262D] text-gray-500 hover:text-gray-200 rounded-md transition-colors"
+                onClick={() => onOpenChange(false)}
+                title="Close (Esc)"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
-          {/* Model Picker Dropdown */}
-          {showModelPicker && (
-            <div className="border border-border rounded-lg bg-popover shadow-lg">
-              {/* Search & Filter */}
-              <div className="p-3 space-y-2 border-b border-gray-200 dark:border-gray-700">
-                <div className="relative">
-                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-500 dark:text-gray-400" />
-                  <Input
-                    placeholder="Search models..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-7 h-8 text-xs bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
-                  />
-                </div>
-                <Button
-                  variant={showFreeOnly ? "default" : "outline"}
-                  size="sm"
-                  onClick={toggleFreeFilter}
-                  className="w-full h-7 text-xs"
-                >
-                  {showFreeOnly ? <Check className="h-3 w-3 mr-1" /> : null}
-                  {showFreeOnly ? "Showing Free Only" : "Show Free Models"}
-                </Button>
-              </div>
-
-              {/* Models List */}
-              <ScrollArea className="h-[250px]">
-                <div className="p-2">
-                  {loadingModels ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : filteredModels.length === 0 ? (
-                    <p className="text-xs text-center text-muted-foreground py-8">
-                      No models found
-                    </p>
-                  ) : (
-                    filteredModels.map((model) => {
-                      const isSelected = model.id === selectedModel;
-                      const isFree = !model.pricing?.prompt || parseFloat(model.pricing.prompt) === 0;
-                      
-                      return (
-                        <button
-                          key={model.id}
-                          onClick={() => handleModelSelect(model.id)}
-                          className={`w-full text-left p-2 rounded-md text-xs transition-colors ${
-                            isSelected 
-                              ? 'bg-purple-500/10 dark:bg-purple-500/20 border border-purple-500/50 dark:border-purple-400/50' 
-                              : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                              {isSelected && <Check className="h-3 w-3 text-purple-500 dark:text-purple-400 shrink-0" />}
-                              <span className="font-medium truncate text-gray-900 dark:text-gray-100">{model.name}</span>
-                            </div>
-                            {isFree ? (
-                              <span className="text-[10px] bg-green-500/10 dark:bg-green-500/20 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded shrink-0">
-                                FREE
-                              </span>
-                            ) : (
-                              <span className="text-[10px] text-gray-500 dark:text-gray-400 shrink-0">
-                                ${parseFloat(model.pricing?.prompt || "0").toFixed(4)}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">
-                            {model.id}
-                          </p>
-                        </button>
-                      );
-                    })
-                  )}
+          {/* Main content area */}
+          {/* Completion Display - Beautiful, readable text */}
+          {hasCompletion && (
+            <div className="max-h-[320px] border-b border-[#21262D] bg-[#0D1117]">
+              <ScrollArea className="h-full">
+                <div className="p-4 space-y-2 text-sm leading-relaxed">
+                  <Markdown 
+                    className="text-gray-100"
+                    components={{
+                      p: ({node, ...props}) => <p className="text-gray-100 my-1.5" {...props} />,
+                      h1: ({node, ...props}) => <h1 className="text-gray-100 font-bold text-lg mt-3 mb-1" {...props} />,
+                      h2: ({node, ...props}) => <h2 className="text-gray-100 font-bold text-base mt-2.5 mb-1" {...props} />,
+                      h3: ({node, ...props}) => <h3 className="text-gray-100 font-semibold text-sm mt-2 mb-1" {...props} />,
+                      ul: ({node, ...props}) => <ul className="text-gray-100 list-disc pl-4 my-1.5 space-y-0.5" {...props} />,
+                      ol: ({node, ...props}) => <ol className="text-gray-100 list-decimal pl-4 my-1.5 space-y-0.5" {...props} />,
+                      li: ({node, ...props}) => <li className="text-gray-100" {...props} />,
+                      code: ({node, inline, ...props}: any) => 
+                        inline 
+                          ? <code className="text-gray-100 bg-[#161B22] px-1.5 py-0.5 rounded text-xs font-mono" {...props} />
+                          : <code className="text-gray-100 bg-[#161B22] block p-2.5 rounded my-1.5 overflow-x-auto text-xs font-mono" {...props} />,
+                      blockquote: ({node, ...props}) => <blockquote className="text-gray-400 border-l-2 border-[#30363D] pl-3 italic my-1.5" {...props} />,
+                      strong: ({node, ...props}) => <strong className="text-white font-semibold" {...props} />,
+                      em: ({node, ...props}) => <em className="text-gray-100 italic" {...props} />,
+                    }}
+                  >
+                    {completion}
+                  </Markdown>
                 </div>
               </ScrollArea>
             </div>
           )}
 
-          {/* Completion Actions */}
-          {hasCompletion && (
-            <AICompletionCommands
-              onDiscard={() => {
-                editor.chain().unsetHighlight().focus().run();
-                onOpenChange(false);
-              }}
-              completion={completion}
-            />
+          {/* Success Animation */}
+          {showSuccess && !isLoading && (
+            <div className="bg-gradient-to-r from-green-500/10 to-teal-500/10 border-b border-green-500/30 px-4 py-3 flex items-center gap-2">
+              <Check className="h-4 w-4 text-green-400 animate-bounce" />
+              <span className="text-xs font-medium text-green-300">Content generated successfully!</span>
+            </div>
           )}
 
-          {/* Help Text */}
-          {!hasCompletion && !showModelPicker && smartSuggestions.length === 0 && (
-            <p className="text-[10px] text-gray-600 dark:text-gray-400 text-center">
-              Type anything in natural language • Press Ctrl+Enter to generate • Press ? for shortcuts
-            </p>
+          {/* Error State */}
+          {error && !isLoading && (
+            <div className="bg-gradient-to-r from-red-500/10 to-orange-500/10 border-b border-red-500/30 px-4 py-3">
+              <div className="flex items-start gap-2 mb-2">
+                <AlertCircle className="h-4 w-4 text-red-400 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-red-300">{error.message}</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  className="h-7 text-xs bg-red-500 hover:bg-red-600 text-white"
+                  onClick={handleRetry}
+                >
+                  <RotateCcw className="h-3 w-3 mr-1" />
+                  Retry
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs border-red-500/30 text-red-300 hover:bg-red-500/10"
+                  onClick={() => setError(null)}
+                >
+                  Dismiss
+                </Button>
+              </div>
+            </div>
           )}
+
+          {/* Loading State */}
+          {isLoading && (
+            <div className="px-4 py-6 flex flex-col items-center justify-center space-y-3">
+              <div className="flex gap-1">
+                <div className="w-1.5 h-1.5 bg-gradient-to-r from-[#1CBF79] to-[#0e2e33] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                <div className="w-1.5 h-1.5 bg-gradient-to-r from-[#1CBF79] to-[#0e2e33] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                <div className="w-1.5 h-1.5 bg-gradient-to-r from-[#1CBF79] to-[#0e2e33] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+              </div>
+              <div className="text-center">
+                <p className="text-xs font-medium text-gray-300">
+                  {loadingStage === 'thinking' && 'Thinking...'}
+                  {loadingStage === 'generating' && 'Generating...'}
+                  {loadingStage === 'formatting' && 'Formatting...'}
+                  {loadingStage === 'finishing' && 'Finishing up...'}
+                </p>
+                <p className="text-[10px] text-gray-500 mt-1">Using {selectedModelData?.name || 'selected model'}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Main Input Area - Clean, focused */}
+          {!isLoading && (
+            <div className="bg-[#0D1117] p-4 space-y-3">
+              {/* Completion Actions - Easy to read buttons */}
+              {hasCompletion && (
+                <div className="flex gap-2 pb-2 border-b border-[#21262D]">
+                  <Button
+                    size="sm"
+                    className="flex-1 h-8 text-xs gap-1.5 bg-green-500 hover:bg-green-600 text-white"
+                    onClick={() => {
+                      navigator.clipboard.writeText(completion);
+                      toast.success("Copied to clipboard");
+                    }}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    Copy
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="flex-1 h-8 text-xs gap-1.5 bg-blue-500 hover:bg-blue-600 text-white"
+                    onClick={() => {
+                      // Apply to document - replace selection
+                      if (editor) {
+                        const selection = editor.view.state.selection;
+                        editor
+                          .chain()
+                          .focus()
+                          .insertContentAt(
+                            {
+                              from: selection.from,
+                              to: selection.to,
+                            },
+                            completion,
+                          )
+                          .run();
+                        toast.success("Applied to document");
+                        onOpenChange(false);
+                      }
+                    }}
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                    Apply
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs border-[#30363D] text-gray-400 hover:bg-[#161B22]"
+                    onClick={() => setCompletion("")}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              )}
+
+              {/* Smart Suggestions - Quick templates */}
+              {!hasCompletion && smartSuggestions.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-0.5">Suggestions</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {smartSuggestions.slice(0, 4).map((template) => (
+                      <Button
+                        key={template.id}
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs border-[#30363D] text-gray-300 hover:bg-[#161B22] hover:border-[#1CBF79] transition-colors"
+                        onClick={() => handleTemplateSelect(template)}
+                      >
+                        <Lightbulb className="h-3 w-3 mr-1" />
+                        {template.name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Quick Actions - Common operations */}
+              {!hasCompletion && selectedText && (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-0.5">Quick Actions</p>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {quickActions.map((action, idx) => (
+                      <Button
+                        key={idx}
+                        size="sm"
+                        className="h-8 text-xs flex flex-col items-center justify-center gap-0.5 bg-[#161B22] hover:bg-[#21262D] text-gray-300 hover:text-white border border-[#30363D] transition-colors"
+                        onClick={() => {
+                          setPrompt(action.prompt);
+                          setTimeout(() => {
+                            handleGenerate();
+                          }, 50);
+                        }}
+                      >
+                        {action.icon}
+                        <span>{action.label}</span>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Prompt Input */}
+              <div className="relative">
+                <Input
+                  ref={inputRef}
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleGenerate();
+                    } else if (e.key === 'Escape') {
+                      onOpenChange(false);
+                    }
+                  }}
+                  placeholder="What do you want to do? (e.g., 'make it sound professional', 'fix typos')"
+                  className="pr-10 h-10 bg-[#161B22] text-gray-100 border border-[#30363D] placeholder:text-gray-600 focus:border-[#1CBF79] focus:ring-1 focus:ring-[#1CBF79]/30 transition-colors"
+                  disabled={isLoading}
+                />
+                <Button
+                  size="icon"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 bg-gradient-to-r from-[#1CBF79] to-teal-500 hover:from-[#15a565] hover:to-teal-600 text-white shadow-lg"
+                  onClick={handleGenerate}
+                  disabled={!prompt.trim() || isLoading}
+                  title="Send (Enter)"
+                >
+                  <ArrowUp className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Model Selector */}
+              <div className="flex items-center gap-2 pt-1">
+                <Button
+                  variant="outline"
+                  className="flex-1 justify-between h-8 text-xs border-[#30363D] text-gray-300 hover:bg-[#161B22]"
+                  onClick={() => setShowModelPicker(!showModelPicker)}
+                >
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-3 w-3 text-[#1CBF79]" />
+                    <span className="truncate">{selectedModelData?.name || "Select Model"}</span>
+                  </div>
+                  <span className="text-[10px] text-gray-500">
+                    {filteredModels.length}
+                  </span>
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 hover:bg-[#161B22] text-gray-500 hover:text-gray-300"
+                  onClick={() => setShowKeyboardHelp(true)}
+                  title="Keyboard shortcuts"
+                >
+                  <Keyboard className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Model Picker Dropdown - Improved design */}
+              {showModelPicker && (
+                <div className="border border-[#30363D] rounded-lg bg-[#0D1117] shadow-xl animate-in fade-in slide-in-from-top-2 duration-200">
+                  {/* Search & Filter */}
+                  <div className="p-2.5 space-y-2 border-b border-[#21262D] bg-[#161B22]">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-500" />
+                      <Input
+                        placeholder="Search models..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-8 h-8 text-xs bg-[#0D1117] text-gray-100 border border-[#30363D] placeholder:text-gray-600 focus:border-[#1CBF79] focus:ring-1 focus:ring-[#1CBF79]/30"
+                      />
+                    </div>
+                    <Button
+                      variant={showFreeOnly ? "default" : "outline"}
+                      size="sm"
+                      onClick={toggleFreeFilter}
+                      className={`w-full h-7 text-xs ${
+                        showFreeOnly 
+                          ? 'bg-[#1CBF79] hover:bg-[#15a565] text-white' 
+                          : 'bg-[#0D1117] text-gray-300 border border-[#30363D] hover:bg-[#161B22]'
+                      }`}
+                    >
+                      {showFreeOnly && <Check className="h-3 w-3 mr-1" />}
+                      {showFreeOnly ? "Free Models Only" : "Show Free Models"}
+                    </Button>
+                  </div>
+
+                  {/* Models List */}
+                  <ScrollArea className="h-[280px]">
+                    <div className="p-2">
+                      {loadingModels ? (
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="h-4 w-4 animate-spin text-gray-600" />
+                        </div>
+                      ) : filteredModels.length === 0 ? (
+                        <p className="text-xs text-center text-gray-500 py-8">
+                          No models found
+                        </p>
+                      ) : (
+                        filteredModels.map((model) => {
+                          const isSelected = model.id === selectedModel;
+                          const isFree = !model.pricing?.prompt || parseFloat(model.pricing.prompt) === 0;
+                          
+                          return (
+                            <button
+                              key={model.id}
+                              onClick={() => handleModelSelect(model.id)}
+                              className={`w-full text-left p-2.5 rounded-md text-xs transition-all duration-150 mb-1 ${
+                                isSelected 
+                                  ? 'bg-[#1CBF79]/15 border border-[#1CBF79]/50' 
+                                  : 'hover:bg-[#161B22] border border-transparent'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                  {isSelected && <Check className="h-3 w-3 text-[#1CBF79] flex-shrink-0" />}
+                                  <span className={`font-medium truncate ${isSelected ? 'text-[#1CBF79]' : 'text-gray-100'}`}>
+                                    {model.name}
+                                  </span>
+                                </div>
+                                {isFree ? (
+                                  <span className="text-[10px] bg-[#1CBF79]/15 text-[#1CBF79] px-2 py-0.5 rounded-full flex-shrink-0">
+                                    FREE
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-gray-600 flex-shrink-0">
+                                    ${parseFloat(model.pricing?.prompt || "0").toFixed(4)}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[9px] text-gray-600 mt-1 truncate">
+                                {model.id}
+                              </p>
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
+
+              {/* Completion Actions */}
+              {hasCompletion && (
+                <AICompletionCommands
+                  onDiscard={() => {
+                    editor.chain().unsetHighlight().focus().run();
+                    onOpenChange(false);
+                  }}
+                  completion={completion}
+                />
+              )}
+
+              {/* Help Text */}
+              {!hasCompletion && !showModelPicker && smartSuggestions.length === 0 && (
+                <p className="text-[10px] text-gray-500 text-center py-2">
+                  <kbd className="px-1.5 py-0.5 bg-[#161B22] border border-[#30363D] rounded text-[9px] font-mono">?</kbd>
+                  {' '}for shortcuts
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Keyboard Shortcuts Help Modal */}
+          <KeyboardShortcutsHelp 
+            open={showKeyboardHelp}
+            onOpenChange={setShowKeyboardHelp}
+          />
         </div>
-      )}
-
-      {/* Keyboard Shortcuts Help Modal */}
-      <KeyboardShortcutsHelp 
-        open={showKeyboardHelp}
-        onOpenChange={setShowKeyboardHelp}
-      />
-    </div>
+      </div>
+    </>
   );
 }

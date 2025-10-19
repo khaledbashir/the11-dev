@@ -1,22 +1,17 @@
-/**
- * API Route: Send SOW to Client
- * POST /api/sow/[id]/send
- */
-
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne, formatDateForMySQL } from '@/lib/db';
+import { anythingLLM } from '@/lib/anythingllm';
 
 export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: sowId } = await params;
-    const body = await req.json();
-    
+    const params = await context.params;
+    const sowId = params.id;
+    const body = await request.json();
     const { clientEmail, expiryDays = 30 } = body;
 
-    // Fetch SOW to verify it exists
     const sow = await queryOne(
       `SELECT * FROM sows WHERE id = ?`,
       [sowId]
@@ -29,57 +24,54 @@ export async function POST(
       );
     }
 
-    // Update SOW status and timestamps
-    const now = new Date();
-    const expiresAt = new Date(now);
-    expiresAt.setDate(expiresAt.getDate() + expiryDays);
+    const clientName = sow.client_name || 'Client';
+    const workspace = await anythingLLM.createOrGetClientWorkspace(clientName);
+    
+    const htmlContent = typeof sow.content === 'string' && sow.content.startsWith('<') 
+      ? sow.content 
+      : `<h1>${sow.title}</h1><p>${sow.description || 'No description'}</p>`;
+
+    const title = sow.title || 'Statement of Work';
+    const metadata = {
+      sowId: sowId,
+      clientName: sow.client_name,
+      totalInvestment: sow.total_investment,
+      dateCreated: new Date().toISOString(),
+    };
+
+    await anythingLLM.embedSOWDocument(
+      workspace.slug,
+      title,
+      htmlContent,
+      metadata
+    );
+
+    const embedId = await anythingLLM.getOrCreateEmbedId(workspace.slug);
 
     await query(
       `UPDATE sows 
-       SET status = 'sent', 
-           sent_at = ?,
-           expires_at = ?,
-           client_email = ?
+       SET workspace_slug = ?, 
+           embed_id = ?,
+           status = 'sent',
+           sent_at = ?
        WHERE id = ?`,
-      [
-        formatDateForMySQL(now),
-        formatDateForMySQL(expiresAt),
-        clientEmail || sow.client_email,
-        sowId,
-      ]
+      [workspace.slug, embedId, formatDateForMySQL(new Date()), sowId]
     );
 
-    // Log activity
-    await query(
-      `INSERT INTO sow_activities (sow_id, event_type, metadata) VALUES (?, ?, ?)`,
-      [
-        sowId,
-        'sow_sent',
-        JSON.stringify({
-          sentAt: now.toISOString(),
-          expiresAt: expiresAt.toISOString(),
-          clientEmail: clientEmail || sow.client_email,
-          method: 'portal_link',
-        }),
-      ]
-    );
-
-    // Generate portal URL
-    const portalUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3333'}/portal/sow/${sowId}`;
-
-    // TODO: Send email notification to client
-    // This will be implemented in Phase 1 Part 6 (notification system)
+    const portalUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:5000'}/portal/sow/${sowId}`;
 
     return NextResponse.json({
       success: true,
       portalUrl,
-      expiresAt: expiresAt.toISOString(),
-      message: 'SOW sent successfully',
+      embedId,
+      workspaceSlug: workspace.slug,
+      message: 'SOW sent to client successfully'
     });
-  } catch (error) {
+
+  } catch (error: any) {
     console.error('Error sending SOW:', error);
     return NextResponse.json(
-      { error: 'Failed to send SOW', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: error.message || 'Failed to send SOW' },
       { status: 500 }
     );
   }

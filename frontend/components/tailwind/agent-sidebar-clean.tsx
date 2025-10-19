@@ -441,10 +441,7 @@ export default function AgentSidebar({
             /* EDITOR MODE - NO AGENT SELECTED */
             <div className="flex items-center justify-center h-full">
               <Card className="p-8 text-center bg-[#0E2E33] border-[#0E2E33]">
-                <p className="text-base text-white font-medium mb-4">Select an agent to start</p>
-                <Button className="bg-[#1CBF79] hover:bg-[#15a366] text-white font-semibold border-0">
-                  Create First Agent
-                </Button>
+                <p className="text-base text-white font-medium">Select an agent to start</p>
               </Card>
             </div>
           ) : null}
