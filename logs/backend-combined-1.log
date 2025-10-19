@@ -126,3 +126,23 @@
 2025-10-19T13:42:15: INFO:     Waiting for application shutdown.
 2025-10-19T13:42:15: INFO:     Application shutdown complete.
 2025-10-19T13:42:15: INFO:     Finished server process [1317636]
+2025-10-19T20:04:38: INFO:     Started server process [4872]
+2025-10-19T20:04:38: INFO:     Waiting for application startup.
+2025-10-19T20:04:38: INFO:     Application startup complete.
+2025-10-19T20:04:38: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-19T20:04:47: === DEBUG: Received HTML Content ===
+2025-10-19T20:04:47: <h1>Test PDF</h1><p>This is a test SOW document with proper HTML formatting.</p>
+2025-10-19T20:04:47: === Has table tag: False ===
+2025-10-19T20:04:47: INFO:     127.0.0.1:42788 - "POST /generate-pdf HTTP/1.1" 200 OK
+2025-10-19T20:14:08: === DEBUG: Received HTML Content ===
+2025-10-19T20:14:08: <h1>Scope of Work: You4RealEstate - HubSpot Integration &amp; AI Solutions</h1><h2>Overview</h2><p>This scope of work details a proposed solution for Social Garden to support You4RealEstate with HubSpot integration, three targeted landing pages, an AI workflow, and a chatbot implementation to enhance lead generation and streamline customer interactions within a $4,000 budget.</p><h2>What does the scope include?</h2><p>• HubSpot account setup and basic configuration</p><p>• Integration with exist
+2025-10-19T20:14:08: === Has table tag: True ===
+2025-10-19T20:14:09: INFO:     127.0.0.1:35818 - "POST /generate-pdf HTTP/1.1" 200 OK
+2025-10-19T20:22:38: INFO:     Shutting down
+2025-10-19T20:22:38: INFO:     Waiting for application shutdown.
+2025-10-19T20:22:38: INFO:     Application shutdown complete.
+2025-10-19T20:22:38: INFO:     Finished server process [4872]
+2025-10-19T20:22:39: INFO:     Started server process [8481]
+2025-10-19T20:22:39: INFO:     Waiting for application startup.
+2025-10-19T20:22:39: INFO:     Application startup complete.
+2025-10-19T20:22:39: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)

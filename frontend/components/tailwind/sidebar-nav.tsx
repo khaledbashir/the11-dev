@@ -105,6 +105,24 @@ export default function SidebarNav({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [localWorkspaces, setLocalWorkspaces] = useState(workspaces);
   
+  // 🗑️ Multi-select deletion states
+  const [selectedWorkspaces, setSelectedWorkspaces] = useState<Set<string>>(new Set());
+  const [isDeleteMode, setIsDeleteMode] = useState(false);
+  
+  // Get deletable workspaces (not protected)
+  const deletableWorkspaces = workspaces.filter(w => !isProtectedWorkspace(w));
+  const areAllSelected = deletableWorkspaces.length > 0 && deletableWorkspaces.every(w => selectedWorkspaces.has(w.id));
+  
+  // Select/deselect all handler
+  const handleSelectAll = () => {
+    if (areAllSelected) {
+      setSelectedWorkspaces(new Set());
+    } else {
+      const allDeletableIds = new Set(deletableWorkspaces.map(w => w.id));
+      setSelectedWorkspaces(allDeletableIds);
+    }
+  };
+  
   // Category expansion states
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set(['clients', 'agents', 'system'])
@@ -147,6 +165,64 @@ export default function SidebarNav({
     const matchBySlug = slug && systemSlugs.includes(slug);
     const matchByName = systemSlugs.some(s => workspace.name.toLowerCase().includes(s.replace(/-/g, ' ')));
     return matchBySlug || matchByName;
+  };
+
+  // 🗑️ Check if workspace is protected (cannot be deleted)
+  const isProtectedWorkspace = (workspace: any) => {
+    // Protect system workspaces
+    if (isSystemWorkspace(workspace)) return true;
+    // Protect Gardner workspaces (agent workspaces)
+    if (isAgentWorkspace(workspace)) return true;
+    return false;
+  };
+
+  // 🗑️ Handle multi-select toggle
+  const toggleWorkspaceSelection = (workspaceId: string) => {
+    const newSelected = new Set(selectedWorkspaces);
+    if (newSelected.has(workspaceId)) {
+      newSelected.delete(workspaceId);
+    } else {
+      newSelected.add(workspaceId);
+    }
+    setSelectedWorkspaces(newSelected);
+  };
+
+  // 🗑️ Handle bulk delete
+  const handleBulkDelete = async () => {
+    const selectedWorkspacesList = Array.from(selectedWorkspaces);
+    
+    if (selectedWorkspacesList.length === 0) {
+      alert('No workspaces selected');
+      return;
+    }
+
+    const protectedCount = selectedWorkspacesList.filter(id => 
+      isProtectedWorkspace(localWorkspaces.find(w => w.id === id)!)
+    ).length;
+
+    if (protectedCount > 0) {
+      alert(`❌ Cannot delete ${protectedCount} protected workspace(es):\n• Master Dashboard\n• Gardner AI\n• System workspaces\n\nOnly client workspaces can be deleted.`);
+      return;
+    }
+
+    const confirmMsg = `Delete ${selectedWorkspacesList.length} workspace(s)?\n\nThis will:\n✓ Delete all SOWs inside\n✓ Delete from AnythingLLM\n✓ Remove all chat history\n\nThis cannot be undone.`;
+
+    if (!confirm(confirmMsg)) {
+      return;
+    }
+
+    // Delete each workspace
+    for (const workspaceId of selectedWorkspacesList) {
+      try {
+        onDeleteWorkspace(workspaceId);
+      } catch (error) {
+        console.error(`Failed to delete workspace ${workspaceId}:`, error);
+      }
+    }
+
+    // Clear selection after successful deletion
+    setSelectedWorkspaces(new Set());
+    setIsDeleteMode(false);
   };
 
   const toggleCategory = (category: string) => {
@@ -260,6 +336,18 @@ export default function SidebarNav({
       <div ref={setNodeRef} style={style}>
         {/* Workspace Item */}
         <div className="flex items-center gap-1 px-2 py-1 hover:bg-gray-800/50 rounded-lg group relative">
+          {/* 🗑️ Multi-select Checkbox (only for client workspaces in delete mode) */}
+          {isDeleteMode && !isProtectedWorkspace(workspace) && (
+            <input
+              type="checkbox"
+              checked={selectedWorkspaces.has(workspace.id)}
+              onChange={() => toggleWorkspaceSelection(workspace.id)}
+              onClick={(e) => e.stopPropagation()}
+              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 cursor-pointer flex-shrink-0"
+              title="Select for deletion"
+            />
+          )}
+
           {/* Drag Handle */}
           <button
             {...attributes}
@@ -316,44 +404,57 @@ export default function SidebarNav({
           {/* Action Buttons - ALWAYS VISIBLE with guaranteed space */}
           <div className="flex gap-1.5 flex-shrink-0 ml-2">
             {/* Add New Doc */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setNewSOWWorkspaceId(workspace.id);
-                setShowNewSOWModal(true);
-              }}
-              className="p-1.5 bg-gray-700/50 hover:bg-[#1CBF79]/30 rounded text-[#1CBF79] hover:text-white transition-all"
-              title="New Doc"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
+            {!isDeleteMode && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setNewSOWWorkspaceId(workspace.id);
+                  setShowNewSOWModal(true);
+                }}
+                className="p-1.5 bg-gray-700/50 hover:bg-[#1CBF79]/30 rounded text-[#1CBF79] hover:text-white transition-all"
+                title="New Doc"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            )}
 
             {/* Rename */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setRenamingId(workspace.id);
-                setRenameValue(workspace.name);
-              }}
-              className="p-1.5 bg-gray-700/50 hover:bg-blue-500/30 rounded text-blue-400 hover:text-white transition-all"
-              title="Rename"
-            >
-              <Edit3 className="w-4 h-4" />
-            </button>
+            {!isDeleteMode && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setRenamingId(workspace.id);
+                  setRenameValue(workspace.name);
+                }}
+                className="p-1.5 bg-gray-700/50 hover:bg-blue-500/30 rounded text-blue-400 hover:text-white transition-all"
+                title="Rename"
+              >
+                <Edit3 className="w-4 h-4" />
+              </button>
+            )}
 
-            {/* Delete */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (confirm(`Delete workspace "${workspace.name}"? This will delete all SOWs inside.`)) {
-                  onDeleteWorkspace(workspace.id);
-                }
-              }}
-              className="p-1.5 bg-gray-700/50 hover:bg-red-500/30 rounded text-red-400 hover:text-white transition-all"
-              title="Delete"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+            {/* Delete (single delete when not in delete mode) */}
+            {!isDeleteMode && !isProtectedWorkspace(workspace) && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (confirm(`Delete workspace "${workspace.name}"? This will delete all SOWs inside.`)) {
+                    onDeleteWorkspace(workspace.id);
+                  }
+                }}
+                className="p-1.5 bg-gray-700/50 hover:bg-red-500/30 rounded text-red-400 hover:text-white transition-all"
+                title="Delete"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+
+            {/* Protected Badge */}
+            {isProtectedWorkspace(workspace) && (
+              <div className="px-2 py-1 text-xs bg-yellow-500/20 text-yellow-300 rounded">
+                🔒 Protected
+              </div>
+            )}
           </div>
         </div>
 
@@ -543,47 +644,96 @@ export default function SidebarNav({
         <div className="flex-shrink-0 px-4 py-3 border-b border-gray-800 flex items-center justify-between">
           <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">Workspaces</h3>
           <div className="flex items-center gap-1">
-            <Dialog open={showNewWorkspaceDialog} onOpenChange={setShowNewWorkspaceDialog}>
-              <DialogTrigger asChild>
+            {/* 🗑️ Delete Mode Toggle */}
+            {!isDeleteMode ? (
+              <>
                 <button
-                  className="p-1 hover:bg-gray-800 rounded transition-colors text-[#1CBF79]"
-                  title="New Workspace"
+                  onClick={() => setIsDeleteMode(true)}
+                  className="p-1 hover:bg-gray-800 rounded transition-colors text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                  title="Multi-delete mode (select workspaces to delete)"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Trash2 className="w-4 h-4" />
                 </button>
-              </DialogTrigger>
-              <DialogContent className="bg-gray-900 border-gray-700">
-                <DialogHeader>
-                  <DialogTitle className="text-white">New Workspace</DialogTitle>
-                </DialogHeader>
-                <Input
-                  placeholder="Workspace name (e.g., Client A, Project Phoenix)"
-                  className="bg-gray-800 border-gray-700 text-white"
-                  value={newWorkspaceName}
-                  onChange={(e) => setNewWorkspaceName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && newWorkspaceName.trim()) {
-                      onCreateWorkspace(newWorkspaceName);
-                      setShowNewWorkspaceDialog(false);
-                      setNewWorkspaceName("");
-                    }
-                  }}
-                  autoFocus
-                />
-                <Button
-                  onClick={() => {
-                    if (newWorkspaceName.trim()) {
-                      onCreateWorkspace(newWorkspaceName);
-                      setShowNewWorkspaceDialog(false);
-                      setNewWorkspaceName("");
-                    }
-                  }}
-                  className="bg-[#1CBF79] hover:bg-[#15a366] text-white"
+                <Dialog open={showNewWorkspaceDialog} onOpenChange={setShowNewWorkspaceDialog}>
+                  <DialogTrigger asChild>
+                    <button
+                      className="p-1 hover:bg-gray-800 rounded transition-colors text-[#1CBF79]"
+                      title="New Workspace"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="bg-gray-900 border-gray-700">
+                    <DialogHeader>
+                      <DialogTitle className="text-white">New Workspace</DialogTitle>
+                    </DialogHeader>
+                    <Input
+                      placeholder="Workspace name (e.g., Client A, Project Phoenix)"
+                      className="bg-gray-800 border-gray-700 text-white"
+                      value={newWorkspaceName}
+                      onChange={(e) => setNewWorkspaceName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && newWorkspaceName.trim()) {
+                          onCreateWorkspace(newWorkspaceName);
+                          setShowNewWorkspaceDialog(false);
+                          setNewWorkspaceName("");
+                        }
+                      }}
+                      autoFocus
+                    />
+                    <Button
+                      onClick={() => {
+                        if (newWorkspaceName.trim()) {
+                          onCreateWorkspace(newWorkspaceName);
+                          setShowNewWorkspaceDialog(false);
+                          setNewWorkspaceName("");
+                        }
+                      }}
+                      className="bg-[#1CBF79] hover:bg-[#15a366] text-white"
+                    >
+                      Create Workspace
+                    </Button>
+                  </DialogContent>
+                </Dialog>
+              </>
+            ) : (
+              // 🗑️ Delete Mode UI
+              <>
+                <button
+                  onClick={() => setIsDeleteMode(false)}
+                  className="p-1 hover:bg-gray-800 rounded transition-colors text-gray-400 hover:text-gray-300"
+                  title="Cancel delete mode"
                 >
-                  Create Workspace
-                </Button>
-              </DialogContent>
-            </Dialog>
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                
+                {/* Select All checkbox */}
+                <label className="flex items-center gap-1.5 px-2 py-1 cursor-pointer hover:bg-gray-800/50 rounded transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={areAllSelected}
+                    onChange={handleSelectAll}
+                    className="w-3.5 h-3.5 rounded border-gray-600 text-blue-500 focus:ring-0 cursor-pointer"
+                  />
+                  <span className="text-xs text-gray-400">Select All</span>
+                </label>
+                
+                {selectedWorkspaces.size > 0 && (
+                  <>
+                    <span className="text-xs text-gray-400 mx-1">
+                      {selectedWorkspaces.size} selected
+                    </span>
+                    <button
+                      onClick={handleBulkDelete}
+                      className="p-1 hover:bg-red-900/50 rounded transition-colors text-red-400 hover:text-red-300"
+                      title={`Delete ${selectedWorkspaces.size} workspace(s)`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
+              </>
+            )}
           </div>
         </div>
 

@@ -83,6 +83,12 @@ export class AnythingLLMService {
       // 🎯 STEP 2: Set client-facing prompt for new workspace
       await this.setWorkspacePrompt(data.workspace.slug, clientName);
       
+      // 🧵 STEP 3: Create a default thread (no user naming required)
+      // Thread will auto-name based on first message (AnythingLLM behavior)
+      console.log(`🧵 Creating default thread for workspace...`);
+      await this.createThread(data.workspace.slug, undefined);
+      console.log(`✅ Default thread created - users can start chatting immediately`);
+      
       return { id: data.workspace.id, slug: data.workspace.slug };
     } catch (error) {
       console.error('❌ Error creating workspace:', error);
@@ -501,7 +507,8 @@ Ready to explore your project details? Ask me anything!`;
     try {
       // Follow AnythingLLM pattern: threads auto-name based on first message
       // Don't pre-name threads - let them be named by first chat content
-      const autoThreadName = `Thread ${new Date().toLocaleString()}`;
+      // If no name provided, use a generic auto-name that will be replaced on first message
+      const autoThreadName = threadName || `Thread ${new Date().toLocaleString()}`;
       
       console.log(`🆕 Creating thread in workspace: ${workspaceSlug} (will auto-name on first message)`);
       
