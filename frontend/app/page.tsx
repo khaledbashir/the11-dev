@@ -432,27 +432,25 @@ export default function Page() {
       console.log('✅ OAuth token received from callback');
       setOauthAccessToken(oauthToken);
       setIsOAuthAuthorized(true);
-      toast.success('✅ Google authorized! Creating GSheet...');
+      toast.success('✅ Google authorized! Will create GSheet once document loads...');
       
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
-      
-      // Wait for document to be loaded, then trigger sheet creation
-      const checkAndCreate = () => {
-        const doc = documents.find(d => d.id === currentDocId);
-        if (doc) {
-          console.log('🚀 Creating GSheet for:', doc.title);
-          createGoogleSheet(oauthToken);
-        } else {
-          // Document not loaded yet, try again
-          setTimeout(checkAndCreate, 500);
-        }
-      };
-      
-      // Start checking after a short delay
-      setTimeout(checkAndCreate, 1000);
     }
   }, []);
+
+  // Auto-trigger sheet creation when BOTH OAuth token and document are ready
+  useEffect(() => {
+    if (oauthAccessToken && isOAuthAuthorized && currentDocId && documents.length > 0) {
+      const doc = documents.find(d => d.id === currentDocId);
+      if (doc) {
+        console.log('🚀 Both OAuth token and document ready! Creating GSheet for:', doc.title);
+        createGoogleSheet(oauthAccessToken);
+        // Clear the OAuth state to prevent re-triggering
+        setIsOAuthAuthorized(false);
+      }
+    }
+  }, [oauthAccessToken, isOAuthAuthorized, currentDocId, documents]);
 
   // Fetch available workspaces for dashboard chat selector from loaded workspaces
   useEffect(() => {
