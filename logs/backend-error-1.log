@@ -246,3 +246,11 @@
 2025-10-20T03:36:11: INFO:     Waiting for application startup.
 2025-10-20T03:36:11: INFO:     Application startup complete.
 2025-10-20T03:36:11: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-20T04:30:30: INFO:     Shutting down
+2025-10-20T04:30:30: INFO:     Waiting for application shutdown.
+2025-10-20T04:30:30: INFO:     Application shutdown complete.
+2025-10-20T04:30:30: INFO:     Finished server process [80446]
+2025-10-20T04:30:31: INFO:     Started server process [87428]
+2025-10-20T04:30:31: INFO:     Waiting for application startup.
+2025-10-20T04:30:31: INFO:     Application startup complete.
+2025-10-20T04:30:31: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)

@@ -134,6 +134,47 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
     }
   };
 
+  const fixDuplicateRoles = () => {
+    // Check if all/most rows have the same role
+    const roleCounts: Record<string, number> = {};
+    rows.forEach(row => {
+      if (row.role) {
+        roleCounts[row.role] = (roleCounts[row.role] || 0) + 1;
+      }
+    });
+
+    // Find if there's a role that appears too many times
+    const maxCount = Math.max(...Object.values(roleCounts));
+    if (maxCount < 3) return; // No need to fix if no role appears 3+ times
+
+    // Auto-assign varied roles while keeping hours
+    const defaultRoles = [
+      "Project Manager",
+      "Senior Designer", 
+      "Developer",
+      "Copywriter",
+      "Art Director",
+      "Strategist",
+      "Account Management"
+    ];
+
+    const newRows = rows.map((row, index) => {
+      // If this row has the duplicate role, assign a different one
+      const isDuplicate = roleCounts[row.role] >= 3;
+      if (isDuplicate && index < defaultRoles.length) {
+        const newRole = ROLES.find(r => r.name === defaultRoles[index]) || ROLES[index];
+        return {
+          ...row,
+          role: newRole.name,
+          rate: newRole.rate
+        };
+      }
+      return row;
+    });
+
+    setRows(newRows);
+  };
+
   // Drag and drop handlers
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
@@ -214,12 +255,21 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
             <h3 className="text-lg font-bold text-foreground dark:text-gray-100">Project Pricing</h3>
             <p className="text-xs text-gray-500 mt-0.5">💡 Tip: Drag rows to reorder</p>
           </div>
-          <button
-            onClick={addRow}
-            className="px-3 py-1 bg-[#0e2e33] text-white rounded text-sm hover:bg-[#0a2328] transition-colors"
-          >
-            + Add Role
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={fixDuplicateRoles}
+              className="px-3 py-1 bg-orange-600 text-white rounded text-sm hover:bg-orange-700 transition-colors"
+              title="Auto-fix duplicate roles"
+            >
+              🔧 Fix Roles
+            </button>
+            <button
+              onClick={addRow}
+              className="px-3 py-1 bg-[#0e2e33] text-white rounded text-sm hover:bg-[#0a2328] transition-colors"
+            >
+              + Add Role
+            </button>
+          </div>
         </div>
 
         {/* Pricing Table */}
