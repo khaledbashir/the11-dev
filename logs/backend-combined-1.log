@@ -631,3 +631,15 @@
 2025-10-20T03:11:44: INFO:     172.18.0.10:56498 - "POST /oauth/token HTTP/1.1" 200 OK
 2025-10-20T03:20:08: INFO:     172.18.0.10:46504 - "GET /oauth/authorize HTTP/1.1" 200 OK
 2025-10-20T03:23:48: INFO:     172.18.0.11:33382 - "POST /oauth/token HTTP/1.1" 200 OK
+2025-10-20T03:31:14: INFO:     172.18.0.11:41036 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T03:31:36: INFO:     172.18.0.11:60162 - "POST /oauth/token HTTP/1.1" 200 OK
+2025-10-20T03:33:13: INFO:     172.18.0.10:53114 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T03:33:27: INFO:     172.18.0.10:47320 - "POST /oauth/token HTTP/1.1" 200 OK
+2025-10-20T03:36:10: INFO:     Shutting down
+2025-10-20T03:36:10: INFO:     Waiting for application shutdown.
+2025-10-20T03:36:10: INFO:     Application shutdown complete.
+2025-10-20T03:36:10: INFO:     Finished server process [76862]
+2025-10-20T03:36:11: INFO:     Started server process [80446]
+2025-10-20T03:36:11: INFO:     Waiting for application startup.
+2025-10-20T03:36:11: INFO:     Application startup complete.
+2025-10-20T03:36:11: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)

@@ -462,11 +462,23 @@ async def oauth_token(request: OAuthTokenRequest):
         print(f"ERROR exchanging token: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Failed to get access token: {str(e)}")
 
+class SheetRequestOAuth(BaseModel):
+    client_name: str
+    service_name: str
+    overview: Optional[str] = ""
+    deliverables: Optional[str] = ""
+    outcomes: Optional[str] = ""
+    phases: Optional[str] = ""
+    pricing: Optional[list] = None
+    assumptions: Optional[str] = ""
+    timeline: Optional[str] = ""
+    access_token: str
+
 @app.post("/create-sheet-oauth")
-async def create_sheet_oauth(request: SheetRequest, access_token: str):
+async def create_sheet_oauth(request: SheetRequestOAuth):
     """Create a formatted Google Sheet using OAuth token"""
     try:
-        if not access_token:
+        if not request.access_token:
             raise ValueError("access_token is required")
         
         sow_data = {
@@ -479,7 +491,7 @@ async def create_sheet_oauth(request: SheetRequest, access_token: str):
             'timeline': request.timeline
         }
         
-        result = create_sow_sheet(request.client_name, request.service_name, sow_data, access_token=access_token)
+        result = create_sow_sheet(request.client_name, request.service_name, sow_data, access_token=request.access_token)
         return result
         
     except ValueError as e:
