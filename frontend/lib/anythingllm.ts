@@ -607,6 +607,8 @@ Ready to explore your project details? Ask me anything!`;
    */
   async getThreadChats(workspaceSlug: string, threadSlug: string): Promise<any[]> {
     try {
+      console.log(`🧵 [getThreadChats] Fetching messages from ${workspaceSlug}/${threadSlug}`);
+      
       const response = await fetch(
         `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/thread/${threadSlug}/chats`,
         {
@@ -616,12 +618,20 @@ Ready to explore your project details? Ask me anything!`;
       );
 
       if (!response.ok) {
-        console.error(`❌ Failed to get thread chats: ${response.statusText}`);
+        console.error(`❌ [getThreadChats] Failed to get thread chats: ${response.statusText}`);
         return [];
       }
 
       const data = await response.json();
-      return data.history || [];
+      console.log(`✅ [getThreadChats] Got ${(data.history || []).length} messages from thread`);
+      
+      // Return history array with role and content fields for conversion to ChatMessage
+      const history = data.history || [];
+      if (history.length > 0) {
+        console.log(`💬 [getThreadChats] Sample message:`, history[0]);
+      }
+      
+      return history;
     } catch (error) {
       console.error('❌ Error getting thread chats:', error);
       return [];
