@@ -613,3 +613,6 @@
 2025-10-20T02:57:39: INFO:     Waiting for application startup.
 2025-10-20T02:57:39: INFO:     Application startup complete.
 2025-10-20T02:57:39: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-20T03:01:21: INFO:     172.18.0.10:60392 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T03:01:37: ERROR exchanging token: Failed to exchange code for token: Scope has changed from "https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/spreadsheets" to "openid https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/drive".
+2025-10-20T03:01:37: INFO:     172.18.0.10:53740 - "POST /oauth/token HTTP/1.1" 400 Bad Request

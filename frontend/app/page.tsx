@@ -392,6 +392,10 @@ export default function Page() {
   const [currentSOWId, setCurrentSOWId] = useState<string | null>(null);
   const editorRef = useRef<any>(null);
 
+  // OAuth state for Google Sheets
+  const [isOAuthAuthorized, setIsOAuthAuthorized] = useState(false);
+  const [oauthAccessToken, setOauthAccessToken] = useState<string>('');
+
   // Dashboard AI workspace selector state - Master dashboard is the default
   const [dashboardChatTarget, setDashboardChatTarget] = useState<string>('sow-master-dashboard-54307162');
   const [availableWorkspaces, setAvailableWorkspaces] = useState<Array<{slug: string, name: string}>>([
@@ -409,6 +413,37 @@ export default function Page() {
       }
     };
     initDashboard();
+  }, []);
+
+  // Check for OAuth callback on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const oauthToken = params.get('oauth_token');
+    const error = params.get('oauth_error');
+
+    if (error) {
+      toast.error(`OAuth error: ${error}`);
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      return;
+    }
+
+    if (oauthToken) {
+      console.log('✅ OAuth token received from callback');
+      setOauthAccessToken(oauthToken);
+      setIsOAuthAuthorized(true);
+      toast.success('✅ Google authorized! Now creating GSheet...');
+      
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // Auto-trigger sheet creation
+      setTimeout(() => {
+        if (currentDoc) {
+          createGoogleSheet(oauthToken);
+        }
+      }, 500);
+    }
   }, []);
 
   // Fetch available workspaces for dashboard chat selector from loaded workspaces
@@ -1500,6 +1535,66 @@ export default function Page() {
     }
   };
 
+  // Create Google Sheet with OAuth token
+  const createGoogleSheet = async (accessToken: string) => {
+    if (!currentDoc) {
+      toast.error('❌ No document selected');
+      return;
+    }
+
+    toast.info('📊 Creating Google Sheet...');
+
+    try {
+      // Extract pricing from content
+      const pricing = extractPricingFromContent(currentDoc.content);
+      
+      // Prepare SOW data
+      const sowData = {
+        clientName: currentDoc.title.split(' - ')[0] || 'Client',
+        serviceName: currentDoc.title.split(' - ')[1] || 'Service',
+        accessToken: accessToken,
+        overview: cleanSOWContent(currentDoc.content),
+        deliverables: '',
+        outcomes: '',
+        phases: '',
+        pricing: pricing || [],
+        assumptions: '',
+        timeline: '',
+      };
+
+      const response = await fetch('/api/create-sow-sheet', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(sowData),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create sheet');
+      }
+
+      const result = await response.json();
+      
+      toast.success('✅ Google Sheet created!');
+      
+      // Show link to user
+      setTimeout(() => {
+        const openSheet = window.confirm(`Sheet created!\n\nClick OK to open in Google Sheets, or Cancel to copy the link.`);
+        if (openSheet) {
+          window.open(result.sheet_url, '_blank');
+        } else {
+          navigator.clipboard.writeText(result.share_link);
+          toast.success('📋 Share link copied!');
+        }
+      }, 500);
+    } catch (error) {
+      console.error('Error creating sheet:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to create sheet');
+    }
+  };
+
   // Google Sheets handler - OAuth flow
   const handleCreateGSheet = async () => {
     if (!currentDoc) {
@@ -1507,11 +1602,20 @@ export default function Page() {
       return;
     }
 
+    // If already authorized, create sheet directly
+    if (isOAuthAuthorized && oauthAccessToken) {
+      createGoogleSheet(oauthAccessToken);
+      return;
+    }
+
     toast.info('📊 Starting Google authorization...');
 
     try {
+      // Get current URL to return to after OAuth
+      const returnUrl = window.location.pathname + window.location.search;
+      
       // Get authorization URL from backend
-      const response = await fetch('/api/oauth/authorize', {
+      const response = await fetch(`/api/oauth/authorize?returnUrl=${encodeURIComponent(returnUrl)}`, {
         method: 'GET',
       });
 
