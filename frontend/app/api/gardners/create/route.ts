@@ -73,7 +73,41 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ [Gardner Create] Workspace created:', workspaceSlug);
 
-    // Step 2: Store Gardner reference in database
+    // Step 2: Auto-apply predefined config to workspace
+    console.log('⚙️ [Gardner Create] Applying predefined workspace config...');
+    const configResponse = await fetch(
+      `${ANYTHINGLLM_URL}/api/v1/workspace/${workspaceSlug}/update`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${ANYTHINGLLM_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          // Chat configuration (optimal defaults)
+          chatProvider: 'openrouter',
+          chatModel: 'z-ai/glm-4.5-air:free',
+          openAiTemp: 0.7,
+          openAiHistory: 20,
+          chatMode: 'chat',
+          topN: 4,
+          similarityThreshold: 0.25,
+          // Agent configuration
+          agentProvider: 'openrouter',
+          agentModel: 'openai/gpt-oss-20b:free',
+        }),
+      }
+    );
+
+    if (!configResponse.ok) {
+      const errorText = await configResponse.text();
+      console.warn('⚠️ [Gardner Create] Workspace config auto-apply partially failed:', errorText.substring(0, 200));
+      // Don't fail completely, workspace is still created
+    } else {
+      console.log('✅ [Gardner Create] Predefined config applied successfully');
+    }
+
+    // Step 3: Store Gardner reference in database
     const gardnerId = `gardner-${uuidv4()}`;
     
     await query(

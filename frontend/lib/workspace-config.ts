@@ -4,7 +4,7 @@
 export const WORKSPACE_CONFIG = {
   // Sidebar AI - For generating SOWs
   sidebar: {
-    slug: 'gen',
+    slug: 'gen-the-architect',
     name: 'SOW Generator',
     description: 'Main workspace for AI-generated SOWs',
     purpose: 'Generate complete Statements of Work',

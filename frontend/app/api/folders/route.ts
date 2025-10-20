@@ -3,29 +3,49 @@ import { query } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
-    const folders = await query('SELECT * FROM folders ORDER BY created_at DESC');
+    const folders = await query('SELECT id, name, workspace_slug, workspace_id, embed_id, created_at, updated_at FROM folders ORDER BY created_at DESC');
     return NextResponse.json(folders);
   } catch (error) {
-    console.error(' Failed to fetch folders:', error);
-    return NextResponse.json({ error: 'Failed to fetch folders' }, { status: 500 });
+    console.error('❌ Failed to fetch folders:', error);
+    return NextResponse.json({ 
+      error: 'Failed to fetch folders', 
+      details: String(error) 
+    }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const { name } = await request.json();
+    const body = await request.json();
+    const { name, workspaceSlug, workspaceId, embedId } = body;
     
-    // Generate UUID for folder id
+    console.log('�� Creating folder with data:', { 
+      name, 
+      workspaceSlug, 
+      workspaceId, 
+      embedId, 
+    });
+    
     const folderId = crypto.randomUUID();
+    const finalEmbedId = typeof embedId === 'number' ? embedId : (embedId ? parseInt(embedId, 10) : null);
     
     await query(
-      'INSERT INTO folders (id, name) VALUES (?, ?)',
-      [folderId, name]
+      'INSERT INTO folders (id, name, workspace_slug, workspace_id, embed_id) VALUES (?, ?, ?, ?, ?)',
+      [folderId, name, workspaceSlug || null, workspaceId || null, finalEmbedId]
     );
     
-    return NextResponse.json({ id: folderId, name }, { status: 201 });
+    return NextResponse.json({ 
+      id: folderId, 
+      name, 
+      workspaceSlug,
+      workspaceId,
+      embedId
+    }, { status: 201 });
   } catch (error) {
-    console.error(' Failed to create folder:', error);
-    return NextResponse.json({ error: 'Failed to create folder', details: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
+    console.error('❌ Failed to create folder:', error);
+    return NextResponse.json({ 
+      error: 'Failed to create folder', 
+      details: String(error)
+    }, { status: 500 });
   }
 }

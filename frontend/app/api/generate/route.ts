@@ -34,6 +34,19 @@ export async function POST(req: NextRequest): Promise<Response> {
         content: prompt,
       },
     ])
+    .with("generate", () => [
+      {
+        role: "system",
+        content:
+          "You are an AI writing assistant that generates new content based on user requests. " +
+          "Output ONLY the generated content, no explanations or commentary. " +
+          "Format the response as requested by the user.",
+      },
+      {
+        role: "user",
+        content: command || prompt,
+      },
+    ])
     .with("improve", () => [
       {
         role: "system",

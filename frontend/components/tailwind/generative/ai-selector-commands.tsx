@@ -1,4 +1,4 @@
-import { ArrowDownWideNarrow, CheckCheck, RefreshCcwDot, StepForward, WrapText, Sparkles } from "lucide-react";
+import { ArrowDownWideNarrow, CheckCheck, RefreshCcwDot, StepForward, WrapText, Sparkles, RotateCcw } from "lucide-react";
 import { useEditor } from "novel";
 import { getPrevText } from "novel/utils";
 import { Button } from "../ui/button";
@@ -33,6 +33,60 @@ const options = [
     label: "Continue writing",
     icon: StepForward,
     description: "Generate next paragraph",
+  },
+  {
+    value: "bullets-to-table",
+    label: "Turn bullets into table",
+    icon: Sparkles,
+    description: "Convert bullet points to formatted table",
+  },
+  {
+    value: "expand",
+    label: "Expand and detail",
+    icon: WrapText,
+    description: "Make more comprehensive and detailed",
+  },
+  {
+    value: "summarize",
+    label: "Summarize",
+    icon: ArrowDownWideNarrow,
+    description: "Create concise summary",
+  },
+  {
+    value: "simplify",
+    label: "Simplify language",
+    icon: CheckCheck,
+    description: "Make easier to understand",
+  },
+  {
+    value: "professional",
+    label: "Make professional",
+    icon: RefreshCcwDot,
+    description: "Convert to professional tone",
+  },
+  {
+    value: "casual",
+    label: "Make casual",
+    icon: RefreshCcwDot,
+    description: "Convert to casual, friendly tone",
+  },
+  {
+    value: "add-examples",
+    label: "Add examples",
+    icon: Sparkles,
+    description: "Include relevant examples",
+  },
+  {
+    value: "add-numbers",
+    label: "Add statistics",
+    icon: Sparkles,
+    description: "Include numbers and data",
+  },
+  {
+    value: "rewrite",
+    label: "Rewrite completely",
+    icon: RotateCcw,
+    description: "Fresh take on the content",
   },
 ];
 

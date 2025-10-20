@@ -36,6 +36,33 @@ import { getWorkspaceForAgent } from "@/lib/workspace-config";
 
 // API key is now handled server-side in /api/chat route
 
+// 🎯 UTILITY: Extract client/company name from user prompt
+const extractClientName = (prompt: string): string | null => {
+  // Common patterns for client mentions:
+  // "for ABC Company", "for Company XYZ", "client: ABC Corp", "ABC Corp needs", etc.
+  const patterns = [
+    /\bfor\s+([A-Z][A-Za-z0-9&\s]+(?:Corp|Corporation|Inc|LLC|Ltd|Company|Co|Group|Agency|Services|Solutions|Technologies)?)/i,
+    /\bclient:\s*([A-Z][A-Za-z0-9&\s]+)/i,
+    /\b([A-Z][A-Za-z0-9&\s]+(?:Corp|Corporation|Inc|LLC|Ltd|Company|Co|Group))\s+(?:needs|wants|requires)/i,
+    /\b([A-Z][A-Za-z0-9&\s]{2,30})\s+(?:integration|website|project|campaign|sow)/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = prompt.match(pattern);
+    if (match && match[1]) {
+      // Clean up the match
+      let name = match[1].trim();
+      // Remove trailing words that aren't part of company name
+      name = name.replace(/\s+(integration|website|project|campaign|sow|needs|wants|requires)$/i, '');
+      if (name.length > 2 && name.length < 50) {
+        return name;
+      }
+    }
+  }
+  
+  return null;
+};
+
 // Helper function to convert markdown to Novel editor JSON format
 const convertMarkdownToNovelJSON = (markdown: string) => {
   const lines = markdown.split('\n');
@@ -303,7 +330,7 @@ interface Folder {
   parentId?: string;
   workspaceSlug?: string;
   workspaceId?: string;
-  embedId?: string;
+  embedId?: number;  // Numeric ID from AnythingLLM
   syncedAt?: string;
 }
 
@@ -365,10 +392,14 @@ export default function Page() {
   const [currentSOWId, setCurrentSOWId] = useState<string | null>(null);
   const editorRef = useRef<any>(null);
 
-  // Dashboard AI workspace selector state
-  const [dashboardChatTarget, setDashboardChatTarget] = useState<string>('sow-master-dashboard');
+  // OAuth state for Google Sheets
+  const [isOAuthAuthorized, setIsOAuthAuthorized] = useState(false);
+  const [oauthAccessToken, setOauthAccessToken] = useState<string>('');
+
+  // Dashboard AI workspace selector state - Master dashboard is the default
+  const [dashboardChatTarget, setDashboardChatTarget] = useState<string>('sow-master-dashboard-54307162');
   const [availableWorkspaces, setAvailableWorkspaces] = useState<Array<{slug: string, name: string}>>([
-    { slug: 'sow-master-dashboard', name: 'Master View' }
+    { slug: 'sow-master-dashboard-54307162', name: '🎯 All SOWs (Master)' }
   ]);
 
   // Initialize master dashboard on app load
@@ -384,15 +415,54 @@ export default function Page() {
     initDashboard();
   }, []);
 
+  // Check for OAuth callback on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const oauthToken = params.get('oauth_token');
+    const error = params.get('oauth_error');
+
+    if (error) {
+      toast.error(`OAuth error: ${error}`);
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      return;
+    }
+
+    if (oauthToken) {
+      console.log('✅ OAuth token received from callback');
+      setOauthAccessToken(oauthToken);
+      setIsOAuthAuthorized(true);
+      toast.success('✅ Google authorized! Will create GSheet once document loads...');
+      
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
+  // Auto-trigger sheet creation when BOTH OAuth token and document are ready
+  useEffect(() => {
+    if (oauthAccessToken && isOAuthAuthorized && currentDocId && documents.length > 0) {
+      const doc = documents.find(d => d.id === currentDocId);
+      if (doc) {
+        console.log('🚀 Both OAuth token and document ready! Creating GSheet for:', doc.title);
+        createGoogleSheet(oauthAccessToken);
+        // Clear the OAuth state to prevent re-triggering
+        setIsOAuthAuthorized(false);
+      }
+    }
+  }, [oauthAccessToken, isOAuthAuthorized, currentDocId, documents]);
+
   // Fetch available workspaces for dashboard chat selector from loaded workspaces
   useEffect(() => {
-    // Build workspace list from loaded workspaces
+    // Build workspace list: Master dashboard + client workspaces
     const workspaceList = [
-      { slug: 'sow-master-dashboard', name: 'Master View' },
-      ...workspaces.map(ws => ({
-        slug: ws.id, // Use folder ID as slug
-        name: ws.name
-      }))
+      { slug: 'sow-master-dashboard-54307162', name: '🎯 All SOWs (Master)' },
+      ...workspaces
+        .filter(ws => ws.workspace_slug) // Only include workspaces with workspace_slug
+        .map(ws => ({
+          slug: ws.workspace_slug || '', // Use workspace_slug
+          name: `📁 ${ws.name}` // Prefix with folder icon
+        }))
     ];
     
     setAvailableWorkspaces(workspaceList);
@@ -405,64 +475,64 @@ export default function Page() {
   }, []);
 
   useEffect(() => {
-    console.log('🔍 useEffect running, mounted:', mounted);
+    console.log('Loading workspace data, mounted:', mounted);
     if (!mounted) return;
     
     const loadData = async () => {
-      console.log('� Loading workspaces from AnythingLLM (single source of truth)...');
+      console.log('Loading folders and SOWs from database...');
       const savedCurrent = localStorage.getItem("currentDocId");
       const hasCompletedSetup = localStorage.getItem("sow-guided-setup-completed");
       
       try {
-        // ✅ LOAD FROM ANYTHINGLLM (SINGLE SOURCE OF TRUTH)
-        const anythingllmWorkspaces = await anythingLLM.listWorkspaces();
-        console.log('✅ Loaded workspaces from AnythingLLM:', anythingllmWorkspaces.length);
+        // LOAD FOLDERS FROM DATABASE
+        const foldersResponse = await fetch('/api/folders');
+        const foldersData = await foldersResponse.json();
+        console.log('Loaded folders from database:', foldersData.length);
         
-        // ✅ LOAD SOWS FROM DATABASE (single source of truth for content)
+        // LOAD SOWS FROM DATABASE
         const sowsResponse = await fetch('/api/sow/list');
         const { sows: dbSOWs } = await sowsResponse.json();
-        console.log('✅ Loaded SOWs from database:', dbSOWs.length);
+        console.log('Loaded SOWs from database:', dbSOWs.length);
         
         const workspacesWithSOWs: Workspace[] = [];
         const documentsFromDB: Document[] = [];
-        const foldersFromAnythingLLM: Folder[] = [];
+        const foldersFromDB: Folder[] = [];
         
         // Create workspace objects with SOWs from database
-        for (const ws of anythingllmWorkspaces) {
-          console.log(`📁 Processing workspace: ${ws.name} (${ws.slug})`);
+        for (const folder of foldersData) {
+          console.log(`Processing folder: ${folder.name} (ID: ${folder.id})`);
           
-          // Find SOWs that belong to this workspace (or have no workspace)
-          const workspaceSOWs = dbSOWs.filter((sow: any) => 
-            sow.workspace_slug === ws.slug || !sow.workspace_slug
-          );
+          // Find SOWs that belong to this folder
+          const folderSOWs = dbSOWs.filter((sow: any) => sow.folder_id === folder.id);
           
-          const sows: SOW[] = workspaceSOWs.map((sow: any) => ({
+          const sows: SOW[] = folderSOWs.map((sow: any) => ({
             id: sow.id,
             name: sow.title || 'Untitled SOW',
-            workspaceId: ws.id,
+            workspaceId: folder.id,
           }));
           
-          console.log(`   ✅ Found ${sows.length} SOWs in this workspace`);
+          console.log(`   Found ${sows.length} SOWs in this folder`);
           
           // Add to workspaces array
           workspacesWithSOWs.push({
-            id: ws.id,
-            name: ws.name,
+            id: folder.id,
+            name: folder.name,
             sows: sows,
-            workspace_slug: ws.slug,
+            workspace_slug: folder.workspace_slug,
           });
           
-          // Add to folders array (folders = workspaces)
-          foldersFromAnythingLLM.push({
-            id: ws.id,
-            name: ws.name,
-            workspaceSlug: ws.slug,
-            workspaceId: ws.id,
-            syncedAt: new Date().toISOString(),
+          // Add to folders array
+          foldersFromDB.push({
+            id: folder.id,
+            name: folder.name,
+            workspaceSlug: folder.workspace_slug,
+            workspaceId: folder.workspace_id,
+            embedId: folder.embed_id,
+            syncedAt: folder.updated_at || folder.created_at,
           });
           
           // Create document objects for each SOW from database
-          for (const sow of workspaceSOWs) {
+          for (const sow of folderSOWs) {
             // Parse content if it's a JSON string, otherwise use as-is
             let parsedContent = defaultEditorContent;
             if (sow.content) {
@@ -471,7 +541,7 @@ export default function Page() {
                   ? JSON.parse(sow.content) 
                   : sow.content;
               } catch (e) {
-                console.warn('⚠️ Failed to parse SOW content:', sow.id);
+                console.warn('Failed to parse SOW content:', sow.id);
                 parsedContent = defaultEditorContent;
               }
             }
@@ -480,19 +550,19 @@ export default function Page() {
               id: sow.id,
               title: sow.title || 'Untitled SOW',
               content: parsedContent,
-              folderId: ws.id,
-              workspaceSlug: ws.slug,
+              folderId: folder.id,
+              workspaceSlug: folder.workspace_slug,
               syncedAt: sow.updated_at,
             });
           }
         }
         
-        console.log('✅ Total workspaces loaded:', workspacesWithSOWs.length);
-        console.log('✅ Total SOWs loaded:', documentsFromDB.length);
+        console.log('Total workspaces loaded:', workspacesWithSOWs.length);
+        console.log('Total SOWs loaded:', documentsFromDB.length);
         
         // Update state
         setWorkspaces(workspacesWithSOWs);
-        setFolders(foldersFromAnythingLLM);
+        setFolders(foldersFromDB);
         setDocuments(documentsFromDB);
         
         // Set current workspace to first one if available
@@ -503,13 +573,13 @@ export default function Page() {
           }
         }
         
-        // Show guided setup if no workspaces in AnythingLLM
+        // Show guided setup if no workspaces
         if (!hasCompletedSetup && workspacesWithSOWs.length === 0) {
           setTimeout(() => setShowGuidedSetup(true), 1000);
         }
         
       } catch (error) {
-        console.error('❌ Error loading data:', error);
+        console.error('Error loading data:', error);
         toast.error('Failed to load workspaces and SOWs');
       }
       
@@ -536,6 +606,40 @@ export default function Page() {
       console.log('✅ Found document:', doc.title);
       setCurrentDocId(doc.id);
       setViewMode('editor'); // Switch to editor view
+      
+      // 🧵 Load chat history from AnythingLLM thread
+      const loadChatHistory = async () => {
+        if (doc.workspaceSlug && doc.threadSlug) {
+          try {
+            console.log('💬 Loading chat history for thread:', doc.threadSlug);
+            const history = await anythingLLM.getThreadChats(doc.workspaceSlug, doc.threadSlug);
+            
+            if (history && history.length > 0) {
+              // Convert AnythingLLM history format to our ChatMessage format
+              const messages: ChatMessage[] = history.map((msg: any) => ({
+                id: `msg${Date.now()}-${Math.random()}`,
+                role: msg.role === 'user' ? 'user' : 'assistant',
+                content: msg.content,
+                timestamp: Date.now(),
+              }));
+              
+              console.log(`✅ Loaded ${messages.length} messages from thread`);
+              setChatMessages(messages);
+            } else {
+              console.log('ℹ️ No chat history found for this SOW');
+              setChatMessages([]);
+            }
+          } catch (error) {
+            console.error('❌ Failed to load chat history:', error);
+            setChatMessages([]);
+          }
+        } else {
+          console.log('ℹ️ No thread associated with this SOW, clearing chat');
+          setChatMessages([]);
+        }
+      };
+      
+      loadChatHistory();
     } else {
       console.warn('⚠️ Document not found for SOW:', currentSOWId);
     }
@@ -652,6 +756,8 @@ export default function Page() {
 
   const handleSelectDoc = (id: string) => {
     setCurrentDocId(id);
+    // Clear chat messages for clean state when switching documents
+    setChatMessages([]);
     // Switch to editor view when selecting a document
     if (viewMode !== 'editor') {
       setViewMode('editor');
@@ -678,7 +784,8 @@ export default function Page() {
       // 🧵 Create AnythingLLM thread for this SOW (if workspace exists)
       if (workspaceSlug) {
         console.log(`🔗 Creating thread in workspace: ${workspaceSlug}`);
-        const thread = await anythingLLM.createThread(workspaceSlug, title);
+        // Don't pass thread name - AnythingLLM auto-names based on first chat message
+        const thread = await anythingLLM.createThread(workspaceSlug);
         if (thread) {
           newDoc = {
             ...newDoc,
@@ -686,6 +793,12 @@ export default function Page() {
             threadId: thread.id,
             syncedAt: new Date().toISOString(),
           };
+          
+          // 📊 Embed SOW in BOTH client workspace AND master dashboard
+          console.log(`📊 Embedding new SOW in both workspaces: ${workspaceSlug}`);
+          const sowContent = JSON.stringify(defaultEditorContent);
+          await anythingLLM.embedSOWInBothWorkspaces(workspaceSlug, title, sowContent);
+          
           toast.success(`✅ SOW created with chat thread in ${parentFolder?.name || 'workspace'}`);
         } else {
           console.warn('⚠️ Thread creation failed - SOW created without thread');
@@ -967,7 +1080,8 @@ export default function Page() {
       const newWorkspace: Workspace = {
         id: folderId, // Use database folder ID
         name: workspaceName,
-        sows: []
+        sows: [],
+        workspace_slug: workspace.slug  // Add workspace slug here!
       };
       
       // IMMEDIATELY CREATE A BLANK SOW (NO MODAL, NO USER INPUT)
@@ -998,8 +1112,15 @@ export default function Page() {
 
       // 🧵 STEP 3: Create AnythingLLM thread for this SOW
       console.log('🧵 Creating AnythingLLM thread...');
-      const thread = await anythingLLM.createThread(workspace.slug, sowTitle);
-      console.log('✅ AnythingLLM thread created:', thread.slug);
+      // Don't pass thread name - AnythingLLM auto-names based on first chat message
+      const thread = await anythingLLM.createThread(workspace.slug);
+      console.log('✅ AnythingLLM thread created:', thread.slug, '(will auto-name on first message)');
+
+      // 📊 STEP 4: Embed SOW in BOTH client workspace AND master dashboard
+      console.log('📊 Embedding SOW in both workspaces...');
+      const sowContent = JSON.stringify(defaultEditorContent);
+      await anythingLLM.embedSOWInBothWorkspaces(workspace.slug, sowTitle, sowContent);
+      console.log('✅ SOW embedded in both workspaces');
 
       // Create SOW object for local state
       const newSOW: SOW = {
@@ -1011,8 +1132,8 @@ export default function Page() {
       // Update workspace with the SOW
       newWorkspace.sows = [newSOW];
 
-      // Update state
-      setWorkspaces(prev => [...prev, newWorkspace]);
+      // Update state - INSERT AT TOP (index 0) so newest appears first
+      setWorkspaces(prev => [newWorkspace, ...prev]);
       setCurrentWorkspaceId(folderId);
       setCurrentSOWId(sowId);
       
@@ -1033,6 +1154,9 @@ export default function Page() {
       setDocuments(prev => [...prev, newDoc]);
       setCurrentDocId(sowId);
       
+      // Clear chat messages for clean state when switching to new workspace
+      setChatMessages([]);
+      
       toast.success(`✅ Workspace "${workspaceName}" created with AnythingLLM integration!`);
       
       toast.success(`✅ Created workspace "${workspaceName}" with blank SOW ready to edit!`);
@@ -1048,18 +1172,47 @@ export default function Page() {
     ));
   };
 
-  const handleDeleteWorkspace = (workspaceId: string) => {
-    setWorkspaces(prev => prev.filter(ws => ws.id !== workspaceId));
-    // If we deleted the current workspace, switch to first available
-    if (currentWorkspaceId === workspaceId) {
-      const remaining = workspaces.filter(ws => ws.id !== workspaceId);
-      if (remaining.length > 0) {
-        setCurrentWorkspaceId(remaining[0].id);
-        setCurrentSOWId(remaining[0].sows[0]?.id || null);
-      } else {
-        setCurrentWorkspaceId('');
-        setCurrentSOWId(null);
+  const handleDeleteWorkspace = async (workspaceId: string) => {
+    try {
+      const workspace = workspaces.find(ws => ws.id === workspaceId);
+      
+      if (!workspace) {
+        toast.error('Workspace not found');
+        return;
       }
+
+      // 💾 Delete from database AND AnythingLLM (API endpoint handles both)
+      const dbResponse = await fetch(`/api/folders/${workspaceId}`, {
+        method: 'DELETE',
+      });
+
+      if (!dbResponse.ok) {
+        const errorData = await dbResponse.json();
+        throw new Error(errorData.details || 'Failed to delete workspace from database');
+      }
+
+      const result = await dbResponse.json();
+      console.log(`✅ Workspace deletion result:`, result);
+
+      // Update state
+      setWorkspaces(prev => prev.filter(ws => ws.id !== workspaceId));
+      
+      // If we deleted the current workspace, switch to first available
+      if (currentWorkspaceId === workspaceId) {
+        const remaining = workspaces.filter(ws => ws.id !== workspaceId);
+        if (remaining.length > 0) {
+          setCurrentWorkspaceId(remaining[0].id);
+          setCurrentSOWId(remaining[0].sows[0]?.id || null);
+        } else {
+          setCurrentWorkspaceId('');
+          setCurrentSOWId(null);
+        }
+      }
+
+      toast.success(`✅ Workspace "${workspace.name}" deleted`);
+    } catch (error) {
+      console.error('Error deleting workspace:', error);
+      toast.error(`Failed to delete workspace: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 
@@ -1072,16 +1225,24 @@ export default function Page() {
         return;
       }
 
+      // Validate that workspace has a slug
+      if (!workspace.workspace_slug) {
+        console.error('❌ Workspace missing workspace_slug:', workspace);
+        toast.error('Workspace slug not found. Please try again.');
+        return;
+      }
+
       console.log(`🆕 Creating new SOW: "${sowName}" in workspace: ${workspace.name} (${workspace.workspace_slug})`);
 
       // Step 1: Create AnythingLLM thread (PRIMARY source of truth)
-      const thread = await anythingLLM.createThread(workspace.workspace_slug, sowName);
+      // Don't pass thread name - AnythingLLM auto-names based on first chat message
+      const thread = await anythingLLM.createThread(workspace.workspace_slug);
       if (!thread) {
         toast.error('Failed to create SOW thread in AnythingLLM');
         return;
       }
 
-      console.log(`✅ AnythingLLM thread created: ${thread.slug}`);
+      console.log(`✅ AnythingLLM thread created: ${thread.slug} (will auto-name on first message)`);
 
       // Step 2: Save to database (for metrics, tracking, portal)
       const saveResponse = await fetch('/api/sow/create', {
@@ -1410,6 +1571,104 @@ export default function Page() {
     } catch (error) {
       console.error('Error exporting Excel:', error);
       toast.error(`❌ Error exporting Excel: ${error.message}`);
+    }
+  };
+
+  // Create Google Sheet with OAuth token
+  const createGoogleSheet = async (accessToken: string) => {
+    if (!currentDoc) {
+      toast.error('❌ No document selected');
+      return;
+    }
+
+    toast.info('📊 Creating Google Sheet...');
+
+    try {
+      // Extract pricing from content
+      const pricing = extractPricingFromContent(currentDoc.content);
+      
+      // Prepare SOW data
+      const sowData = {
+        clientName: currentDoc.title.split(' - ')[0] || 'Client',
+        serviceName: currentDoc.title.split(' - ')[1] || 'Service',
+        accessToken: accessToken,
+        overview: cleanSOWContent(currentDoc.content),
+        deliverables: '',
+        outcomes: '',
+        phases: '',
+        pricing: pricing || [],
+        assumptions: '',
+        timeline: '',
+      };
+
+      const response = await fetch('/api/create-sow-sheet', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(sowData),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create sheet');
+      }
+
+      const result = await response.json();
+      
+      toast.success('✅ Google Sheet created!');
+      
+      // Show link to user
+      setTimeout(() => {
+        const openSheet = window.confirm(`Sheet created!\n\nClick OK to open in Google Sheets, or Cancel to copy the link.`);
+        if (openSheet) {
+          window.open(result.sheet_url, '_blank');
+        } else {
+          navigator.clipboard.writeText(result.share_link);
+          toast.success('📋 Share link copied!');
+        }
+      }, 500);
+    } catch (error) {
+      console.error('Error creating sheet:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to create sheet');
+    }
+  };
+
+  // Google Sheets handler - OAuth flow
+  const handleCreateGSheet = async () => {
+    if (!currentDoc) {
+      toast.error('❌ No document selected');
+      return;
+    }
+
+    // If already authorized, create sheet directly
+    if (isOAuthAuthorized && oauthAccessToken) {
+      createGoogleSheet(oauthAccessToken);
+      return;
+    }
+
+    toast.info('📊 Starting Google authorization...');
+
+    try {
+      // Get current URL to return to after OAuth
+      const returnUrl = window.location.pathname + window.location.search;
+      
+      // Get authorization URL from backend
+      const response = await fetch(`/api/oauth/authorize?returnUrl=${encodeURIComponent(returnUrl)}`, {
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get authorization URL');
+      }
+
+      const data = await response.json();
+      
+      // Redirect to Google OAuth
+      window.location.href = data.auth_url;
+    } catch (error) {
+      console.error('Error starting GSheet creation:', error);
+      toast.error('Failed to authorize with Google');
     }
   };
 
@@ -1870,6 +2129,38 @@ export default function Page() {
       }
     }
 
+    // 🎯 AUTO-DETECT CLIENT NAME from user prompt
+    const detectedClientName = extractClientName(message);
+    if (detectedClientName && currentDocId) {
+      console.log('🏢 Detected client name in prompt:', detectedClientName);
+      
+      // Auto-rename SOW to include client name
+      const newSOWTitle = `SOW - ${detectedClientName}`;
+      
+      // Update document title in state
+      setDocuments(prev =>
+        prev.map(doc =>
+          doc.id === currentDocId
+            ? { ...doc, title: newSOWTitle }
+            : doc
+        )
+      );
+      
+      // Save to database
+      fetch('/api/sow/update', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: currentDocId,
+          title: newSOWTitle,
+          clientName: detectedClientName,
+        }),
+      }).catch(err => console.error('❌ Failed to auto-rename SOW:', err));
+      
+      console.log('✅ Auto-renamed SOW to:', newSOWTitle);
+      toast.success(`🏢 Auto-detected client: ${detectedClientName}`);
+    }
+
     const userMessage: ChatMessage = {
       id: `msg${Date.now()}`,
       role: 'user',
@@ -1898,7 +2189,7 @@ export default function Page() {
         const useAnythingLLM = effectiveAgent.model === 'anythingllm';
         
         // 🎯 WORKSPACE SELECTOR ROUTING:
-        // Master View → /api/dashboard/chat (hardcoded to sow-master-dashboard)
+        // Master View → /api/dashboard/chat (hardcoded to sow-master-dashboard-54307162)
         // Client Workspace → /api/anythingllm/chat (with selected workspace slug)
         // Editor Mode → existing logic
         let endpoint: string;
@@ -1906,7 +2197,7 @@ export default function Page() {
 
         if (isDashboardMode && useAnythingLLM) {
           // Dashboard mode routing
-          if (dashboardChatTarget === 'sow-master-dashboard') {
+          if (dashboardChatTarget === 'sow-master-dashboard-54307162') {
             // Master view: use dedicated dashboard route
             endpoint = '/api/dashboard/chat';
             workspaceSlug = undefined; // Not needed, hardcoded in route
@@ -1923,7 +2214,13 @@ export default function Page() {
             : undefined;
         }
 
-        console.log('🎯 [Dashboard Chat Routing]', {
+        // ⚠️ FORCE GEN-THE-ARCHITECT FOR SOW EDITOR MODE
+        // Never route SOW editor chat to client workspaces or Gardner agents
+        if (!isDashboardMode && useAnythingLLM) {
+          workspaceSlug = 'gen-the-architect'; // Always use Gen workspace for SOW generation
+        }
+
+        console.log('🎯 [Chat Routing]', {
           isDashboardMode,
           useAnythingLLM,
           dashboardChatTarget,
@@ -1932,8 +2229,8 @@ export default function Page() {
           agentModel: effectiveAgent.model,
           agentName: effectiveAgent.name,
           routeType: isDashboardMode 
-            ? (dashboardChatTarget === 'sow-master-dashboard' ? 'MASTER_DASHBOARD' : 'CLIENT_WORKSPACE')
-            : 'EDITOR_MODE'
+            ? (dashboardChatTarget === 'sow-master-dashboard-54307162' ? 'MASTER_DASHBOARD' : 'CLIENT_WORKSPACE')
+            : 'SOW_GENERATION'
         });
 
         // 🌊 STREAMING SUPPORT: Use stream-chat endpoint for AnythingLLM
@@ -1964,6 +2261,7 @@ export default function Page() {
             body: JSON.stringify({
               model: effectiveAgent.model,
               workspace: workspaceSlug,
+              threadSlug: !isDashboardMode && currentDocId ? (documents.find(d => d.id === currentDocId)?.threadSlug || undefined) : undefined,
               messages: [
                 { role: "system", content: effectiveAgent.systemPrompt },
                 ...newMessages.map(m => ({ role: m.role, content: m.content })),
@@ -2070,6 +2368,7 @@ export default function Page() {
             body: JSON.stringify({
               model: effectiveAgent.model,
               workspace: workspaceSlug,
+              threadSlug: !isDashboardMode && currentDocId ? (documents.find(d => d.id === currentDocId)?.threadSlug || undefined) : undefined,
               messages: [
                 { role: "system", content: effectiveAgent.systemPrompt },
                 ...newMessages.map(m => ({ role: m.role, content: m.content })),
@@ -2198,7 +2497,7 @@ export default function Page() {
                   saveStatus="saved"
                   isSaving={false}
                   onExportPDF={handleExportPDF}
-                  onExportExcel={handleExportExcel}
+                  onExportExcel={handleCreateGSheet}
                   onSharePortal={async () => {
                     if (!currentDoc) {
                       toast.error('❌ No document selected');
@@ -2329,7 +2628,13 @@ export default function Page() {
               availableWorkspaces={availableWorkspaces}
               onInsertToEditor={(content) => {
                 console.log('📝 Insert to Editor button clicked from AI chat');
-                const cleanContent = content.replace(/<tool_call>[\s\S]*?<\/think>/gi, '').trim();
+                // Clean all AI thinking tags before inserting
+                let cleanContent = content
+                  .replace(/<AI_THINK>[\s\S]*?<\/AI_THINK>/gi, '')
+                  .replace(/<think>[\s\S]*?<\/think>/gi, '')
+                  .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '')
+                  .replace(/<\/?[A-Z_]+>/gi, '')
+                  .trim();
                 handleInsertContent(cleanContent || content);
               }}
             />

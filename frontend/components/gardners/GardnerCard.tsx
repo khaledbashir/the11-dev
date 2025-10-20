@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/tailwind/ui/dialog';
 import { Edit2, Trash2, MessageSquare, Thermometer, Hash, MessageCircle } from 'lucide-react';
 
 interface Gardner {
@@ -27,6 +29,7 @@ interface GardnerCardProps {
 
 export default function GardnerCard({ gardner, onEdit, onDelete, onChat }: GardnerCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const getCategoryIcon = (category: string) => {
     const icons: Record<string, string> = {
@@ -51,13 +54,13 @@ export default function GardnerCard({ gardner, onEdit, onDelete, onChat }: Gardn
   };
 
   const handleDelete = async () => {
-    if (!confirm(`Are you sure you want to delete "${gardner.name}"? This will also delete the AnythingLLM workspace and cannot be undone.`)) {
-      return;
-    }
-
     setIsDeleting(true);
     try {
       await onDelete(gardner.slug);
+      toast.success(`Deleted "${gardner.name}"`);
+      setShowConfirm(false);
+    } catch (error) {
+      toast.error('Failed to delete Gardner');
     } finally {
       setIsDeleting(false);
     }
@@ -94,7 +97,7 @@ export default function GardnerCard({ gardner, onEdit, onDelete, onChat }: Gardn
             <Edit2 className="w-4 h-4 text-blue-400" />
           </button>
           <button
-            onClick={handleDelete}
+            onClick={() => setShowConfirm(true)}
             disabled={isDeleting}
             className="p-2 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
             title="Delete Gardner"
@@ -157,6 +160,35 @@ export default function GardnerCard({ gardner, onEdit, onDelete, onChat }: Gardn
         <span>Created {new Date(gardner.createdAt).toLocaleDateString()}</span>
         <span className="text-emerald-400/50">#{gardner.slug}</span>
       </div>
+
+      {/* Confirmation Dialog */}
+      <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
+        <DialogContent className="sm:max-w-sm bg-[#1A1A1D] border border-[#2A2A2D]">
+          <DialogHeader>
+            <DialogTitle className="text-white">Delete Gardner?</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-gray-300 text-sm">
+              Delete "{gardner.name}" and its AnythingLLM workspace? This cannot be undone.
+            </p>
+          </div>
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={() => setShowConfirm(false)}
+              className="px-4 py-2 text-sm font-medium text-gray-300 bg-[#2A2A2D] hover:bg-[#3A3A3D] rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 disabled:opacity-50 rounded-lg transition-colors"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

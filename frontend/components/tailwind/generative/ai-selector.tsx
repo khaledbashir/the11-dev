@@ -343,12 +343,20 @@ export function AISelector({ onOpenChange }: AISelectorProps) {
 
   const selectedModelData = models.find(m => m.id === selectedModel);
 
-  // Quick action templates for instant inspiration
+  // Comprehensive quick action templates for every editing scenario
   const quickActions: Array<{ icon: React.ReactNode; label: string; prompt: string }> = [
     { icon: <Sparkles className="h-3.5 w-3.5" />, label: "Improve", prompt: "Make this better and more polished" },
     { icon: <BookOpen className="h-3.5 w-3.5" />, label: "Expand", prompt: "Expand on this with more detail and examples" },
     { icon: <Zap className="h-3.5 w-3.5" />, label: "Simplify", prompt: "Make this simpler and easier to understand" },
     { icon: <AlertCircle className="h-3.5 w-3.5" />, label: "Fix", prompt: "Fix any grammar, spelling, or style issues" },
+    { icon: <Copy className="h-3.5 w-3.5" />, label: "Summarize", prompt: "Create a concise summary of this content" },
+    { icon: <Sparkles className="h-3.5 w-3.5" />, label: "Bullets → Table", prompt: "Convert these bullet points into a well-formatted table" },
+    { icon: <BookOpen className="h-3.5 w-3.5" />, label: "Add Examples", prompt: "Add relevant real-world examples to illustrate these points" },
+    { icon: <Zap className="h-3.5 w-3.5" />, label: "Make Professional", prompt: "Rewrite in a professional, business-appropriate tone" },
+    { icon: <Copy className="h-3.5 w-3.5" />, label: "Make Casual", prompt: "Rewrite in a casual, friendly, conversational tone" },
+    { icon: <Sparkles className="h-3.5 w-3.5" />, label: "Add Numbers", prompt: "Add specific statistics, percentages, and data points to support these claims" },
+    { icon: <AlertCircle className="h-3.5 w-3.5" />, label: "Make Detailed", prompt: "Expand this significantly with comprehensive details, explanations, and context" },
+    { icon: <RotateCcw className="h-3.5 w-3.5" />, label: "Rewrite", prompt: "Completely rewrite this with a fresh approach while keeping the core message" },
   ];
 
   // Safety check

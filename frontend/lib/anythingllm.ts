@@ -83,6 +83,12 @@ export class AnythingLLMService {
       // 🎯 STEP 2: Set client-facing prompt for new workspace
       await this.setWorkspacePrompt(data.workspace.slug, clientName);
       
+      // 🧵 STEP 3: Create a default thread (no user naming required)
+      // Thread will auto-name based on first message (AnythingLLM behavior)
+      console.log(`🧵 Creating default thread for workspace...`);
+      await this.createThread(data.workspace.slug, undefined);
+      console.log(`✅ Default thread created - users can start chatting immediately`);
+      
       return { id: data.workspace.id, slug: data.workspace.slug };
     } catch (error) {
       console.error('❌ Error creating workspace:', error);
@@ -202,9 +208,10 @@ Metadata:
       const documentLocation = rawTextData.documents[0].location;
       console.log(`✅ Document processed: ${documentLocation}`);
 
-      // Step 2: Add document to workspace
-      const workspaceUpdateResponse = await fetch(
-        `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/update`,
+      // Step 2: EMBED document in workspace (not just update)
+      // Using /update-embeddings endpoint (NOT /update)
+      const workspaceEmbedResponse = await fetch(
+        `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/update-embeddings`,
         {
           method: 'POST',
           headers: this.getHeaders(),
@@ -214,12 +221,12 @@ Metadata:
         }
       );
 
-      if (!workspaceUpdateResponse.ok) {
-        throw new Error(`Failed to add document to workspace: ${workspaceUpdateResponse.statusText}`);
+      if (!workspaceEmbedResponse.ok) {
+        throw new Error(`Failed to embed document in workspace: ${workspaceEmbedResponse.statusText}`);
       }
 
-      const updateResult = await workspaceUpdateResponse.json();
-      console.log(`✅ Document added to workspace: ${workspaceSlug}`);
+      const embedResult = await workspaceEmbedResponse.json();
+      console.log(`✅ Document EMBEDDED in workspace: ${workspaceSlug}`);
       
       return true;
     } catch (error) {
@@ -239,7 +246,7 @@ Metadata:
    * Get or create embed ID for workspace
    * Returns the embed UUID needed for the widget script
    */
-  async getOrCreateEmbedId(workspaceSlug: string): Promise<string | null> {
+  async getOrCreateEmbedId(workspaceSlug: string): Promise<number | null> {
     try {
       // First, check if embed already exists for this workspace
       const listResponse = await fetch(`${this.baseUrl}/api/v1/embed`, {
@@ -250,8 +257,8 @@ Metadata:
         const { embeds } = await listResponse.json();
         const existing = embeds?.find((e: any) => e.workspace?.slug === workspaceSlug);
         if (existing) {
-          console.log(`✅ Using existing embed: ${existing.uuid}`);
-          return existing.uuid;
+          console.log(`✅ Using existing embed ID: ${existing.id}`);
+          return existing.id;
         }
       }
 
@@ -292,8 +299,8 @@ Metadata:
       console.log(`📄 Embed response body:`, responseText.substring(0, 200));
       
       const data = JSON.parse(responseText);
-      console.log(`✅ Embed created:`, data);
-      return data.embed?.uuid || null;
+      console.log(`✅ Embed created with ID: ${data.embed?.id}`);
+      return data.embed?.id || null;
     } catch (error) {
       console.error('❌ Error getting/creating embed:', error);
       console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
@@ -496,9 +503,14 @@ Ready to explore your project details? Ask me anything!`;
    * Create a new thread in a workspace
    * Each SOW becomes a thread for isolated chat history
    */
-  async createThread(workspaceSlug: string, threadName: string): Promise<{ slug: string; id: string } | null> {
+  async createThread(workspaceSlug: string, threadName?: string): Promise<{ slug: string; id: string } | null> {
     try {
-      console.log(`🆕 Creating thread "${threadName}" in workspace: ${workspaceSlug}`);
+      // Follow AnythingLLM pattern: threads auto-name based on first message
+      // Don't pre-name threads - let them be named by first chat content
+      // If no name provided, use a generic auto-name that will be replaced on first message
+      const autoThreadName = threadName || `Thread ${new Date().toLocaleString()}`;
+      
+      console.log(`🆕 Creating thread in workspace: ${workspaceSlug} (will auto-name on first message)`);
       
       const response = await fetch(
         `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/thread/new`,
@@ -506,7 +518,7 @@ Ready to explore your project details? Ask me anything!`;
           method: 'POST',
           headers: this.getHeaders(),
           body: JSON.stringify({
-            name: threadName,
+            name: autoThreadName,  // AnythingLLM will auto-update this on first chat message
           }),
         }
       );
@@ -519,7 +531,7 @@ Ready to explore your project details? Ask me anything!`;
       }
 
       const data = await response.json();
-      console.log(`✅ Thread created: ${data.thread.slug} (ID: ${data.thread.id})`);
+      console.log(`✅ Thread created: ${data.thread.slug} (ID: ${data.thread.id}) - will auto-name on first message`);
       
       return {
         slug: data.thread.slug,
@@ -595,6 +607,8 @@ Ready to explore your project details? Ask me anything!`;
    */
   async getThreadChats(workspaceSlug: string, threadSlug: string): Promise<any[]> {
     try {
+      console.log(`🧵 [getThreadChats] Fetching messages from ${workspaceSlug}/${threadSlug}`);
+      
       const response = await fetch(
         `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/thread/${threadSlug}/chats`,
         {
@@ -604,12 +618,20 @@ Ready to explore your project details? Ask me anything!`;
       );
 
       if (!response.ok) {
-        console.error(`❌ Failed to get thread chats: ${response.statusText}`);
+        console.error(`❌ [getThreadChats] Failed to get thread chats: ${response.statusText}`);
         return [];
       }
 
       const data = await response.json();
-      return data.history || [];
+      console.log(`✅ [getThreadChats] Got ${(data.history || []).length} messages from thread`);
+      
+      // Return history array with role and content fields for conversion to ChatMessage
+      const history = data.history || [];
+      if (history.length > 0) {
+        console.log(`💬 [getThreadChats] Sample message:`, history[0]);
+      }
+      
+      return history;
     } catch (error) {
       console.error('❌ Error getting thread chats:', error);
       return [];

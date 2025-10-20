@@ -14,3 +14,403 @@
 2025-10-19T11:18:49: INFO:     162.142.125.198:52906 - "GET / HTTP/1.1" 404 Not Found
 2025-10-19T11:19:00: INFO:     162.142.125.198:47084 - "GET / HTTP/1.1" 404 Not Found
 2025-10-19T11:19:08: INFO:     162.142.125.198:39216 - "GET /security.txt HTTP/1.1" 404 Not Found
+2025-10-19T13:01:43: INFO:     127.0.0.1:57928 - "GET /docs HTTP/1.1" 200 OK
+2025-10-19T13:22:03: INFO:     127.0.0.1:35948 - "GET /docs HTTP/1.1" 200 OK
+2025-10-19T13:23:14: INFO:     127.0.0.1:52202 - "GET /docs HTTP/1.1" 200 OK
+2025-10-19T13:24:40: INFO:     127.0.0.1:45844 - "GET /docs HTTP/1.1" 200 OK
+2025-10-19T13:25:07: INFO:     127.0.0.1:43320 - "GET /docs HTTP/1.1" 200 OK
+2025-10-19T13:25:45: INFO:     127.0.0.1:54938 - "GET /docs HTTP/1.1" 200 OK
+2025-10-19T13:26:26: INFO:     127.0.0.1:60706 - "GET /docs HTTP/1.1" 200 OK
+2025-10-19T20:04:47: === DEBUG: Received HTML Content ===
+2025-10-19T20:04:47: <h1>Test PDF</h1><p>This is a test SOW document with proper HTML formatting.</p>
+2025-10-19T20:04:47: === Has table tag: False ===
+2025-10-19T20:04:47: INFO:     127.0.0.1:42788 - "POST /generate-pdf HTTP/1.1" 200 OK
+2025-10-19T20:14:08: === DEBUG: Received HTML Content ===
+2025-10-19T20:14:08: <h1>Scope of Work: You4RealEstate - HubSpot Integration &amp; AI Solutions</h1><h2>Overview</h2><p>This scope of work details a proposed solution for Social Garden to support You4RealEstate with HubSpot integration, three targeted landing pages, an AI workflow, and a chatbot implementation to enhance lead generation and streamline customer interactions within a $4,000 budget.</p><h2>What does the scope include?</h2><p>• HubSpot account setup and basic configuration</p><p>• Integration with exist
+2025-10-19T20:14:08: === Has table tag: True ===
+2025-10-19T20:14:09: INFO:     127.0.0.1:35818 - "POST /generate-pdf HTTP/1.1" 200 OK
+2025-10-19T21:10:26: INFO:     127.0.0.1:51026 - "POST /create-sheet HTTP/1.1" 400 Bad Request
+2025-10-19T21:10:35: INFO:     127.0.0.1:41126 - "GET / HTTP/1.1" 404 Not Found
+2025-10-19T21:10:36: INFO:     127.0.0.1:41126 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+2025-10-19T21:12:20: Sheet creation failed: Google Sheets API error: <HttpError 403 when requesting https://sheets.googleapis.com/v4/spreadsheets?alt=json returned "The caller does not have permission". Details: "The caller does not have permission">
+2025-10-19T21:12:20: Traceback (most recent call last):
+2025-10-19T21:12:20:   File "/root/the11/backend/services/google_sheets_generator.py", line 63, in create_sow_sheet
+2025-10-19T21:12:20:     sheet_id = self._create_spreadsheet(client_name, service_name)
+2025-10-19T21:12:20:                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T21:12:20:   File "/root/the11/backend/services/google_sheets_generator.py", line 126, in _create_spreadsheet
+2025-10-19T21:12:20:     response = request.execute()
+2025-10-19T21:12:20:                ^^^^^^^^^^^^^^^^^
+2025-10-19T21:12:20:   File "/root/the11/backend/venv/lib/python3.12/site-packages/googleapiclient/_helpers.py", line 130, in positional_wrapper
+2025-10-19T21:12:20:     return wrapped(*args, **kwargs)
+2025-10-19T21:12:20:            ^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T21:12:20:   File "/root/the11/backend/venv/lib/python3.12/site-packages/googleapiclient/http.py", line 938, in execute
+2025-10-19T21:12:20:     raise HttpError(resp, content, uri=self.uri)
+2025-10-19T21:12:20: googleapiclient.errors.HttpError: <HttpError 403 when requesting https://sheets.googleapis.com/v4/spreadsheets?alt=json returned "The caller does not have permission". Details: "The caller does not have permission">
+2025-10-19T21:12:20: 
+2025-10-19T21:12:20: During handling of the above exception, another exception occurred:
+2025-10-19T21:12:20: 
+2025-10-19T21:12:20: Traceback (most recent call last):
+2025-10-19T21:12:20:   File "/root/the11/backend/main.py", line 418, in create_sheet
+2025-10-19T21:12:20:     result = create_sow_sheet(request.client_name, request.service_name, sow_data)
+2025-10-19T21:12:20:              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T21:12:20:   File "/root/the11/backend/services/google_sheets_generator.py", line 391, in create_sow_sheet
+2025-10-19T21:12:20:     return generator.create_sow_sheet(client_name, service_name, sow_data)
+2025-10-19T21:12:20:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T21:12:20:   File "/root/the11/backend/services/google_sheets_generator.py", line 109, in create_sow_sheet
+2025-10-19T21:12:20:     raise Exception(f"Google Sheets API error: {str(e)}")
+2025-10-19T21:12:20: Exception: Google Sheets API error: <HttpError 403 when requesting https://sheets.googleapis.com/v4/spreadsheets?alt=json returned "The caller does not have permission". Details: "The caller does not have permission">
+2025-10-19T21:12:20: 
+2025-10-19T21:12:20: INFO:     127.0.0.1:55772 - "POST /create-sheet HTTP/1.1" 500 Internal Server Error
+2025-10-19T21:29:21: DEBUG: Parsing service account JSON (length: 2334)
+2025-10-19T21:29:21: DEBUG: Service account parsed. Project ID: socialgarden-sow
+2025-10-19T21:29:21: DEBUG: Service account email: socialgarden-sheets@socialgarden-sow.iam.gserviceaccount.com
+2025-10-19T21:29:21: DEBUG: Credentials created successfully
+2025-10-19T21:29:21: DEBUG: Service clients built successfully
+2025-10-19T21:29:21: DEBUG: Auto-share email: ahmad.basheer@socialgarden.com.au
+2025-10-19T21:29:23: ERROR: Google Sheets API 403 Permission Denied
+2025-10-19T21:29:23: The service account needs:
+2025-10-19T21:29:23: 1. Google Sheets API enabled in the Google Cloud project
+2025-10-19T21:29:23: 2. Editor role on the project or specific permissions granted
+2025-10-19T21:29:23: Service account email: socialgarden-sheets@socialgarden-sow.iam.gserviceaccount.com
+2025-10-19T21:29:23: Sheet creation failed: Google Sheets API permission denied. Please ensure the Google Sheets API is enabled and the service account has the required permissions. Service account: socialgarden-sheets@socialgarden-sow.iam.gserviceaccount.com
+2025-10-19T21:29:23: Traceback (most recent call last):
+2025-10-19T21:29:23:   File "/root/the11/backend/services/google_sheets_generator.py", line 73, in create_sow_sheet
+2025-10-19T21:29:23:     sheet_id = self._create_spreadsheet(client_name, service_name)
+2025-10-19T21:29:23:                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T21:29:23:   File "/root/the11/backend/services/google_sheets_generator.py", line 148, in _create_spreadsheet
+2025-10-19T21:29:23:     response = request.execute()
+2025-10-19T21:29:23:                ^^^^^^^^^^^^^^^^^
+2025-10-19T21:29:23:   File "/root/the11/backend/venv/lib/python3.12/site-packages/googleapiclient/_helpers.py", line 130, in positional_wrapper
+2025-10-19T21:29:23:     return wrapped(*args, **kwargs)
+2025-10-19T21:29:23:            ^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T21:29:23:   File "/root/the11/backend/venv/lib/python3.12/site-packages/googleapiclient/http.py", line 938, in execute
+2025-10-19T21:29:23:     raise HttpError(resp, content, uri=self.uri)
+2025-10-19T21:29:23: googleapiclient.errors.HttpError: <HttpError 403 when requesting https://sheets.googleapis.com/v4/spreadsheets?alt=json returned "The caller does not have permission". Details: "The caller does not have permission">
+2025-10-19T21:29:23: 
+2025-10-19T21:29:23: During handling of the above exception, another exception occurred:
+2025-10-19T21:29:23: 
+2025-10-19T21:29:23: Traceback (most recent call last):
+2025-10-19T21:29:23:   File "/root/the11/backend/main.py", line 418, in create_sheet
+2025-10-19T21:29:23:     result = create_sow_sheet(request.client_name, request.service_name, sow_data)
+2025-10-19T21:29:23:              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T21:29:23:   File "/root/the11/backend/services/google_sheets_generator.py", line 413, in create_sow_sheet
+2025-10-19T21:29:23:     return generator.create_sow_sheet(client_name, service_name, sow_data)
+2025-10-19T21:29:23:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T21:29:23:   File "/root/the11/backend/services/google_sheets_generator.py", line 126, in create_sow_sheet
+2025-10-19T21:29:23:     raise Exception(
+2025-10-19T21:29:23: Exception: Google Sheets API permission denied. Please ensure the Google Sheets API is enabled and the service account has the required permissions. Service account: socialgarden-sheets@socialgarden-sow.iam.gserviceaccount.com
+2025-10-19T21:29:23: 
+2025-10-19T21:29:23: INFO:     127.0.0.1:51410 - "POST /create-sheet HTTP/1.1" 500 Internal Server Error
+2025-10-19T21:29:52: DEBUG: Parsing service account JSON (length: 2334)
+2025-10-19T21:29:52: DEBUG: Service account parsed. Project ID: socialgarden-sow
+2025-10-19T21:29:52: DEBUG: Service account email: socialgarden-sheets@socialgarden-sow.iam.gserviceaccount.com
+2025-10-19T21:29:52: DEBUG: Credentials created successfully
+2025-10-19T21:29:52: DEBUG: Service clients built successfully
+2025-10-19T21:29:52: 
+2025-10-19T21:29:52: DEBUG: Auto-share email: ahmad.basheer@socialgarden.com.au
+2025-10-19T21:29:52: 
+2025-10-19T21:29:53: ERROR: Google Sheets API 403 Permission Denied
+2025-10-19T21:29:53: The service account needs:
+2025-10-19T21:29:53: 1. Google Sheets API enabled in the Google Cloud project
+2025-10-19T21:29:53: 2. Editor role on the project or specific permissions granted
+2025-10-19T21:29:53: Service account email: socialgarden-sheets@socialgarden-sow.iam.gserviceaccount.com
+2025-10-19T21:29:53: Sheet creation failed: Google Sheets API permission denied. Please ensure the Google Sheets API is enabled and the service account has the required permissions. Service account: socialgarden-sheets@socialgarden-sow.iam.gserviceaccount.com
+2025-10-19T21:29:53: Traceback (most recent call last):
+2025-10-19T21:29:53:   File "/root/the11/backend/services/google_sheets_generator.py", line 73, in create_sow_sheet
+2025-10-19T21:29:53:     sheet_id = self._create_spreadsheet(client_name, service_name)
+2025-10-19T21:29:53:                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T21:29:53:   File "/root/the11/backend/services/google_sheets_generator.py", line 148, in _create_spreadsheet
+2025-10-19T21:29:53:     response = request.execute()
+2025-10-19T21:29:53:                ^^^^^^^^^^^^^^^^^
+2025-10-19T21:29:53:   File "/root/the11/backend/venv/lib/python3.12/site-packages/googleapiclient/_helpers.py", line 130, in positional_wrapper
+2025-10-19T21:29:53:     return wrapped(*args, **kwargs)
+2025-10-19T21:29:53:            ^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T21:29:53:   File "/root/the11/backend/venv/lib/python3.12/site-packages/googleapiclient/http.py", line 938, in execute
+2025-10-19T21:29:53:     raise HttpError(resp, content, uri=self.uri)
+2025-10-19T21:29:53: googleapiclient.errors.HttpError: <HttpError 403 when requesting https://sheets.googleapis.com/v4/spreadsheets?alt=json returned "The caller does not have permission". Details: "The caller does not have permission">
+2025-10-19T21:29:53: 
+2025-10-19T21:29:53: During handling of the above exception, another exception occurred:
+2025-10-19T21:29:53: 
+2025-10-19T21:29:53: Traceback (most recent call last):
+2025-10-19T21:29:53:   File "/root/the11/backend/main.py", line 418, in create_sheet
+2025-10-19T21:29:53:     result = create_sow_sheet(request.client_name, request.service_name, sow_data)
+2025-10-19T21:29:53:              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T21:29:53:   File "/root/the11/backend/services/google_sheets_generator.py", line 413, in create_sow_sheet
+2025-10-19T21:29:53:     return generator.create_sow_sheet(client_name, service_name, sow_data)
+2025-10-19T21:29:53:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T21:29:53:   File "/root/the11/backend/services/google_sheets_generator.py", line 126, in create_sow_sheet
+2025-10-19T21:29:53:     raise Exception(
+2025-10-19T21:29:53: Exception: Google Sheets API permission denied. Please ensure the Google Sheets API is enabled and the service account has the required permissions. Service account: socialgarden-sheets@socialgarden-sow.iam.gserviceaccount.com
+2025-10-19T21:29:53: 
+2025-10-19T21:29:53: INFO:     127.0.0.1:38310 - "POST /create-sheet HTTP/1.1" 500 Internal Server Error
+2025-10-19T21:45:18: DEBUG: Parsing service account JSON (length: 2334)
+2025-10-19T21:45:18: DEBUG: Service account parsed. Project ID: socialgarden-sow
+2025-10-19T21:45:18: DEBUG: Service account email: socialgarden-sheets@socialgarden-sow.iam.gserviceaccount.com
+2025-10-19T21:45:18: DEBUG: Credentials created successfully
+2025-10-19T21:45:18: DEBUG: Service clients built successfully
+2025-10-19T21:45:18: DEBUG: Auto-share email: ahmad.basheer@socialgarden.com.au
+2025-10-19T21:45:19: ERROR: Google Sheets API 403 Permission Denied
+2025-10-19T21:45:19: The service account needs:
+2025-10-19T21:45:19: 1. Google Sheets API enabled in the Google Cloud project
+2025-10-19T21:45:19: 2. Editor role on the project or specific permissions granted
+2025-10-19T21:45:19: Service account email: socialgarden-sheets@socialgarden-sow.iam.gserviceaccount.com
+2025-10-19T21:45:19: Sheet creation failed: Google Sheets API permission denied. Please ensure the Google Sheets API is enabled and the service account has the required permissions. Service account: socialgarden-sheets@socialgarden-sow.iam.gserviceaccount.com
+2025-10-19T21:45:19: Traceback (most recent call last):
+2025-10-19T21:45:19:   File "/root/the11/backend/services/google_sheets_generator.py", line 73, in create_sow_sheet
+2025-10-19T21:45:19:     sheet_id = self._create_spreadsheet(client_name, service_name)
+2025-10-19T21:45:19:                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T21:45:19:   File "/root/the11/backend/services/google_sheets_generator.py", line 148, in _create_spreadsheet
+2025-10-19T21:45:19:     response = request.execute()
+2025-10-19T21:45:19:                ^^^^^^^^^^^^^^^^^
+2025-10-19T21:45:19:   File "/root/the11/backend/venv/lib/python3.12/site-packages/googleapiclient/_helpers.py", line 130, in positional_wrapper
+2025-10-19T21:45:19:     return wrapped(*args, **kwargs)
+2025-10-19T21:45:19:            ^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T21:45:19:   File "/root/the11/backend/venv/lib/python3.12/site-packages/googleapiclient/http.py", line 938, in execute
+2025-10-19T21:45:19:     raise HttpError(resp, content, uri=self.uri)
+2025-10-19T21:45:19: googleapiclient.errors.HttpError: <HttpError 403 when requesting https://sheets.googleapis.com/v4/spreadsheets?alt=json returned "The caller does not have permission". Details: "The caller does not have permission">
+2025-10-19T21:45:19: 
+2025-10-19T21:45:19: During handling of the above exception, another exception occurred:
+2025-10-19T21:45:19: 
+2025-10-19T21:45:19: Traceback (most recent call last):
+2025-10-19T21:45:19:   File "/root/the11/backend/main.py", line 418, in create_sheet
+2025-10-19T21:45:19:     result = create_sow_sheet(request.client_name, request.service_name, sow_data)
+2025-10-19T21:45:19:              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T21:45:19:   File "/root/the11/backend/services/google_sheets_generator.py", line 438, in create_sow_sheet
+2025-10-19T21:45:19:     return generator.create_sow_sheet(client_name, service_name, sow_data)
+2025-10-19T21:45:19:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T21:45:19:   File "/root/the11/backend/services/google_sheets_generator.py", line 126, in create_sow_sheet
+2025-10-19T21:45:19:     raise Exception(
+2025-10-19T21:45:19: Exception: Google Sheets API permission denied. Please ensure the Google Sheets API is enabled and the service account has the required permissions. Service account: socialgarden-sheets@socialgarden-sow.iam.gserviceaccount.com
+2025-10-19T21:45:19: 
+2025-10-19T21:45:19: INFO:     127.0.0.1:41256 - "POST /create-sheet HTTP/1.1" 500 Internal Server Error
+2025-10-19T21:50:36: DEBUG: Parsing service account JSON (length: 2334)
+2025-10-19T21:50:36: DEBUG: Service account parsed. Project ID: socialgarden-sow
+2025-10-19T21:50:36: DEBUG: Service account email: socialgarden-sheets@socialgarden-sow.iam.gserviceaccount.com
+2025-10-19T21:50:36: DEBUG: Credentials created successfully
+2025-10-19T21:50:36: DEBUG: Service clients built successfully
+2025-10-19T21:50:36: 
+2025-10-19T21:50:36: DEBUG: Auto-share email: ahmad.basheer@socialgarden.com.au
+2025-10-19T21:50:36: 
+2025-10-19T21:50:37: ERROR: Google Sheets API 403 Permission Denied
+2025-10-19T21:50:37: The service account needs:
+2025-10-19T21:50:37: 1. Google Sheets API enabled in the Google Cloud project
+2025-10-19T21:50:37: 2. Editor role on the project or specific permissions granted
+2025-10-19T21:50:37: Service account email: socialgarden-sheets@socialgarden-sow.iam.gserviceaccount.com
+2025-10-19T21:50:37: Sheet creation failed: Google Sheets API permission denied. Please ensure the Google Sheets API is enabled and the service account has the required permissions. Service account: socialgarden-sheets@socialgarden-sow.iam.gserviceaccount.com
+2025-10-19T21:50:37: Traceback (most recent call last):
+2025-10-19T21:50:37:   File "/root/the11/backend/services/google_sheets_generator.py", line 73, in create_sow_sheet
+2025-10-19T21:50:37:     sheet_id = self._create_spreadsheet(client_name, service_name)
+2025-10-19T21:50:37:                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T21:50:37:   File "/root/the11/backend/services/google_sheets_generator.py", line 148, in _create_spreadsheet
+2025-10-19T21:50:37:     response = request.execute()
+2025-10-19T21:50:37:                ^^^^^^^^^^^^^^^^^
+2025-10-19T21:50:37:   File "/root/the11/backend/venv/lib/python3.12/site-packages/googleapiclient/_helpers.py", line 130, in positional_wrapper
+2025-10-19T21:50:37:     return wrapped(*args, **kwargs)
+2025-10-19T21:50:37:            ^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T21:50:37:   File "/root/the11/backend/venv/lib/python3.12/site-packages/googleapiclient/http.py", line 938, in execute
+2025-10-19T21:50:37:     raise HttpError(resp, content, uri=self.uri)
+2025-10-19T21:50:37: googleapiclient.errors.HttpError: <HttpError 403 when requesting https://sheets.googleapis.com/v4/spreadsheets?alt=json returned "The caller does not have permission". Details: "The caller does not have permission">
+2025-10-19T21:50:37: 
+2025-10-19T21:50:37: During handling of the above exception, another exception occurred:
+2025-10-19T21:50:37: 
+2025-10-19T21:50:37: Traceback (most recent call last):
+2025-10-19T21:50:37:   File "/root/the11/backend/main.py", line 418, in create_sheet
+2025-10-19T21:50:37:     result = create_sow_sheet(request.client_name, request.service_name, sow_data)
+2025-10-19T21:50:37:              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T21:50:37:   File "/root/the11/backend/services/google_sheets_generator.py", line 438, in create_sow_sheet
+2025-10-19T21:50:37:     return generator.create_sow_sheet(client_name, service_name, sow_data)
+2025-10-19T21:50:37:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T21:50:37:   File "/root/the11/backend/services/google_sheets_generator.py", line 126, in create_sow_sheet
+2025-10-19T21:50:37:     raise Exception(
+2025-10-19T21:50:37: Exception: Google Sheets API permission denied. Please ensure the Google Sheets API is enabled and the service account has the required permissions. Service account: socialgarden-sheets@socialgarden-sow.iam.gserviceaccount.com
+2025-10-19T21:50:37: 
+2025-10-19T21:50:37: INFO:     127.0.0.1:56656 - "POST /create-sheet HTTP/1.1" 500 Internal Server Error
+2025-10-19T21:52:24: DEBUG: Parsing service account JSON (length: 2334)
+2025-10-19T21:52:24: DEBUG: Service account parsed. Project ID: socialgarden-sow
+2025-10-19T21:52:24: DEBUG: Service account email: socialgarden-sheets@socialgarden-sow.iam.gserviceaccount.com
+2025-10-19T21:52:24: DEBUG: Credentials created successfully
+2025-10-19T21:52:24: DEBUG: Service clients built successfully
+2025-10-19T21:52:24: 
+2025-10-19T21:52:24: DEBUG: Auto-share email: ahmad.basheer@socialgarden.com.au
+2025-10-19T21:52:24: 
+2025-10-19T21:52:25: ERROR: Google Sheets API 403 Permission Denied
+2025-10-19T21:52:25: The service account needs:
+2025-10-19T21:52:25: 1. Google Sheets API enabled in the Google Cloud project
+2025-10-19T21:52:25: 2. Editor role on the project or specific permissions granted
+2025-10-19T21:52:25: Service account email: socialgarden-sheets@socialgarden-sow.iam.gserviceaccount.com
+2025-10-19T21:52:25: Sheet creation failed: Google Sheets API permission denied. Please ensure the Google Sheets API is enabled and the service account has the required permissions. Service account: socialgarden-sheets@socialgarden-sow.iam.gserviceaccount.com
+2025-10-19T21:52:25: Traceback (most recent call last):
+2025-10-19T21:52:25:   File "/root/the11/backend/services/google_sheets_generator.py", line 73, in create_sow_sheet
+2025-10-19T21:52:25:     sheet_id = self._create_spreadsheet(client_name, service_name)
+2025-10-19T21:52:25:                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T21:52:25:   File "/root/the11/backend/services/google_sheets_generator.py", line 148, in _create_spreadsheet
+2025-10-19T21:52:25:     response = request.execute()
+2025-10-19T21:52:25:                ^^^^^^^^^^^^^^^^^
+2025-10-19T21:52:25:   File "/root/the11/backend/venv/lib/python3.12/site-packages/googleapiclient/_helpers.py", line 130, in positional_wrapper
+2025-10-19T21:52:25:     return wrapped(*args, **kwargs)
+2025-10-19T21:52:25:            ^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T21:52:25:   File "/root/the11/backend/venv/lib/python3.12/site-packages/googleapiclient/http.py", line 938, in execute
+2025-10-19T21:52:25:     raise HttpError(resp, content, uri=self.uri)
+2025-10-19T21:52:25: googleapiclient.errors.HttpError: <HttpError 403 when requesting https://sheets.googleapis.com/v4/spreadsheets?alt=json returned "The caller does not have permission". Details: "The caller does not have permission">
+2025-10-19T21:52:25: 
+2025-10-19T21:52:25: During handling of the above exception, another exception occurred:
+2025-10-19T21:52:25: 
+2025-10-19T21:52:25: Traceback (most recent call last):
+2025-10-19T21:52:25:   File "/root/the11/backend/main.py", line 418, in create_sheet
+2025-10-19T21:52:25:     result = create_sow_sheet(request.client_name, request.service_name, sow_data)
+2025-10-19T21:52:25:              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T21:52:25:   File "/root/the11/backend/services/google_sheets_generator.py", line 438, in create_sow_sheet
+2025-10-19T21:52:25:     return generator.create_sow_sheet(client_name, service_name, sow_data)
+2025-10-19T21:52:25:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T21:52:25:   File "/root/the11/backend/services/google_sheets_generator.py", line 126, in create_sow_sheet
+2025-10-19T21:52:25:     raise Exception(
+2025-10-19T21:52:25: Exception: Google Sheets API permission denied. Please ensure the Google Sheets API is enabled and the service account has the required permissions. Service account: socialgarden-sheets@socialgarden-sow.iam.gserviceaccount.com
+2025-10-19T21:52:25: 
+2025-10-19T21:52:25: INFO:     127.0.0.1:58544 - "POST /create-sheet HTTP/1.1" 500 Internal Server Error
+2025-10-19T21:52:59: DEBUG: Parsing service account JSON (length: 2334)
+2025-10-19T21:52:59: DEBUG: Service account parsed. Project ID: socialgarden-sow
+2025-10-19T21:52:59: DEBUG: Service account email: socialgarden-sheets@socialgarden-sow.iam.gserviceaccount.com
+2025-10-19T21:52:59: DEBUG: Credentials created successfully
+2025-10-19T21:52:59: DEBUG: Service clients built successfully
+2025-10-19T21:52:59: DEBUG: Auto-share email: ahmad.basheer@socialgarden.com.au
+2025-10-19T21:53:00: ERROR: Google Sheets API 403 Permission Denied
+2025-10-19T21:53:00: Full error: <HttpError 403 when requesting https://sheets.googleapis.com/v4/spreadsheets?alt=json returned "The caller does not have permission". Details: "The caller does not have permission">
+2025-10-19T21:53:00: The service account needs:
+2025-10-19T21:53:00: 1. Google Sheets API enabled in the Google Cloud project
+2025-10-19T21:53:00: 2. Editor role on the project
+2025-10-19T21:53:00: 3. Service Account User role (in IAM)
+2025-10-19T21:53:00: Service account email: socialgarden-sheets@socialgarden-sow.iam.gserviceaccount.com
+2025-10-19T21:53:00: Sheet creation failed: Google Sheets API 403 Permission Denied. Error: <HttpError 403 when requesting https://sheets.googleapis.com/v4/spreadsheets?alt=json returned "The caller does not have permission". Details: "The caller does not have permission">
+2025-10-19T21:53:00: Traceback (most recent call last):
+2025-10-19T21:53:00:   File "/root/the11/backend/services/google_sheets_generator.py", line 74, in create_sow_sheet
+2025-10-19T21:53:00:     sheet_id = self._create_spreadsheet(client_name, service_name)
+2025-10-19T21:53:00:                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T21:53:00:   File "/root/the11/backend/services/google_sheets_generator.py", line 149, in _create_spreadsheet
+2025-10-19T21:53:00:     response = request.execute()
+2025-10-19T21:53:00:                ^^^^^^^^^^^^^^^^^
+2025-10-19T21:53:00:   File "/root/the11/backend/venv/lib/python3.12/site-packages/googleapiclient/_helpers.py", line 130, in positional_wrapper
+2025-10-19T21:53:00:     return wrapped(*args, **kwargs)
+2025-10-19T21:53:00:            ^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T21:53:00:   File "/root/the11/backend/venv/lib/python3.12/site-packages/googleapiclient/http.py", line 938, in execute
+2025-10-19T21:53:00:     raise HttpError(resp, content, uri=self.uri)
+2025-10-19T21:53:00: googleapiclient.errors.HttpError: <HttpError 403 when requesting https://sheets.googleapis.com/v4/spreadsheets?alt=json returned "The caller does not have permission". Details: "The caller does not have permission">
+2025-10-19T21:53:00: 
+2025-10-19T21:53:00: During handling of the above exception, another exception occurred:
+2025-10-19T21:53:00: 
+2025-10-19T21:53:00: Traceback (most recent call last):
+2025-10-19T21:53:00:   File "/root/the11/backend/main.py", line 418, in create_sheet
+2025-10-19T21:53:00:     result = create_sow_sheet(request.client_name, request.service_name, sow_data)
+2025-10-19T21:53:00:              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T21:53:00:   File "/root/the11/backend/services/google_sheets_generator.py", line 439, in create_sow_sheet
+2025-10-19T21:53:00:     return generator.create_sow_sheet(client_name, service_name, sow_data)
+2025-10-19T21:53:00:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T21:53:00:   File "/root/the11/backend/services/google_sheets_generator.py", line 129, in create_sow_sheet
+2025-10-19T21:53:00:     raise Exception(
+2025-10-19T21:53:00: Exception: Google Sheets API 403 Permission Denied. Error: <HttpError 403 when requesting https://sheets.googleapis.com/v4/spreadsheets?alt=json returned "The caller does not have permission". Details: "The caller does not have permission">
+2025-10-19T21:53:00: 
+2025-10-19T21:53:00: INFO:     127.0.0.1:39612 - "POST /create-sheet HTTP/1.1" 500 Internal Server Error
+2025-10-19T22:12:04: DEBUG: Parsing service account JSON (length: 2334)
+2025-10-19T22:12:04: DEBUG: Service account parsed. Project ID: socialgarden-sow
+2025-10-19T22:12:04: DEBUG: Service account email: socialgarden-sheets@socialgarden-sow.iam.gserviceaccount.com
+2025-10-19T22:12:04: DEBUG: Credentials created successfully
+2025-10-19T22:12:04: DEBUG: Service clients built successfully
+2025-10-19T22:12:04: 
+2025-10-19T22:12:04: DEBUG: Auto-share email: ahmad.basheer@socialgarden.com.au
+2025-10-19T22:12:04: 
+2025-10-19T22:12:05: ERROR: Google Sheets API 403 Permission Denied
+2025-10-19T22:12:05: Full error: <HttpError 403 when requesting https://sheets.googleapis.com/v4/spreadsheets?alt=json returned "The caller does not have permission". Details: "The caller does not have permission">
+2025-10-19T22:12:05: The service account needs:
+2025-10-19T22:12:05: 1. Google Sheets API enabled in the Google Cloud project
+2025-10-19T22:12:05: 2. Editor role on the project
+2025-10-19T22:12:05: 3. Service Account User role (in IAM)
+2025-10-19T22:12:05: Service account email: socialgarden-sheets@socialgarden-sow.iam.gserviceaccount.com
+2025-10-19T22:12:05: Sheet creation failed: Google Sheets API 403 Permission Denied. Error: <HttpError 403 when requesting https://sheets.googleapis.com/v4/spreadsheets?alt=json returned "The caller does not have permission". Details: "The caller does not have permission">
+2025-10-19T22:12:05: Traceback (most recent call last):
+2025-10-19T22:12:05:   File "/root/the11/backend/services/google_sheets_generator.py", line 74, in create_sow_sheet
+2025-10-19T22:12:05:     sheet_id = self._create_spreadsheet(client_name, service_name)
+2025-10-19T22:12:05:                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T22:12:05:   File "/root/the11/backend/services/google_sheets_generator.py", line 149, in _create_spreadsheet
+2025-10-19T22:12:05:     response = request.execute()
+2025-10-19T22:12:05:                ^^^^^^^^^^^^^^^^^
+2025-10-19T22:12:05:   File "/root/the11/backend/venv/lib/python3.12/site-packages/googleapiclient/_helpers.py", line 130, in positional_wrapper
+2025-10-19T22:12:05:     return wrapped(*args, **kwargs)
+2025-10-19T22:12:05:            ^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T22:12:05:   File "/root/the11/backend/venv/lib/python3.12/site-packages/googleapiclient/http.py", line 938, in execute
+2025-10-19T22:12:05:     raise HttpError(resp, content, uri=self.uri)
+2025-10-19T22:12:05: googleapiclient.errors.HttpError: <HttpError 403 when requesting https://sheets.googleapis.com/v4/spreadsheets?alt=json returned "The caller does not have permission". Details: "The caller does not have permission">
+2025-10-19T22:12:05: 
+2025-10-19T22:12:05: During handling of the above exception, another exception occurred:
+2025-10-19T22:12:05: 
+2025-10-19T22:12:05: Traceback (most recent call last):
+2025-10-19T22:12:05:   File "/root/the11/backend/main.py", line 418, in create_sheet
+2025-10-19T22:12:05:     result = create_sow_sheet(request.client_name, request.service_name, sow_data)
+2025-10-19T22:12:05:              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T22:12:05:   File "/root/the11/backend/services/google_sheets_generator.py", line 439, in create_sow_sheet
+2025-10-19T22:12:05:     return generator.create_sow_sheet(client_name, service_name, sow_data)
+2025-10-19T22:12:05:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-10-19T22:12:05:   File "/root/the11/backend/services/google_sheets_generator.py", line 129, in create_sow_sheet
+2025-10-19T22:12:05:     raise Exception(
+2025-10-19T22:12:05: Exception: Google Sheets API 403 Permission Denied. Error: <HttpError 403 when requesting https://sheets.googleapis.com/v4/spreadsheets?alt=json returned "The caller does not have permission". Details: "The caller does not have permission">
+2025-10-19T22:12:05: 
+2025-10-19T22:12:05: INFO:     127.0.0.1:45530 - "POST /create-sheet HTTP/1.1" 500 Internal Server Error
+2025-10-19T22:27:01: INFO:     127.0.0.1:39418 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-19T22:34:32: INFO:     127.0.0.1:50826 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-19T22:39:08: INFO:     168.231.115.219:53190 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-19T22:52:46: === DEBUG: Received HTML Content ===
+2025-10-19T22:52:46: <h1>Scope of Work: CCC Real Estate - HubSpot Integration, Landing Pages &amp; AI Chatbot</h1><h2>Overview</h2><p>This scope of work details a proposed solution for Social Garden to support CCC Real Estate with HubSpot integration, three targeted landing pages, and an AI chatbot implementation to enhance lead generation, streamline customer interactions, and improve overall marketing efficiency for their real estate business.</p><h2>What does the scope include?</h2><p>• HubSpot account setup and 
+2025-10-19T22:52:46: === Has table tag: True ===
+2025-10-19T22:52:47: INFO:     127.0.0.1:36120 - "POST /generate-pdf HTTP/1.1" 200 OK
+2025-10-19T23:14:25: INFO:     168.231.115.219:36762 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-19T23:34:04: INFO:     168.231.115.219:50680 - "POST /oauth/token HTTP/1.1" 422 Unprocessable Entity
+2025-10-20T00:50:18: INFO:     127.0.0.1:48862 - "GET /folders HTTP/1.1" 404 Not Found
+2025-10-20T01:05:11: INFO:     172.18.0.10:55790 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T01:06:25: INFO:     172.18.0.10:41158 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T01:08:27: INFO:     172.18.0.11:49246 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T01:12:38: INFO:     172.18.0.10:33668 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T02:00:43: INFO:     127.0.0.1:54720 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T02:04:11: INFO:     172.18.0.11:47798 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T02:04:36: INFO:     172.18.0.11:57046 - "POST /oauth/token HTTP/1.1" 422 Unprocessable Entity
+2025-10-20T02:16:40: INFO:     172.18.0.10:47954 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T02:17:36: INFO:     172.18.0.10:39184 - "POST /oauth/token HTTP/1.1" 422 Unprocessable Entity
+2025-10-20T02:25:45: INFO:     172.18.0.11:50722 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T02:26:00: INFO:     172.18.0.11:60406 - "POST /oauth/token HTTP/1.1" 422 Unprocessable Entity
+2025-10-20T02:34:56: INFO:     147.185.132.49:65018 - "GET / HTTP/1.1" 404 Not Found
+2025-10-20T02:37:53: INFO:     172.18.0.10:60008 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T02:38:10: INFO:     172.18.0.10:49258 - "POST /oauth/token HTTP/1.1" 422 Unprocessable Entity
+2025-10-20T02:38:25: INFO:     172.18.0.10:41510 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T02:38:38: INFO:     172.18.0.10:39644 - "POST /oauth/token HTTP/1.1" 422 Unprocessable Entity
+2025-10-20T02:50:03: INFO:     172.18.0.11:44086 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T02:50:18: INFO:     172.18.0.11:44032 - "POST /oauth/token HTTP/1.1" 422 Unprocessable Entity
+2025-10-20T02:53:38: === DEBUG: Received HTML Content ===
+2025-10-20T02:53:38: <h1>Scope of Work: CCC Real Estate - HubSpot Integration, Landing Pages &amp; AI Chatbot</h1><h2>Overview</h2><p>This scope of work details a proposed solution for Social Garden to support CCC Real Estate with HubSpot integration, three targeted landing pages, and an AI chatbot implementation to enhance lead generation, streamline customer interactions, and improve overall marketing efficiency for their real estate business.</p><h2>What does the scope include?</h2><p>• HubSpot account setup and 
+2025-10-20T02:53:38: === Has table tag: True ===
+2025-10-20T02:53:39: INFO:     172.18.0.11:33104 - "POST /generate-pdf HTTP/1.1" 200 OK
+2025-10-20T03:01:21: INFO:     172.18.0.10:60392 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T03:01:37: ERROR exchanging token: Failed to exchange code for token: Scope has changed from "https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/spreadsheets" to "openid https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/drive".
+2025-10-20T03:01:37: INFO:     172.18.0.10:53740 - "POST /oauth/token HTTP/1.1" 400 Bad Request
+2025-10-20T03:08:36: INFO:     172.18.0.11:38780 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T03:08:52: ERROR exchanging token: Failed to exchange code for token: Scope has changed from "https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/spreadsheets" to "openid https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/spreadsheets".
+2025-10-20T03:08:52: INFO:     172.18.0.11:49364 - "POST /oauth/token HTTP/1.1" 400 Bad Request
+2025-10-20T03:11:31: INFO:     172.18.0.10:54126 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T03:11:44: INFO:     172.18.0.10:56498 - "POST /oauth/token HTTP/1.1" 200 OK
+2025-10-20T03:20:08: INFO:     172.18.0.10:46504 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T03:23:48: INFO:     172.18.0.11:33382 - "POST /oauth/token HTTP/1.1" 200 OK
+2025-10-20T03:31:14: INFO:     172.18.0.11:41036 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T03:31:36: INFO:     172.18.0.11:60162 - "POST /oauth/token HTTP/1.1" 200 OK
+2025-10-20T03:33:13: INFO:     172.18.0.10:53114 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T03:33:27: INFO:     172.18.0.10:47320 - "POST /oauth/token HTTP/1.1" 200 OK
+2025-10-20T03:39:02: INFO:     172.18.0.11:53142 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T03:39:17: INFO:     172.18.0.11:54278 - "POST /oauth/token HTTP/1.1" 200 OK
+2025-10-20T03:47:06: INFO:     172.18.0.10:44122 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T03:47:21: INFO:     172.18.0.10:33488 - "POST /oauth/token HTTP/1.1" 200 OK
+2025-10-20T03:49:39: INFO:     172.18.0.10:43302 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T03:51:33: INFO:     172.18.0.10:47752 - "POST /oauth/token HTTP/1.1" 200 OK
+2025-10-20T04:05:54: INFO:     172.18.0.11:34022 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T04:06:12: INFO:     172.18.0.11:33490 - "POST /oauth/token HTTP/1.1" 200 OK
+2025-10-20T05:52:17: INFO:     212.11.64.32:36822 - "GET / HTTP/1.1" 404 Not Found
+2025-10-20T05:52:24: INFO:     212.11.64.32:36838 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+2025-10-20T06:34:58: INFO:     167.99.44.61:47696 - "GET / HTTP/1.1" 404 Not Found
+2025-10-20T06:34:58: INFO:     167.99.44.61:47708 - "GET /login HTTP/1.1" 404 Not Found
+2025-10-20T09:18:12: INFO:     124.198.132.121:44460 - "GET / HTTP/1.1" 404 Not Found
+2025-10-20T12:25:38: INFO:     167.94.138.199:58692 - "GET / HTTP/1.1" 404 Not Found
+2025-10-20T12:25:49: INFO:     167.94.138.199:48314 - "GET /robots.txt HTTP/1.1" 404 Not Found

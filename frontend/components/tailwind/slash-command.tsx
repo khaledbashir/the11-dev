@@ -14,11 +14,23 @@ import {
   TextQuote,
   Twitter,
   Youtube,
+  Sparkles,
 } from "lucide-react";
 import { Command, createSuggestionItems, renderItems } from "novel/extensions";
 import { uploadFn } from "./image-upload";
 
 export const suggestionItems = createSuggestionItems([
+  {
+    title: "Ask AI",
+    description: "Let AI help you write anything.",
+    searchTerms: ["ai", "openai", "gpt", "assistant", "copilot", "write", "generate"],
+    icon: <Sparkles size={18} />,
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).run();
+      // Trigger the floating AI bar by dispatching a custom event
+      window.dispatchEvent(new CustomEvent('open-ai-bar', { detail: { triggerSource: 'slash' } }));
+    },
+  },
   {
     title: "Text",
     description: "Just start typing with plain text.",

@@ -35,3 +35,239 @@
 2025-10-19T12:43:53: INFO:     Waiting for application startup.
 2025-10-19T12:43:53: INFO:     Application startup complete.
 2025-10-19T12:43:53: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-19T12:45:34: INFO:     Shutting down
+2025-10-19T12:45:34: INFO:     Waiting for application shutdown.
+2025-10-19T12:45:34: INFO:     Application shutdown complete.
+2025-10-19T12:45:34: INFO:     Finished server process [1306408]
+2025-10-19T12:45:36: INFO:     Started server process [1307057]
+2025-10-19T12:45:36: INFO:     Waiting for application startup.
+2025-10-19T12:45:36: INFO:     Application startup complete.
+2025-10-19T12:45:36: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-19T12:48:09: INFO:     Shutting down
+2025-10-19T12:48:09: INFO:     Waiting for application shutdown.
+2025-10-19T12:48:09: INFO:     Application shutdown complete.
+2025-10-19T12:48:09: INFO:     Finished server process [1307057]
+2025-10-19T12:48:10: INFO:     Started server process [1307828]
+2025-10-19T12:48:10: INFO:     Waiting for application startup.
+2025-10-19T12:48:10: INFO:     Application startup complete.
+2025-10-19T12:48:10: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-19T13:01:30: INFO:     Started server process [1310273]
+2025-10-19T13:01:30: INFO:     Waiting for application startup.
+2025-10-19T13:01:30: INFO:     Application startup complete.
+2025-10-19T13:01:30: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-19T13:09:04: INFO:     Started server process [1311168]
+2025-10-19T13:09:04: INFO:     Waiting for application startup.
+2025-10-19T13:09:04: INFO:     Application startup complete.
+2025-10-19T13:09:04: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-19T13:23:10: INFO:     Started server process [1314982]
+2025-10-19T13:23:10: INFO:     Waiting for application startup.
+2025-10-19T13:23:10: INFO:     Application startup complete.
+2025-10-19T13:23:10: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-19T13:24:29: INFO:     Started server process [1315412]
+2025-10-19T13:24:29: INFO:     Waiting for application startup.
+2025-10-19T13:24:29: INFO:     Application startup complete.
+2025-10-19T13:24:29: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-19T13:24:36: INFO:     Started server process [1315523]
+2025-10-19T13:24:36: INFO:     Waiting for application startup.
+2025-10-19T13:24:36: INFO:     Application startup complete.
+2025-10-19T13:24:36: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-19T13:24:57: INFO:     Started server process [1315768]
+2025-10-19T13:24:57: INFO:     Waiting for application startup.
+2025-10-19T13:24:57: INFO:     Application startup complete.
+2025-10-19T13:24:57: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-19T13:25:03: INFO:     Started server process [1315885]
+2025-10-19T13:25:03: INFO:     Waiting for application startup.
+2025-10-19T13:25:03: INFO:     Application startup complete.
+2025-10-19T13:25:03: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-19T13:25:23: INFO:     Started server process [1316124]
+2025-10-19T13:25:23: INFO:     Waiting for application startup.
+2025-10-19T13:25:23: INFO:     Application startup complete.
+2025-10-19T13:25:23: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-19T13:25:41: INFO:     Started server process [1316280]
+2025-10-19T13:25:41: INFO:     Waiting for application startup.
+2025-10-19T13:25:41: INFO:     Application startup complete.
+2025-10-19T13:25:41: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-19T13:26:05: INFO:     Started server process [1316487]
+2025-10-19T13:26:05: INFO:     Waiting for application startup.
+2025-10-19T13:26:05: INFO:     Application startup complete.
+2025-10-19T13:26:05: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-19T13:26:22: INFO:     Started server process [1316642]
+2025-10-19T13:26:22: INFO:     Waiting for application startup.
+2025-10-19T13:26:22: INFO:     Application startup complete.
+2025-10-19T13:26:22: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-19T13:32:20: INFO:     Started server process [1317636]
+2025-10-19T13:32:20: INFO:     Waiting for application startup.
+2025-10-19T13:32:20: INFO:     Application startup complete.
+2025-10-19T13:32:20: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-19T13:42:15: INFO:     Shutting down
+2025-10-19T13:42:15: INFO:     Waiting for application shutdown.
+2025-10-19T13:42:15: INFO:     Application shutdown complete.
+2025-10-19T13:42:15: INFO:     Finished server process [1317636]
+2025-10-19T20:04:38: INFO:     Started server process [4872]
+2025-10-19T20:04:38: INFO:     Waiting for application startup.
+2025-10-19T20:04:38: INFO:     Application startup complete.
+2025-10-19T20:04:38: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-19T20:22:38: INFO:     Shutting down
+2025-10-19T20:22:38: INFO:     Waiting for application shutdown.
+2025-10-19T20:22:38: INFO:     Application shutdown complete.
+2025-10-19T20:22:38: INFO:     Finished server process [4872]
+2025-10-19T20:22:39: INFO:     Started server process [8481]
+2025-10-19T20:22:39: INFO:     Waiting for application startup.
+2025-10-19T20:22:39: INFO:     Application startup complete.
+2025-10-19T20:22:39: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-19T21:10:13: INFO:     Shutting down
+2025-10-19T21:10:13: INFO:     Waiting for application shutdown.
+2025-10-19T21:10:13: INFO:     Application shutdown complete.
+2025-10-19T21:10:13: INFO:     Finished server process [8481]
+2025-10-19T21:10:15: INFO:     Started server process [13314]
+2025-10-19T21:10:15: INFO:     Waiting for application startup.
+2025-10-19T21:10:15: INFO:     Application startup complete.
+2025-10-19T21:10:15: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-19T21:10:18: INFO:     Shutting down
+2025-10-19T21:10:18: INFO:     Waiting for application shutdown.
+2025-10-19T21:10:18: INFO:     Application shutdown complete.
+2025-10-19T21:10:18: INFO:     Finished server process [13314]
+2025-10-19T21:10:19: INFO:     Started server process [13377]
+2025-10-19T21:10:19: INFO:     Waiting for application startup.
+2025-10-19T21:10:19: INFO:     Application startup complete.
+2025-10-19T21:10:19: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-19T21:10:57: INFO:     Shutting down
+2025-10-19T21:10:57: INFO:     Waiting for application shutdown.
+2025-10-19T21:10:57: INFO:     Application shutdown complete.
+2025-10-19T21:10:57: INFO:     Finished server process [13377]
+2025-10-19T21:10:59: INFO:     Started server process [13543]
+2025-10-19T21:10:59: INFO:     Waiting for application startup.
+2025-10-19T21:10:59: INFO:     Application startup complete.
+2025-10-19T21:10:59: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-19T21:12:36: INFO:     Shutting down
+2025-10-19T21:12:36: INFO:     Waiting for application shutdown.
+2025-10-19T21:12:36: INFO:     Application shutdown complete.
+2025-10-19T21:12:36: INFO:     Finished server process [13543]
+2025-10-19T21:12:37: INFO:     Started server process [13760]
+2025-10-19T21:12:37: INFO:     Waiting for application startup.
+2025-10-19T21:12:37: INFO:     Application startup complete.
+2025-10-19T21:12:37: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-19T21:29:09: INFO:     Shutting down
+2025-10-19T21:29:09: INFO:     Waiting for application shutdown.
+2025-10-19T21:29:09: INFO:     Application shutdown complete.
+2025-10-19T21:29:09: INFO:     Finished server process [13760]
+2025-10-19T21:29:11: INFO:     Started server process [14751]
+2025-10-19T21:29:11: INFO:     Waiting for application startup.
+2025-10-19T21:29:11: INFO:     Application startup complete.
+2025-10-19T21:29:11: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-19T21:45:07: INFO:     Shutting down
+2025-10-19T21:45:07: INFO:     Waiting for application shutdown.
+2025-10-19T21:45:07: INFO:     Application shutdown complete.
+2025-10-19T21:45:07: INFO:     Finished server process [14751]
+2025-10-19T21:45:09: INFO:     Started server process [15770]
+2025-10-19T21:45:09: INFO:     Waiting for application startup.
+2025-10-19T21:45:09: INFO:     Application startup complete.
+2025-10-19T21:45:09: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-19T21:52:56: INFO:     Shutting down
+2025-10-19T21:52:56: INFO:     Waiting for application shutdown.
+2025-10-19T21:52:56: INFO:     Application shutdown complete.
+2025-10-19T21:52:56: INFO:     Finished server process [15770]
+2025-10-19T21:52:57: INFO:     Started server process [16426]
+2025-10-19T21:52:57: INFO:     Waiting for application startup.
+2025-10-19T21:52:57: INFO:     Application startup complete.
+2025-10-19T21:52:57: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-19T22:26:50: INFO:     Shutting down
+2025-10-19T22:26:50: INFO:     Waiting for application shutdown.
+2025-10-19T22:26:50: INFO:     Application shutdown complete.
+2025-10-19T22:26:50: INFO:     Finished server process [16426]
+2025-10-19T22:26:51: INFO:     Started server process [18758]
+2025-10-19T22:26:51: INFO:     Waiting for application startup.
+2025-10-19T22:26:51: INFO:     Application startup complete.
+2025-10-19T22:26:51: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-19T22:28:28: WARNING:  Invalid HTTP request received.
+2025-10-19T22:31:06: WARNING:  Invalid HTTP request received.
+2025-10-19T22:31:06: WARNING:  Invalid HTTP request received.
+2025-10-19T23:35:08: INFO:     Shutting down
+2025-10-19T23:35:09: INFO:     Waiting for application shutdown.
+2025-10-19T23:35:09: INFO:     Application shutdown complete.
+2025-10-19T23:35:09: INFO:     Finished server process [18758]
+2025-10-19T23:35:10: INFO:     Started server process [26751]
+2025-10-19T23:35:10: INFO:     Waiting for application startup.
+2025-10-19T23:35:10: INFO:     Application startup complete.
+2025-10-19T23:35:10: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-19T23:54:50: INFO:     Shutting down
+2025-10-19T23:54:50: INFO:     Waiting for application shutdown.
+2025-10-19T23:54:50: INFO:     Application shutdown complete.
+2025-10-19T23:54:50: INFO:     Finished server process [26751]
+2025-10-19T23:54:51: INFO:     Started server process [29156]
+2025-10-19T23:54:51: INFO:     Waiting for application startup.
+2025-10-19T23:54:51: INFO:     Application startup complete.
+2025-10-19T23:54:51: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-20T00:02:41: INFO:     Shutting down
+2025-10-20T00:02:41: INFO:     Waiting for application shutdown.
+2025-10-20T00:02:41: INFO:     Application shutdown complete.
+2025-10-20T00:02:41: INFO:     Finished server process [29156]
+2025-10-20T00:06:11: INFO:     Started server process [35320]
+2025-10-20T00:06:11: INFO:     Waiting for application startup.
+2025-10-20T00:06:11: INFO:     Application startup complete.
+2025-10-20T00:06:11: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-20T00:35:05: INFO:     Shutting down
+2025-10-20T00:35:05: INFO:     Waiting for application shutdown.
+2025-10-20T00:35:05: INFO:     Application shutdown complete.
+2025-10-20T00:35:05: INFO:     Finished server process [35320]
+2025-10-20T00:35:07: INFO:     Started server process [44676]
+2025-10-20T00:35:07: INFO:     Waiting for application startup.
+2025-10-20T00:35:07: INFO:     Application startup complete.
+2025-10-20T00:35:07: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-20T02:00:26: INFO:     Shutting down
+2025-10-20T02:00:26: INFO:     Waiting for application shutdown.
+2025-10-20T02:00:26: INFO:     Application shutdown complete.
+2025-10-20T02:00:26: INFO:     Finished server process [44676]
+2025-10-20T02:00:28: INFO:     Started server process [66120]
+2025-10-20T02:00:28: INFO:     Waiting for application startup.
+2025-10-20T02:00:28: INFO:     Application startup complete.
+2025-10-20T02:00:28: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-20T02:57:38: INFO:     Shutting down
+2025-10-20T02:57:38: INFO:     Waiting for application shutdown.
+2025-10-20T02:57:38: INFO:     Application shutdown complete.
+2025-10-20T02:57:38: INFO:     Finished server process [66120]
+2025-10-20T02:57:39: INFO:     Started server process [74831]
+2025-10-20T02:57:39: INFO:     Waiting for application startup.
+2025-10-20T02:57:39: INFO:     Application startup complete.
+2025-10-20T02:57:39: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-20T03:10:20: INFO:     Shutting down
+2025-10-20T03:10:20: INFO:     Waiting for application shutdown.
+2025-10-20T03:10:20: INFO:     Application shutdown complete.
+2025-10-20T03:10:20: INFO:     Finished server process [74831]
+2025-10-20T03:10:22: INFO:     Started server process [76862]
+2025-10-20T03:10:22: INFO:     Waiting for application startup.
+2025-10-20T03:10:22: INFO:     Application startup complete.
+2025-10-20T03:10:22: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-20T03:36:10: INFO:     Shutting down
+2025-10-20T03:36:10: INFO:     Waiting for application shutdown.
+2025-10-20T03:36:10: INFO:     Application shutdown complete.
+2025-10-20T03:36:10: INFO:     Finished server process [76862]
+2025-10-20T03:36:11: INFO:     Started server process [80446]
+2025-10-20T03:36:11: INFO:     Waiting for application startup.
+2025-10-20T03:36:11: INFO:     Application startup complete.
+2025-10-20T03:36:11: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-20T04:30:30: INFO:     Shutting down
+2025-10-20T04:30:30: INFO:     Waiting for application shutdown.
+2025-10-20T04:30:30: INFO:     Application shutdown complete.
+2025-10-20T04:30:30: INFO:     Finished server process [80446]
+2025-10-20T04:30:31: INFO:     Started server process [87428]
+2025-10-20T04:30:31: INFO:     Waiting for application startup.
+2025-10-20T04:30:31: INFO:     Application startup complete.
+2025-10-20T04:30:31: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-20T04:45:21: INFO:     Shutting down
+2025-10-20T04:45:21: INFO:     Waiting for application shutdown.
+2025-10-20T04:45:21: INFO:     Application shutdown complete.
+2025-10-20T04:45:21: INFO:     Finished server process [87428]
+2025-10-20T04:45:22: INFO:     Started server process [89807]
+2025-10-20T04:45:22: INFO:     Waiting for application startup.
+2025-10-20T04:45:22: INFO:     Application startup complete.
+2025-10-20T04:45:22: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-20T05:52:16: WARNING:  Invalid HTTP request received.
+2025-10-20T05:52:17: WARNING:  Invalid HTTP request received.
+2025-10-20T06:34:58: WARNING:  Invalid HTTP request received.
+2025-10-20T06:34:58: WARNING:  Invalid HTTP request received.
+2025-10-20T07:15:38: WARNING:  Invalid HTTP request received.
+2025-10-20T11:47:06: WARNING:  Invalid HTTP request received.
+2025-10-20T11:47:07: WARNING:  Invalid HTTP request received.
+2025-10-20T12:25:40: WARNING:  Invalid HTTP request received.
+2025-10-20T12:25:48: WARNING:  Invalid HTTP request received.

@@ -5,17 +5,19 @@ const ANYTHINGLLM_API_KEY = process.env.ANYTHINGLLM_API_KEY || '0G0WTZ3-6ZX4D20-
 
 export async function POST(request: NextRequest) {
   try {
-    const { messages, workspaceSlug, workspace, mode = 'chat' } = await request.json();
+    const { messages, workspaceSlug, workspace, threadSlug, mode = 'chat' } = await request.json();
     
     // Use 'workspace' if provided, otherwise fall back to 'workspaceSlug'
     // NO DEFAULT - if no workspace specified, return error
     const effectiveWorkspaceSlug = workspace || workspaceSlug;
     
-    console.log('🔍 [AnythingLLM API] Workspace Debug:', {
+    console.log('🔍 [AnythingLLM API] Chat Debug:', {
       receivedWorkspace: workspace,
       receivedWorkspaceSlug: workspaceSlug,
       effectiveWorkspaceSlug,
-      mode
+      threadSlug,
+      mode,
+      isThreadChat: !!threadSlug
     });
     
     if (!effectiveWorkspaceSlug) {
@@ -38,17 +40,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Send the user message directly WITHOUT combining with system prompt
+    // AnythingLLM handles system prompt via workspace config
+    // Preserving the raw message allows @agent mentions and other syntax to work
+    const messageToSend = lastMessage.content;
 
-    // Combine system prompt with user message if system prompt exists
-    const messageToSend = systemPrompt 
-      ? `SYSTEM INSTRUCTIONS:\n${systemPrompt}\n\nUSER REQUEST:\n${lastMessage.content}`
-      : lastMessage.content;
+    // Determine the endpoint based on whether this is thread-based chat
+    let endpoint: string;
+    if (threadSlug) {
+      // Thread-based chat (saves to SOW's thread)
+      endpoint = `${ANYTHINGLLM_URL}/api/v1/workspace/${effectiveWorkspaceSlug}/thread/${threadSlug}/chat`;
+      console.log(`🧵 [AnythingLLM API] Sending to THREAD: ${effectiveWorkspaceSlug}/${threadSlug}`);
+    } else {
+      // Workspace-level chat (legacy behavior)
+      endpoint = `${ANYTHINGLLM_URL}/api/v1/workspace/${effectiveWorkspaceSlug}/chat`;
+      console.log(`💬 [AnythingLLM API] Sending to WORKSPACE: ${effectiveWorkspaceSlug}`);
+    }
 
-    // Send chat request to AnythingLLM workspace
-    console.log(`🚀 [AnythingLLM API] Sending to workspace: ${effectiveWorkspaceSlug}`);
-    console.log(`📍 [AnythingLLM API] Full URL: ${ANYTHINGLLM_URL}/api/v1/workspace/${effectiveWorkspaceSlug}/chat`);
+    console.log(`📨 [AnythingLLM API] User message:`, messageToSend.substring(0, 100));
     
-    const response = await fetch(`${ANYTHINGLLM_URL}/api/v1/workspace/${effectiveWorkspaceSlug}/chat`, {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${ANYTHINGLLM_API_KEY}`,

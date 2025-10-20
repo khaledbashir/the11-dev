@@ -340,9 +340,17 @@ export function parseSOWMarkdown(markdown: string): Partial<SOWData> {
  * Clean SOW content by removing non-client-facing elements
  */
 export function cleanSOWContent(content: string): string {
-  // Remove any internal comments, thinking tags, etc.
+  // Remove any internal comments, thinking tags, tool calls, etc.
   return content
+    // Remove <AI_THINK> tags
+    .replace(/<AI_THINK>[\s\S]*?<\/AI_THINK>/gi, '')
+    // Remove <think> tags
     .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    // Remove <tool_call> tags
+    .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '')
+    // Remove HTML comments
     .replace(/<!-- .*? -->/gi, '')
+    // Remove any remaining XML-style tags that might be internal
+    .replace(/<\/?[A-Z_]+>/gi, '')
     .trim();
 }

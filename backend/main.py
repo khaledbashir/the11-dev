@@ -1,17 +1,45 @@
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import weasyprint
 from jinja2 import Template
 import base64
 import os
 from pathlib import Path
+from typing import Optional, Dict, Any
+from dotenv import load_dotenv
+from services.google_sheets_generator import create_sow_sheet
+from services.google_oauth_handler import get_oauth_handler
 
-app = FastAPI(title="Social Garden PDF Service")
+# Load environment variables from .env file
+load_dotenv()
+
+app = FastAPI(title="Social Garden PDF & Sheets Service")
+
+# Enable CORS for frontend requests
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class PDFRequest(BaseModel):
     html_content: str
     filename: str = "document"
+
+class SheetRequest(BaseModel):
+    client_name: str
+    service_name: str
+    overview: Optional[str] = ""
+    deliverables: Optional[str] = ""
+    outcomes: Optional[str] = ""
+    phases: Optional[str] = ""
+    pricing: Optional[list] = None
+    assumptions: Optional[str] = ""
+    timeline: Optional[str] = ""
 
 # HTML template - Clean template with only logo and footer
 SOW_TEMPLATE = """
@@ -373,6 +401,106 @@ async def generate_pdf(request: PDFRequest):
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "service": "Social Garden PDF Service"}
+
+@app.post("/create-sheet")
+async def create_sheet(request: SheetRequest):
+    """Create a formatted Google Sheet from SOW data"""
+    try:
+        sow_data = {
+            'overview': request.overview,
+            'deliverables': request.deliverables,
+            'outcomes': request.outcomes,
+            'phases': request.phases,
+            'pricing': request.pricing or [],
+            'assumptions': request.assumptions,
+            'timeline': request.timeline
+        }
+        
+        result = create_sow_sheet(request.client_name, request.service_name, sow_data)
+        return result
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        import traceback
+        error_detail = f"Sheet creation failed: {str(e)}\n{traceback.format_exc()}"
+        print(error_detail)
+        raise HTTPException(status_code=500, detail=f"Sheet creation failed: {str(e)}")
+
+@app.get("/oauth/authorize")
+async def oauth_authorize():
+    """Get Google OAuth authorization URL"""
+    try:
+        oauth_handler = get_oauth_handler()
+        auth_url, state = oauth_handler.get_authorization_url()
+        return {
+            'auth_url': auth_url,
+            'state': state
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+class OAuthTokenRequest(BaseModel):
+    code: str
+
+@app.post("/oauth/token")
+async def oauth_token(request: OAuthTokenRequest):
+    """Exchange OAuth code for access token"""
+    try:
+        oauth_handler = get_oauth_handler()
+        token_dict = oauth_handler.exchange_code_for_token(request.code)
+        
+        # Encode token for safe transmission
+        encoded_token = oauth_handler.encode_token(token_dict)
+        
+        return {
+            'token': encoded_token,
+            'access_token': token_dict.get('access_token'),
+            'expires_in': token_dict.get('expires_in')
+        }
+    except Exception as e:
+        print(f"ERROR exchanging token: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Failed to get access token: {str(e)}")
+
+class SheetRequestOAuth(BaseModel):
+    client_name: str
+    service_name: str
+    overview: Optional[str] = ""
+    deliverables: Optional[str] = ""
+    outcomes: Optional[str] = ""
+    phases: Optional[str] = ""
+    pricing: Optional[list] = None
+    assumptions: Optional[str] = ""
+    timeline: Optional[str] = ""
+    access_token: str
+
+@app.post("/create-sheet-oauth")
+async def create_sheet_oauth(request: SheetRequestOAuth):
+    """Create a formatted Google Sheet using OAuth token"""
+    try:
+        if not request.access_token:
+            raise ValueError("access_token is required")
+        
+        sow_data = {
+            'overview': request.overview,
+            'deliverables': request.deliverables,
+            'outcomes': request.outcomes,
+            'phases': request.phases,
+            'pricing': request.pricing or [],
+            'assumptions': request.assumptions,
+            'timeline': request.timeline
+        }
+        
+        result = create_sow_sheet(request.client_name, request.service_name, sow_data, access_token=request.access_token)
+        return result
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        import traceback
+        error_detail = f"Sheet creation failed: {str(e)}\n{traceback.format_exc()}"
+        print(error_detail)
+        raise HTTPException(status_code=500, detail=f"Sheet creation failed: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

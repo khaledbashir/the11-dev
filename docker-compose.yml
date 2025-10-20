@@ -1,44 +1,62 @@
 version: '3.8'
 
 services:
-  # Next.js Frontend
+  # Next.js Frontend (SOW Generator)
   frontend:
     build:
-      context: ./novel-editor-demo
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: Dockerfile.frontend
     ports:
-      - "3333:3000"
-      - "3334:3000"
+      - "3001:3001"
     environment:
-      - NODE_ENV=production
-      - NEXT_PUBLIC_PDF_SERVICE_URL=http://pdf-service:8000
-            - OPENROUTER_API_KEY=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
-      - DB_HOST=168.231.115.219
-      - DB_PORT=3306
-      - DB_USER=sg_sow_user
-      - DB_PASSWORD=SG_sow_2025_SecurePass!
-      - DB_NAME=socialgarden_sow
-      - NEXT_PUBLIC_BASE_URL=http://168.231.115.219:3333
+      NODE_ENV: production
+      NEXT_PUBLIC_ANYTHINGLLM_URL: ${NEXT_PUBLIC_ANYTHINGLLM_URL}
+      ANYTHINGLLM_API_KEY: ${ANYTHINGLLM_API_KEY}
+      ANYTHINGLLM_WORKSPACE_SLUG: ${ANYTHINGLLM_WORKSPACE_SLUG}
+      NEXT_PUBLIC_PDF_SERVICE_URL: ${NEXT_PUBLIC_PDF_SERVICE_URL}
+      NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sow-frontend.rule=Host('sow.qandu.me')"
+      - "traefik.http.routers.sow-frontend.entrypoints=web,websecure"
+      - "traefik.http.routers.sow-frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.sow-frontend.loadbalancer.server.port=3001"
     depends_on:
-      - pdf-service
+      - backend
     networks:
-      - sow-network
+      - easypanel
 
-  # Python PDF Service
-  pdf-service:
+  # Python FastAPI Backend (PDF & OAuth)
+  backend:
     build:
-      context: ./pdf-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: Dockerfile.backend
     ports:
       - "8000:8000"
     environment:
-      - PYTHONPATH=/app
+      API_PORT: 8000
+      GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON: ${GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON}
+      GOOGLE_SHEETS_AUTO_SHARE_EMAIL: ${GOOGLE_SHEETS_AUTO_SHARE_EMAIL}
+      GOOGLE_SHEETS_FOLDER_ID: ${GOOGLE_SHEETS_FOLDER_ID}
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET}
+      GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
     networks:
-      - sow-network
+      - easypanel
 
 networks:
-  sow-network:
-    driver: bridge
-
-volumes:
-  node_modules:
+  easypanel:
+    external: true

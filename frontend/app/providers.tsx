@@ -4,6 +4,7 @@ import { type Dispatch, type ReactNode, type SetStateAction, createContext } fro
 import { ThemeProvider, useTheme } from "next-themes";
 import { Toaster } from "sonner";
 import useLocalStorage from "@/hooks/use-local-storage";
+import { AISettingsProvider } from "@/context/ai-settings";
 
 export const AppContext = createContext<{
   font: string;
@@ -31,8 +32,10 @@ export default function Providers({ children }: { children: ReactNode }) {
           setFont,
         }}
       >
-        <ToasterProvider />
-        {children}
+        <AISettingsProvider>
+          <ToasterProvider />
+          {children}
+        </AISettingsProvider>
       </AppContext.Provider>
     </ThemeProvider>
   );

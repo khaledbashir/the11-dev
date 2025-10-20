@@ -3,8 +3,8 @@ module.exports = {
     {
       name: 'sow-frontend',
       cwd: '/root/the11/frontend',
-      script: '/usr/bin/bash',
-      args: '-c "PORT=3001 NODE_ENV=production ./node_modules/.bin/next start"',
+      script: './node_modules/.bin/next',
+      args: 'start',
       instances: 1,
       autorestart: true,
       watch: false,
@@ -13,9 +13,9 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: 3001,
       },
-      error_file: '/root/the11/logs/frontend-error.log',
-      out_file: '/root/the11/logs/frontend-out.log',
-      log_file: '/root/the11/logs/frontend-combined.log',
+      error_file: '/root/.pm2/logs/sow-frontend-error.log',
+      out_file: '/root/.pm2/logs/sow-frontend-out.log',
+      log_file: '/root/.pm2/logs/sow-frontend-combined.log',
       time: true,
     },
     {
@@ -28,6 +28,7 @@ module.exports = {
       autorestart: true,
       watch: false,
       max_memory_restart: '500M',
+      env_file: '/root/the11/backend/.env',
       env: {
         PYTHON_ENV: 'production',
       },
