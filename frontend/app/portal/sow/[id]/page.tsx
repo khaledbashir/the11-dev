@@ -434,7 +434,7 @@ ${sow.htmlContent}
         <div className="p-6 border-b border-[#2A2A2D]">
           <div className="flex items-center gap-3">
             <img 
-              src="/assets/Logo-Dark-Green.png" 
+              src="/images/logo-light.png" 
               alt="Social Garden" 
               className="h-10 w-auto"
             />
@@ -1018,11 +1018,11 @@ ${sow.htmlContent}
                   prose-ul:text-gray-300 prose-ul:space-y-2
                   prose-ol:text-gray-300 prose-ol:space-y-2
                   prose-li:text-gray-300
-                  prose-table:w-full prose-table:border-collapse prose-table:my-8 prose-table:bg-[#0E0F0F]
+                  prose-table:w-full prose-table:border-collapse prose-table:my-8 prose-table:bg-[#0E0F0F] prose-table:table-fixed
                   prose-thead:border-b-2 prose-thead:border-[#1CBF79]/50
-                  prose-th:bg-[#1A1A1D] prose-th:text-white prose-th:font-bold prose-th:p-4 prose-th:text-left prose-th:border prose-th:border-[#2A2A2D]
+                  prose-th:bg-[#1A1A1D] prose-th:text-white prose-th:font-bold prose-th:p-4 prose-th:text-left prose-th:border prose-th:border-[#2A2A2D] prose-th:break-words
                   prose-tbody:bg-[#0E0F0F]
-                  prose-td:bg-[#0E0F0F] prose-td:border prose-td:border-[#2A2A2D] prose-td:text-gray-200 prose-td:p-4
+                  prose-td:bg-[#0E0F0F] prose-td:border prose-td:border-[#2A2A2D] prose-td:text-gray-200 prose-td:p-4 prose-td:break-words prose-td:overflow-wrap-anywhere
                   prose-tr:border-b prose-tr:border-[#2A2A2D]
                   prose-tr:hover:bg-[#1CBF79]/10 prose-tr:transition-colors"
                 dangerouslySetInnerHTML={{ __html: sow.htmlContent }}
@@ -1098,22 +1098,73 @@ ${sow.htmlContent}
         };
 
         return (
-          <div className="max-w-6xl mx-auto space-y-6">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-[#1CBF79]/20 to-blue-500/20 border border-[#1CBF79]/30 rounded-2xl p-8 shadow-xl">
+          <div className="max-w-6xl mx-auto space-y-8">
+            {/* 🔥 ACTUAL SOW PRICING (from document) */}
+            <div className="bg-[#1A1A1D] border border-[#2A2A2D] rounded-2xl p-8 shadow-xl">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="p-3 bg-[#1CBF79]/20 rounded-xl">
+                  <FileText className="w-8 h-8 text-[#1CBF79]" />
+                </div>
+                <div>
+                  <h2 className="text-3xl font-bold text-white mb-1">Proposed Investment</h2>
+                  <p className="text-gray-400">As outlined in your Statement of Work</p>
+                </div>
+              </div>
+              
+              {/* Display pricing table from HTML content */}
+              <div 
+                className="prose prose-invert prose-lg max-w-none 
+                  prose-table:w-full prose-table:border-collapse prose-table:my-4 prose-table:bg-[#0E0F0F] prose-table:table-fixed
+                  prose-thead:border-b-2 prose-thead:border-[#1CBF79]/50
+                  prose-th:bg-[#1A1A1D] prose-th:text-white prose-th:font-bold prose-th:p-4 prose-th:text-left prose-th:border prose-th:border-[#2A2A2D] prose-th:break-words
+                  prose-tbody:bg-[#0E0F0F]
+                  prose-td:bg-[#0E0F0F] prose-td:border prose-td:border-[#2A2A2D] prose-td:text-gray-200 prose-td:p-4 prose-td:break-words prose-td:overflow-wrap-anywhere
+                  prose-tr:border-b prose-tr:border-[#2A2A2D]
+                  prose-tr:hover:bg-[#1CBF79]/10 prose-tr:transition-colors"
+                dangerouslySetInnerHTML={{ __html: sow.htmlContent }}
+              />
+              
+              <div className="mt-6 p-6 bg-gradient-to-r from-[#1CBF79]/10 to-blue-500/10 border border-[#1CBF79]/30 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-400 mb-1">Total Investment</p>
+                    <p className="text-4xl font-bold text-[#1CBF79]">
+                      ${sow.totalInvestment.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handleAcceptSOW}
+                    className="bg-[#1CBF79] hover:bg-[#15965E] text-white px-8 py-6 text-lg font-bold shadow-lg shadow-[#1CBF79]/20"
+                  >
+                    <CheckCircle className="w-6 h-6 mr-2" />
+                    Accept This Proposal
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="flex items-center gap-4 my-8">
+              <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[#2A2A2D] to-transparent"></div>
+              <span className="text-gray-500 text-sm font-medium">OR EXPLORE CUSTOMIZATION</span>
+              <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[#2A2A2D] to-transparent"></div>
+            </div>
+
+            {/* Interactive Calculator Header */}
+            <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30 rounded-2xl p-8 shadow-xl">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-[#1CBF79]/20 rounded-xl">
-                    <DollarSign className="w-8 h-8 text-[#1CBF79]" />
+                  <div className="p-3 bg-blue-500/20 rounded-xl">
+                    <Sparkles className="w-8 h-8 text-blue-400" />
                   </div>
                   <div>
-                    <h2 className="text-3xl font-bold text-white mb-1">Interactive Pricing Calculator</h2>
-                    <p className="text-gray-400">Customize your package in real-time</p>
+                    <h2 className="text-3xl font-bold text-white mb-1">Build Your Own Package</h2>
+                    <p className="text-gray-400">Adjust services and volume to fit your needs</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm text-gray-400 mb-1">Your Investment</p>
-                  <p className="text-4xl font-bold text-[#1CBF79]">
+                  <p className="text-sm text-gray-400 mb-1">Calculated Total</p>
+                  <p className="text-4xl font-bold text-blue-400">
                     ${calculatedTotal.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
                   </p>
                 </div>
