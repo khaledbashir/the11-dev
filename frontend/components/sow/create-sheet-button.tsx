@@ -67,7 +67,10 @@ export function CreateSheetButton({
   const handleAuthorizeGoogle = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/oauth/authorize', {
+      // Get current URL to return to after OAuth
+      const returnUrl = window.location.pathname + window.location.search;
+      
+      const response = await fetch(`/api/oauth/authorize?returnUrl=${encodeURIComponent(returnUrl)}`, {
         method: 'GET',
       });
 
