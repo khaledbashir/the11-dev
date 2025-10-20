@@ -440,12 +440,15 @@ async def oauth_authorize():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class OAuthTokenRequest(BaseModel):
+    code: str
+
 @app.post("/oauth/token")
-async def oauth_token(code: str):
+async def oauth_token(request: OAuthTokenRequest):
     """Exchange OAuth code for access token"""
     try:
         oauth_handler = get_oauth_handler()
-        token_dict = oauth_handler.exchange_code_for_token(code)
+        token_dict = oauth_handler.exchange_code_for_token(request.code)
         
         # Encode token for safe transmission
         encoded_token = oauth_handler.encode_token(token_dict)

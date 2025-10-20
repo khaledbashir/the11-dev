@@ -599,3 +599,17 @@
 2025-10-20T02:38:10: INFO:     172.18.0.10:49258 - "POST /oauth/token HTTP/1.1" 422 Unprocessable Entity
 2025-10-20T02:38:25: INFO:     172.18.0.10:41510 - "GET /oauth/authorize HTTP/1.1" 200 OK
 2025-10-20T02:38:38: INFO:     172.18.0.10:39644 - "POST /oauth/token HTTP/1.1" 422 Unprocessable Entity
+2025-10-20T02:50:03: INFO:     172.18.0.11:44086 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T02:50:18: INFO:     172.18.0.11:44032 - "POST /oauth/token HTTP/1.1" 422 Unprocessable Entity
+2025-10-20T02:53:38: === DEBUG: Received HTML Content ===
+2025-10-20T02:53:38: <h1>Scope of Work: CCC Real Estate - HubSpot Integration, Landing Pages &amp; AI Chatbot</h1><h2>Overview</h2><p>This scope of work details a proposed solution for Social Garden to support CCC Real Estate with HubSpot integration, three targeted landing pages, and an AI chatbot implementation to enhance lead generation, streamline customer interactions, and improve overall marketing efficiency for their real estate business.</p><h2>What does the scope include?</h2><p>• HubSpot account setup and 
+2025-10-20T02:53:38: === Has table tag: True ===
+2025-10-20T02:53:39: INFO:     172.18.0.11:33104 - "POST /generate-pdf HTTP/1.1" 200 OK
+2025-10-20T02:57:38: INFO:     Shutting down
+2025-10-20T02:57:38: INFO:     Waiting for application shutdown.
+2025-10-20T02:57:38: INFO:     Application shutdown complete.
+2025-10-20T02:57:38: INFO:     Finished server process [66120]
+2025-10-20T02:57:39: INFO:     Started server process [74831]
+2025-10-20T02:57:39: INFO:     Waiting for application startup.
+2025-10-20T02:57:39: INFO:     Application startup complete.
+2025-10-20T02:57:39: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
