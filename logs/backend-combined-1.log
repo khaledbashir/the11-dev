@@ -659,3 +659,27 @@
 2025-10-20T04:30:31: INFO:     Waiting for application startup.
 2025-10-20T04:30:31: INFO:     Application startup complete.
 2025-10-20T04:30:31: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-20T04:45:21: INFO:     Shutting down
+2025-10-20T04:45:21: INFO:     Waiting for application shutdown.
+2025-10-20T04:45:21: INFO:     Application shutdown complete.
+2025-10-20T04:45:21: INFO:     Finished server process [87428]
+2025-10-20T04:45:22: INFO:     Started server process [89807]
+2025-10-20T04:45:22: INFO:     Waiting for application startup.
+2025-10-20T04:45:22: INFO:     Application startup complete.
+2025-10-20T04:45:22: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-20T05:52:16: WARNING:  Invalid HTTP request received.
+2025-10-20T05:52:17: WARNING:  Invalid HTTP request received.
+2025-10-20T05:52:17: INFO:     212.11.64.32:36822 - "GET / HTTP/1.1" 404 Not Found
+2025-10-20T05:52:24: INFO:     212.11.64.32:36838 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+2025-10-20T06:34:58: WARNING:  Invalid HTTP request received.
+2025-10-20T06:34:58: WARNING:  Invalid HTTP request received.
+2025-10-20T06:34:58: INFO:     167.99.44.61:47696 - "GET / HTTP/1.1" 404 Not Found
+2025-10-20T06:34:58: INFO:     167.99.44.61:47708 - "GET /login HTTP/1.1" 404 Not Found
+2025-10-20T07:15:38: WARNING:  Invalid HTTP request received.
+2025-10-20T09:18:12: INFO:     124.198.132.121:44460 - "GET / HTTP/1.1" 404 Not Found
+2025-10-20T11:47:06: WARNING:  Invalid HTTP request received.
+2025-10-20T11:47:07: WARNING:  Invalid HTTP request received.
+2025-10-20T12:25:38: INFO:     167.94.138.199:58692 - "GET / HTTP/1.1" 404 Not Found
+2025-10-20T12:25:40: WARNING:  Invalid HTTP request received.
+2025-10-20T12:25:48: WARNING:  Invalid HTTP request received.
+2025-10-20T12:25:49: INFO:     167.94.138.199:48314 - "GET /robots.txt HTTP/1.1" 404 Not Found
