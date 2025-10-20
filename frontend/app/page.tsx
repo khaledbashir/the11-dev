@@ -1181,19 +1181,18 @@ export default function Page() {
         return;
       }
 
-      // 💾 Delete from database first
-      const dbResponse = await fetch(`/api/workspaces/${workspaceId}`, {
+      // 💾 Delete from database AND AnythingLLM (API endpoint handles both)
+      const dbResponse = await fetch(`/api/folders/${workspaceId}`, {
         method: 'DELETE',
       });
 
       if (!dbResponse.ok) {
-        throw new Error('Failed to delete workspace from database');
+        const errorData = await dbResponse.json();
+        throw new Error(errorData.details || 'Failed to delete workspace from database');
       }
 
-      // 🏢 Delete AnythingLLM workspace (cascades to all threads)
-      if (workspace.workspace_slug) {
-        await anythingLLM.deleteWorkspace(workspace.workspace_slug);
-      }
+      const result = await dbResponse.json();
+      console.log(`✅ Workspace deletion result:`, result);
 
       // Update state
       setWorkspaces(prev => prev.filter(ws => ws.id !== workspaceId));
@@ -1213,7 +1212,7 @@ export default function Page() {
       toast.success(`✅ Workspace "${workspace.name}" deleted`);
     } catch (error) {
       console.error('Error deleting workspace:', error);
-      toast.error('Failed to delete workspace');
+      toast.error(`Failed to delete workspace: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 
