@@ -58,6 +58,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Extract returnUrl from state (format: "state_value|returnUrl")
+    let returnUrl = '/';
+    if (state && state.includes('|')) {
+      const [, encodedReturnUrl] = state.split('|');
+      try {
+        returnUrl = decodeURIComponent(encodedReturnUrl);
+      } catch {
+        returnUrl = '/';
+      }
+    }
+
     // Exchange code for token via backend
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
     const response = await fetch(`${backendUrl}/oauth/token`, {
@@ -78,10 +89,9 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json();
 
-    // Redirect back to SOW page with token in URL
+    // Redirect back to original page with token in URL
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001';
-    const referrer = request.headers.get('referer') || baseUrl;
-    const redirectUrl = new URL(referrer);
+    const redirectUrl = new URL(returnUrl, baseUrl);
     redirectUrl.searchParams.set('oauth_token', data.token);
     redirectUrl.searchParams.set('oauth_expires', data.expires_in || '3600');
 

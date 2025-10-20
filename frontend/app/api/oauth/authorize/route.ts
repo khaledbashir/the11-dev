@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
+    const searchParams = request.nextUrl.searchParams;
+    const returnUrl = searchParams.get('returnUrl') || '/';
+    
     // Get authorization URL from backend
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/oauth/authorize`,
@@ -22,10 +25,13 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json();
+    
+    // Append returnUrl to state for use in callback
+    const stateWithReturn = `${data.state}|${encodeURIComponent(returnUrl)}`;
 
     return NextResponse.json({
-      auth_url: data.auth_url,
-      state: data.state,
+      auth_url: data.auth_url.replace(`state=${data.state}`, `state=${stateWithReturn}`),
+      state: stateWithReturn,
     });
   } catch (error) {
     console.error('OAuth authorize error:', error);

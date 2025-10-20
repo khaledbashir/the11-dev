@@ -374,3 +374,8 @@
 2025-10-20T02:17:36: INFO:     172.18.0.10:39184 - "POST /oauth/token HTTP/1.1" 422 Unprocessable Entity
 2025-10-20T02:25:45: INFO:     172.18.0.11:50722 - "GET /oauth/authorize HTTP/1.1" 200 OK
 2025-10-20T02:26:00: INFO:     172.18.0.11:60406 - "POST /oauth/token HTTP/1.1" 422 Unprocessable Entity
+2025-10-20T02:34:56: INFO:     147.185.132.49:65018 - "GET / HTTP/1.1" 404 Not Found
+2025-10-20T02:37:53: INFO:     172.18.0.10:60008 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T02:38:10: INFO:     172.18.0.10:49258 - "POST /oauth/token HTTP/1.1" 422 Unprocessable Entity
+2025-10-20T02:38:25: INFO:     172.18.0.10:41510 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T02:38:38: INFO:     172.18.0.10:39644 - "POST /oauth/token HTTP/1.1" 422 Unprocessable Entity
