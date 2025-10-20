@@ -629,3 +629,5 @@
 2025-10-20T03:10:22: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 2025-10-20T03:11:31: INFO:     172.18.0.10:54126 - "GET /oauth/authorize HTTP/1.1" 200 OK
 2025-10-20T03:11:44: INFO:     172.18.0.10:56498 - "POST /oauth/token HTTP/1.1" 200 OK
+2025-10-20T03:20:08: INFO:     172.18.0.10:46504 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T03:23:48: INFO:     172.18.0.11:33382 - "POST /oauth/token HTTP/1.1" 200 OK
