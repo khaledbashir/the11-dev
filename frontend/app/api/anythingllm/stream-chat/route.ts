@@ -5,16 +5,18 @@ const ANYTHINGLLM_API_KEY = process.env.ANYTHINGLLM_API_KEY || '0G0WTZ3-6ZX4D20-
 
 export async function POST(request: NextRequest) {
   try {
-    const { messages, workspaceSlug, workspace, mode = 'chat' } = await request.json();
+    const { messages, workspaceSlug, workspace, threadSlug, mode = 'chat' } = await request.json();
     
     // Use 'workspace' if provided, otherwise fall back to 'workspaceSlug'
     const effectiveWorkspaceSlug = workspace || workspaceSlug;
     
-    console.log('🔍 [AnythingLLM Stream] Workspace Debug:', {
+    console.log('🔍 [AnythingLLM Stream] Chat Debug:', {
       receivedWorkspace: workspace,
       receivedWorkspaceSlug: workspaceSlug,
       effectiveWorkspaceSlug,
-      mode
+      threadSlug,
+      mode,
+      isThreadChat: !!threadSlug
     });
     
     if (!effectiveWorkspaceSlug) {
@@ -42,12 +44,21 @@ export async function POST(request: NextRequest) {
     // Preserving the raw message allows @agent mentions and other syntax to work
     const messageToSend = lastMessage.content;
 
-    // Send streaming chat request to AnythingLLM workspace
-    console.log(`🚀 [AnythingLLM Stream] Sending to workspace: ${effectiveWorkspaceSlug}`);
-    console.log(`📍 [AnythingLLM Stream] Full URL: ${ANYTHINGLLM_URL}/api/v1/workspace/${effectiveWorkspaceSlug}/stream-chat`);
+    // Determine the endpoint based on whether this is thread-based chat
+    let endpoint: string;
+    if (threadSlug) {
+      // Thread-based streaming chat (saves to SOW's thread)
+      endpoint = `${ANYTHINGLLM_URL}/api/v1/workspace/${effectiveWorkspaceSlug}/thread/${threadSlug}/stream-chat`;
+      console.log(`🧵 [AnythingLLM Stream] Sending to THREAD: ${effectiveWorkspaceSlug}/${threadSlug}`);
+    } else {
+      // Workspace-level streaming chat (legacy behavior)
+      endpoint = `${ANYTHINGLLM_URL}/api/v1/workspace/${effectiveWorkspaceSlug}/stream-chat`;
+      console.log(`💬 [AnythingLLM Stream] Sending to WORKSPACE: ${effectiveWorkspaceSlug}`);
+    }
+
     console.log(`📨 [AnythingLLM Stream] User message:`, messageToSend.substring(0, 100));
     
-    const response = await fetch(`${ANYTHINGLLM_URL}/api/v1/workspace/${effectiveWorkspaceSlug}/stream-chat`, {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${ANYTHINGLLM_API_KEY}`,

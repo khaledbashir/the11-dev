@@ -2261,6 +2261,7 @@ export default function Page() {
             body: JSON.stringify({
               model: effectiveAgent.model,
               workspace: workspaceSlug,
+              threadSlug: !isDashboardMode && currentDocId ? (documents.find(d => d.id === currentDocId)?.threadSlug || undefined) : undefined,
               messages: [
                 { role: "system", content: effectiveAgent.systemPrompt },
                 ...newMessages.map(m => ({ role: m.role, content: m.content })),
@@ -2367,6 +2368,7 @@ export default function Page() {
             body: JSON.stringify({
               model: effectiveAgent.model,
               workspace: workspaceSlug,
+              threadSlug: !isDashboardMode && currentDocId ? (documents.find(d => d.id === currentDocId)?.threadSlug || undefined) : undefined,
               messages: [
                 { role: "system", content: effectiveAgent.systemPrompt },
                 ...newMessages.map(m => ({ role: m.role, content: m.content })),
