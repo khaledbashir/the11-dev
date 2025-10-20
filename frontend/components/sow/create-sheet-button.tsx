@@ -46,7 +46,11 @@ export function CreateSheetButton({
     const oauthToken = params.get('oauth_token');
     const error = params.get('oauth_error');
 
+    console.log('🔍 Checking for OAuth token...');
+    console.log('URL params:', { oauthToken, error });
+
     if (error) {
+      console.error('❌ OAuth error:', error);
       toast.error(`OAuth error: ${error}`);
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -54,13 +58,15 @@ export function CreateSheetButton({
     }
 
     if (oauthToken) {
-      console.log('✅ OAuth token received from callback');
+      console.log('✅ OAuth token received from callback:', oauthToken);
       setAccessToken(oauthToken);
       setIsOAuthAuthorized(true);
       toast.success('Google account authorized! Ready to create sheet.');
       
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
+    } else {
+      console.log('⚠️ No oauth_token found in URL');
     }
   }, []);
 
