@@ -6,6 +6,7 @@ import { Input } from "./ui/input";
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from "./ui/dialog";
 import { ScrollArea } from "./ui/scroll-area";
 import { NewSOWModal } from "./new-sow-modal";
+import { toast } from "sonner";
 import {
   ChevronDown,
   ChevronRight,
@@ -92,48 +93,7 @@ export default function SidebarNav({
   onReorderWorkspaces,
   onReorderSOWs,
 }: SidebarNavProps) {
-  const [expandedWorkspaces, setExpandedWorkspaces] = useState<Set<string>>(
-    new Set(workspaces.map(w => w.id))
-  );
-  const [renamingId, setRenamingId] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState("");
-  const [showNewWorkspaceDialog, setShowNewWorkspaceDialog] = useState(false);
-  const [newWorkspaceName, setNewWorkspaceName] = useState("");
-  const [showNewSOWModal, setShowNewSOWModal] = useState(false);
-  const [newSOWWorkspaceId, setNewSOWWorkspaceId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [localWorkspaces, setLocalWorkspaces] = useState(workspaces);
-  
-  // 🗑️ Multi-select deletion states
-  const [selectedWorkspaces, setSelectedWorkspaces] = useState<Set<string>>(new Set());
-  const [isDeleteMode, setIsDeleteMode] = useState(false);
-  
-  // Get deletable workspaces (not protected)
-  const deletableWorkspaces = workspaces.filter(w => !isProtectedWorkspace(w));
-  const areAllSelected = deletableWorkspaces.length > 0 && deletableWorkspaces.every(w => selectedWorkspaces.has(w.id));
-  
-  // Select/deselect all handler
-  const handleSelectAll = () => {
-    if (areAllSelected) {
-      setSelectedWorkspaces(new Set());
-    } else {
-      const allDeletableIds = new Set(deletableWorkspaces.map(w => w.id));
-      setSelectedWorkspaces(allDeletableIds);
-    }
-  };
-  
-  // Category expansion states
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    new Set(['clients', 'agents', 'system'])
-  );
-
-  // Update local workspaces when prop changes
-  useEffect(() => {
-    setLocalWorkspaces(workspaces);
-  }, [workspaces]);
-
-  // Helper functions to categorize workspaces
+  // Helper functions to categorize workspaces (must be before usage)
   const isAgentWorkspace = (workspace: any) => {
     const agentSlugs = [
       'gen-the-architect',
@@ -176,6 +136,51 @@ export default function SidebarNav({
     return false;
   };
 
+  const [expandedWorkspaces, setExpandedWorkspaces] = useState<Set<string>>(
+    new Set(workspaces.map(w => w.id))
+  );
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [showNewWorkspaceDialog, setShowNewWorkspaceDialog] = useState(false);
+  const [newWorkspaceName, setNewWorkspaceName] = useState("");
+  const [showNewSOWModal, setShowNewSOWModal] = useState(false);
+  const [newSOWWorkspaceId, setNewSOWWorkspaceId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [localWorkspaces, setLocalWorkspaces] = useState(workspaces);
+  
+  // 🗑️ Multi-select deletion states
+  const [selectedWorkspaces, setSelectedWorkspaces] = useState<Set<string>>(new Set());
+  const [isDeleteMode, setIsDeleteMode] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; message: string; onConfirm: () => void } | null>(null);
+  
+  // Get deletable workspaces (not protected) - calculate inside useMemo to avoid initialization issues
+  const { deletableWorkspaces, areAllSelected } = (() => {
+    const deletable = workspaces.filter(w => !isProtectedWorkspace(w));
+    const allSelected = deletable.length > 0 && deletable.every(w => selectedWorkspaces.has(w.id));
+    return { deletableWorkspaces: deletable, areAllSelected: allSelected };
+  })();
+  
+  // Select/deselect all handler
+  const handleSelectAll = () => {
+    if (areAllSelected) {
+      setSelectedWorkspaces(new Set());
+    } else {
+      const allDeletableIds = new Set(deletableWorkspaces.map(w => w.id));
+      setSelectedWorkspaces(allDeletableIds);
+    }
+  };
+  
+  // Category expansion states
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
+    new Set(['clients', 'agents', 'system'])
+  );
+
+  // Update local workspaces when prop changes
+  useEffect(() => {
+    setLocalWorkspaces(workspaces);
+  }, [workspaces]);
+
   // 🗑️ Handle multi-select toggle
   const toggleWorkspaceSelection = (workspaceId: string) => {
     const newSelected = new Set(selectedWorkspaces);
@@ -192,7 +197,7 @@ export default function SidebarNav({
     const selectedWorkspacesList = Array.from(selectedWorkspaces);
     
     if (selectedWorkspacesList.length === 0) {
-      alert('No workspaces selected');
+      toast.error('No workspaces selected');
       return;
     }
 
@@ -201,28 +206,27 @@ export default function SidebarNav({
     ).length;
 
     if (protectedCount > 0) {
-      alert(`❌ Cannot delete ${protectedCount} protected workspace(es):\n• Master Dashboard\n• Gardner AI\n• System workspaces\n\nOnly client workspaces can be deleted.`);
+      toast.error(`Cannot delete ${protectedCount} protected workspace(es). Only client workspaces can be deleted.`);
       return;
     }
 
-    const confirmMsg = `Delete ${selectedWorkspacesList.length} workspace(s)?\n\nThis will:\n✓ Delete all SOWs inside\n✓ Delete from AnythingLLM\n✓ Remove all chat history\n\nThis cannot be undone.`;
-
-    if (!confirm(confirmMsg)) {
-      return;
-    }
-
-    // Delete each workspace
-    for (const workspaceId of selectedWorkspacesList) {
-      try {
-        onDeleteWorkspace(workspaceId);
-      } catch (error) {
-        console.error(`Failed to delete workspace ${workspaceId}:`, error);
+    setConfirmDialog({
+      open: true,
+      title: `Delete ${selectedWorkspacesList.length} Workspace(s)?`,
+      message: `This will delete all SOWs inside, remove from AnythingLLM, and clear all chat history. This cannot be undone.`,
+      onConfirm: async () => {
+        for (const workspaceId of selectedWorkspacesList) {
+          try {
+            onDeleteWorkspace(workspaceId);
+          } catch (error) {
+            console.error(`Failed to delete workspace ${workspaceId}:`, error);
+          }
+        }
+        setSelectedWorkspaces(new Set());
+        setIsDeleteMode(false);
+        toast.success(`Deleted ${selectedWorkspacesList.length} workspace(s)`);
       }
-    }
-
-    // Clear selection after successful deletion
-    setSelectedWorkspaces(new Set());
-    setIsDeleteMode(false);
+    });
   };
 
   const toggleCategory = (category: string) => {
@@ -438,9 +442,15 @@ export default function SidebarNav({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (confirm(`Delete workspace "${workspace.name}"? This will delete all SOWs inside.`)) {
-                    onDeleteWorkspace(workspace.id);
-                  }
+                  setConfirmDialog({
+                    open: true,
+                    title: `Delete Workspace?`,
+                    message: `Delete "${workspace.name}" and all SOWs inside? This cannot be undone.`,
+                    onConfirm: () => {
+                      onDeleteWorkspace(workspace.id);
+                      toast.success('Workspace deleted');
+                    }
+                  });
                 }}
                 className="p-1.5 bg-gray-700/50 hover:bg-red-500/30 rounded text-red-400 hover:text-white transition-all"
                 title="Delete"
@@ -549,9 +559,15 @@ export default function SidebarNav({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              if (confirm(`Delete SOW "${sow.name}"?`)) {
-                onDeleteSOW(sow.id);
-              }
+              setConfirmDialog({
+                open: true,
+                title: `Delete SOW?`,
+                message: `Delete "${sow.name}"? This cannot be undone.`,
+                onConfirm: () => {
+                  onDeleteSOW(sow.id);
+                  toast.success('SOW deleted');
+                }
+              });
             }}
             className="p-1 text-red-400 hover:bg-red-500/30 hover:text-red-300 rounded transition-all flex-shrink-0"
             title="Delete SOW"
@@ -921,6 +937,37 @@ export default function SidebarNav({
         }}
         workspaceName={workspaces.find(w => w.id === newSOWWorkspaceId)?.name}
       />
+
+      {/* Confirmation Dialog - No "localhost:3001 says" */}
+      <Dialog open={confirmDialog?.open || false} onOpenChange={(open) => {
+        if (!open) setConfirmDialog(null);
+      }}>
+        <DialogContent className="sm:max-w-sm bg-[#1A1A1D] border border-[#2A2A2D]">
+          <DialogHeader>
+            <DialogTitle className="text-white">{confirmDialog?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-gray-300 text-sm">{confirmDialog?.message}</p>
+          </div>
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={() => setConfirmDialog(null)}
+              className="px-4 py-2 text-sm font-medium text-gray-300 bg-[#2A2A2D] hover:bg-[#3A3A3D] rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                confirmDialog?.onConfirm();
+                setConfirmDialog(null);
+              }}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
+            >
+              Delete
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
