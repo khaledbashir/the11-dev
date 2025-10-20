@@ -1,13 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
 export async function GET(request: NextRequest) {
   try {
-    const folders = await query('SELECT id, name, workspace_slug, workspace_id, embed_id, created_at, updated_at FROM folders ORDER BY created_at DESC');
+    const response = await fetch(`${BACKEND_URL}/folders`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Backend returned ${response.status}`);
+    }
+
+    const folders = await response.json();
     return NextResponse.json(folders);
   } catch (error) {
     console.error('❌ Failed to fetch folders:', error);
-    return NextResponse.json({ error: 'Failed to fetch folders' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Failed to fetch folders', 
+      details: String(error) 
+    }, { status: 500 });
   }
 }
 
@@ -21,34 +34,31 @@ export async function POST(request: NextRequest) {
       workspaceSlug, 
       workspaceId, 
       embedId, 
-      embedIdType: typeof embedId,
-      embedIdValue: embedId ? (typeof embedId === 'object' ? JSON.stringify(embedId) : embedId) : 'null/undefined'
     });
     
-    // Generate UUID for folder id
-    const folderId = crypto.randomUUID();
-    
-    // Ensure embedId is a number or null
-    const finalEmbedId = typeof embedId === 'number' ? embedId : (embedId ? parseInt(embedId, 10) : null);
-    console.log('✅ Final embed ID:', { finalEmbedId, type: typeof finalEmbedId });
-    
-    await query(
-      'INSERT INTO folders (id, name, workspace_slug, workspace_id, embed_id) VALUES (?, ?, ?, ?, ?)',
-      [folderId, name, workspaceSlug || null, workspaceId || null, finalEmbedId]
-    );
-    
-    return NextResponse.json({ 
-      id: folderId, 
-      name, 
-      workspaceSlug,
-      workspaceId,
-      embedId
-    }, { status: 201 });
+    const response = await fetch(`${BACKEND_URL}/folders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        name, 
+        workspace_slug: workspaceSlug,
+        workspace_id: workspaceId,
+        embed_id: embedId,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.details || 'Failed to create folder');
+    }
+
+    const folderData = await response.json();
+    return NextResponse.json(folderData, { status: 201 });
   } catch (error) {
     console.error('❌ Failed to create folder:', error);
     return NextResponse.json({ 
       error: 'Failed to create folder', 
-      details: error instanceof Error ? error.message : 'Unknown error' 
+      details: String(error)
     }, { status: 500 });
   }
 }
