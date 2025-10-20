@@ -28,6 +28,7 @@ module.exports = {
       autorestart: true,
       watch: false,
       max_memory_restart: '500M',
+      env_file: '/root/the11/backend/.env',
       env: {
         PYTHON_ENV: 'production',
       },
