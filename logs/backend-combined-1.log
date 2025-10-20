@@ -590,3 +590,7 @@
 2025-10-20T02:00:43: INFO:     127.0.0.1:54720 - "GET /oauth/authorize HTTP/1.1" 200 OK
 2025-10-20T02:04:11: INFO:     172.18.0.11:47798 - "GET /oauth/authorize HTTP/1.1" 200 OK
 2025-10-20T02:04:36: INFO:     172.18.0.11:57046 - "POST /oauth/token HTTP/1.1" 422 Unprocessable Entity
+2025-10-20T02:16:40: INFO:     172.18.0.10:47954 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T02:17:36: INFO:     172.18.0.10:39184 - "POST /oauth/token HTTP/1.1" 422 Unprocessable Entity
+2025-10-20T02:25:45: INFO:     172.18.0.11:50722 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T02:26:00: INFO:     172.18.0.11:60406 - "POST /oauth/token HTTP/1.1" 422 Unprocessable Entity

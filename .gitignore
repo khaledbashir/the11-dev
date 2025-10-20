@@ -83,3 +83,4 @@ tsconfig.tsbuildinfo
 .DS_Store
 Thumbs.db
 docs/archive/old-root-app/node_modules/
+.env

@@ -12,16 +12,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Exchange code for token via backend
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/oauth/token`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ code }),
-      }
-    );
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+    const response = await fetch(`${backendUrl}/oauth/token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ code }),
+    });
 
     if (!response.ok) {
       const error = await response.json();
@@ -61,29 +59,28 @@ export async function GET(request: NextRequest) {
     }
 
     // Exchange code for token via backend
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/oauth/token`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ code }),
-      }
-    );
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+    const response = await fetch(`${backendUrl}/oauth/token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ code }),
+    });
 
     if (!response.ok) {
       const error = await response.json();
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001';
       return NextResponse.redirect(
-        new URL(`/?oauth_error=${encodeURIComponent(error.error || 'OAuth failed')}`, request.url)
+        new URL(`/?oauth_error=${encodeURIComponent(error.error || 'OAuth failed')}`, baseUrl)
       );
     }
 
     const data = await response.json();
 
-    // Redirect back to SOW page with token in URL (component will pick it up)
-    // OR redirect to referrer if available
-    const referrer = request.headers.get('referer') || '/';
+    // Redirect back to SOW page with token in URL
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001';
+    const referrer = request.headers.get('referer') || baseUrl;
     const redirectUrl = new URL(referrer);
     redirectUrl.searchParams.set('oauth_token', data.token);
     redirectUrl.searchParams.set('oauth_expires', data.expires_in || '3600');
@@ -104,8 +101,9 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('OAuth callback error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001';
     return NextResponse.redirect(
-      new URL(`/?oauth_error=${encodeURIComponent(errorMessage)}`, request.url)
+      new URL(`/?oauth_error=${encodeURIComponent(errorMessage)}`, baseUrl)
     );
   }
 }
