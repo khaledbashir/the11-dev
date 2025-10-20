@@ -72,7 +72,7 @@ export default function Menu({ onExportPDF, onExportExcel }: MenuProps) {
           className="sg-button"
         >
           <FileSpreadsheet className="h-4 w-4 mr-2" />
-          Export Excel
+          GSheet
         </Button>
       )}
       <Popover>

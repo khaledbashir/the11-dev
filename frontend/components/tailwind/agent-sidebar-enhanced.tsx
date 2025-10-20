@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
@@ -111,6 +112,7 @@ export default function AgentSidebar({
   const [showModelInfo, setShowModelInfo] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
@@ -227,13 +229,19 @@ export default function AgentSidebar({
   };
 
   const handleDeleteAgent = (id: string) => {
-    if (confirm("Are you sure you want to delete this agent? This action cannot be undone.")) {
-      onDeleteAgent(id);
-      if (currentAgentId === id && agents.length > 1) {
-        const nextAgent = agents.find(a => a.id !== id);
-        if (nextAgent) onSelectAgent(nextAgent.id);
-      }
+    setConfirmDelete(id);
+  };
+
+  const confirmDeleteAgent = () => {
+    if (!confirmDelete) return;
+    const id = confirmDelete;
+    onDeleteAgent(id);
+    if (currentAgentId === id && agents.length > 1) {
+      const nextAgent = agents.find(a => a.id !== id);
+      if (nextAgent) onSelectAgent(nextAgent.id);
     }
+    setConfirmDelete(null);
+    toast.success('Agent deleted');
   };
 
   const handleSendMessage = () => {
@@ -918,6 +926,36 @@ export default function AgentSidebar({
               Got it, let's start!
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={confirmDelete !== null} onOpenChange={(open) => {
+        if (!open) setConfirmDelete(null);
+      }}>
+        <DialogContent className="sm:max-w-sm bg-[#1A1A1D] border border-[#2A2A2D]">
+          <DialogHeader>
+            <DialogTitle className="text-white">Delete Agent?</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-gray-300 text-sm">
+              Delete this agent? This action cannot be undone.
+            </p>
+          </div>
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={() => setConfirmDelete(null)}
+              className="px-4 py-2 text-sm font-medium text-gray-300 bg-[#2A2A2D] hover:bg-[#3A3A3D] rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmDeleteAgent}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
+            >
+              Delete
+            </button>
+          </div>
         </DialogContent>
       </Dialog>
     </>

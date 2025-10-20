@@ -25,7 +25,7 @@ services:
       OPENROUTER_MODEL: ${OPENROUTER_MODEL}
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.sow-frontend.rule=Host(\`sow.qandu.me\`)"
+      - "traefik.http.routers.sow-frontend.rule=Host('sow.qandu.me')"
       - "traefik.http.routers.sow-frontend.entrypoints=web,websecure"
       - "traefik.http.routers.sow-frontend.tls.certresolver=letsencrypt"
       - "traefik.http.services.sow-frontend.loadbalancer.server.port=3001"
