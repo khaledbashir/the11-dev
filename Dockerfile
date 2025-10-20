@@ -14,10 +14,7 @@ RUN pnpm install --no-frozen-lockfile
 # Copy source code
 COPY frontend/ .
 
-# Copy environment file for build-time variables
-COPY frontend/.env .env.local
-
-# Build the application with environment variables
+# Build the application with environment variables (passed at build time)
 RUN pnpm build
 
 # Expose port
