@@ -67,6 +67,7 @@ export function DocumentStatusBar({
             </Button>
           )}
           
+          {/* TEMPORARILY HIDDEN - GSheet integration pending
           {onExportExcel && (
             <Button
               onClick={onExportExcel}
@@ -78,6 +79,7 @@ export function DocumentStatusBar({
               GSheet
             </Button>
           )}
+          */}
           
           {onSharePortal && (
             <Button
