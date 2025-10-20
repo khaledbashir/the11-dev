@@ -606,6 +606,40 @@ export default function Page() {
       console.log('✅ Found document:', doc.title);
       setCurrentDocId(doc.id);
       setViewMode('editor'); // Switch to editor view
+      
+      // 🧵 Load chat history from AnythingLLM thread
+      const loadChatHistory = async () => {
+        if (doc.workspaceSlug && doc.threadSlug) {
+          try {
+            console.log('💬 Loading chat history for thread:', doc.threadSlug);
+            const history = await anythingLLM.getThreadChats(doc.workspaceSlug, doc.threadSlug);
+            
+            if (history && history.length > 0) {
+              // Convert AnythingLLM history format to our ChatMessage format
+              const messages: ChatMessage[] = history.map((msg: any) => ({
+                id: `msg${Date.now()}-${Math.random()}`,
+                role: msg.role === 'user' ? 'user' : 'assistant',
+                content: msg.content,
+                timestamp: Date.now(),
+              }));
+              
+              console.log(`✅ Loaded ${messages.length} messages from thread`);
+              setChatMessages(messages);
+            } else {
+              console.log('ℹ️ No chat history found for this SOW');
+              setChatMessages([]);
+            }
+          } catch (error) {
+            console.error('❌ Failed to load chat history:', error);
+            setChatMessages([]);
+          }
+        } else {
+          console.log('ℹ️ No thread associated with this SOW, clearing chat');
+          setChatMessages([]);
+        }
+      };
+      
+      loadChatHistory();
     } else {
       console.warn('⚠️ Document not found for SOW:', currentSOWId);
     }
