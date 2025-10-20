@@ -1500,6 +1500,35 @@ export default function Page() {
     }
   };
 
+  // Google Sheets handler - OAuth flow
+  const handleCreateGSheet = async () => {
+    if (!currentDoc) {
+      toast.error('❌ No document selected');
+      return;
+    }
+
+    toast.info('📊 Starting Google authorization...');
+
+    try {
+      // Get authorization URL from backend
+      const response = await fetch('/api/oauth/authorize', {
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get authorization URL');
+      }
+
+      const data = await response.json();
+      
+      // Redirect to Google OAuth
+      window.location.href = data.auth_url;
+    } catch (error) {
+      console.error('Error starting GSheet creation:', error);
+      toast.error('Failed to authorize with Google');
+    }
+  };
+
   // Helper function to convert Novel JSON to HTML
   const convertNovelToHTML = (content: any) => {
     if (!content || !content.content) return '';
@@ -2323,7 +2352,7 @@ export default function Page() {
                   saveStatus="saved"
                   isSaving={false}
                   onExportPDF={handleExportPDF}
-                  onExportExcel={handleExportExcel}
+                  onExportExcel={handleCreateGSheet}
                   onSharePortal={async () => {
                     if (!currentDoc) {
                       toast.error('❌ No document selected');

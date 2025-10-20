@@ -8,6 +8,7 @@ import {
   Target, TrendingUp, Users, Zap, Home
 } from 'lucide-react';
 import { Button } from '@/components/tailwind/ui/button';
+import { CreateSheetButton } from '@/components/sow/create-sheet-button';
 import { toast } from 'sonner';
 
 interface SOWData {
@@ -570,6 +571,23 @@ ${sow.htmlContent}
                 <Share2 className="w-4 h-4" />
                 Share
               </Button>
+
+              {sow && (
+                <CreateSheetButton
+                  clientName={sow.clientName}
+                  serviceName={sow.title}
+                  sowData={{
+                    overview: sow.htmlContent || '',
+                    deliverables: '',
+                    outcomes: '',
+                    phases: '',
+                    pricing: [],
+                    assumptions: '',
+                    timeline: '',
+                  }}
+                  triggerText="Create Sheet"
+                />
+              )}
             </div>
           </div>
         </header>
