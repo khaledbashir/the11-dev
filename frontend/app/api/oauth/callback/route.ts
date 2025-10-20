@@ -75,19 +75,22 @@ export async function GET(request: NextRequest) {
     if (!response.ok) {
       const error = await response.json();
       return NextResponse.redirect(
-        new URL(`/error?message=${encodeURIComponent(error.error || 'OAuth failed')}`, request.url)
+        new URL(`/?oauth_error=${encodeURIComponent(error.error || 'OAuth failed')}`, request.url)
       );
     }
 
     const data = await response.json();
 
-    // Store token in session/cookie and redirect back to SOW
-    const redirectUrl = new URL('/', request.url);
+    // Redirect back to SOW page with token in URL (component will pick it up)
+    // OR redirect to referrer if available
+    const referrer = request.headers.get('referer') || '/';
+    const redirectUrl = new URL(referrer);
     redirectUrl.searchParams.set('oauth_token', data.token);
+    redirectUrl.searchParams.set('oauth_expires', data.expires_in || '3600');
 
     const responseObj = NextResponse.redirect(redirectUrl);
     
-    // Set secure HTTP-only cookie for token
+    // Also set secure HTTP-only cookie for token
     responseObj.cookies.set({
       name: 'oauth_access_token',
       value: data.token,
@@ -102,7 +105,7 @@ export async function GET(request: NextRequest) {
     console.error('OAuth callback error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.redirect(
-      new URL(`/error?message=${encodeURIComponent(errorMessage)}`, request.url)
+      new URL(`/?oauth_error=${encodeURIComponent(errorMessage)}`, request.url)
     );
   }
 }
