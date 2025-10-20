@@ -391,3 +391,5 @@
 2025-10-20T03:08:36: INFO:     172.18.0.11:38780 - "GET /oauth/authorize HTTP/1.1" 200 OK
 2025-10-20T03:08:52: ERROR exchanging token: Failed to exchange code for token: Scope has changed from "https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/spreadsheets" to "openid https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/spreadsheets".
 2025-10-20T03:08:52: INFO:     172.18.0.11:49364 - "POST /oauth/token HTTP/1.1" 400 Bad Request
+2025-10-20T03:11:31: INFO:     172.18.0.10:54126 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T03:11:44: INFO:     172.18.0.10:56498 - "POST /oauth/token HTTP/1.1" 200 OK
