@@ -69,6 +69,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    console.log('🔍 OAuth callback - returnUrl:', returnUrl);
+    console.log('🔍 OAuth callback - state:', state);
+
     // Exchange code for token via backend
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
     const response = await fetch(`${backendUrl}/oauth/token`, {
@@ -82,18 +85,32 @@ export async function GET(request: NextRequest) {
     if (!response.ok) {
       const error = await response.json();
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001';
+      console.error('❌ OAuth token exchange failed:', error);
       return NextResponse.redirect(
         new URL(`/?oauth_error=${encodeURIComponent(error.error || 'OAuth failed')}`, baseUrl)
       );
     }
 
     const data = await response.json();
+    console.log('✅ OAuth token received, redirecting to:', returnUrl);
 
     // Redirect back to original page with token in URL
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001';
-    const redirectUrl = new URL(returnUrl, baseUrl);
+    
+    // Ensure returnUrl is relative (strip any full URL if present)
+    let cleanReturnUrl = returnUrl;
+    try {
+      const parsedUrl = new URL(returnUrl, baseUrl);
+      cleanReturnUrl = parsedUrl.pathname + parsedUrl.search;
+    } catch {
+      // If parsing fails, use as-is
+    }
+    
+    const redirectUrl = new URL(cleanReturnUrl, baseUrl);
     redirectUrl.searchParams.set('oauth_token', data.token);
     redirectUrl.searchParams.set('oauth_expires', data.expires_in || '3600');
+    
+    console.log('🔗 Final redirect URL:', redirectUrl.toString());
 
     const responseObj = NextResponse.redirect(redirectUrl);
     

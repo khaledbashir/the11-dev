@@ -627,3 +627,5 @@
 2025-10-20T03:10:22: INFO:     Waiting for application startup.
 2025-10-20T03:10:22: INFO:     Application startup complete.
 2025-10-20T03:10:22: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2025-10-20T03:11:31: INFO:     172.18.0.10:54126 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T03:11:44: INFO:     172.18.0.10:56498 - "POST /oauth/token HTTP/1.1" 200 OK
