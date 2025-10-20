@@ -56,22 +56,32 @@ class GoogleOAuthHandler:
         Returns: token dictionary with access_token, refresh_token, etc
         """
         try:
-            flow = Flow.from_client_config(
-                {
-                    "installed": {
-                        "client_id": self.client_id,
-                        "client_secret": self.client_secret,
-                        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                        "token_uri": "https://oauth2.googleapis.com/token",
-                        "redirect_uris": [self.redirect_uri]
-                    }
-                },
-                scopes=self.scopes,
-                redirect_uri=self.redirect_uri
+            # Use requests directly to avoid scope validation issues
+            token_response = requests.post(
+                "https://oauth2.googleapis.com/token",
+                data={
+                    "code": code,
+                    "client_id": self.client_id,
+                    "client_secret": self.client_secret,
+                    "redirect_uri": self.redirect_uri,
+                    "grant_type": "authorization_code"
+                }
             )
             
-            flow.fetch_token(code=code)
-            credentials = flow.credentials
+            if not token_response.ok:
+                raise Exception(f"Token exchange failed: {token_response.text}")
+            
+            token_data = token_response.json()
+            
+            # Create credentials from token
+            credentials = Credentials(
+                token=token_data.get('access_token'),
+                refresh_token=token_data.get('refresh_token'),
+                token_uri="https://oauth2.googleapis.com/token",
+                client_id=self.client_id,
+                client_secret=self.client_secret,
+                scopes=self.scopes
+            )
             
             # Return token info
             return {
