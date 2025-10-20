@@ -10,17 +10,17 @@ Set these in the Easypanel UI under "Environment Variables":
 
 ### Database Configuration
 ```
-DB_HOST=168.231.115.219
+DB_HOST=<your-database-host>
 DB_PORT=3306
-DB_USER=sg_sow_user
-DB_PASSWORD=SG_sow_2025_SecurePass!
-DB_NAME=socialgarden_sow
+DB_USER=<database-user>
+DB_PASSWORD=<secure-database-password>
+DB_NAME=<database-name>
 ```
 
 ### Backend & PDF Service (Points to Host)
 ```
-NEXT_PUBLIC_PDF_SERVICE_URL=http://168.231.115.219:8000
-NEXT_PUBLIC_BACKEND_URL=http://168.231.115.219:8000
+NEXT_PUBLIC_PDF_SERVICE_URL=http://<your-host-ip>:8000
+NEXT_PUBLIC_BACKEND_URL=http://<your-host-ip>:8000
 ```
 
 ### Base URL (Easypanel Subdomain)
@@ -30,29 +30,29 @@ NEXT_PUBLIC_BASE_URL=https://ahmad-sow-qandu-me.840tjq.easypanel.host
 
 ### AnythingLLM Integration
 ```
-NEXT_PUBLIC_ANYTHINGLLM_URL=https://ahmad-anything-llm.840tjq.easypanel.host
-ANYTHINGLLM_API_KEY=0G0WTZ3-6ZX4D20-H35VBRG-9059WPA
+NEXT_PUBLIC_ANYTHINGLLM_URL=<your-anythingllm-url>
+ANYTHINGLLM_API_KEY=<your-anythingllm-api-key>
 ANYTHINGLLM_WORKSPACE_SLUG=pop
 ```
 
 ### OpenRouter API (for AI Writing Assistant)
 ```
-OPENROUTER_API_KEY=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
+OPENROUTER_API_KEY=<your-openrouter-api-key>
 ```
 
 ### Google OAuth Integration
 ```
-GOOGLE_OAUTH_CLIENT_ID=<oauth-client-id>
-GOOGLE_OAUTH_CLIENT_SECRET=<your-client-secret-from-google-cloud>
-GOOGLE_OAUTH_REDIRECT_URI=https://ahmad-sow-qandu-me.840tjq.easypanel.host/api/oauth/callback
+GOOGLE_OAUTH_CLIENT_ID=<your-google-oauth-client-id>
+GOOGLE_OAUTH_CLIENT_SECRET=<your-google-oauth-client-secret>
+GOOGLE_OAUTH_REDIRECT_URI=https://sow.qandu.me/api/oauth/callback
 ```
 
 ### Google Sheets Integration (Service Account)
 ```
-GOOGLE_SHEETS_SERVICE_ACCOUNT_EMAIL=<service-email>
+GOOGLE_SHEETS_SERVICE_ACCOUNT_EMAIL=<service-account-email>
 GOOGLE_SHEETS_PROJECT_ID=<project-id>
-GOOGLE_SHEETS_PRIVATE_KEY_ID=<key-id>
-GOOGLE_SHEETS_AUTO_SHARE_EMAIL=ahmad.basheer@socialgarden.com.au
+GOOGLE_SHEETS_PRIVATE_KEY_ID=<private-key-id>
+GOOGLE_SHEETS_AUTO_SHARE_EMAIL=<email-to-auto-share-sheets>
 ```
 
 ## Step-by-Step Instructions for Easypanel
