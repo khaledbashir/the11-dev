@@ -43,39 +43,26 @@ export function CreateSheetButton({
   // Check for OAuth callback on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const code = params.get('code');
-    const state = params.get('state');
+    const oauthToken = params.get('oauth_token');
+    const error = params.get('oauth_error');
 
-    if (code) {
-      handleOAuthCallback(code);
+    if (error) {
+      toast.error(`OAuth error: ${error}`);
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      return;
     }
-  }, []);
 
-  const handleOAuthCallback = async (code: string) => {
-    try {
-      setIsLoading(true);
-      const response = await fetch('/api/oauth/callback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code }),
-      });
-
-      if (!response.ok) throw new Error('OAuth callback failed');
-
-      const data = await response.json();
-      setAccessToken(data.access_token);
+    if (oauthToken) {
+      console.log('✅ OAuth token received from callback');
+      setAccessToken(oauthToken);
       setIsOAuthAuthorized(true);
-      toast.success('Google account authorized!');
+      toast.success('Google account authorized! Ready to create sheet.');
       
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
-    } catch (error) {
-      console.error('OAuth callback error:', error);
-      toast.error('Failed to authorize Google account');
-    } finally {
-      setIsLoading(false);
     }
-  };
+  }, []);
 
   const handleAuthorizeGoogle = async () => {
     try {
