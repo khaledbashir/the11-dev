@@ -43,7 +43,7 @@ OPENROUTER_API_KEY=sk-or-v1-33ae6a62a264c89fddb8ad40c9563725ffa58424eb6921927a16
 ### Google OAuth Integration
 ```
 GOOGLE_OAUTH_CLIENT_ID=<oauth-client-id>
-GOOGLE_OAUTH_CLIENT_SECRET=<oauth-client-secret>
+GOOGLE_OAUTH_CLIENT_SECRET=<your-client-secret-from-google-cloud>
 GOOGLE_OAUTH_REDIRECT_URI=https://ahmad-sow-qandu-me.840tjq.easypanel.host/api/oauth/callback
 ```
 

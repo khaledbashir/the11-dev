@@ -579,3 +579,7 @@
 2025-10-20T00:35:07: INFO:     Application startup complete.
 2025-10-20T00:35:07: INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 2025-10-20T00:50:18: INFO:     127.0.0.1:48862 - "GET /folders HTTP/1.1" 404 Not Found
+2025-10-20T01:05:11: INFO:     172.18.0.10:55790 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T01:06:25: INFO:     172.18.0.10:41158 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T01:08:27: INFO:     172.18.0.11:49246 - "GET /oauth/authorize HTTP/1.1" 200 OK
+2025-10-20T01:12:38: INFO:     172.18.0.10:33668 - "GET /oauth/authorize HTTP/1.1" 200 OK
