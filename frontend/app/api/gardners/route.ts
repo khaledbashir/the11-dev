@@ -65,7 +65,9 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ AnythingLLM workspace created: ${actualSlug}`);
 
-    // Step 2: Configure workspace (system prompt, model, settings)
+    // Step 2: Configure workspace (system prompt, temperature, history settings)
+    // NOTE: Model/Provider is NOT set via API - it's configured in AnythingLLM UI only
+    // We can only set: openAiPrompt, openAiTemp, openAiHistory via API
     const configResponse = await fetch(
       `${process.env.ANYTHINGLLM_URL || 'https://ahmad-anything-llm.840tjq.easypanel.host'}/api/v1/workspace/${actualSlug}/update`,
       {
@@ -76,10 +78,8 @@ export async function POST(request: NextRequest) {
         },
         body: JSON.stringify({
           openAiPrompt: systemPrompt,
-          ...(model && { openAiModel: model }),
           ...(temperature !== undefined && { openAiTemp: temperature }),
-          ...(chatMode && { chatMode }),
-          ...(chatHistory && { chatHistory }),
+          ...(chatHistory && { openAiHistory: chatHistory }),
         }),
       }
     );
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     if (!configResponse.ok) {
       console.warn('⚠️ Workspace created but configuration failed');
     } else {
-      console.log(`✅ Workspace configured with custom settings`);
+      console.log(`✅ Workspace configured with system prompt and settings`);
     }
 
     // Step 3: Save to database

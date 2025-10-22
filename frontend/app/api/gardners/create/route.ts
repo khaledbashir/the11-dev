@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
     console.log('🌱 [Gardner Create] Creating new Gardner:', name);
 
     // Step 1: Create workspace in AnythingLLM
+    // Only send valid fields: name. Model/provider configured in UI later
     const workspaceResponse = await fetch(`${ANYTHINGLLM_URL}/api/v1/workspace/new`, {
       method: 'POST',
       headers: {
@@ -41,10 +42,6 @@ export async function POST(request: NextRequest) {
         openAiTemp: temperature,
         openAiHistory: chatHistory,
         openAiPrompt: systemPrompt,
-        chatMode,
-        similarityThreshold,
-        topN,
-        queryRefusalResponse,
       }),
     });
 
@@ -73,8 +70,10 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ [Gardner Create] Workspace created:', workspaceSlug);
 
-    // Step 2: Auto-apply predefined config to workspace
-    console.log('⚙️ [Gardner Create] Applying predefined workspace config...');
+    // Step 2: Configure workspace with system prompt and settings
+    // NOTE: Model/Provider configuration happens in AnythingLLM UI, NOT via API
+    // We can only set these via API: openAiPrompt, openAiTemp, openAiHistory, chatMode
+    console.log('⚙️ [Gardner Create] Applying workspace configuration...');
     const configResponse = await fetch(
       `${ANYTHINGLLM_URL}/api/v1/workspace/${workspaceSlug}/update`,
       {
@@ -84,27 +83,21 @@ export async function POST(request: NextRequest) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          // Chat configuration (optimal defaults)
-          chatProvider: 'openrouter',
-          chatModel: 'z-ai/glm-4.5-air:free',
-          openAiTemp: 0.7,
-          openAiHistory: 20,
-          chatMode: 'chat',
-          topN: 4,
-          similarityThreshold: 0.25,
-          // Agent configuration
-          agentProvider: 'openrouter',
-          agentModel: 'openai/gpt-oss-20b:free',
+          openAiPrompt: systemPrompt,
+          openAiTemp: temperature,
+          openAiHistory: chatHistory,
+          chatMode,
         }),
       }
     );
 
     if (!configResponse.ok) {
       const errorText = await configResponse.text();
-      console.warn('⚠️ [Gardner Create] Workspace config auto-apply partially failed:', errorText.substring(0, 200));
+      console.warn('⚠️ [Gardner Create] Workspace configuration failed:', errorText.substring(0, 200));
       // Don't fail completely, workspace is still created
     } else {
-      console.log('✅ [Gardner Create] Predefined config applied successfully');
+      console.log('✅ [Gardner Create] Workspace configuration applied successfully');
+      console.log('⚠️ [Gardner Create] NOTE: Model/Provider must be set in AnythingLLM UI');
     }
 
     // Step 3: Store Gardner reference in database
