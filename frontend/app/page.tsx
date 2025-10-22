@@ -1100,7 +1100,7 @@ export default function Page() {
   };
 
   // ==================== WORKSPACE & SOW HANDLERS (NEW) ====================
-  const handleCreateWorkspace = async (workspaceName: string) => {
+  const handleCreateWorkspace = async (workspaceName: string, workspaceType: "sow" | "client" | "generic" = "sow") => {
     try {
       console.log('📁 Creating workspace:', workspaceName);
       
@@ -1118,30 +1118,34 @@ export default function Page() {
       const embedId = await anythingLLM.getOrCreateEmbedId(workspace.slug);
       console.log('✅ AnythingLLM workspace created:', workspace.slug);
       
-      // 🧠 STEP 1b: Configure workspace with The Architect system prompt
-      console.log('🧠 Configuring workspace with The Architect system prompt...');
-      try {
-        const updateResponse = await fetch(`${process.env.NEXT_PUBLIC_ANYTHINGLLM_URL}/api/v1/workspace/${workspace.slug}/update`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.ANYTHINGLLM_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            openAiPrompt: THE_ARCHITECT_SYSTEM_PROMPT,
-            openAiTemp: 0.7,
-            openAiHistory: 25,
-          }),
-        });
-        
-        if (!updateResponse.ok) {
-          const errorText = await updateResponse.text();
-          console.error('⚠️ Failed to configure workspace system prompt:', errorText);
-        } else {
-          console.log('✅ Workspace configured with The Architect system prompt');
+      // 🧠 STEP 1b: Configure workspace with The Architect system prompt (SOW type only)
+      if (workspaceType === "sow") {
+        console.log('🧠 Configuring SOW workspace with The Architect system prompt...');
+        try {
+          const updateResponse = await fetch(`${process.env.NEXT_PUBLIC_ANYTHINGLLM_URL}/api/v1/workspace/${workspace.slug}/update`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${process.env.ANYTHINGLLM_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              openAiPrompt: THE_ARCHITECT_SYSTEM_PROMPT,
+              openAiTemp: 0.7,
+              openAiHistory: 25,
+            }),
+          });
+          
+          if (!updateResponse.ok) {
+            const errorText = await updateResponse.text();
+            console.error('⚠️ Failed to configure workspace system prompt:', errorText);
+          } else {
+            console.log('✅ Workspace configured with The Architect system prompt');
+          }
+        } catch (error) {
+          console.error('⚠️ Error configuring workspace:', error);
         }
-      } catch (error) {
-        console.error('⚠️ Error configuring workspace:', error);
+      } else {
+        console.log(`✅ Workspace created as ${workspaceType} type (no custom prompt applied)`);
       }
       
       // Mark step 1 complete
