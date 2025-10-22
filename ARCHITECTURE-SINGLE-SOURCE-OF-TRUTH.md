@@ -20,6 +20,15 @@
   - **Assigned**: TBD
   - **Next Step**: Deploy to EasyPanel and monitor browser console
 
+- [ ] **Issue**: EasyPanel Build Timeout
+  - **Status**: ⏳ Build canceled, needs retry
+  - **Description**: EasyPanel build was canceled mid-build during `next build` step
+  - **Cause**: Likely Next.js build timeout (Docker build has memory/time limits)
+  - **Fix**: Click "Redeploy" on EasyPanel service page to retry
+  - **Estimated Time**: 2-3 minutes to complete
+  - **Last Updated**: Oct 22, 2025 20:33 UTC
+  - **Next Step**: Monitor deployment, then test chat functionality
+
 - [ ] **Issue**: Backend Migration to EasyPanel
   - **Status**: 📋 Documented, ready to execute
   - **Description**: Move FastAPI from PM2 to EasyPanel Docker for consistency
