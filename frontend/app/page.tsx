@@ -649,10 +649,11 @@ export default function Page() {
       
       // 🧵 Load chat history from AnythingLLM thread
       const loadChatHistory = async () => {
-        if (doc.workspaceSlug && doc.threadSlug) {
+        if (doc.threadSlug) {
           try {
             console.log('💬 Loading chat history for thread:', doc.threadSlug);
-            const history = await anythingLLM.getThreadChats(doc.workspaceSlug, doc.threadSlug);
+            // 🎯 ALWAYS use gen-the-architect workspace for SOW editor chat (that's where threads are created)
+            const history = await anythingLLM.getThreadChats('gen-the-architect', doc.threadSlug);
             
             if (history && history.length > 0) {
               // Convert AnythingLLM history format to our ChatMessage format
