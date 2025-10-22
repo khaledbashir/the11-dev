@@ -633,6 +633,17 @@ Ready to explore your project details? Ask me anything!`;
           return history;
         }
 
+        // If 400 (thread doesn't exist) on first attempt, try creating it
+        if (response.status === 400 && attempt === 1) {
+          console.warn(`⚠️ [getThreadChats] Thread doesn't exist (400). Creating thread now...`);
+          const newThread = await this.createThread(workspaceSlug);
+          if (newThread) {
+            console.log(`✅ [getThreadChats] Thread created on-demand: ${newThread.slug}. Thread will be ready after next message.`);
+          }
+          // Return empty history for now - thread is new so no history exists yet
+          return [];
+        }
+
         // If 400 and not last attempt, wait and retry with exponential backoff
         if (response.status === 400 && attempt < retries) {
           // Exponential backoff: 2s, 3s, 4s, 5s

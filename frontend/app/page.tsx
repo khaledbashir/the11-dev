@@ -624,11 +624,11 @@ export default function Page() {
         setDocuments(documentsFromDB);
         
         // Set current workspace to first one if available
+        // BUT: Don't auto-select a SOW - let user click from dashboard
         if (workspacesWithSOWs.length > 0 && !currentWorkspaceId) {
           setCurrentWorkspaceId(workspacesWithSOWs[0].id);
-          if (workspacesWithSOWs[0].sows.length > 0) {
-            setCurrentSOWId(workspacesWithSOWs[0].sows[0].id);
-          }
+          // Removed: Don't auto-select first SOW - user should manually select from dashboard
+          // This provides a better UX where dashboard is the entry point
         }
         
         // 🎓 Show onboarding if no workspaces (and not seen before)
