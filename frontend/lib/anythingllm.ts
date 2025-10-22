@@ -892,6 +892,8 @@ When asked for analytics, provide clear, actionable insights with specific numbe
           headers: this.getHeaders(),
           body: JSON.stringify({
             openAiPrompt: systemPrompt,
+            openAiTemp: 0.7,
+            openAiHistory: 25,
           }),
         }
       );
@@ -901,6 +903,7 @@ When asked for analytics, provide clear, actionable insights with specific numbe
         return true;
       }
 
+      console.warn(`⚠️ Failed to set master dashboard prompt: ${response.status}`);
       return false;
     } catch (error) {
       console.error('❌ Error setting master dashboard prompt:', error);

@@ -171,12 +171,13 @@ export async function POST(request: NextRequest) {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
+        let lineCount = 0;
 
         while (true) {
           const { done, value } = await reader.read();
           
           if (done) {
-            console.log('✅ [AnythingLLM Stream] Stream complete');
+            console.log(`✅ [AnythingLLM Stream] Stream complete - forwarded ${lineCount} lines`);
             await writer.close();
             break;
           }
@@ -191,7 +192,10 @@ export async function POST(request: NextRequest) {
           for (const line of lines) {
             if (line.trim()) {
               // Forward the SSE line to the client
-              console.log('📤 [AnythingLLM Stream] Forwarding:', line.substring(0, 100));
+              lineCount++;
+              if (lineCount <= 3 || lineCount % 10 === 0) {
+                console.log(`📤 [AnythingLLM Stream] Forwarding line ${lineCount}:`, line.substring(0, 100));
+              }
               await writer.write(encoder.encode(line + '\n'));
             }
           }
