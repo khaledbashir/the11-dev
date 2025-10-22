@@ -3,6 +3,15 @@
 
 This file is the **single source of truth** for understanding this codebase. Reference `ARCHITECTURE-SINGLE-SOURCE-OF-TRUTH.md` for comprehensive architectural details.
 
+## Recent Updates (October 22, 2025)
+
+**✅ COMPLETED:**
+- Workspace Type Selector: Users can now choose workspace type (SOW, Client Portal, Generic) when creating
+- SOW workspaces auto-configure with "The Architect" system prompt + Z.AI GLM 4.5 Air (free) model
+- Fixed thread slug storage issue (Gen AI chat now works correctly)
+- Fixed dashboard endpoint routing
+- Backend Docker image built and pushed to Docker Hub
+
 ## Architecture (Big Picture)
 
 **Multi-layer system with THREE distinct AI subsystems:**

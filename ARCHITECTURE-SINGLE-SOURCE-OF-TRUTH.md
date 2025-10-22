@@ -21,6 +21,15 @@
   - **Next Step**: User approval + Docker Hub account setup
 
 ### Recent Fixes (October 22)
+- [x] **COMPLETED**: Workspace Type Selector
+  - **What it does**: Users select workspace type (SOW, Client Portal, Generic) when creating
+  - **SOW Type**: Auto-configures with "The Architect" system prompt + Z.AI GLM 4.5 Air (free)
+  - **Commits**: `9b05592`, `370546d`
+  - **Files Modified**:
+    - `frontend/components/tailwind/sidebar-nav.tsx` - UI with dropdown selector
+    - `frontend/app/page.tsx` - Logic to apply prompt for SOW type
+  - **Result**: Clean workspace setup, type-specific AI configuration ✅
+
 - [x] **FIXED**: Dashboard Chat 401 Error
   - **What was wrong**: Dashboard was routing to OpenRouter instead of AnythingLLM
   - **Root cause**: effectiveAgent.model was 'google/gemini-2.0-flash-exp:free' instead of 'anythingllm'
@@ -43,6 +52,18 @@
     - Line 1356: Create threads in client workspace
     - Line 2340: Route chat to SOW workspace
   - **Result**: Messages persist, no duplicate threads, 400 errors eliminated
+
+- [x] **FIXED**: Gen AI Chat Empty Response
+  - **What was wrong**: Thread slug not stored in database, was using SOW ID instead of AnythingLLM thread UUID
+  - **How fixed**: Added `thread_slug` column to sows table, updated chat retrieval logic
+  - **Commits**: Various
+  - **Result**: Chat messages now display correctly, threads properly tracked
+
+- [x] **FIXED**: Dashboard Chat Double /stream-chat
+  - **What was wrong**: Endpoint URL was doubled: `/api/anythingllm/stream-stream-chat`
+  - **How fixed**: Check if `/stream-chat` already in URL before replacing
+  - **Commit**: `b462dc7`
+  - **Result**: Dashboard chat endpoint now routes correctly
 
 ### Planned Features
 - [ ] **Feature**: API Response Caching
