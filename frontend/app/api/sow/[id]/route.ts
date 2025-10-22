@@ -98,6 +98,7 @@ export async function PUT(
       content,
       totalInvestment,
       workspaceSlug,
+      threadSlug,
       embedId,
     } = body;
 
@@ -128,6 +129,10 @@ export async function PUT(
     if (workspaceSlug !== undefined) {
       updates.push('workspace_slug = ?');
       values.push(workspaceSlug);
+    }
+    if (threadSlug !== undefined) {
+      updates.push('thread_slug = ?');
+      values.push(threadSlug);
     }
     if (embedId !== undefined) {
       updates.push('embed_id = ?');

@@ -26,6 +26,7 @@ CREATE TABLE sows (
   
   -- AnythingLLM integration
   workspace_slug VARCHAR(255), -- AnythingLLM workspace identifier
+  thread_slug VARCHAR(255), -- AnythingLLM thread UUID (NOT the SOW ID)
   embed_id VARCHAR(255), -- AnythingLLM embed ID for chat widget
   
   -- Timestamps

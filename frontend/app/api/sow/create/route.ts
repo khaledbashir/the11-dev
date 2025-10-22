@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
     const creatorEmail = body.creatorEmail || body.creator_email || null;
     const workspaceSlug = body.workspaceSlug || body.workspace_slug || body.workspace || null;
     const embedId = body.embedId || body.embed_id || null;
+    const threadSlug = body.threadSlug || body.thread_slug || null; // 🧵 AnythingLLM thread UUID
 
     // Validation - only title and content are strictly required for creating a draft SOW
     const missing: string[] = [];
@@ -48,8 +49,8 @@ export async function POST(req: NextRequest) {
     await query(
       `INSERT INTO sows (
         id, title, client_name, client_email, content, total_investment,
-        status, workspace_slug, embed_id, folder_id, creator_email, expires_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        status, workspace_slug, thread_slug, embed_id, folder_id, creator_email, expires_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         sowId,
         title,
@@ -59,6 +60,7 @@ export async function POST(req: NextRequest) {
         totalInvestment || 0,  // Default to 0 if not provided
         'draft',
         workspaceSlug || null,
+        threadSlug || null, // 🧵 Store the AnythingLLM thread UUID
         embedId || null,
         folderId || null,
         creatorEmail || null,

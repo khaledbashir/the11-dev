@@ -609,7 +609,7 @@ export default function Page() {
               content: parsedContent,
               folderId: folder.id,
               workspaceSlug: folder.workspace_slug,
-              threadSlug: sow.id, // 🧵 The SOW ID IS the thread slug from AnythingLLM
+              threadSlug: sow.thread_slug || undefined, // 🧵 AnythingLLM thread UUID (NOT sow.id!)
               syncedAt: sow.updated_at,
             });
           }
@@ -1118,6 +1118,32 @@ export default function Page() {
       const embedId = await anythingLLM.getOrCreateEmbedId(workspace.slug);
       console.log('✅ AnythingLLM workspace created:', workspace.slug);
       
+      // 🧠 STEP 1b: Configure workspace with The Architect system prompt
+      console.log('🧠 Configuring workspace with The Architect system prompt...');
+      try {
+        const updateResponse = await fetch(`${process.env.NEXT_PUBLIC_ANYTHINGLLM_URL}/api/v1/workspace/${workspace.slug}/update`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.ANYTHINGLLM_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            openAiPrompt: THE_ARCHITECT_SYSTEM_PROMPT,
+            openAiTemp: 0.7,
+            openAiHistory: 25,
+          }),
+        });
+        
+        if (!updateResponse.ok) {
+          const errorText = await updateResponse.text();
+          console.error('⚠️ Failed to configure workspace system prompt:', errorText);
+        } else {
+          console.log('✅ Workspace configured with The Architect system prompt');
+        }
+      } catch (error) {
+        console.error('⚠️ Error configuring workspace:', error);
+      }
+      
       // Mark step 1 complete
       setWorkspaceCreationProgress(prev => ({
         ...prev,
@@ -1205,6 +1231,17 @@ export default function Page() {
       // Don't pass thread name - AnythingLLM auto-names based on first chat message
       const thread = await anythingLLM.createThread(workspace.slug);
       console.log('✅ AnythingLLM thread created:', thread.slug, '(will auto-name on first message)');
+      
+      // 🧵 UPDATE SOW WITH THREAD SLUG
+      await fetch(`/api/sow/${sowId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          threadSlug: thread.slug,
+          workspaceSlug: workspace.slug,
+        }),
+      });
+      console.log(`✅ SOW ${sowId} updated with thread ${thread.slug} and workspace ${workspace.slug}`);
       
       // Mark step 3 complete
       setWorkspaceCreationProgress(prev => ({
