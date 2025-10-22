@@ -49,6 +49,7 @@ interface DashboardStats {
 }
 
 interface ChatMessage {
+  id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
@@ -69,6 +70,7 @@ export function EnhancedDashboard() {
     fetchDashboardStats();
     // Add welcome message
     setChatMessages([{
+      id: 'welcome-msg',
       role: 'assistant',
       content: '👋 Hi! I\'m your Dashboard AI. Ask me anything about your SOWs:\n\n• "How many proposals this month?"\n• "Show total revenue"\n• "List top clients"\n• "What services are most popular?"',
       timestamp: new Date().toISOString()
@@ -119,6 +121,7 @@ export function EnhancedDashboard() {
     if (!chatInput.trim() || chatLoading) return;
 
     const userMessage: ChatMessage = {
+      id: `msg-${Date.now()}`,
       role: 'user',
       content: chatInput,
       timestamp: new Date().toISOString()
@@ -132,6 +135,7 @@ export function EnhancedDashboard() {
       // AI Chat feature temporarily disabled
       // TODO: Implement proper thread creation before sending chat messages
       const assistantMessage: ChatMessage = {
+        id: `msg-${Date.now()}-resp`,
         role: 'assistant',
         content: 'Dashboard AI is currently under maintenance. Please check back soon!',
         timestamp: new Date().toISOString()
@@ -141,6 +145,7 @@ export function EnhancedDashboard() {
     } catch (error) {
       console.error('Chat error:', error);
       setChatMessages(prev => [...prev, {
+        id: `msg-${Date.now()}-error`,
         role: 'assistant',
         content: '❌ Sorry, I encountered an error. Please try again.',
         timestamp: new Date().toISOString()
