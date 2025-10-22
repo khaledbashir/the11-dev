@@ -6,6 +6,56 @@ Always use /root/the11-dev/ENTERPRISE-UX-TESTING-CHECKLIST.md  to create todos a
 **Last Updated**: October 22, 2025  
 **Status**: In Development / Being Fixed  
 **Environment**: VPS self-hosted on port 3000 (`localhost:3000`)
+
+---
+
+## 🚀 DEPLOYMENT & NEXT STEPS
+
+**Current Status:**
+- ✅ Frontend: EasyPanel (sow.qandu.me)
+- ✅ AnythingLLM: EasyPanel (ahmad-anything-llm.840tjq.easypanel.host)
+- ⚠️ Backend: PM2 (needs to move to EasyPanel)
+- ✅ MySQL: Remote (168.231.115.219)
+
+**NEXT TASK: Migrate Backend to EasyPanel**
+
+Backend Dockerfile exists at `/root/the11-dev/backend/Dockerfile` and is production-ready.
+
+**5-Step Process (~30 min):**
+
+```bash
+# Step 1: Build Docker image
+cd /root/the11-dev/backend
+docker build -t socialgarden-backend:latest .
+
+# Step 2: Push to Docker Hub (need account)
+docker tag socialgarden-backend:latest YOUR-USERNAME/socialgarden-backend:latest
+docker push YOUR-USERNAME/socialgarden-backend:latest
+
+# Step 3: In EasyPanel UI
+# Create new Docker service:
+# - Image: YOUR-USERNAME/socialgarden-backend:latest
+# - Port: 8000
+# - Env vars: Copy from /root/the11-dev/backend/.env
+# - Click Deploy (wait 3 min)
+
+# Step 4: Get backend URL from EasyPanel
+# Example: https://sow-backend.840tjq.easypanel.host
+
+# Step 5: Update frontend
+# Edit: frontend/.env.production
+# NEXT_PUBLIC_PDF_SERVICE_URL=https://sow-backend.840tjq.easypanel.host
+# Redeploy frontend (automatic via GitHub)
+```
+
+**Test:**
+```bash
+curl https://sow-backend.840tjq.easypanel.host/docs
+# Should show FastAPI docs (not 500 error)
+```
+
+---
+
 /root/the11-dev/frontend/app/api/sow/create/ANYTHINGAPI   is the source of truth anythingllm intergation
 ---
 
