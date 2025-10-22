@@ -322,6 +322,7 @@ interface Document {
   threadId?: string;
   syncedAt?: string;
   totalInvestment?: number;
+  workType?: 'project' | 'audit' | 'retainer'; // 🎯 SOW type determined by Architect AI
 }
 
 interface Folder {
@@ -361,6 +362,44 @@ interface Workspace {
   sows: SOW[];
   workspace_slug?: string;
 }
+
+// 🎯 Extract SOW work type from AI response
+// The Architect classifies SOWs into 3 types: Standard Project, Audit/Strategy, or Retainer
+const extractWorkType = (content: string): 'project' | 'audit' | 'retainer' => {
+  if (!content) return 'project';
+  
+  const lowerContent = content.toLowerCase();
+  
+  // Check for Retainer patterns
+  if (
+    lowerContent.includes('retainer') ||
+    lowerContent.includes('monthly support') ||
+    lowerContent.includes('ongoing support') ||
+    lowerContent.includes('recurring deliverables') ||
+    lowerContent.includes('monthly fee') ||
+    (lowerContent.includes('month') && lowerContent.includes('support'))
+  ) {
+    console.log('🎯 [Work Type] Detected: Retainer');
+    return 'retainer';
+  }
+  
+  // Check for Audit/Strategy patterns
+  if (
+    lowerContent.includes('audit') ||
+    lowerContent.includes('assessment') ||
+    lowerContent.includes('strategy') ||
+    lowerContent.includes('recommendations') ||
+    lowerContent.includes('analysis') ||
+    (lowerContent.includes('review') && lowerContent.includes('implementation'))
+  ) {
+    console.log('🎯 [Work Type] Detected: Audit/Strategy');
+    return 'audit';
+  }
+  
+  // Default to Standard Project
+  console.log('🎯 [Work Type] Detected: Standard Project');
+  return 'project';
+};
 
 export default function Page() {
   const [mounted, setMounted] = useState(false);
@@ -2358,6 +2397,21 @@ export default function Page() {
           }
 
           console.log('✅ Streaming complete, total content length:', accumulatedContent.length);
+          
+          // 🎯 Extract work type from the accumulated AI response
+          const detectedWorkType = extractWorkType(accumulatedContent);
+          
+          // Update current document with detected work type
+          if (currentDocId && detectedWorkType) {
+            setDocuments(prev => 
+              prev.map(doc => 
+                doc.id === currentDocId 
+                  ? { ...doc, workType: detectedWorkType }
+                  : doc
+              )
+            );
+            console.log(`🎯 Updated document ${currentDocId} with work type: ${detectedWorkType}`);
+          }
         } else {
           // 📦 NON-STREAMING MODE: Standard fetch for OpenRouter
           const response = await fetch(endpoint, {
