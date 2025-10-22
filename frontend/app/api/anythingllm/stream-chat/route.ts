@@ -90,6 +90,15 @@ export async function POST(request: NextRequest) {
       messageLength: messageToSend.length
     });
     
+    // 🔍 AUTH DEBUG: Log token details
+    console.log(`🔑 [AnythingLLM Stream] Auth Debug:`, {
+      hasToken: !!ANYTHINGLLM_API_KEY,
+      tokenLength: ANYTHINGLLM_API_KEY?.length,
+      tokenPrefix: ANYTHINGLLM_API_KEY?.substring(0, 5),
+      anythingLLMUrl: ANYTHINGLLM_URL,
+      endpoint: endpoint,
+    });
+    
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -110,12 +119,27 @@ export async function POST(request: NextRequest) {
         errorText: errorText.substring(0, 500),
         endpoint,
         workspace: effectiveWorkspaceSlug,
-        threadSlug
+        threadSlug,
+        authDebug: {
+          tokenSent: !!ANYTHINGLLM_API_KEY,
+          tokenLen: ANYTHINGLLM_API_KEY?.length,
+        }
       });
+      
+      // Special logging for 401
+      if (response.status === 401) {
+        console.error('🚨 [AnythingLLM Stream] 401 UNAUTHORIZED - Possible causes:');
+        console.error('   1. API key is invalid or expired');
+        console.error('   2. AnythingLLM instance requires different auth method');
+        console.error('   3. Token format is wrong (should be Bearer token)');
+        console.error('   4. Workspace or thread doesn\'t exist with that access');
+      }
+      
       return new Response(
         JSON.stringify({ 
           error: `AnythingLLM API error: ${response.statusText}`,
-          details: errorText.substring(0, 200)
+          details: errorText.substring(0, 200),
+          status: response.status
         }),
         { status: response.status, headers: { 'Content-Type': 'application/json' } }
       );
