@@ -13,22 +13,6 @@
 **Use this section to track current work. Check items as they're completed.**
 
 ### Current Sprint Issues
-- [ ] **Issue**: 401 Unauthorized on Dashboard Chat
-  - **Status**: ⏳ Pending investigation
-  - **Description**: Dashboard chat endpoint returns 401 when user clicks "Send"
-  - **Last Updated**: Oct 22, 2025
-  - **Assigned**: TBD
-  - **Next Step**: Deploy to EasyPanel and monitor browser console
-
-- [ ] **Issue**: EasyPanel Build Timeout
-  - **Status**: ⏳ Build canceled, needs retry
-  - **Description**: EasyPanel build was canceled mid-build during `next build` step
-  - **Cause**: Likely Next.js build timeout (Docker build has memory/time limits)
-  - **Fix**: Click "Redeploy" on EasyPanel service page to retry
-  - **Estimated Time**: 2-3 minutes to complete
-  - **Last Updated**: Oct 22, 2025 20:33 UTC
-  - **Next Step**: Monitor deployment, then test chat functionality
-
 - [ ] **Issue**: Backend Migration to EasyPanel
   - **Status**: 📋 Documented, ready to execute
   - **Description**: Move FastAPI from PM2 to EasyPanel Docker for consistency
@@ -37,6 +21,13 @@
   - **Next Step**: User approval + Docker Hub account setup
 
 ### Recent Fixes (October 22)
+- [x] **FIXED**: Dashboard Chat 401 Error
+  - **What was wrong**: Dashboard was routing to OpenRouter instead of AnythingLLM
+  - **Root cause**: effectiveAgent.model was 'google/gemini-2.0-flash-exp:free' instead of 'anythingllm'
+  - **How fixed**: Changed dashboard agent model to 'anythingllm'
+  - **Commit**: `01c8a4d`
+  - **Result**: Dashboard now routes to `/api/anythingllm/stream-chat` → sow-master-dashboard workspace ✅
+
 - [x] **FIXED**: Workspace Embedding Issue
   - **What was wrong**: Knowledge base embedded on empty workspaces immediately
   - **How fixed**: Removed premature embedding from `createOrGetClientWorkspace()`
