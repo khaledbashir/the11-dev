@@ -605,8 +605,9 @@ Ready to explore your project details? Ask me anything!`;
   /**
    * Get chat history from a thread
    * With retry logic for newly created threads
+   * Increased delays for AnythingLLM thread indexing
    */
-  async getThreadChats(workspaceSlug: string, threadSlug: string, retries = 3): Promise<any[]> {
+  async getThreadChats(workspaceSlug: string, threadSlug: string, retries = 5): Promise<any[]> {
     try {
       console.log(`🧵 [getThreadChats] Fetching messages from ${workspaceSlug}/${threadSlug}`);
       
@@ -632,10 +633,13 @@ Ready to explore your project details? Ask me anything!`;
           return history;
         }
 
-        // If 400 and not last attempt, wait and retry
+        // If 400 and not last attempt, wait and retry with exponential backoff
         if (response.status === 400 && attempt < retries) {
-          console.warn(`⚠️ [getThreadChats] Got 400 on attempt ${attempt}/${retries}, retrying in 1s...`);
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          // Exponential backoff: 2s, 3s, 4s, 5s
+          const delayMs = (1000 * (attempt + 1));
+          console.warn(`⚠️ [getThreadChats] Got 400 on attempt ${attempt}/${retries}, retrying in ${delayMs}ms...`);
+          console.warn(`   (Thread might still be indexing in AnythingLLM)`);
+          await new Promise(resolve => setTimeout(resolve, delayMs));
           continue;
         }
 
