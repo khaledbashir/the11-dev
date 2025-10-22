@@ -337,7 +337,31 @@ Can answer: "How many SOWs in TTT workspace?" ✅
 
 ## Known Issues & Fixes
 
-### ❌ Issue #1: 401 Unauthorized on Chat Endpoints
+### ✅ FIXED #1: Workspace Embedding (October 22, 2025)
+
+**Problem**: When creating a new workspace, the system was immediately embedding the knowledge base into an EMPTY workspace.
+
+**What was happening**:
+1. User creates workspace "h3llo"
+2. System immediately embeds Social Garden knowledge base
+3. But workspace has NO content yet!
+4. Wasting API calls, confusing users
+
+**Fix Applied**:
+- Removed `embedCompanyKnowledgeBase()` from `createOrGetClientWorkspace()` function
+- Knowledge base now ONLY embeds when first SOW is created
+- Master dashboard STILL embeds knowledge base (for analytics)
+
+**Code Change**:
+- File: `/frontend/lib/anythingllm.ts` lines 93-109
+- Removed unnecessary embedding step from client workspace creation
+- Embedding now happens atomically with SOW creation via `embedSOWInBothWorkspaces()`
+
+**Result**: Clean workspace creation flow with no unnecessary API calls
+
+---
+
+### ⚠️ Issue #2: 401 Unauthorized on Chat Endpoints
 
 **Symptoms**:
 - Dashboard AI: Opens, but "Send" button returns 401
@@ -353,45 +377,10 @@ Can answer: "How many SOWs in TTT workspace?" ✅
 - Endpoint: `/frontend/app/api/anythingllm/stream-chat/route.ts`
 - Caller: `/frontend/app/page.tsx` lines 2300-2450
 
-**Fix Steps**:
-1. ✅ **Check**: Verify `ANYTHINGLLM_API_KEY` is set in environment
-2. ✅ **Check**: Verify it's being sent in request headers to AnythingLLM
-3. ✅ **Check**: Verify AnythingLLM instance is running and accessible
-4. 🔧 **Fix**: Add logging to see exact request/response
-5. 🔧 **Fix**: Ensure token is passed to ALL AnythingLLM endpoints
-
-**Investigation Code Needed**:
-```typescript
-// In /frontend/app/api/anythingllm/stream-chat/route.ts
-const ANYTHINGLLM_API_KEY = process.env.ANYTHINGLLM_API_KEY;
-console.log('[Auth Debug]', {
-  hasKey: !!ANYTHINGLLM_API_KEY,
-  keyLength: ANYTHINGLLM_API_KEY?.length,
-  endpoint: `${ANYTHINGLLM_URL}/api/v1/workspace/${workspaceSlug}/stream-chat`,
-});
-
-// Add to fetch headers:
-headers: {
-  'Authorization': `Bearer ${ANYTHINGLLM_API_KEY}`,
-  'Content-Type': 'application/json',
-}
-```
-
----
-
-### ⚠️ Issue #2: Dashboard View Behavior
-
-**Current Behavior**:
-- User lands on dashboard
-- Sees workspaces/SOWs
-- Dashboard AI is available (but 401 on send)
-- Should be able to ask questions about SOWs
-
-**Expected Behavior**:
-- User lands on dashboard ✅
-- Can ask Dashboard AI questions ❌ (blocked by 401)
-- Can create new workspace ✅
-- Can navigate to SOW in editor ✅
+**Next Steps**:
+- Deploy to production and test dashboard chat
+- Check browser console for auth debug output
+- Verify token is valid in AnythingLLM settings
 
 ---
 

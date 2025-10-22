@@ -149,6 +149,12 @@ Before editing ANY AI-related code, understand this architecture:
 
 ## Debugging Checklist
 
+**✅ FIXED: Premature Workspace Embedding (October 22)**
+- **Was**: Embedding knowledge base immediately when workspace created
+- **Now**: Only embeds when first SOW created (via `embedSOWInBothWorkspaces()`)
+- **File Modified**: `frontend/lib/anythingllm.ts` lines 93-109
+- **Commit**: `6bd8166` - "fix: Don't embed knowledge base when creating client workspaces"
+
 **❌ 401 Unauthorized on Dashboard/Gen AI Chat (CURRENT ISSUE):**
 1. Affected: Dashboard AI (`/api/anythingllm/stream-chat`), Gen AI (same endpoint)
 2. Works: Inline editor AI (`/api/generate` via OpenRouter)
