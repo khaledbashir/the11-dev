@@ -454,9 +454,9 @@ export default function Page() {
   const [oauthAccessToken, setOauthAccessToken] = useState<string>('');
 
   // Dashboard AI workspace selector state - Master dashboard is the default
-  const [dashboardChatTarget, setDashboardChatTarget] = useState<string>('sow-master-dashboard-54307162');
+  const [dashboardChatTarget, setDashboardChatTarget] = useState<string>('sow-master-dashboard');
   const [availableWorkspaces, setAvailableWorkspaces] = useState<Array<{slug: string, name: string}>>([
-    { slug: 'sow-master-dashboard-54307162', name: '🎯 All SOWs (Master)' }
+    { slug: 'sow-master-dashboard', name: '🎯 All SOWs (Master)' }
   ]);
 
   // Initialize master dashboard on app load
@@ -513,7 +513,7 @@ export default function Page() {
   useEffect(() => {
     // Build workspace list: Master dashboard + client workspaces
     const workspaceList = [
-      { slug: 'sow-master-dashboard-54307162', name: '🎯 All SOWs (Master)' },
+      { slug: 'sow-master-dashboard', name: '🎯 All SOWs (Master)' },
       ...workspaces
         .filter(ws => ws.workspace_slug) // Only include workspaces with workspace_slug
         .map(ws => ({
@@ -2317,10 +2317,10 @@ export default function Page() {
 
         if (isDashboardMode && useAnythingLLM) {
           // Dashboard mode routing
-          if (dashboardChatTarget === 'sow-master-dashboard-54307162') {
+          if (dashboardChatTarget === 'sow-master-dashboard') {
             // Master view: use dedicated dashboard route
-            endpoint = '/api/dashboard/chat';
-            workspaceSlug = undefined; // Not needed, hardcoded in route
+            endpoint = '/api/anythingllm/stream-chat';
+            workspaceSlug = 'sow-master-dashboard';
           } else {
             // Client-specific view: use general AnythingLLM route with workspace slug
             endpoint = '/api/anythingllm/chat';
@@ -2354,13 +2354,13 @@ export default function Page() {
           agentModel: effectiveAgent.model,
           agentName: effectiveAgent.name,
           routeType: isDashboardMode 
-            ? (dashboardChatTarget === 'sow-master-dashboard-54307162' ? 'MASTER_DASHBOARD' : 'CLIENT_WORKSPACE')
+            ? (dashboardChatTarget === 'sow-master-dashboard' ? 'MASTER_DASHBOARD' : 'CLIENT_WORKSPACE')
             : 'SOW_GENERATION'
         });
 
         // 🌊 STREAMING SUPPORT: Use stream-chat endpoint for AnythingLLM
         const shouldStream = useAnythingLLM;
-        const streamEndpoint = endpoint.replace('/chat', '/stream-chat');
+        const streamEndpoint = endpoint.includes('/stream-chat') ? endpoint : endpoint.replace('/chat', '/stream-chat');
         
         if (shouldStream) {
           // ✨ STREAMING MODE: Real-time response with thinking display
