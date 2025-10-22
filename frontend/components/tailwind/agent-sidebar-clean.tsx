@@ -105,6 +105,41 @@ export default function AgentSidebar({
     }
   }, [currentAgentId]);
 
+  // 🤖 AUTO-SELECT AGENT BASED ON VIEW MODE
+  useEffect(() => {
+    if (!agents || agents.length === 0) return;
+
+    let targetAgentId: string | null = null;
+
+    if (viewMode === 'dashboard') {
+      // Dashboard mode: Look for "Business Analyst"
+      const businessAnalyst = agents.find(a => 
+        a.name.toLowerCase().includes('business') || 
+        a.name.toLowerCase().includes('analyst') ||
+        a.id.toLowerCase().includes('business') ||
+        a.id.toLowerCase().includes('analyst')
+      );
+      targetAgentId = businessAnalyst?.id || null;
+      
+      if (targetAgentId && targetAgentId !== currentAgentId) {
+        console.log(`🤖 [Auto-Select] Dashboard mode → Auto-selecting ${businessAnalyst?.name} (Business Analyst)`);
+        onSelectAgent(targetAgentId);
+      }
+    } else if (viewMode === 'editor') {
+      // Editor mode: Look for "The Architect" or "gen-the-architect"
+      const architect = agents.find(a => 
+        a.name.toLowerCase().includes('architect') || 
+        a.id.includes('architect')
+      );
+      targetAgentId = architect?.id || null;
+      
+      if (targetAgentId && targetAgentId !== currentAgentId) {
+        console.log(`🤖 [Auto-Select] Editor mode → Auto-selecting ${architect?.name} (The Architect)`);
+        onSelectAgent(targetAgentId);
+      }
+    }
+  }, [viewMode, agents, currentAgentId, onSelectAgent]);
+
   useEffect(() => {
     fetchModels();
   }, []);
@@ -216,19 +251,28 @@ export default function AgentSidebar({
           
           {/* Show agent selection ONLY in editor mode, HIDE Settings and Create Agent buttons (moved to admin) */}
           {isEditorMode && (
-            <div className="flex items-center gap-3">
-              <Select value={currentAgentId || undefined} onValueChange={onSelectAgent}>
-                <SelectTrigger className="h-10 text-sm bg-[#0E2E33] border-[#0E2E33] text-white">
-                  <SelectValue placeholder="Select Agent" />
-                </SelectTrigger>
-                <SelectContent className="max-h-80 z-50">
-                  {agents.map(agent => (
-                    <SelectItem key={agent.id} value={agent.id}>
-                      {agent.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-3">
+                <Select value={currentAgentId || undefined} onValueChange={onSelectAgent}>
+                  <SelectTrigger className="h-10 text-sm bg-[#0E2E33] border-[#0E2E33] text-white">
+                    <SelectValue placeholder="Select Agent" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-80 z-50">
+                    {agents.map(agent => (
+                      <SelectItem key={agent.id} value={agent.id}>
+                        {agent.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* 🤖 AUTO-SELECT CONTEXT HINT */}
+              {currentAgentId && currentAgent && (
+                <p className="text-xs text-gray-400 px-0">
+                  {viewMode === 'editor' ? '✨ Selected for SOW generation' : '✨ Agent ready'}
+                </p>
+              )}
 
               {/* ❌ HIDDEN: Settings button moved to Admin Panel */}
               {/* <Dialog open={showSettings} onOpenChange={setShowSettings}>
