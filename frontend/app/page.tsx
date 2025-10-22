@@ -2301,7 +2301,7 @@ export default function Page() {
       id: 'dashboard',
       name: 'Dashboard AI',
       systemPrompt: 'You are a helpful AI assistant for the Social Garden SOW Generator platform. You help users with creating SOWs, understanding features, and general questions. Be helpful, friendly, and concise.',
-      model: 'google/gemini-2.0-flash-exp:free' // 🆓 FREE on OpenRouter - no cost!
+      model: 'anythingllm' // ✅ Use AnythingLLM for dashboard (routes to master-dashboard workspace)
     } : currentAgent;
     
     if (effectiveAgent) {
