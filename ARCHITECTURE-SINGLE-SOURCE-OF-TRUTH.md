@@ -1,11 +1,12 @@
 # 🏗️ ARCHITECTURE: Single Source of Truth
 
 **🚨 CRITICAL: This document is the ONLY authoritative source for architecture. Always read it fully before making changes.**
+Always use /root/the11-dev/ENTERPRISE-UX-TESTING-CHECKLIST.md  to create todos and checklists 
 
 **Last Updated**: October 22, 2025  
 **Status**: In Development / Being Fixed  
 **Environment**: VPS self-hosted on port 3000 (`localhost:3000`)
-
+/root/the11-dev/frontend/app/api/sow/create/ANYTHINGAPI   is the source of truth anythingllm intergation
 ---
 
 ## 📋 Table of Contents

@@ -1,6 +1,9 @@
 # ✅ Enterprise-Grade UX Testing Checklist
 
-**Status**: TESTING IN PROGRESS | **Branch**: enterprise-grade-ux | **Latest Commit**: 527d085  
+**🚨 CRITICAL**: SEE **ARCHITECTURE-SINGLE-SOURCE-OF-TRUTH.md** FOR DEFINITIVE SYSTEM ARCHITECTURE  
+That document is the ONLY authoritative source - always read it fully before making changes.
+
+**Status**: TESTING IN PROGRESS | **Branch**: enterprise-grade-ux | **Latest Commit**: 5311ce0  
 **Deployment**: VPS self-hosted on port 3000 (NOT easypanel.io)  
 **Environment**: `/root/the11-dev` → builds and runs on http://localhost:3000
 
