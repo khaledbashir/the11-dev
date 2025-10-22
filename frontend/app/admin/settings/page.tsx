@@ -21,7 +21,7 @@ interface AIModel {
 
 export default function SettingsPage() {
   // Inline Editor AI (uses OpenRouter directly)
-  const [inlineEditorModel, setInlineEditorModel] = useState('google/gemini-2.0-flash-exp:free');
+  const [inlineEditorModel, setInlineEditorModel] = useState('openai/gpt-oss-20b:free');
   const [quickActionsEnabled, setQuickActionsEnabled] = useState(true);
   const [quickActions, setQuickActions] = useState<QuickAction[]>([
     { id: '1', label: 'Improve Writing', prompt: 'Improve the writing quality and clarity', visible: true, icon: 'Sparkles' },
@@ -71,14 +71,11 @@ export default function SettingsPage() {
   };
 
   const getDefaultModels = (): AIModel[] => [
+    { id: 'openai/gpt-oss-20b:free', name: 'OpenAI GPT OSS 20B (Free)', isFree: true },
     { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash (Free)', isFree: true },
-    { id: 'google/gemini-pro', name: 'Gemini Pro', isFree: false },
-    { id: 'meta-llama/llama-3.1-8b-instruct:free', name: 'Llama 3.1 8B (Free)', isFree: true },
-    { id: 'meta-llama/llama-3.1-70b-instruct', name: 'Llama 3.1 70B', isFree: false },
-    { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B (Free)', isFree: true },
-    { id: 'mistralai/mistral-large', name: 'Mistral Large', isFree: false },
-    { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', isFree: false },
-    { id: 'openai/gpt-4o', name: 'GPT-4o', isFree: false },
+    { id: 'meta-llama/llama-3.1-70b-instruct:free', name: 'Llama 3.1 70B (Free)', isFree: true },
+    { id: 'mistralai/mistral-large:free', name: 'Mistral Large (Free)', isFree: true },
+    { id: 'deepseek/deepseek-chat:free', name: 'DeepSeek Chat (Free)', isFree: true },
   ];
 
   // Load settings and fetch models on mount
@@ -89,7 +86,7 @@ export default function SettingsPage() {
     if (saved) {
       try {
         const settings = JSON.parse(saved);
-        setInlineEditorModel(settings.inlineEditorModel || 'google/gemini-2.0-flash-exp:free');
+        setInlineEditorModel(settings.inlineEditorModel || 'openai/gpt-oss-20b:free');
         setQuickActionsEnabled(settings.quickActionsEnabled !== false);
         setQuickActions(settings.quickActions || quickActions);
       } catch (e) {

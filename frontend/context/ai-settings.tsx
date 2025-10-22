@@ -22,7 +22,7 @@ interface AISettingsContextType {
 }
 
 const defaultSettings: AISettings = {
-  aiModel: 'google/gemini-2.0-flash-exp:free',
+  aiModel: process.env.NEXT_PUBLIC_DEFAULT_AI_MODEL || 'openai/gpt-oss-20b:free',
   quickActionsEnabled: true,
   quickActions: [
     { id: '1', label: 'Improve Writing', prompt: 'Improve the writing quality and clarity', visible: true, icon: 'Sparkles' },

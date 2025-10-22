@@ -17,7 +17,10 @@ export async function POST(req: NextRequest): Promise<Response> {
   // Rate limiting disabled - KV client type incompatibility with Ratelimit
   // Can be re-enabled with proper Redis client setup
 
-  const { prompt, option, command, model = "z-ai/glm-4.5-air:free" } = await req.json();
+  // Get model from request or fall back to env var, then to default
+  const { prompt, option, command, model } = await req.json();
+  const defaultModel = process.env.OPENROUTER_DEFAULT_MODEL || "google/gemini-2.0-flash-exp:free";
+  const selectedModel = model || defaultModel;
 
   const messages = match(option)
     .with("continue", () => [
@@ -134,7 +137,7 @@ export async function POST(req: NextRequest): Promise<Response> {
           'X-Title': 'Social Garden SOW Generator',
         },
         body: JSON.stringify({
-          model: model || 'google/gemini-2.0-flash-exp:free',
+          model: selectedModel,
           messages: messages,
           stream: true,
         }),
