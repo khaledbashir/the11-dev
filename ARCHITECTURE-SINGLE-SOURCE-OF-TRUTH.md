@@ -341,27 +341,47 @@ Can answer: "How many SOWs in TTT workspace?" ✅
 
 **Problem**: When creating a new workspace, the system was immediately embedding the knowledge base into an EMPTY workspace.
 
-**What was happening**:
-1. User creates workspace "h3llo"
-2. System immediately embeds Social Garden knowledge base
-3. But workspace has NO content yet!
-4. Wasting API calls, confusing users
-
 **Fix Applied**:
 - Removed `embedCompanyKnowledgeBase()` from `createOrGetClientWorkspace()` function
 - Knowledge base now ONLY embeds when first SOW is created
 - Master dashboard STILL embeds knowledge base (for analytics)
 
-**Code Change**:
-- File: `/frontend/lib/anythingllm.ts` lines 93-109
-- Removed unnecessary embedding step from client workspace creation
-- Embedding now happens atomically with SOW creation via `embedSOWInBothWorkspaces()`
+**Code Change**: `frontend/lib/anythingllm.ts` lines 93-109
 
 **Result**: Clean workspace creation flow with no unnecessary API calls
 
 ---
 
-### ⚠️ Issue #2: 401 Unauthorized on Chat Endpoints
+### ✅ FIXED #2: Chat Messages Disappearing + 400 Errors (October 22, 2025)
+
+**Root Cause**: Workspace routing mismatch - threads were created in client workspace (e.g., "hello") but then accessed from gen-the-architect workspace.
+
+**What was happening**:
+1. Create SOW in "hello" workspace → thread created in "hello" ✅
+2. Open SOW for chat → code forced workspace to "gen-the-architect" ❌
+3. Try to fetch chat from "gen-the-architect" → 400 (thread doesn't exist) 
+4. Auto-create NEW thread in wrong workspace
+5. Messages go to wrong thread → disappear
+
+**Fixes Applied**:
+1. **Line 683** (`frontend/app/page.tsx`): Load chat from SOW's actual workspace, not hardcoded gen-the-architect
+2. **Line 1356** (`frontend/app/page.tsx`): Create SOW threads in CLIENT WORKSPACE, not gen-the-architect
+3. **Line 2340** (`frontend/app/page.tsx`): Route SOW editor chat to SOW's workspace, not gen-the-architect
+
+**Code Changes**:
+- Use `doc.workspaceSlug` instead of hardcoded workspace name
+- Create threads in `workspace.workspace_slug` (client workspace)
+- Route chat requests to correct workspace based on SOW properties
+
+**Result**: 
+- ✅ Chat messages now persist
+- ✅ No duplicate threads created in wrong workspace
+- ✅ 400 errors eliminated
+- ✅ SOW chat works consistently
+
+---
+
+### ⚠️ Issue #3: 401 Unauthorized on Dashboard Chat (Pending Investigation)
 
 **Symptoms**:
 - Dashboard AI: Opens, but "Send" button returns 401
