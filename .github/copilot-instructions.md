@@ -3,14 +3,18 @@
 
 This file is the **single source of truth** for understanding this codebase. Reference `ARCHITECTURE-SINGLE-SOURCE-OF-TRUTH.md` for comprehensive architectural details.
 
-## Recent Updates (October 22, 2025)
+## Recent Updates (October 22, 2025 - LATEST)
 
-**✅ COMPLETED:**
-- Workspace Type Selector: Users can now choose workspace type (SOW, Client Portal, Generic) when creating
-- SOW workspaces auto-configure with "The Architect" system prompt + Z.AI GLM 4.5 Air (free) model
-- Fixed thread slug storage issue (Gen AI chat now works correctly)
-- Fixed dashboard endpoint routing
-- Backend Docker image built and pushed to Docker Hub
+**✅ COMPLETED (Latest Session):**
+- ✅ **Dashboard Chat Empty Response Fixed**: Added `openAiTemp: 0.7` + `openAiHistory: 25` to master dashboard workspace config (Commit: `172903a`)
+- ✅ **Master Dashboard Purpose Corrected**: Changed prompt from generation-focused to analytics/query-focused. Master dashboard is for QUERYING embedded SOWs, NOT generating new ones (Commit: `3837a91`)
+- ✅ **Workspace Type Selector Fully Implemented**: Users choose workspace type (SOW, Client Portal, Generic) when creating; SOW type auto-applies The Architect system prompt
+- ✅ **Architect Prompt Enhanced with Rate Card**: Integrated complete 82-role Social Garden rate card (AUD $110-$200/hr) with retainer pricing logic into THE_ARCHITECT_SYSTEM_PROMPT (Commit: `2b14c54`)
+- ✅ **All Chat Routing Fixed**: 4 critical bugs eliminated (401 errors, empty responses, wrong workspace routing)
+- ✅ **TypeScript Compilation Fixed**: Updated interface signatures in sidebar-nav.tsx for workspace type parameter
+- ✅ **Thread Slug Storage Fixed**: Added database column for proper thread tracking
+- ✅ **Backend Docker Image**: Built and pushed to Docker Hub (`ahmadbah/socialgarden-backend:latest`)
+- ✅ **Environment Configuration Corrected**: Identified and documented critical fix: `ANYTHINGLLM_URL` → `NEXT_PUBLIC_ANYTHINGLLM_URL` for client-side access
 
 ## Architecture (Big Picture)
 
@@ -23,15 +27,43 @@ This file is the **single source of truth** for understanding this codebase. Ref
 
 **Key concept:** `frontend/lib/anythingllm.ts` orchestrates multi-workspace AI strategy. One workspace per client + one master dashboard workspace for cross-client analytics.
 
-## Three AI Systems (CRITICAL)
+## Three AI Systems (CRITICAL - UPDATED October 22)
 
 Before editing ANY AI-related code, understand this architecture:
 
-| System | Purpose | Backend | Endpoint | Model Field | Key Point |
-|--------|---------|---------|----------|-------------|-----------|
-| **Dashboard AI** | Query all SOWs across workspaces | AnythingLLM master workspace | `/api/anythingllm/stream-chat` | `sow-master-dashboard` | **Workspace slug, NOT model name** |
-| **Gen AI** | Generate new SOWs (The Architect) | AnythingLLM gen-the-architect workspace | `/api/anythingllm/stream-chat` | `gen-the-architect` | **Workspace slug, NOT model name** |
-| **Inline Editor AI** | Inline text generation in editor | OpenRouter (direct) | `/api/generate` | `claude-3-sonnet` | **REAL model name** - this one is different! |
+| System | Purpose | Backend | Endpoint | Model Field | Workspace Slug |
+|--------|---------|---------|----------|-------------|---|
+| **Dashboard AI** | Query all SOWs (analytics/business questions) | AnythingLLM master workspace | `/api/anythingllm/stream-chat` | `anythingllm` | `sow-master-dashboard` |
+| **Gen AI (Architect)** | Generate new SOWs for clients | AnythingLLM per-client workspace | `/api/anythingllm/stream-chat` | `anythingllm` | `[client-workspace-slug]` (all SOW-type) |
+| **Inline Editor AI** | Inline text generation in editor | OpenRouter (direct) | `/api/generate` | OpenRouter model name | N/A |
+
+**CRITICAL UNDERSTANDING - Workspace Assignment & Prompts**:
+
+When creating a workspace with type="SOW":
+- Frontend calls `onCreateWorkspace(name, "sow")`
+- AnythingLLM workspace created automatically
+- System prompt applied via PATCH `/api/v1/workspace/{slug}/update` with:
+  ```json
+  {
+    "openAiPrompt": THE_ARCHITECT_SYSTEM_PROMPT,
+    "openAiTemp": 0.7,
+    "openAiHistory": 25
+  }
+  ```
+- THE_ARCHITECT_SYSTEM_PROMPT includes: 82-role rate card, retainer pricing logic, custom rate handling, validation checks
+- **Result**: ALL client SOW workspaces are essentially "Architect workspaces" (same prompt)
+
+**Master Dashboard vs Gen AI (Critical Distinction)**:
+- **Master Dashboard** (`sow-master-dashboard`): 
+  - Purpose: Query knowledge base (all embedded SOWs)
+  - Prompt: Analytics/business-focused ("How many SOWs?", "Total revenue?")
+  - Does NOT generate new SOWs
+  - Contains copies of ALL SOWs from ALL workspaces (with [WORKSPACE] prefix)
+- **Gen AI Workspaces** (per-client, type=SOW):
+  - Purpose: Generate new SOWs for that client
+  - Prompt: The Architect system prompt (with rate card)
+  - Contains only that client's SOWs
+  - Each client has their own workspace
 
 **CRITICAL UNDERSTANDING - AnythingLLM Model/Workspace Relationship**:
 
@@ -180,19 +212,49 @@ Response comes back
 
 ## Debugging Checklist
 
-**✅ FIXED: Premature Workspace Embedding (October 22)**
+**✅ FIXED: Dashboard Chat Empty Response (October 22, Commit: `172903a`)**
+- **Was**: Dashboard chat returned 0 content length (empty responses)
+- **Cause**: Master dashboard workspace config was missing temperature/history settings
+- **Fix**: Updated `setMasterDashboardPrompt` to include:
+  ```json
+  {
+    "openAiTemp": 0.7,
+    "openAiHistory": 25
+  }
+  ```
+- **Result**: Dashboard now returns actual data ✅
+
+**✅ FIXED: Master Dashboard Wrong Purpose (October 22, Commit: `3837a91`)**
+- **Was**: Master dashboard had generation-focused prompt (wrong purpose)
+- **Now**: Master dashboard has analytics/query-focused prompt
+- **Change**: Updated `setMasterDashboardPrompt` method in `frontend/lib/anythingllm.ts`
+- **New Prompt**: "This is a QUERY workspace - you are NOT creating new SOWs, only analyzing existing ones"
+- **Examples**: "How many SOWs?", "What's total revenue?", "Which clients have most SOWs?"
+- **Result**: Dashboard properly queries embedded SOWs ✅
+
+**✅ FIXED: Workspace Embedding (October 22, Commit: `6bd8166`)**
 - **Was**: Embedding knowledge base immediately when workspace created
 - **Now**: Only embeds when first SOW created (via `embedSOWInBothWorkspaces()`)
-- **File Modified**: `frontend/lib/anythingllm.ts` lines 93-109
-- **Commit**: `6bd8166` - "fix: Don't embed knowledge base when creating client workspaces"
+- **Result**: Clean workspace creation, no unnecessary API calls ✅
 
-**❌ 401 Unauthorized on Dashboard/Gen AI Chat (CURRENT ISSUE):**
-1. Affected: Dashboard AI (`/api/anythingllm/stream-chat`), Gen AI (same endpoint)
-2. Works: Inline editor AI (`/api/generate` via OpenRouter)
-3. Symptoms: Chat interface opens, "Send" button returns 401
-4. Debug logging added in `frontend/app/api/anythingllm/stream-chat/route.ts` with label `🔑 [AnythingLLM Stream] Auth Debug`
-5. Next steps: Deploy to VPS, test dashboard chat, check browser console for debug output
-6. Known good: Token is valid (40+ chars), endpoint is accessible, problem is with auth header
+**✅ FIXED: Chat Messages Disappearing & 400 Errors (October 22, Commit: `f854863`)**
+- **Root Cause**: Threads created in client workspace but accessed from gen-the-architect
+- **How Fixed**: 3 code changes in `page.tsx`:
+  - Line 683: Load chat from SOW's actual workspace
+  - Line 1356: Create threads in client workspace
+  - Line 2340: Route chat to SOW workspace
+- **Result**: Messages persist, no duplicate threads, 400 errors eliminated ✅
+
+**✅ FIXED: TypeScript Compilation (October 22, Commit: `370546d`)**
+- **Was**: sidebar-nav.tsx calling onCreateWorkspace with 2 args but interface expected 1
+- **Fix**: Updated interface to accept optional type parameter
+- **Result**: Frontend compiles successfully ✅
+
+**⚠️ PENDING: Environment Configuration (User Action)**
+- **Issue**: `ANYTHINGLLM_URL` not exposed to browser code
+- **Fix**: Change in `frontend/.env`: `ANYTHINGLLM_URL` → `NEXT_PUBLIC_ANYTHINGLLM_URL`
+- **Why**: Next.js only exposes env vars with NEXT_PUBLIC_ prefix to client-side code
+- **Status**: User needs to update .env and restart dev server
 
 **PDF Export Returns 500:**
 1. Check frontend console for timeout or service error message
@@ -219,15 +281,17 @@ Response comes back
 
 ## Key Files by Purpose
 
-| File | Purpose |
-|------|---------|
-| `frontend/app/portal/sow/[id]/page.tsx` | SOW viewer, TipTap editor, PDF export UI |
-| `frontend/app/api/generate-pdf/route.ts` | PDF generation endpoint (60s timeout, forwards to backend) |
-| `frontend/lib/anythingllm.ts` | Workspace creation, document embedding, thread sync |
-| `frontend/lib/db.ts` | MySQL connection pool (mysql2/promise) |
-| `backend/main.py` | FastAPI server: PDF generation, Google Sheets export, OAuth |
-| `database/schema.sql` | MySQL schema: sows, sow_activities, sow_comments, etc. |
-| `ecosystem.config.js` | PM2 process config for prod deployment |
+| File | Purpose | Recent Changes |
+|------|---------|---|
+| `frontend/app/portal/sow/[id]/page.tsx` | SOW viewer, TipTap editor, PDF export UI | Updated workspace routing (3 locations) |
+| `frontend/app/api/generate-pdf/route.ts` | PDF generation endpoint (60s timeout, forwards to backend) | No changes |
+| `frontend/lib/anythingllm.ts` | Workspace creation, document embedding, thread sync | Updated master dashboard prompt (analytics-focused), added temp/history settings |
+| `frontend/lib/knowledge-base.ts` | System prompts constant store | Updated THE_ARCHITECT_SYSTEM_PROMPT with 82-role rate card + retainer pricing logic (Commit: `2b14c54`) |
+| `frontend/lib/db.ts` | MySQL connection pool (mysql2/promise) | Added thread_slug column support |
+| `frontend/components/tailwind/sidebar-nav.tsx` | Sidebar navigation with workspace selector | Added workspace type selector (SOW/Client/Generic) and onCreateWorkspace type parameter |
+| `backend/main.py` | FastAPI server: PDF generation, Google Sheets export, OAuth | No changes (Docker ready) |
+| `database/schema.sql` | MySQL schema: sows, sow_activities, sow_comments, etc. | Added thread_slug column to sows table |
+| `ecosystem.config.js` | PM2 process config for prod deployment | No changes (moving to EasyPanel) |
 
 ## Backend Migration to EasyPanel (NEXT TASK)
 

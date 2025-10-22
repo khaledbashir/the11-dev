@@ -30,6 +30,30 @@
     - `frontend/app/page.tsx` - Logic to apply prompt for SOW type
   - **Result**: Clean workspace setup, type-specific AI configuration ✅
 
+- [x] **COMPLETED**: Architect Prompt Enhanced with Rate Card
+  - **What it includes**: 82-role Social Garden rate card (AUD $110-$200/hr)
+  - **Additional Features**: Retainer pricing logic (40-hour breakdown), custom rate handling, validation checklist
+  - **File Modified**: `frontend/lib/knowledge-base.ts` - THE_ARCHITECT_SYSTEM_PROMPT constant
+  - **Commit**: `2b14c54`
+  - **Result**: System prompt now has all pricing logic for accurate SOW generation ✅
+
+- [x] **FIXED**: Dashboard Chat Empty Response
+  - **What was wrong**: Dashboard returned 0 content length (empty responses)
+  - **Root cause**: Master dashboard workspace missing temperature/history settings
+  - **How fixed**: Added `openAiTemp: 0.7`, `openAiHistory: 25` to workspace update
+  - **File Modified**: `frontend/lib/anythingllm.ts` - setMasterDashboardPrompt method
+  - **Commit**: `172903a`
+  - **Result**: Dashboard now returns actual data ✅
+
+- [x] **FIXED**: Master Dashboard Purpose Corrected
+  - **What was wrong**: Master dashboard had generation-focused prompt (wrong purpose)
+  - **How fixed**: Changed prompt to analytics/query-focused
+  - **File Modified**: `frontend/lib/anythingllm.ts` - setMasterDashboardPrompt method
+  - **Commit**: `3837a91`
+  - **New Prompt Characteristics**: "This is a QUERY workspace - you are NOT creating new SOWs, only analyzing existing ones"
+  - **Examples**: "How many SOWs this month?", "What's total revenue?", "Which clients have most SOWs?"
+  - **Result**: Dashboard properly queries embedded SOWs for analytics ✅
+
 - [x] **FIXED**: Dashboard Chat 401 Error
   - **What was wrong**: Dashboard was routing to OpenRouter instead of AnythingLLM
   - **Root cause**: effectiveAgent.model was 'google/gemini-2.0-flash-exp:free' instead of 'anythingllm'
@@ -41,7 +65,7 @@
   - **What was wrong**: Knowledge base embedded on empty workspaces immediately
   - **How fixed**: Removed premature embedding from `createOrGetClientWorkspace()`
   - **Commit**: `6bd8166`
-  - **Result**: Clean workspace creation, no wasted API calls
+  - **Result**: Clean workspace creation, no wasted API calls ✅
 
 - [x] **FIXED**: Chat Messages Disappearing + 400 Errors
   - **What was wrong**: Threads created in client workspace but accessed from gen-the-architect
@@ -51,19 +75,31 @@
     - Line 683: Load chat from SOW's actual workspace
     - Line 1356: Create threads in client workspace
     - Line 2340: Route chat to SOW workspace
-  - **Result**: Messages persist, no duplicate threads, 400 errors eliminated
+  - **Result**: Messages persist, no duplicate threads, 400 errors eliminated ✅
 
 - [x] **FIXED**: Gen AI Chat Empty Response
   - **What was wrong**: Thread slug not stored in database, was using SOW ID instead of AnythingLLM thread UUID
   - **How fixed**: Added `thread_slug` column to sows table, updated chat retrieval logic
   - **Commits**: Various
-  - **Result**: Chat messages now display correctly, threads properly tracked
+  - **Result**: Chat messages now display correctly, threads properly tracked ✅
 
 - [x] **FIXED**: Dashboard Chat Double /stream-chat
   - **What was wrong**: Endpoint URL was doubled: `/api/anythingllm/stream-stream-chat`
   - **How fixed**: Check if `/stream-chat` already in URL before replacing
   - **Commit**: `b462dc7`
-  - **Result**: Dashboard chat endpoint now routes correctly
+  - **Result**: Dashboard chat endpoint now routes correctly ✅
+
+- [x] **FIXED**: TypeScript Compilation Error
+  - **What was wrong**: sidebar-nav.tsx calling onCreateWorkspace with 2 args but interface expected 1
+  - **How fixed**: Updated interface to accept optional type parameter
+  - **Commit**: `370546d`
+  - **Result**: Frontend compiles successfully ✅
+
+- [ ] **PENDING**: Environment Configuration
+  - **Issue**: `ANYTHINGLLM_URL` not exposed to browser code
+  - **Fix Needed**: Change in `frontend/.env`: `ANYTHINGLLM_URL` → `NEXT_PUBLIC_ANYTHINGLLM_URL`
+  - **Why**: Next.js only exposes env vars with NEXT_PUBLIC_ prefix to client-side code
+  - **Status**: User needs to update .env and restart dev server
 
 ### Planned Features
 - [ ] **Feature**: API Response Caching
@@ -459,70 +495,221 @@ Can answer: "How many SOWs in TTT workspace?" ✅
 
 ## Known Issues & Fixes
 
-### ✅ FIXED #1: Workspace Embedding (October 22, 2025)
+### ✅ FIXED #1: Dashboard Chat Empty Response (October 22, 2025)
 
-**Problem**: When creating a new workspace, the system was immediately embedding the knowledge base into an EMPTY workspace.
+**Problem**: Dashboard chat returned empty responses (0 content length).
+
+**Root Cause**: Master dashboard workspace was missing temperature and history settings. Only the system prompt was being set, not the LLM configuration.
+
+**Fix Applied**:
+- Updated `setMasterDashboardPrompt` in `frontend/lib/anythingllm.ts` to include:
+  ```json
+  {
+    "openAiTemp": 0.7,
+    "openAiHistory": 25
+  }
+  ```
+- These settings are required for AnythingLLM workspaces to properly configure the underlying LLM
+
+**Code Change**: `frontend/lib/anythingllm.ts` setMasterDashboardPrompt method
+
+**Commit**: `172903a` - "fix: Add temperature and history settings to master dashboard prompt"
+
+**Result**: Dashboard chat now returns actual data with proper content length ✅
+
+---
+
+### ✅ FIXED #2: Master Dashboard Purpose Correction (October 22, 2025)
+
+**Problem**: Master dashboard had generation-focused prompt, but its purpose is analytics/querying.
+
+**What It Should Be**:
+- Master dashboard is a READ-ONLY query workspace
+- Embeds copies of all SOWs from all client workspaces
+- Used to answer questions like: "How many SOWs?", "What's total revenue?", "Which clients?" 
+- NOT for generating new SOWs (that's what client SOW workspaces are for)
+
+**Fix Applied**:
+- Changed system prompt to analytics/query-focused
+- Removed generation-focused language ("Generate reports", "strategic decision-making")
+- Added explicit guidance: "This is a QUERY workspace - you are NOT creating new SOWs, only analyzing existing ones"
+- Added examples of proper usage
+
+**Code Change**: `frontend/lib/anythingllm.ts` setMasterDashboardPrompt method
+
+**Commit**: `3837a91` - "fix: Update master dashboard prompt to be analytics/query focused"
+
+**Result**: Dashboard AI now properly queries SOW knowledge base instead of trying to generate ✅
+
+---
+
+### ✅ FIXED #3: Workspace Type Selector & Auto-Configuration (October 22, 2025)
+
+**Feature**: Users can now select workspace type when creating a workspace.
+
+**Implementation**:
+1. **UI Component**: Dropdown selector in sidebar-nav.tsx with three options:
+   - 📄 Scope of Work (SOW)
+   - 👥 Client Portal
+   - 📋 Generic Workspace
+
+2. **Auto-Configuration Logic**: When workspace created with type="SOW":
+   - Frontend calls AnythingLLM `/api/v1/workspace/{slug}/update`
+   - Applies THE_ARCHITECT_SYSTEM_PROMPT
+   - Sets temperature=0.7 and history=25
+   - **Result**: All SOW workspaces are now "Architect workspaces" with same system prompt
+
+3. **Workspace Architecture**: 
+   - SOW workspaces: Get The Architect prompt + rate card
+   - Client Portal workspaces: Get system defaults
+   - Generic workspaces: Get system defaults
+
+**Code Changes**:
+- `frontend/components/tailwind/sidebar-nav.tsx`: UI with type selector
+- `frontend/app/page.tsx`: Logic to apply The Architect prompt for SOW type
+- Interface updated: `onCreateWorkspace(name: string, type?: "sow" | "client" | "generic")`
+
+**Commits**: `9b05592`, `370546d`
+
+**Result**: Clean workspace creation with type-specific AI configuration ✅
+
+---
+
+### ✅ FIXED #4: Architect Prompt Rate Card Integration (October 22, 2025)
+
+**Feature**: Integrated Social Garden's complete rate card into The Architect system prompt.
+
+**What's Included**:
+- 82+ Social Garden roles with AUD hourly rates ($110-$200/hr)
+- Retainer pricing logic (40-hour allocation per month)
+- Custom rate handling rules
+- Validation checklist for SOW pricing
+- Sanity checks for total investment
+
+**Code Location**: `frontend/lib/knowledge-base.ts` constant `THE_ARCHITECT_SYSTEM_PROMPT`
+
+**Example in Prompt**:
+```
+When pricing SOWs, reference this rate card:
+- Senior Developer: $200/hr AUD
+- Project Manager: $180/hr AUD
+- Designer: $160/hr AUD
+...82 more roles...
+
+For retainers (e.g., 40 hours/month):
+- Allocate across roles: 10 hrs PM, 20 hrs Dev, 5 hrs Design, 5 hrs QA
+- Validate: Total hours = 40
+- Calculate: (10 × PM_rate) + (20 × Dev_rate) + ...
+```
+
+**Commit**: `2b14c54` - "feat: Add complete 82-role rate card to Architect prompt with retainer logic"
+
+**Result**: All SOW workspaces now have pricing authority built into system prompt ✅
+
+---
+
+### ✅ FIXED #5: Chat Messages Disappearing + 400 Errors (October 22, 2025)
+
+**Root Cause**: Workspace routing mismatch - threads created in client workspace but accessed from gen-the-architect.
+
+**Specific Issues**:
+1. **Line 683** (`frontend/app/page.tsx`): Chat loaded from hardcoded workspace instead of SOW's actual workspace
+2. **Line 1356** (`frontend/app/page.tsx`): Threads created in gen-the-architect instead of client workspace
+3. **Line 2340** (`frontend/app/page.tsx`): Chat requests routed to gen-the-architect instead of SOW's workspace
+
+**Fixes Applied**:
+1. Load chat from `doc.workspaceSlug` (SOW's actual workspace)
+2. Create threads in `workspace.workspace_slug` (client workspace)
+3. Route chat to correct workspace based on SOW properties
+
+**Code Changes**: `frontend/app/page.tsx` 3 critical locations
+
+**Commit**: `f854863` - "fix: Route chat messages to correct workspace based on SOW"
+
+**Result**: Messages now persist, no duplicate threads, 400 errors eliminated ✅
+
+---
+
+### ✅ FIXED #6: Workspace Embedding (October 22, 2025)
+
+**Problem**: Knowledge base was embedded into empty workspaces immediately on creation.
 
 **Fix Applied**:
 - Removed `embedCompanyKnowledgeBase()` from `createOrGetClientWorkspace()` function
 - Knowledge base now ONLY embeds when first SOW is created
-- Master dashboard STILL embeds knowledge base (for analytics)
+- Triggered by `embedSOWInBothWorkspaces()` call
 
 **Code Change**: `frontend/lib/anythingllm.ts` lines 93-109
 
-**Result**: Clean workspace creation flow with no unnecessary API calls
+**Commit**: `6bd8166` - "fix: Don't embed knowledge base when creating client workspaces"
+
+**Result**: Clean workspace creation with no unnecessary API calls ✅
 
 ---
 
-### ✅ FIXED #2: Chat Messages Disappearing + 400 Errors (October 22, 2025)
+### ✅ FIXED #7: Thread Slug Storage (October 22, 2025)
 
-**Root Cause**: Workspace routing mismatch - threads were created in client workspace (e.g., "hello") but then accessed from gen-the-architect workspace.
+**Problem**: Chat messages not persisting - threads created but couldn't find them later.
 
-**What was happening**:
-1. Create SOW in "hello" workspace → thread created in "hello" ✅
-2. Open SOW for chat → code forced workspace to "gen-the-architect" ❌
-3. Try to fetch chat from "gen-the-architect" → 400 (thread doesn't exist) 
-4. Auto-create NEW thread in wrong workspace
-5. Messages go to wrong thread → disappear
+**Root Cause**: Using SOW database ID instead of AnythingLLM thread UUID for thread tracking.
 
-**Fixes Applied**:
-1. **Line 683** (`frontend/app/page.tsx`): Load chat from SOW's actual workspace, not hardcoded gen-the-architect
-2. **Line 1356** (`frontend/app/page.tsx`): Create SOW threads in CLIENT WORKSPACE, not gen-the-architect
-3. **Line 2340** (`frontend/app/page.tsx`): Route SOW editor chat to SOW's workspace, not gen-the-architect
+**Fix Applied**:
+- Added `thread_slug` column to `sows` table in MySQL
+- Store actual AnythingLLM thread UUID in database
+- Use this slug for all thread operations
 
-**Code Changes**:
-- Use `doc.workspaceSlug` instead of hardcoded workspace name
-- Create threads in `workspace.workspace_slug` (client workspace)
-- Route chat requests to correct workspace based on SOW properties
+**Database Change**: `database/schema.sql`
+```sql
+ALTER TABLE sows ADD COLUMN thread_slug VARCHAR(255) UNIQUE;
+```
 
-**Result**: 
-- ✅ Chat messages now persist
-- ✅ No duplicate threads created in wrong workspace
-- ✅ 400 errors eliminated
-- ✅ SOW chat works consistently
+**Code Location**: `frontend/lib/db.ts` - Updated queries to use thread_slug
+
+**Result**: Chat messages now display correctly, threads properly tracked ✅
 
 ---
 
-### ⚠️ Issue #3: 401 Unauthorized on Dashboard Chat (Pending Investigation)
+### ✅ FIXED #8: TypeScript Compilation (October 22, 2025)
 
-**Symptoms**:
-- Dashboard AI: Opens, but "Send" button returns 401
-- Gen AI (SOW editor): Chat works for some, fails with 401 for others
-- Console: `Response Status: 401`
+**Problem**: Frontend wouldn't compile - interface mismatch.
 
-**Root Cause** (Suspected):
-- AnythingLLM API key not being sent in request headers
-- OR token is invalid/expired
-- OR auth middleware in Next.js route handler is blocking
+**Error**: sidebar-nav.tsx calling `onCreateWorkspace(name, type)` but interface expected only 1 parameter.
 
-**Location**:
-- Endpoint: `/frontend/app/api/anythingllm/stream-chat/route.ts`
-- Caller: `/frontend/app/page.tsx` lines 2300-2450
+**Fix Applied**:
+- Updated interface in sidebar-nav.tsx:
+  ```typescript
+  onCreateWorkspace: (name: string, type?: "sow" | "client" | "generic") => void
+  ```
 
-**Next Steps**:
-- Deploy to production and test dashboard chat
-- Check browser console for auth debug output
-- Verify token is valid in AnythingLLM settings
+**Code Change**: `frontend/components/tailwind/sidebar-nav.tsx`
+
+**Commit**: `370546d` - "fix: Update onCreateWorkspace interface to accept optional type parameter"
+
+**Result**: Frontend compiles successfully ✅
+
+---
+
+### ⚠️ PENDING: Environment Configuration (User Action Required)
+
+**Issue**: `ANYTHINGLLM_URL` not exposed to browser code.
+
+**Root Cause**: Next.js only exposes environment variables with `NEXT_PUBLIC_` prefix to client-side code.
+
+**Fix Required**: In `frontend/.env`
+```bash
+# Change this:
+ANYTHINGLLM_URL=https://ahmad-anything-llm.840tjq.easypanel.host
+
+# To this:
+NEXT_PUBLIC_ANYTHINGLLM_URL=https://ahmad-anything-llm.840tjq.easypanel.host
+```
+
+**Why This Matters**:
+- Frontend code runs in browser
+- Browser cannot access env vars without NEXT_PUBLIC_ prefix
+- Other backend routes can use ANYTHINGLLM_URL, but browser code needs NEXT_PUBLIC_ANYTHINGLLM_URL
+
+**Status**: Awaiting user to update .env and restart dev server ⏳
 
 ---
 

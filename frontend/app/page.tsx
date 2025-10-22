@@ -1306,12 +1306,18 @@ export default function Page() {
       
       toast.success(`✅ Created workspace "${workspaceName}" with blank SOW ready to edit!`);
       
-      // Close progress modal after a brief delay
+      // Close progress modal and navigate to SOW editor
       setTimeout(() => {
         setWorkspaceCreationProgress(prev => ({
           ...prev,
           isOpen: false,
         }));
+        
+        // 🚀 AUTO-NAVIGATE TO NEW SOW EDITOR (not staying on dashboard)
+        const router = require('next/router').useRouter?.() || { push: () => {} };
+        if (typeof window !== 'undefined') {
+          window.location.href = `/portal/sow/${sowId}`;
+        }
       }, 500);
     } catch (error) {
       console.error('❌ Error creating workspace:', error);
