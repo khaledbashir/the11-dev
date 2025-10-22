@@ -604,34 +604,51 @@ Ready to explore your project details? Ask me anything!`;
 
   /**
    * Get chat history from a thread
+   * With retry logic for newly created threads
    */
-  async getThreadChats(workspaceSlug: string, threadSlug: string): Promise<any[]> {
+  async getThreadChats(workspaceSlug: string, threadSlug: string, retries = 3): Promise<any[]> {
     try {
       console.log(`🧵 [getThreadChats] Fetching messages from ${workspaceSlug}/${threadSlug}`);
       
-      const response = await fetch(
-        `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/thread/${threadSlug}/chats`,
-        {
-          method: 'GET',
-          headers: this.getHeaders(),
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        const response = await fetch(
+          `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/thread/${threadSlug}/chats`,
+          {
+            method: 'GET',
+            headers: this.getHeaders(),
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log(`✅ [getThreadChats] Got ${(data.history || []).length} messages from thread (attempt ${attempt}/${retries})`);
+          
+          // Return history array with role and content fields for conversion to ChatMessage
+          const history = data.history || [];
+          if (history.length > 0) {
+            console.log(`💬 [getThreadChats] Sample message:`, history[0]);
+          }
+          
+          return history;
         }
-      );
 
-      if (!response.ok) {
-        console.error(`❌ [getThreadChats] Failed to get thread chats: ${response.statusText}`);
-        return [];
+        // If 400 and not last attempt, wait and retry
+        if (response.status === 400 && attempt < retries) {
+          console.warn(`⚠️ [getThreadChats] Got 400 on attempt ${attempt}/${retries}, retrying in 1s...`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          continue;
+        }
+
+        // If final attempt or non-400 error
+        const statusText = await response.text();
+        console.error(`❌ [getThreadChats] Failed (attempt ${attempt}/${retries}): ${response.status} ${statusText}`);
+        
+        if (attempt === retries) {
+          return [];
+        }
       }
 
-      const data = await response.json();
-      console.log(`✅ [getThreadChats] Got ${(data.history || []).length} messages from thread`);
-      
-      // Return history array with role and content fields for conversion to ChatMessage
-      const history = data.history || [];
-      if (history.length > 0) {
-        console.log(`💬 [getThreadChats] Sample message:`, history[0]);
-      }
-      
-      return history;
+      return [];
     } catch (error) {
       console.error('❌ Error getting thread chats:', error);
       return [];
