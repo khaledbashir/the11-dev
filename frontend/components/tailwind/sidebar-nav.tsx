@@ -64,7 +64,7 @@ interface SidebarNavProps {
   
   onSelectWorkspace: (id: string) => void;
   onSelectSOW: (id: string) => void;
-  onCreateWorkspace: (name: string) => void;
+  onCreateWorkspace: (name: string, type?: "sow" | "client" | "generic") => void;
   onCreateSOW: (workspaceId: string, name: string) => void;
   onRenameWorkspace: (id: string, name: string) => void;
   onDeleteWorkspace: (id: string) => void;
