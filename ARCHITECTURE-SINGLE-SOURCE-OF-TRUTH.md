@@ -1,11 +1,54 @@
 # 🏗️ ARCHITECTURE: Single Source of Truth
 
 **🚨 CRITICAL: This document is the ONLY authoritative source for architecture. Always read it fully before making changes.**
-Always use /root/the11-dev/ENTERPRISE-UX-TESTING-CHECKLIST.md  to create todos and checklists 
 
 **Last Updated**: October 22, 2025  
 **Status**: In Development / Being Fixed  
 **Environment**: VPS self-hosted on port 3000 (`localhost:3000`)
+
+---
+
+## 📋 ACTIVE ISSUES & FEATURES CHECKLIST
+
+**Use this section to track current work. Check items as they're completed.**
+
+### Current Sprint Issues
+- [ ] **Issue**: 401 Unauthorized on Dashboard Chat
+  - **Status**: ⏳ Pending investigation
+  - **Description**: Dashboard chat endpoint returns 401 when user clicks "Send"
+  - **Last Updated**: Oct 22, 2025
+  - **Assigned**: TBD
+  - **Next Step**: Deploy to EasyPanel and monitor browser console
+
+- [ ] **Issue**: Backend Migration to EasyPanel
+  - **Status**: 📋 Documented, ready to execute
+  - **Description**: Move FastAPI from PM2 to EasyPanel Docker for consistency
+  - **Time Estimate**: ~30 minutes
+  - **Steps**: 5-step Docker build/push/deploy process outlined below
+  - **Next Step**: User approval + Docker Hub account setup
+
+### Recent Fixes (October 22)
+- [x] **FIXED**: Workspace Embedding Issue
+  - **What was wrong**: Knowledge base embedded on empty workspaces immediately
+  - **How fixed**: Removed premature embedding from `createOrGetClientWorkspace()`
+  - **Commit**: `6bd8166`
+  - **Result**: Clean workspace creation, no wasted API calls
+
+- [x] **FIXED**: Chat Messages Disappearing + 400 Errors
+  - **What was wrong**: Threads created in client workspace but accessed from gen-the-architect
+  - **How fixed**: 3 critical code changes to workspace routing in `page.tsx`
+  - **Commit**: `f854863`
+  - **Files Modified**:
+    - Line 683: Load chat from SOW's actual workspace
+    - Line 1356: Create threads in client workspace
+    - Line 2340: Route chat to SOW workspace
+  - **Result**: Messages persist, no duplicate threads, 400 errors eliminated
+
+### Planned Features
+- [ ] **Feature**: API Response Caching
+  - **Status**: 🔵 Not started
+  - **Description**: Cache AnythingLLM API responses to reduce latency
+  - **Priority**: Medium
 
 ---
 
