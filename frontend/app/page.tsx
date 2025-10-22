@@ -11,6 +11,7 @@ import { SendToClientModal } from "@/components/tailwind/send-to-client-modal";
 import { ShareLinkModal } from "@/components/tailwind/share-link-modal";
 import { ResizableLayout } from "@/components/tailwind/resizable-layout";
 import { DocumentStatusBar } from "@/components/tailwind/document-status-bar";
+import WorkspaceCreationProgress from "@/components/tailwind/workspace-creation-progress";
 
 import { toast } from "sonner";
 import { Sparkles, Info, ExternalLink, Send } from "lucide-react";
@@ -430,6 +431,19 @@ export default function Page() {
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string>('');
   const [currentSOWId, setCurrentSOWId] = useState<string | null>(null);
   const editorRef = useRef<any>(null);
+
+  // Workspace creation progress state (NEW)
+  const [workspaceCreationProgress, setWorkspaceCreationProgress] = useState<{
+    isOpen: boolean;
+    workspaceName: string;
+    currentStep: number;
+    completedSteps: number[];
+  }>({
+    isOpen: false,
+    workspaceName: '',
+    currentStep: 0,
+    completedSteps: [],
+  });
 
   // OAuth state for Google Sheets
   const [isOAuthAuthorized, setIsOAuthAuthorized] = useState(false);
@@ -1077,11 +1091,26 @@ export default function Page() {
     try {
       console.log('📁 Creating workspace:', workspaceName);
       
+      // 📊 SHOW PROGRESS MODAL
+      setWorkspaceCreationProgress({
+        isOpen: true,
+        workspaceName,
+        currentStep: 0,
+        completedSteps: [],
+      });
+      
       // 🏢 STEP 1: Create AnythingLLM workspace FIRST
       console.log('🏢 Creating AnythingLLM workspace...');
       const workspace = await anythingLLM.createOrGetClientWorkspace(workspaceName);
       const embedId = await anythingLLM.getOrCreateEmbedId(workspace.slug);
       console.log('✅ AnythingLLM workspace created:', workspace.slug);
+      
+      // Mark step 1 complete
+      setWorkspaceCreationProgress(prev => ({
+        ...prev,
+        completedSteps: [0],
+        currentStep: 1,
+      }));
       
       // 💾 STEP 2: Save folder to DATABASE with workspace info
       console.log('💾 Saving folder to database with AnythingLLM mapping...');
@@ -1104,6 +1133,13 @@ export default function Page() {
       const folderData = await folderResponse.json();
       const folderId = folderData.id;
       console.log('✅ Folder saved to database with ID:', folderId);
+      
+      // Mark step 2 complete
+      setWorkspaceCreationProgress(prev => ({
+        ...prev,
+        completedSteps: [0, 1],
+        currentStep: 2,
+      }));
 
       // Create folder in local state with AnythingLLM mapping
       const newFolder: Folder = {
@@ -1156,12 +1192,26 @@ export default function Page() {
       // Don't pass thread name - AnythingLLM auto-names based on first chat message
       const thread = await anythingLLM.createThread(workspace.slug);
       console.log('✅ AnythingLLM thread created:', thread.slug, '(will auto-name on first message)');
+      
+      // Mark step 3 complete
+      setWorkspaceCreationProgress(prev => ({
+        ...prev,
+        completedSteps: [0, 1, 2],
+        currentStep: 3,
+      }));
 
       // 📊 STEP 4: Embed SOW in BOTH client workspace AND master dashboard
       console.log('📊 Embedding SOW in both workspaces...');
       const sowContent = JSON.stringify(defaultEditorContent);
       await anythingLLM.embedSOWInBothWorkspaces(workspace.slug, sowTitle, sowContent);
       console.log('✅ SOW embedded in both workspaces');
+      
+      // Mark all steps complete
+      setWorkspaceCreationProgress(prev => ({
+        ...prev,
+        completedSteps: [0, 1, 2, 3],
+        currentStep: 4,
+      }));
 
       // Create SOW object for local state
       const newSOW: SOW = {
@@ -1201,9 +1251,23 @@ export default function Page() {
       toast.success(`✅ Workspace "${workspaceName}" created with AnythingLLM integration!`);
       
       toast.success(`✅ Created workspace "${workspaceName}" with blank SOW ready to edit!`);
+      
+      // Close progress modal after a brief delay
+      setTimeout(() => {
+        setWorkspaceCreationProgress(prev => ({
+          ...prev,
+          isOpen: false,
+        }));
+      }, 500);
     } catch (error) {
       console.error('❌ Error creating workspace:', error);
       toast.error('Failed to create workspace. Please try again.');
+      
+      // Close progress modal on error
+      setWorkspaceCreationProgress(prev => ({
+        ...prev,
+        isOpen: false,
+      }));
     }
   };
 
@@ -2742,6 +2806,14 @@ export default function Page() {
           lastShared={shareModalData.lastShared}
         />
       )}
+
+      {/* Workspace Creation Progress Modal */}
+      <WorkspaceCreationProgress
+        isOpen={workspaceCreationProgress.isOpen}
+        workspaceName={workspaceCreationProgress.workspaceName}
+        currentStep={workspaceCreationProgress.currentStep}
+        completedSteps={workspaceCreationProgress.completedSteps}
+      />
 
     </div>
   );
