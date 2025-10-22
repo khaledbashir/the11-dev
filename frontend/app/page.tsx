@@ -552,6 +552,7 @@ export default function Page() {
               content: parsedContent,
               folderId: folder.id,
               workspaceSlug: folder.workspace_slug,
+              threadSlug: sow.id, // 🧵 The SOW ID IS the thread slug from AnythingLLM
               syncedAt: sow.updated_at,
             });
           }

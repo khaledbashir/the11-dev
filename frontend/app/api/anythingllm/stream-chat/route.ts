@@ -5,7 +5,8 @@ const ANYTHINGLLM_API_KEY = process.env.ANYTHINGLLM_API_KEY || '0G0WTZ3-6ZX4D20-
 
 export async function POST(request: NextRequest) {
   try {
-    const { messages, workspaceSlug, workspace, threadSlug, mode = 'chat' } = await request.json();
+    const body = await request.json();
+    const { messages, workspaceSlug, workspace, threadSlug, mode = 'chat', model } = body;
     
     // Use 'workspace' if provided, otherwise fall back to 'workspaceSlug'
     const effectiveWorkspaceSlug = workspace || workspaceSlug;
@@ -16,12 +17,26 @@ export async function POST(request: NextRequest) {
       effectiveWorkspaceSlug,
       threadSlug,
       mode,
-      isThreadChat: !!threadSlug
+      model,
+      messagesCount: messages?.length,
+      isThreadChat: !!threadSlug,
+      bodyKeys: Object.keys(body)
     });
     
     if (!effectiveWorkspaceSlug) {
+      const errorMsg = 'No workspace specified. Must provide workspace or workspaceSlug parameter.';
+      console.error('❌ [AnythingLLM Stream]', errorMsg);
       return new Response(
-        JSON.stringify({ error: 'No workspace specified. Must provide workspace or workspaceSlug parameter.' }),
+        JSON.stringify({ error: errorMsg }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      const errorMsg = 'No messages provided. Must provide messages array.';
+      console.error('❌ [AnythingLLM Stream]', errorMsg, { messages });
+      return new Response(
+        JSON.stringify({ error: errorMsg }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
@@ -33,8 +48,10 @@ export async function POST(request: NextRequest) {
     // Get the last user message
     const lastMessage = messages[messages.length - 1];
     if (!lastMessage || lastMessage.role !== 'user') {
+      const errorMsg = 'No user message provided. Last message must be from user.';
+      console.error('❌ [AnythingLLM Stream]', errorMsg, { lastMessage });
       return new Response(
-        JSON.stringify({ error: 'No user message provided' }),
+        JSON.stringify({ error: errorMsg }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
@@ -43,6 +60,15 @@ export async function POST(request: NextRequest) {
     // AnythingLLM handles system prompt via workspace config
     // Preserving the raw message allows @agent mentions and other syntax to work
     const messageToSend = lastMessage.content;
+    
+    if (!messageToSend || typeof messageToSend !== 'string') {
+      const errorMsg = 'Message content must be a non-empty string.';
+      console.error('❌ [AnythingLLM Stream]', errorMsg, { messageToSend });
+      return new Response(
+        JSON.stringify({ error: errorMsg }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Determine the endpoint based on whether this is thread-based chat
     let endpoint: string;
@@ -56,7 +82,13 @@ export async function POST(request: NextRequest) {
       console.log(`💬 [AnythingLLM Stream] Sending to WORKSPACE: ${effectiveWorkspaceSlug}`);
     }
 
+    console.log(`📨 [AnythingLLM Stream] Full URL: ${endpoint}`);
     console.log(`📨 [AnythingLLM Stream] User message:`, messageToSend.substring(0, 100));
+    console.log(`📨 [AnythingLLM Stream] Request payload:`, {
+      message: messageToSend.substring(0, 50) + '...',
+      mode,
+      messageLength: messageToSend.length
+    });
     
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -72,9 +104,19 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ [AnythingLLM Stream] Error:', response.status, errorText);
+      console.error('❌ [AnythingLLM Stream] Error Response:', {
+        status: response.status,
+        statusText: response.statusText,
+        errorText: errorText.substring(0, 500),
+        endpoint,
+        workspace: effectiveWorkspaceSlug,
+        threadSlug
+      });
       return new Response(
-        JSON.stringify({ error: `AnythingLLM API error: ${response.statusText}` }),
+        JSON.stringify({ 
+          error: `AnythingLLM API error: ${response.statusText}`,
+          details: errorText.substring(0, 200)
+        }),
         { status: response.status, headers: { 'Content-Type': 'application/json' } }
       );
     }
