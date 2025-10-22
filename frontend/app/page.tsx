@@ -679,8 +679,8 @@ export default function Page() {
         if (doc.threadSlug) {
           try {
             console.log('💬 Loading chat history for thread:', doc.threadSlug);
-            // 🎯 ALWAYS use gen-the-architect workspace for SOW editor chat (that's where threads are created)
-            const history = await anythingLLM.getThreadChats('gen-the-architect', doc.threadSlug);
+            // 🎯 Use the workspace where the SOW was created (where its thread lives)
+            const history = await anythingLLM.getThreadChats(doc.workspaceSlug || 'gen-the-architect', doc.threadSlug);
             
             if (history && history.length > 0) {
               // Convert AnythingLLM history format to our ChatMessage format
@@ -1353,10 +1353,10 @@ export default function Page() {
       console.log(`🆕 Creating new SOW: "${sowName}" in workspace: ${workspace.name} (${workspace.workspace_slug})`);
 
       // Step 1: Create AnythingLLM thread (PRIMARY source of truth)
-      // 🎯 IMPORTANT: Always create threads in "gen-the-architect" workspace (centralized SOW generation)
-      // This ensures consistent system prompt, model config, and no workspace routing conflicts
+      // 🎯 Create threads in the CLIENT WORKSPACE (where SOW content is embedded)
+      // This ensures the thread has access to the SOW's embedded content for context
       // Don't pass thread name - AnythingLLM auto-names based on first chat message
-      const thread = await anythingLLM.createThread('gen-the-architect');
+      const thread = await anythingLLM.createThread(workspace.workspace_slug);
       if (!thread) {
         toast.error('Failed to create SOW thread in AnythingLLM');
         return;
@@ -2334,10 +2334,15 @@ export default function Page() {
             : undefined;
         }
 
-        // ⚠️ FORCE GEN-THE-ARCHITECT FOR SOW EDITOR MODE
-        // Never route SOW editor chat to client workspaces or Gardner agents
-        if (!isDashboardMode && useAnythingLLM) {
-          workspaceSlug = 'gen-the-architect'; // Always use Gen workspace for SOW generation
+        // 🎯 USE THE SOW'S ACTUAL WORKSPACE (NOT FORCED GEN-THE-ARCHITECT)
+        // Each SOW has its thread in its client workspace (e.g., "hello", "pho", etc.)
+        // Don't force gen-the-architect - that breaks thread routing!
+        if (!isDashboardMode && useAnythingLLM && currentSOWId) {
+          const currentSOW = documents.find(d => d.id === currentSOWId);
+          if (currentSOW?.workspaceSlug) {
+            workspaceSlug = currentSOW.workspaceSlug; // Use the SOW's actual workspace
+            console.log(`🎯 [SOW Chat] Using SOW workspace: ${workspaceSlug}`);
+          }
         }
 
         console.log('🎯 [Chat Routing]', {
