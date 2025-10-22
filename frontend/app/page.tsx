@@ -12,6 +12,7 @@ import { ShareLinkModal } from "@/components/tailwind/share-link-modal";
 import { ResizableLayout } from "@/components/tailwind/resizable-layout";
 import { DocumentStatusBar } from "@/components/tailwind/document-status-bar";
 import WorkspaceCreationProgress from "@/components/tailwind/workspace-creation-progress";
+import OnboardingFlow from "@/components/tailwind/onboarding-flow";
 
 import { toast } from "sonner";
 import { Sparkles, Info, ExternalLink, Send } from "lucide-react";
@@ -445,6 +446,9 @@ export default function Page() {
     completedSteps: [],
   });
 
+  // Onboarding state (NEW)
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
   // OAuth state for Google Sheets
   const [isOAuthAuthorized, setIsOAuthAuthorized] = useState(false);
   const [oauthAccessToken, setOauthAccessToken] = useState<string>('');
@@ -627,6 +631,15 @@ export default function Page() {
           }
         }
         
+        // 🎓 Show onboarding if no workspaces (and not seen before)
+        const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding') === 'true';
+        if (workspacesWithSOWs.length === 0 && !hasSeenOnboarding) {
+          setTimeout(() => {
+            setShowOnboarding(true);
+            localStorage.setItem('hasSeenOnboarding', 'true');
+          }, 500);
+        }
+
         // Show guided setup if no workspaces
         if (!hasCompletedSetup && workspacesWithSOWs.length === 0) {
           setTimeout(() => setShowGuidedSetup(true), 1000);
@@ -2813,6 +2826,14 @@ export default function Page() {
         workspaceName={workspaceCreationProgress.workspaceName}
         currentStep={workspaceCreationProgress.currentStep}
         completedSteps={workspaceCreationProgress.completedSteps}
+      />
+
+      {/* Beautiful Onboarding Flow */}
+      <OnboardingFlow
+        isOpen={showOnboarding}
+        onComplete={() => setShowOnboarding(false)}
+        onCreateWorkspace={handleCreateWorkspace}
+        workspaceCount={workspaces.length}
       />
 
     </div>
