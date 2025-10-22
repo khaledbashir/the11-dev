@@ -1276,8 +1276,10 @@ export default function Page() {
       console.log(`🆕 Creating new SOW: "${sowName}" in workspace: ${workspace.name} (${workspace.workspace_slug})`);
 
       // Step 1: Create AnythingLLM thread (PRIMARY source of truth)
+      // 🎯 IMPORTANT: Always create threads in "gen-the-architect" workspace (centralized SOW generation)
+      // This ensures consistent system prompt, model config, and no workspace routing conflicts
       // Don't pass thread name - AnythingLLM auto-names based on first chat message
-      const thread = await anythingLLM.createThread(workspace.workspace_slug);
+      const thread = await anythingLLM.createThread('gen-the-architect');
       if (!thread) {
         toast.error('Failed to create SOW thread in AnythingLLM');
         return;
