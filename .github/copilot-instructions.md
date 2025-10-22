@@ -18,16 +18,38 @@ This file is the **single source of truth** for understanding this codebase. Ref
 
 Before editing ANY AI-related code, understand this architecture:
 
-| System | Purpose | Backend | Endpoint | Status |
-|--------|---------|---------|----------|--------|
-| **Dashboard AI** | Query all SOWs across workspaces | AnythingLLM master workspace | `/api/anythingllm/stream-chat` | ⚠️ 401 error |
-| **Gen AI** | Generate new SOWs (The Architect) | AnythingLLM gen-the-architect workspace | `/api/anythingllm/stream-chat` | ⚠️ 401 error |
-| **Inline Editor AI** | Inline text generation in editor | OpenRouter (direct) | `/api/generate` | ✅ Working |
+| System | Purpose | Backend | Endpoint | Model Field | Key Point |
+|--------|---------|---------|----------|-------------|-----------|
+| **Dashboard AI** | Query all SOWs across workspaces | AnythingLLM master workspace | `/api/anythingllm/stream-chat` | `sow-master-dashboard` | **Workspace slug, NOT model name** |
+| **Gen AI** | Generate new SOWs (The Architect) | AnythingLLM gen-the-architect workspace | `/api/anythingllm/stream-chat` | `gen-the-architect` | **Workspace slug, NOT model name** |
+| **Inline Editor AI** | Inline text generation in editor | OpenRouter (direct) | `/api/generate` | `claude-3-sonnet` | **REAL model name** - this one is different! |
+
+**CRITICAL UNDERSTANDING - AnythingLLM Model/Workspace Relationship**:
+
+When using AnythingLLM (Systems 1 & 2):
+- The `model` field = **WORKSPACE SLUG** (e.g., "sow-master-dashboard", "gen-the-architect")
+- **NOT** a provider/model like "claude-3-sonnet" or "gpt-4"
+- Each workspace is pre-configured in AnythingLLM UI with: Provider (Claude/OpenAI/Gemini), Model version, Temperature, System prompt
+- When we send `model: "sow-master-dashboard"`, AnythingLLM looks up that workspace and sees what provider/model it should use
+- **Result**: Our app is provider-agnostic. We can swap Claude for OpenAI by just changing workspace settings in AnythingLLM UI without touching code
+
+**Example Flow**:
+```
+Frontend sends: { model: 'sow-master-dashboard', messages: [...] }
+                                    ↓
+AnythingLLM looks up workspace 'sow-master-dashboard'
+                                    ↓
+Workspace config says: { provider: 'Claude', model: 'claude-3.5-sonnet', temp: 0.7 }
+                                    ↓
+AnythingLLM calls Claude API
+                                    ↓
+Response comes back
+```
 
 **Key files:**
 - `frontend/lib/anythingllm.ts` — workspace + embedding orchestration
-- `frontend/app/api/anythingllm/stream-chat/route.ts` — chat endpoint (has 401 debug logging)
-- `frontend/app/api/generate/route.ts` — OpenRouter streaming (inline AI)
+- `frontend/app/api/anythingllm/stream-chat/route.ts` — chat endpoint (streams responses)
+- `frontend/app/api/generate/route.ts` — OpenRouter streaming (inline AI, REAL model names)
 - `ARCHITECTURE-SINGLE-SOURCE-OF-TRUTH.md` — exhaustive system docs (READ FIRST)
 
 ## Deployment Architecture

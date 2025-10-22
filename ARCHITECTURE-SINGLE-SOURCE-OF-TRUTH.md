@@ -132,20 +132,78 @@ curl https://sow-backend.840tjq.easypanel.host/docs
 **Purpose**: Client talks to "everything" - asks questions about ALL SOWs across ALL workspaces  
 **Main Job**: Analytics, cross-client queries, "How many clients do we have?", "What's the budget for TTT?"
 
+**Key Understanding - AnythingLLM Model/Workspace Relationship**:
+- `model` field in our app = **WORKSPACE SLUG** (NOT a provider/model name like "claude-3-sonnet")
+- Each workspace is pre-configured in AnythingLLM UI with: Provider (Claude/OpenAI/Gemini), Model version, Temperature, System prompt
+- We pass workspace slug to AnythingLLM, it internally decides which provider/model to use
+- **Example**: `model: "sow-master-dashboard"` → AnythingLLM looks up that workspace → sees it's configured for "Claude 3.5 Sonnet" → uses Claude
+
 **Architecture**:
 ```
-User → Dashboard View
+User → Dashboard View (right sidebar)
   ↓
-Dashboard AI Component (right sidebar)
+Sends: { model: 'sow-master-dashboard', messages: [...] }
   ↓
-/api/anythingllm/stream-chat
+Endpoint: /api/anythingllm/stream-chat
   ↓
-AnythingLLM: sow-master-dashboard workspace
+AnythingLLM: Looks up workspace 'sow-master-dashboard'
   ↓
-Contains EMBEDDED copies of EVERY SOW from ALL workspaces
+Sees workspace config: { provider: 'Claude', model: 'claude-3.5-sonnet', temp: 0.7 }
   ↓
-AI responds with insights across all data
+Calls Claude API with that config
+  ↓
+Returns response to us
 ```
+
+**Thread Location**: No threads in this mode. Pure Q&A against embedded SOWs.
+
+---
+
+### System 2️⃣: Gen AI (The Architect)
+
+**Purpose**: Generate new SOWs with AI  
+**Main Job**: Write SOWs, respond to prompts about specific SOW being edited
+
+**Architecture**:
+```
+User in Editor → Clicks agent "GEN - The Architect"
+  ↓
+Sends: { model: 'gen-the-architect', workspace: 'gen-the-architect', threadSlug: 'xxx', messages: [...] }
+  ↓
+Endpoint: /api/anythingllm/stream-chat
+  ↓
+AnythingLLM: Looks up workspace 'gen-the-architect'
+  ↓
+Finds thread 'xxx' in that workspace
+  ↓
+Workspace config tells it: { provider: 'Claude', model: 'claude-3.5-sonnet', temp: 0.8 }
+  ↓
+Continues conversation in that thread
+```
+
+**Thread Location**: Threads stored IN the gen-the-architect workspace
+
+---
+
+### System 3️⃣: Inline Editor AI (OpenRouter)
+
+**Purpose**: Quick text generation in editor (Expand, Rewrite, etc)  
+**Main Job**: NOT AnythingLLM - uses OpenRouter directly for cost/speed
+
+**Architecture**:
+```
+User selects text in editor → Clicks "Expand" action
+  ↓
+Sends: { model: 'openrouter model name', messages: [...] }  ← REAL model name like "claude-3-sonnet"
+  ↓
+Endpoint: /api/generate (NOT AnythingLLM!)
+  ↓
+Backend: Calls OpenRouter API directly with that real model name
+  ↓
+Returns response
+```
+
+**No Threads**: This is stateless - each request is independent
 
 **Key Details**:
 - **Workspace**: `sow-master-dashboard` (slug: `sow-master-dashboard`)
