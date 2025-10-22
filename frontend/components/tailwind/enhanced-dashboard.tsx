@@ -21,6 +21,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
 import { formatInvestment } from '@/lib/sow-utils';
+import { StreamingThoughtAccordion } from './streaming-thought-accordion';
 
 interface DashboardStats {
   totalSOWs: number;
@@ -384,8 +385,20 @@ export function EnhancedDashboard() {
                       : 'bg-[#0e0f0f] border border-[#0e2e33] text-gray-200'
                   }`}
                 >
+                  {/* Show thinking section with accordion for assistant messages */}
+                  {msg.role === 'assistant' && (
+                    <div className="mb-3">
+                      <StreamingThoughtAccordion 
+                        content={msg.content}
+                        messageId={msg.id}
+                        isStreaming={false}
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Show actual content */}
                   <div className="text-sm whitespace-pre-wrap leading-relaxed">
-                    {msg.content}
+                    {msg.content.replace(/<think>[\s\S]*?<\/think>/gi, '')}
                   </div>
                   <div className="text-xs opacity-50 mt-2">
                     {new Date(msg.timestamp).toLocaleTimeString([], { 

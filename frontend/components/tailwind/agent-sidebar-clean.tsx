@@ -341,14 +341,26 @@ export default function AgentSidebar({
                   ) : (
                     chatMessages.map((msg) => (
                       <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[85%] rounded-xl px-4 py-3 ${
+                        <div className={`w-full max-w-[85%] rounded-xl px-4 py-3 ${
                           msg.role === 'user' 
                             ? 'bg-[#1CBF79] text-white' 
                             : 'bg-[#1b1b1e] text-white border border-[#0E2E33]'
                         }`}>
+                          {/* Show thinking section with accordion for assistant messages */}
+                          {msg.role === 'assistant' && (
+                            <div className="mb-4">
+                              <StreamingThoughtAccordion 
+                                content={msg.content}
+                                messageId={msg.id}
+                                isStreaming={streamingMessageId === msg.id}
+                              />
+                            </div>
+                          )}
+                          
+                          {/* Show actual content */}
                           <div className="prose prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-1">
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                              {msg.content}
+                              {msg.content.replace(/<think>[\s\S]*?<\/think>/gi, '')}
                             </ReactMarkdown>
                           </div>
                           <div className="text-xs mt-2 opacity-60">
