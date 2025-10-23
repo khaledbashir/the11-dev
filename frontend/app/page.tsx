@@ -197,6 +197,18 @@ const convertMarkdownToNovelJSON = (markdown: string) => {
         };
       });
 
+      // ENFORCEMENT: Ensure Account Management role exists (6-12h guideline; default 8h)
+      const hasAccountManagement = pricingRows.some(r => r.role.toLowerCase().includes('account management') || r.role.toLowerCase().includes('account manager'));
+      if (!hasAccountManagement) {
+        const am = ROLES.find(r => r.name === 'Account Management');
+        pricingRows.push({
+          role: am?.name || 'Account Management',
+          description: 'Client comms & governance',
+          hours: 8,
+          rate: am?.rate || 150,
+        });
+      }
+
       // Return editable pricing table node
       return {
         type: 'editablePricingTable',
@@ -2001,27 +2013,69 @@ export default function Page() {
   const normalizeSOWMarkdown = (markdown: string) => {
     let content = markdown;
 
-    // 1) Ensure "## Scope Assumptions" exists immediately after Project Outcomes
-    const hasScopeAssumptions = /\n##\s*Scope Assumptions\s*\n/i.test(content);
-    if (!hasScopeAssumptions) {
-      const outcomesMatch = /(^|\n)##\s*Project Outcomes[\s\S]*?(?=\n##\s|\n#\s|$)/i.exec(content);
-      const insertionIndex = outcomesMatch ? (outcomesMatch.index + outcomesMatch[0].length) : 0;
-      const assumptionsBlock = `\n\n## Scope Assumptions\n\n` +
-        [
-          "• Hours outlined are capped as an estimate",
-          "• Client will provide feedback within 3-7 days",
-          "• Rates are not locked in if agreement not signed within 30 days",
-          "• Project timeline finalized post sign-off",
-          "• HubSpot and related systems access provided by day 2 of project",
-        ].map(b => `- ${b}`).join("\n") + "\n\n";
+    // 1) Ensure "## Scope Assumptions" appears in the correct position (immediately after Project Outcomes).
+    //    If missing, insert with defaults. If present but misplaced (e.g., at top), move it.
+    const buildDefaultAssumptions = () => (
+      `\n\n## Scope Assumptions\n\n` +
+      [
+        "• Hours outlined are capped as an estimate",
+        "• Client will provide feedback within 3-7 days",
+        "• Rates are not locked in if agreement not signed within 30 days",
+        "• Project timeline finalized post sign-off",
+        "• HubSpot and related systems access provided by day 2 of project",
+      ].map(b => `- ${b}`).join("\n") + "\n\n"
+    );
 
-      if (insertionIndex > 0) {
-        content = content.slice(0, insertionIndex) + assumptionsBlock + content.slice(insertionIndex);
-      } else {
-        // Fallback: prepend at top if Outcomes not found
-        content = assumptionsBlock + content;
-      }
+    const findSectionRange = (pattern: RegExp) => {
+      const match = pattern.exec(content);
+      if (!match) return null;
+      const start = match.index;
+      const end = start + match[0].length;
+      return { start, end };
+    };
+
+    // Match full section blocks until next H2 or H1
+    const sectionRegex = (titlePattern: string) => new RegExp(
+      `(^|\n)##\s*${titlePattern}[\s\S]*?(?=\n##\s|\n#\s|$)`,
+      'i'
+    );
+
+    const outcomesRange = findSectionRange(sectionRegex('(Project\s+Outcomes)'));
+    const includeRange = findSectionRange(sectionRegex('What\s+does\s+the\s+scope\s+include\??'));
+    const overviewRange = findSectionRange(sectionRegex('(Overview)'));
+    let assumptionsRange = findSectionRange(sectionRegex('(Scope\s+Assumptions)'));
+
+    // Extract current assumptions block (if any) and remove from content to avoid duplicates
+    let assumptionsBlockText = '';
+    if (assumptionsRange) {
+      assumptionsBlockText = content.slice(assumptionsRange.start, assumptionsRange.end);
+      // Remove existing block
+      content = content.slice(0, assumptionsRange.start) + content.slice(assumptionsRange.end);
     }
+
+    // Determine insertion anchor: after Project Outcomes → else after What does the scope include? → else after Overview → else after H1
+    const findAnchorIndex = () => {
+      // Recompute ranges as content might have changed after removal
+      const rOutcomes = findSectionRange(sectionRegex('(Project\s+Outcomes)'));
+      if (rOutcomes) return rOutcomes.end;
+      const rInclude = findSectionRange(sectionRegex('What\s+does\s+the\s+scope\s+include\??'));
+      if (rInclude) return rInclude.end;
+      const rOverview = findSectionRange(sectionRegex('(Overview)'));
+      if (rOverview) return rOverview.end;
+      // After H1 if present
+      const h1Match = /(^|\n)#\s+.+?(?=\n##\s|\n#\s|$)/.exec(content);
+      if (h1Match) return h1Match.index + h1Match[0].length;
+      // Fallback: end of document
+      return content.length;
+    };
+
+    const anchorIndex = findAnchorIndex();
+    const finalAssumptionsBlock = assumptionsBlockText && /##\s*Scope Assumptions/i.test(assumptionsBlockText)
+      ? (assumptionsBlockText.endsWith('\n') ? assumptionsBlockText : assumptionsBlockText + '\n')
+      : buildDefaultAssumptions();
+
+    // Insert assumptions block at the correct position
+    content = content.slice(0, anchorIndex) + finalAssumptionsBlock + content.slice(anchorIndex);
 
     // 2) Replace [editablePricingTable] placeholder with a real markdown pricing table
     if (content.includes('[editablePricingTable]')) {

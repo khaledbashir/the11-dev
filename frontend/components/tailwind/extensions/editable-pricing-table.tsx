@@ -130,6 +130,26 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
     }
   }, [rows]);
 
+  // Enforce presence of Account Management row (auto-add if missing)
+  useEffect(() => {
+    if (!rows || rows.length === 0) return;
+    const hasAM = rows.some(r => r.role.toLowerCase().includes('account management') || r.role.toLowerCase().includes('account manager'));
+    if (!hasAM) {
+      const am = ROLES.find(r => r.name === 'Account Management');
+      const newRows = [
+        ...rows,
+        {
+          role: am?.name || 'Account Management',
+          description: 'Client comms & governance',
+          hours: 8,
+          rate: am?.rate || 150,
+        },
+      ];
+      setRows(newRows);
+      console.log('✅ Account Management auto-added (mandatory role)');
+    }
+  }, [rows]);
+
   const updateRow = (index: number, field: keyof PricingRow, value: string | number) => {
     const newRows = [...rows];
     if (field === 'role') {
@@ -486,8 +506,24 @@ export const EditablePricingTable = Node.create({
   },
 
   renderHTML({ node, HTMLAttributes }) {
-    const rows: PricingRow[] = node.attrs.rows || [];
+    const originalRows: PricingRow[] = node.attrs.rows || [];
     const discount = node.attrs.discount || 0;
+    const showTotal: boolean = node.attrs.showTotal !== undefined ? node.attrs.showTotal : true;
+    
+    // Ensure Account Management exists for render
+    const hasAM = originalRows.some(r => (r.role || '').toLowerCase().includes('account management') || (r.role || '').toLowerCase().includes('account manager'));
+    const amRole = ROLES.find(r => r.name === 'Account Management');
+    const rows: PricingRow[] = hasAM
+      ? originalRows
+      : [
+          ...originalRows,
+          {
+            role: amRole?.name || 'Account Management',
+            description: 'Client comms & governance',
+            hours: 8,
+            rate: amRole?.rate || 150,
+          },
+        ];
     
     // Calculate totals
     const subtotal = rows.reduce((sum, row) => sum + (row.hours * row.rate), 0);
@@ -508,9 +544,11 @@ export const EditablePricingTable = Node.create({
           {},
           ['th', { style: 'background:#0e2e33; color:white; padding:0.875rem 1rem; text-align:left; border:1px solid #0e2e33;' }, 'Role'],
           ['th', { style: 'background:#0e2e33; color:white; padding:0.875rem 1rem; text-align:left; border:1px solid #0e2e33;' }, 'Description'],
-          ['th', { style: 'background:#0e2e33; color:white; padding:0.875rem 1rem; text-align:right; border:1px solid #0e2e33;' }, 'Hours'],
-          ['th', { style: 'background:#0e2e33; color:white; padding:0.875rem 1rem; text-align:right; border:1px solid #0e2e33;' }, 'Rate'],
-          ['th', { style: 'background:#0e2e33; color:white; padding:0.875rem 1rem; text-align:right; border:1px solid #0e2e33;' }, 'Total'],
+          ...(showTotal ? [
+            ['th', { style: 'background:#0e2e33; color:white; padding:0.875rem 1rem; text-align:right; border:1px solid #0e2e33;' }, 'Hours'],
+            ['th', { style: 'background:#0e2e33; color:white; padding:0.875rem 1rem; text-align:right; border:1px solid #0e2e33;' }, 'Rate'],
+            ['th', { style: 'background:#0e2e33; color:white; padding:0.875rem 1rem; text-align:right; border:1px solid #0e2e33;' }, 'Total'],
+          ] : []),
         ]
       ],
       [
@@ -524,15 +562,17 @@ export const EditablePricingTable = Node.create({
             { style: `background:${bgColor};` },
             ['td', { style: 'padding:0.875rem 1rem; border:1px solid #d1d5db;' }, row.role],
             ['td', { style: 'padding:0.875rem 1rem; border:1px solid #d1d5db;' }, row.description || ''],
-            ['td', { style: 'padding:0.875rem 1rem; border:1px solid #d1d5db; text-align:right;' }, row.hours.toString()],
-            ['td', { style: 'padding:0.875rem 1rem; border:1px solid #d1d5db; text-align:right;' }, `$${row.rate.toFixed(2)}`],
-            ['td', { style: 'padding:0.875rem 1rem; border:1px solid #d1d5db; text-align:right; font-weight:600;' }, `$${rowTotal.toFixed(2)}`],
+            ...(showTotal ? [
+              ['td', { style: 'padding:0.875rem 1rem; border:1px solid #d1d5db; text-align:right;' }, row.hours.toString()],
+              ['td', { style: 'padding:0.875rem 1rem; border:1px solid #d1d5db; text-align:right;' }, `$${row.rate.toFixed(2)}`],
+              ['td', { style: 'padding:0.875rem 1rem; border:1px solid #d1d5db; text-align:right; font-weight:600;' }, `$${rowTotal.toFixed(2)}`],
+            ] : []),
           ];
         })
       ]
     ];
     
-    // Build totals section
+    // Build totals section (respect visibility)
     const totalsSection: any[] = [
       'div',
       { style: 'margin-top:1.5rem; padding-top:1rem; border-top:2px solid #0e2e33;' },
@@ -568,7 +608,7 @@ export const EditablePricingTable = Node.create({
       'div',
       mergeAttributes(HTMLAttributes, { 'data-type': 'editable-pricing-table' }),
       tableContent,
-      totalsSection
+      ...(showTotal ? [totalsSection] : [])
     ];
   },
 
