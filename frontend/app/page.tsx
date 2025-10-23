@@ -325,6 +325,8 @@ interface Document {
   syncedAt?: string;
   totalInvestment?: number;
   workType?: 'project' | 'audit' | 'retainer'; // 🎯 SOW type determined by Architect AI
+  vertical?: string; // 📊 Social Garden BI: Client industry vertical
+  serviceLine?: string; // 📊 Social Garden BI: Service offering type
 }
 
 interface Folder {
@@ -732,6 +734,8 @@ export default function Page() {
             content: currentDoc.content,
             title: currentDoc.title,
             total_investment: totalInvestment,
+            vertical: currentDoc.vertical || null, // 📊 Social Garden BI
+            serviceLine: currentDoc.serviceLine || null, // 📊 Social Garden BI
           }),
         });
 
@@ -2673,6 +2677,18 @@ export default function Page() {
                   title={currentDoc.title || "Untitled Statement of Work"}
                   saveStatus="saved"
                   isSaving={false}
+                  vertical={currentDoc.vertical}
+                  serviceLine={currentDoc.serviceLine}
+                  onVerticalChange={(vertical) => {
+                    setDocuments(prev => prev.map(d => 
+                      d.id === currentDocId ? { ...d, vertical } : d
+                    ));
+                  }}
+                  onServiceLineChange={(serviceLine) => {
+                    setDocuments(prev => prev.map(d => 
+                      d.id === currentDocId ? { ...d, serviceLine } : d
+                    ));
+                  }}
                   onExportPDF={handleExportPDF}
                   onExportExcel={handleExportExcel}
                   onSharePortal={async () => {
