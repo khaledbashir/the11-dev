@@ -86,12 +86,24 @@ export default function AgentSidebar({
   const [showSettings, setShowSettings] = useState(false);
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [selectedModelForAgent, setSelectedModelForAgent] = useState("");
-  const [conversations, setConversations] = useState<Array<{ id: string; title: string; timestamp: number }>>([]);
-  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
-  const [showHistory, setShowHistory] = useState(false);
+  
+  // 🧵 THREAD MANAGEMENT STATE
+  const [threads, setThreads] = useState<Array<{ slug: string; name: string; id: number; createdAt: string }>>([]);
+  const [currentThreadSlug, setCurrentThreadSlug] = useState<string | null>(null);
+  const [loadingThreads, setLoadingThreads] = useState(false);
+  const [showThreadList, setShowThreadList] = useState(false);
+  
+  // 📎 ATTACHMENT STATE
+  const [attachments, setAttachments] = useState<Array<{ name: string; mime: string; contentString: string }>>([]);
+  const [uploading, setUploading] = useState(false);
+  
+  // ⚙️ ADVANCED FEATURES STATE
+  const [showSlashCommands, setShowSlashCommands] = useState(false);
+  const [showAgentPicker, setShowAgentPicker] = useState(false);
   
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Debug: Log when onInsertToEditor is available (DISABLED for performance)
   // useEffect(() => {
@@ -104,20 +116,96 @@ export default function AgentSidebar({
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
 
-  const handleNewChat = () => {
-    const newConversation = {
-      id: `conv-${Date.now()}`,
-      title: `Chat - ${new Date().toLocaleDateString()}`,
-      timestamp: Date.now(),
+  // 🧵 THREAD MANAGEMENT FUNCTIONS
+  const handleNewThread = async () => {
+    if (!dashboardChatTarget) return;
+    
+    console.log('🆕 Creating new thread...');
+    // Call API to create thread
+    // For now, just create local thread (will wire to API next)
+    const newThread = {
+      slug: `thread-${Date.now()}`,
+      name: `New Chat - ${new Date().toLocaleTimeString()}`,
+      id: Date.now(),
+      createdAt: new Date().toISOString(),
     };
-    setConversations(prev => [newConversation, ...prev]);
-    setCurrentConversationId(newConversation.id);
+    setThreads(prev => [newThread, ...prev]);
+    setCurrentThreadSlug(newThread.slug);
+    
+    // Clear chat messages for new thread
+    if (onClearChat) {
+      onClearChat();
+    }
   };
 
-  const handleSelectConversation = (conversationId: string) => {
-    setCurrentConversationId(conversationId);
-    setShowHistory(false);
+  const handleSelectThread = (threadSlug: string) => {
+    console.log('📂 Switching to thread:', threadSlug);
+    setCurrentThreadSlug(threadSlug);
+    setShowThreadList(false);
+    
+    // Load thread history
+    // Will wire to API to load messages
   };
+
+  const handleDeleteThread = async (threadSlug: string) => {
+    if (!confirm('Delete this chat?')) return;
+    
+    console.log('🗑️ Deleting thread:', threadSlug);
+    setThreads(prev => prev.filter(t => t.slug !== threadSlug));
+    
+    // If deleting current thread, switch to another or create new
+    if (currentThreadSlug === threadSlug) {
+      const remainingThreads = threads.filter(t => t.slug !== threadSlug);
+      if (remainingThreads.length > 0) {
+        setCurrentThreadSlug(remainingThreads[0].slug);
+      } else {
+        handleNewThread();
+      }
+    }
+  };
+
+  // 📎 FILE ATTACHMENT FUNCTIONS
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        // Read file as base64
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const contentString = event.target?.result as string;
+          setAttachments(prev => [...prev, {
+            name: file.name,
+            mime: file.type,
+            contentString,
+          }]);
+        };
+        reader.readAsDataURL(file);
+      }
+    } catch (error) {
+      console.error('Error reading file:', error);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // 🎯 SLASH COMMAND & @AGENT FUNCTIONS
+  const insertText = (text: string) => {
+    setChatInput(prev => prev + text);
+    chatInputRef.current?.focus();
+  };
+
+  const slashCommands = [
+    { command: '/reset', description: 'Clear chat history and begin a new chat' },
+    { command: '/help', description: 'Show available commands' },
+    { command: '/summarize', description: 'Summarize the current conversation' },
+  ];
 
   useEffect(() => {
     if (currentAgentId) {
@@ -245,45 +333,61 @@ export default function AgentSidebar({
           )}
         </div>
 
-        {/* Dashboard Mode: New Chat + History Buttons */}
+        {/* Dashboard Mode: Thread Management */}
         {isDashboardMode && (
           <div className="flex gap-2 mb-3">
             <Button 
-              onClick={handleNewChat} 
+              onClick={handleNewThread} 
               className="flex-1 bg-[#1CBF79] hover:bg-[#1CBF79]/90 text-white text-xs h-8"
               size="sm"
             >
               <Plus className="w-3 h-3 mr-1" />
-              New Chat
+              New Thread
             </Button>
             <Button 
-              onClick={() => setShowHistory(!showHistory)} 
+              onClick={() => setShowThreadList(!showThreadList)} 
               variant="outline"
               size="sm"
               className="border-[#0E2E33] text-gray-300 hover:bg-[#0E2E33] text-xs h-8"
             >
-              History ({conversations.length})
+              📋 Threads ({threads.length})
             </Button>
           </div>
         )}
 
-        {/* Conversation History Dropdown */}
-        {isDashboardMode && showHistory && conversations.length > 0 && (
-          <div className="bg-[#0E2E33] border border-[#0E2E33] rounded-lg mb-3 max-h-48 overflow-y-auto">
+        {/* Thread List Dropdown */}
+        {isDashboardMode && showThreadList && threads.length > 0 && (
+          <div className="bg-[#0E2E33] border border-[#0E2E33] rounded-lg mb-3 max-h-64 overflow-y-auto">
             <div className="p-2 space-y-1">
-              {conversations.map(conv => (
-                <button
-                  key={conv.id}
-                  onClick={() => handleSelectConversation(conv.id)}
-                  className={`w-full text-left p-2 rounded text-xs transition-colors ${
-                    currentConversationId === conv.id 
+              {threads.map(thread => (
+                <div
+                  key={thread.slug}
+                  className={`group flex items-center gap-2 p-2 rounded text-xs transition-colors ${
+                    currentThreadSlug === thread.slug 
                       ? 'bg-[#1CBF79] text-white' 
                       : 'text-gray-300 hover:bg-[#0e0f0f]'
                   }`}
                 >
-                  <div className="truncate">{conv.title}</div>
-                  <div className="text-xs text-gray-500">{new Date(conv.timestamp).toLocaleString()}</div>
-                </button>
+                  <button
+                    onClick={() => handleSelectThread(thread.slug)}
+                    className="flex-1 text-left"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span>{currentThreadSlug === thread.slug ? '●' : '○'}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="truncate font-medium">{thread.name}</div>
+                        <div className="text-xs opacity-70">{formatTimestamp(new Date(thread.createdAt).getTime())}</div>
+                      </div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => handleDeleteThread(thread.slug)}
+                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 rounded transition-opacity"
+                    title="Delete thread"
+                  >
+                    ×
+                  </button>
+                </div>
               ))}
             </div>
           </div>
@@ -550,10 +654,127 @@ export default function AgentSidebar({
                 </div>
               </ScrollArea>
 
-              <div className="p-5 border-t border-[#0E2E33] bg-[#0e0f0f]">
+              <div className="p-5 border-t border-[#0E2E33] bg-[#0e0f0f] space-y-3">
+                {/* Attachments Preview */}
+                {attachments.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {attachments.map((att, idx) => (
+                      <div key={idx} className="flex items-center gap-2 bg-[#0E2E33] px-3 py-1.5 rounded text-xs text-gray-300">
+                        <span className="truncate max-w-[150px]">{att.name}</span>
+                        <button onClick={() => removeAttachment(idx)} className="hover:text-red-500">×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Advanced Controls Row */}
+                {isDashboardMode && (
+                  <div className="flex gap-2 text-xs">
+                    {/* @agent button */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => insertText('@agent ')}
+                      className="h-7 px-2 border-[#0E2E33] text-gray-400 hover:text-white hover:bg-[#0E2E33]"
+                      title="Insert @agent mention"
+                    >
+                      @agent
+                    </Button>
+
+                    {/* /commands dropdown */}
+                    <div className="relative">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setShowSlashCommands(!showSlashCommands)}
+                        className="h-7 px-2 border-[#0E2E33] text-gray-400 hover:text-white hover:bg-[#0E2E33]"
+                      >
+                        /commands
+                      </Button>
+                      {showSlashCommands && (
+                        <div className="absolute bottom-full left-0 mb-2 bg-[#0E2E33] border border-[#1CBF79] rounded-lg p-2 min-w-[250px] z-50">
+                          {slashCommands.map(cmd => (
+                            <button
+                              key={cmd.command}
+                              onClick={() => {
+                                insertText(cmd.command + ' ');
+                                setShowSlashCommands(false);
+                              }}
+                              className="w-full text-left p-2 hover:bg-[#0e0f0f] rounded text-gray-300 hover:text-white"
+                            >
+                              <div className="font-mono text-[#1CBF79]">{cmd.command}</div>
+                              <div className="text-xs opacity-70">{cmd.description}</div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Model selector */}
+                    <Select value={selectedModelForAgent} onValueChange={setSelectedModelForAgent}>
+                      <SelectTrigger className="h-7 text-xs border-[#0E2E33] bg-[#0E2E33] text-gray-300 w-auto">
+                        <SelectValue placeholder="Model" />
+                      </SelectTrigger>
+                      <SelectContent className="z-50">
+                        <SelectItem value="claude-3.5-sonnet">Claude 3.5 Sonnet</SelectItem>
+                        <SelectItem value="gpt-4o">GPT-4o</SelectItem>
+                        <SelectItem value="gemini-pro">Gemini Pro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Chat Input */}
                 <div className="flex gap-3">
-                  <Textarea ref={chatInputRef} value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyPress={handleKeyPress} placeholder="Type message..." className="min-h-[50px] max-h-[150px] resize-none text-sm bg-[#0E2E33] border-[#0E2E33] text-white placeholder:text-gray-400 rounded-lg" />
-                  <Button onClick={handleSendMessage} disabled={!chatInput.trim() || isLoading} size="sm" className="self-end bg-[#1CBF79] hover:bg-[#15a366] text-white h-[50px] font-semibold border-0">
+                  <div className="flex-1 space-y-2">
+                    <Textarea 
+                      ref={chatInputRef} 
+                      value={chatInput} 
+                      onChange={(e) => setChatInput(e.target.value)} 
+                      onKeyPress={handleKeyPress} 
+                      placeholder="Type /help for commands..." 
+                      className="min-h-[50px] max-h-[150px] resize-none text-sm bg-[#0E2E33] border-[#0E2E33] text-white placeholder:text-gray-400 rounded-lg" 
+                    />
+                    <div className="flex gap-2">
+                      {/* File upload */}
+                      <input 
+                        ref={fileInputRef}
+                        type="file" 
+                        multiple 
+                        onChange={handleFileSelect}
+                        className="hidden"
+                        accept="image/*,.pdf,.txt,.doc,.docx"
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
+                        className="h-8 px-3 border-[#0E2E33] text-gray-400 hover:text-white hover:bg-[#0E2E33]"
+                        title="Attach files"
+                      >
+                        📎 {uploading ? 'Uploading...' : 'Attach'}
+                      </Button>
+                      
+                      {/* Settings button */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setShowSettings(!showSettings)}
+                        className="h-8 px-3 border-[#0E2E33] text-gray-400 hover:text-white hover:bg-[#0E2E33]"
+                        title="Chat settings"
+                      >
+                        ⚙️
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    onClick={handleSendMessage} 
+                    disabled={!chatInput.trim() || isLoading} 
+                    size="sm" 
+                    className="self-end bg-[#1CBF79] hover:bg-[#15a366] text-white h-[50px] font-semibold border-0"
+                  >
                     {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                   </Button>
                 </div>
