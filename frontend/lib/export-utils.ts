@@ -24,12 +24,14 @@ export interface SOWData {
 
 /**
  * Extract pricing data from Novel editor content
+ * Supports both TipTap tables AND markdown text format
  */
 export function extractPricingFromContent(content: any): PricingRow[] {
   const rows: PricingRow[] = [];
   
   if (!content || !content.content) return rows;
 
+  // First, try to extract from TipTap tables
   const findTables = (nodes: any[]): void => {
     nodes.forEach((node: any) => {
       if (node.type === 'table' && node.content) {
@@ -60,6 +62,51 @@ export function extractPricingFromContent(content: any): PricingRow[] {
   };
 
   findTables(content.content);
+  
+  // If no tables found, try to parse from markdown text (fallback for AI-generated content)
+  if (rows.length === 0) {
+    const extractText = (nodes: any[]): string => {
+      let text = '';
+      nodes.forEach((node: any) => {
+        if (node.type === 'text' && node.text) {
+          text += node.text + '\n';
+        }
+        if (node.content) {
+          text += extractText(node.content);
+        }
+      });
+      return text;
+    };
+    
+    const fullText = extractText(content.content);
+    
+    // Match pricing lines in format: "| Role | Hours | $Rate | $Total |"
+    // Also match: "- **Role**: Hours × $Rate = $Total"
+    // Also match: "Role: Hours hours × $Rate/hour = $Total"
+    const pricingPatterns = [
+      /\|\s*([^|]+?)\s*\|\s*(\d+(?:\.\d+)?)\s*(?:hours?)?\s*\|\s*\$?\s*(\d+(?:\.\d+)?)\s*(?:\/hour)?\s*\|\s*\$?\s*(\d+(?:,\d{3})*(?:\.\d+)?)/gi,
+      /[-*]\s*\*\*([^*:]+)\*\*:?\s*(\d+(?:\.\d+)?)\s*(?:hours?)?\s*[×x]\s*\$?\s*(\d+(?:\.\d+)?)\s*(?:\/hour)?\s*=\s*\$?\s*(\d+(?:,\d{3})*(?:\.\d+)?)/gi,
+      /([^:\n]+):\s*(\d+(?:\.\d+)?)\s*hours?\s*[×x]\s*\$?\s*(\d+(?:\.\d+)?)\s*(?:\/hour)?\s*=\s*\$?\s*(\d+(?:,\d{3})*(?:\.\d+)?)/gi,
+    ];
+    
+    pricingPatterns.forEach(pattern => {
+      let match;
+      while ((match = pattern.exec(fullText)) !== null) {
+        const role = match[1].trim();
+        const hours = parseFloat(match[2]);
+        const rate = parseFloat(match[3]);
+        const total = parseFloat(match[4].replace(/,/g, ''));
+        
+        // Skip header rows and invalid data
+        if (role && !role.toLowerCase().includes('role') && 
+            !role.toLowerCase().includes('total') &&
+            hours > 0 && rate > 0) {
+          rows.push({ role, hours, rate, total });
+        }
+      }
+    });
+  }
+  
   return rows;
 }
 
