@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // Support both GET and POST methods
 // PDF generation endpoint for SOW documents
+// REBUILD TRIGGER: 2025-10-23 Forcing cache invalidation on EasyPanel deployment
 export async function GET(req: NextRequest) {
   console.log('🔍 [GET /api/generate-pdf] Request received');
   const searchParams = req.nextUrl.searchParams;
