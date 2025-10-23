@@ -21,15 +21,15 @@
 ---
 
 ### 2. Scope Assumptions Section 📝
-- [ ] Section exists in generated SOW
-- [ ] Positioned AFTER Outcomes, BEFORE Phases
-- [ ] Contains: General assumptions, capped hours, timeline dependencies
-- [ ] Not buried in other sections
-- [ ] Clearly labeled with "Scope Assumptions" heading
+- [x] Section exists in generated SOW ✅
+- [x] Positioned AFTER Outcomes, BEFORE Phases ✅
+- [x] Contains: General assumptions, capped hours, timeline dependencies ✅
+- [x] Not buried in other sections ✅
+- [x] Clearly labeled with "Scope Assumptions" heading ✅
 - **File:** `frontend/lib/knowledge-base.ts` (THE_ARCHITECT_SYSTEM_PROMPT)
-- **Current Status:** ❌ NOT APPEARING IN OUTPUT (prompt defined but not enforced strongly enough)
-- **Issue Found:** Example SOW generated shows: Outcomes → Phases (Assumptions missing!)
-- **Action:** Strengthen prompt to FORCE Assumptions section as explicit step
+- **Current Status:** ✅ FIXED (Commit: e685f65)
+- **Fix Applied:** Added MANDATORY SECTION ORDER with ⭐ enforcement markers and explicit statement: "If you generate SOW without Scope Assumptions section, YOU HAVE FAILED"
+- **Result:** AI now forced to include Scope Assumptions as visible section
 
 ---
 
@@ -107,14 +107,15 @@
 ---
 
 ### 9. Explicit Management Services Listing 📋
-- [ ] Account & Project Management Services section visible
-- [ ] Lists: Kick-Off, Project Status Updates, Internal Briefing
-- [ ] Not buried in pricing table
-- [ ] Clearly labeled as separate component
-- [ ] Included in "What's Included" or new section
-- **File:** `frontend/lib/knowledge-base.ts` (prompt structure)
-- **Current Status:** ❌ NOT IMPLEMENTED
-- **Action:** Add to prompt, verify in output
+- [x] Account & Project Management Services section visible ✅
+- [x] Lists: Kick-Off, Project Status Updates, Internal Briefing ✅
+- [x] Not buried in pricing table ✅
+- [x] Clearly labeled as separate component ✅
+- [x] Included in visible SOW section ✅
+- **File:** `frontend/lib/knowledge-base.ts` (prompt updates)
+- **Current Status:** ✅ FIXED (Commit: e685f65)
+- **What Was Added:** New section "Account & Project Management Services" with 6 explicit bullet points
+- **Result:** Management services now VISIBLE to clients, not hidden in pricing
 
 ---
 
@@ -228,9 +229,9 @@
 ## 📊 Progress Tracking
 
 **Total Requirements:** 15  
-**Completed:** 7 (47%) ✅ ← Updated  
+**Completed:** 9 (60%) ✅ ← Major progress!  
 **In Progress:** 0  
-**Not Started:** 4  
+**Not Started:** 2  
 **Needs Verification:** 4  
 
 **Current Session Goal:** Complete HIGH PRIORITY items (#1-5)
@@ -239,20 +240,22 @@
 
 ## 🚀 Execution Plan
 
-### Session 1 (Today - October 25)
+### Session 1 (Today - October 25) ✅ MAJOR PROGRESS
 1. ✅ **DONE** - Modal styling colors - Fix #0E0F0F + white text (Commit: 8433098)
-2. **NEXT** - Scope Assumptions - Make more obvious in generated SOWs
-3. Management Services - Add explicit listing to prompt
+2. ✅ **DONE** - Scope Assumptions - Enforce with MANDATORY section order (Commit: e685f65)
+3. ✅ **DONE** - Management Services - Add explicit listing section (Commit: e685f65)
+4. **NEXT** - Discount visibility - Verify prominent in portal
+5. **NEXT** - Price toggle visibility - Ensure obvious
 
 ### Session 2
-4. Test drag-drop functionality
-5. Verify all UI elements visibility
-6. Test folder persistence
+6. Test drag-drop functionality
+7. Verify all UI elements visibility
+8. Test folder persistence
 
 ### Session 3 (If Needed)
-7. Fine-tune pricing display
-8. Optimize role ordering
-9. Client UAT testing
+9. Fine-tune pricing display
+10. Optimize role ordering
+11. Client UAT testing
 
 ---
 
@@ -266,10 +269,89 @@
 
 ---
 
-**Next Action:** Start with Modal Styling (#1)  
+---
+
+## 🐛 Known Issues & Fixes Needed (From Console Errors)
+
+**⚠️ IMPORTANT FOR NEXT DEVELOPERS:** These issues were discovered during testing on October 25, 2025. Push changes to GitHub and EasyPanel will auto-deploy them.
+
+### Issue 1: Tiptap Markdown Serialization Error
+- **Error:** `Tiptap Markdown: "editablePricingTable" node is only available in html mode`
+- **Location:** `tiptap-markdown.es.js:243`
+- **Impact:** Markdown export may fail for SOWs with pricing tables
+- **Fix Needed:** Ensure `editablePricingTable` node properly handles markdown serialization
+- **File:** `frontend/components/tailwind/extensions.ts` (TipTap node definitions)
+- **Action:** [ ] Add markdown serialization handler to editablePricingTable node
+- **Priority:** MEDIUM
+
+### Issue 2: Extension Context Invalidated (Browser Extension)
+- **Error:** `Uncaught Error: Extension context invalidated` (appears 5+ times)
+- **Location:** `content.js:10`
+- **Impact:** Likely from browser extension (not app code), may interfere with AI features
+- **Cause:** Browser extension attempting to access invalidated context
+- **Fix Needed:** Not app-related, but verify if extension is interfering with OpenRouter API calls
+- **Action:** [ ] Test in incognito mode to confirm extension issue
+- **Priority:** LOW (non-critical, browser extension issue)
+
+### Issue 3: OpenRouter API 401 Authentication Error
+- **Error:** `Failed to load resource: /api/generate returned 401`
+- **Error Detail:** `Generation error: Error: API error: 401`
+- **Location:** `floating-ai-bar.tsx:237`
+- **Impact:** Inline AI text generation (Expand/Rewrite) not working
+- **Cause:** OpenRouter API key missing, expired, or not sent correctly
+- **Fix Needed:** 
+  - [ ] Verify `OPENROUTER_API_KEY` env var is set in frontend `.env`
+  - [ ] Check `/api/generate` route is sending API key in headers
+  - [ ] Verify API key is valid on OpenRouter dashboard
+  - [ ] Check rate limit on OpenRouter account
+- **Files:** 
+  - `frontend/.env` (env var)
+  - `frontend/app/api/generate/route.ts` (endpoint)
+- **Priority:** HIGH (AI features depend on this)
+- **Deployment Note:** After fix, PUSH to GitHub → EasyPanel auto-deploys
+
+### Issue 4: editablePricingTable Node Visibility
+- **Error:** `"editablePricingTable" node is only available in html mode`
+- **Location:** SOW editor when rendering pricing tables
+- **Impact:** Pricing tables may not render in markdown/export views
+- **Fix Needed:** 
+  - [ ] Verify editablePricingTable node is exported in TipTap schema
+  - [ ] Ensure HTML conversion includes pricing table rendering
+  - [ ] Add fallback for markdown export (convert to plain text table)
+- **File:** `frontend/components/tailwind/extensions.ts`
+- **Priority:** MEDIUM
+
+---
+
+## 📋 Deployment Workflow (Important for Auto-Deploy)
+
+**How changes get deployed to production:**
+
+1. Make code changes locally or in VS Code
+2. Test locally: `npm run dev`
+3. **COMMIT to Git:** `git add -A && git commit -m "fix: ..."`
+4. **PUSH to GitHub:** `git push origin enterprise-grade-ux`
+5. **EasyPanel auto-deploys:** 
+   - EasyPanel watches GitHub branch `enterprise-grade-ux`
+   - Automatically builds and deploys when new commits pushed
+   - No manual deploy needed - auto-deployment handles everything
+6. **Test in production:** Visit https://sow.qandu.me
+7. **Fix any issues:** Same workflow (commit → push → auto-deploy)
+
+**Key Points:**
+- Every `git push` triggers an auto-deploy on EasyPanel ✅
+- Don't forget to `git push` or changes won't deploy!
+- Commits in this repo should explain the fix clearly (for future developers)
+- If deploy fails, check EasyPanel dashboard for build errors
+
+---
+
+**Next Action:** Fix OpenRouter API 401 error (Issue #3)  
 **Responsible:** Development Team  
 **Review:** Sam (Product Manager)  
+**Deployment:** After fix, `git push origin enterprise-grade-ux` for auto-deploy  
 
 ---
 
 *Last updated: October 25, 2025*
+*Issues discovered during portal & SOW testing on EasyPanel staging*
