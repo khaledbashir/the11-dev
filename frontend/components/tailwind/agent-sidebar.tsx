@@ -111,6 +111,10 @@ export default function AgentSidebar({
   const isDashboard = viewMode === 'dashboard';
 
   useEffect(() => {
+    console.log('🎨 [AgentSidebar] viewMode:', viewMode, '| isDashboard:', isDashboard);
+  }, [viewMode, isDashboard]);
+
+  useEffect(() => {
     fetchModels();
   }, []);
 
