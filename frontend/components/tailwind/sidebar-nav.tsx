@@ -73,6 +73,13 @@ interface SidebarNavProps {
   onToggleSidebar?: () => void;
   onReorderWorkspaces?: (workspaces: Workspace[]) => void;
   onReorderSOWs?: (workspaceId: string, sows: SOW[]) => void;
+  
+  // 🎯 Phase 1C: Dashboard filter support
+  dashboardFilter?: {
+    type: 'vertical' | 'serviceLine' | null;
+    value: string | null;
+  };
+  onClearFilter?: () => void;
 }
 
 export default function SidebarNav({
@@ -92,6 +99,8 @@ export default function SidebarNav({
   onToggleSidebar,
   onReorderWorkspaces,
   onReorderSOWs,
+  dashboardFilter,
+  onClearFilter,
 }: SidebarNavProps) {
   // Helper functions to categorize workspaces (must be before usage)
   const isAgentWorkspace = (workspace: any) => {
@@ -616,7 +625,23 @@ export default function SidebarNav({
         >
           <LayoutDashboard className="w-5 h-5 flex-shrink-0" />
           <span className="text-sm font-medium">Dashboard</span>
+          {/* 🎯 Phase 1C: Filter badge */}
+          {dashboardFilter?.type && dashboardFilter?.value && (
+            <span className="ml-auto px-2 py-0.5 text-xs bg-[#1CBF79] text-white rounded-full">
+              Filtered
+            </span>
+          )}
         </button>
+
+        {/* 🎯 Phase 1C: Clear Filter button (show when filter active) */}
+        {dashboardFilter?.type && dashboardFilter?.value && onClearFilter && (
+          <button
+            onClick={onClearFilter}
+            className="w-full flex items-center justify-center gap-2 px-4 py-1.5 text-xs text-orange-400 hover:text-orange-300 hover:bg-gray-900/50 rounded-lg transition-colors border border-orange-400/30"
+          >
+            <span>Clear {dashboardFilter.type === 'vertical' ? 'Vertical' : 'Service'} Filter: {dashboardFilter.value}</span>
+          </button>
+        )}
 
         {/* Gardner Studio Link */}
         <button

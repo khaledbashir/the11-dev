@@ -435,6 +435,15 @@ export default function Page() {
   const [currentSOWId, setCurrentSOWId] = useState<string | null>(null);
   const editorRef = useRef<any>(null);
 
+  // 🎯 Phase 1C: Dashboard filter state (vertical/service line click-to-filter)
+  const [dashboardFilter, setDashboardFilter] = useState<{
+    type: 'vertical' | 'serviceLine' | null;
+    value: string | null;
+  }>({
+    type: null,
+    value: null,
+  });
+
   // Workspace creation progress state (NEW)
   const [workspaceCreationProgress, setWorkspaceCreationProgress] = useState<{
     isOpen: boolean;
@@ -1493,6 +1502,22 @@ export default function Page() {
     } else {
       setViewMode('editor');
     }
+  };
+
+  // 🎯 Phase 1C: Dashboard filter handlers
+  const handleDashboardFilterByVertical = (vertical: string) => {
+    setDashboardFilter({ type: 'vertical', value: vertical });
+    toast.success(`📊 Filtered to ${vertical} SOWs`);
+  };
+
+  const handleDashboardFilterByService = (serviceLine: string) => {
+    setDashboardFilter({ type: 'serviceLine', value: serviceLine });
+    toast.success(`📊 Filtered to ${serviceLine} SOWs`);
+  };
+
+  const handleClearDashboardFilter = () => {
+    setDashboardFilter({ type: null, value: null });
+    toast.info('🔄 Filter cleared');
   };
 
   const handleReorderWorkspaces = (reorderedWorkspaces: Workspace[]) => {
@@ -2634,6 +2659,24 @@ export default function Page() {
     return null;
   }
 
+  // 🎯 Phase 1C: Filter workspaces based on dashboard filter
+  const filteredWorkspaces = dashboardFilter.type && dashboardFilter.value
+    ? workspaces.map(workspace => ({
+        ...workspace,
+        sows: workspace.sows.filter(sow => {
+          const doc = documents.find(d => d.id === sow.id);
+          if (!doc) return false;
+          
+          if (dashboardFilter.type === 'vertical') {
+            return doc.vertical === dashboardFilter.value;
+          } else if (dashboardFilter.type === 'serviceLine') {
+            return doc.serviceLine === dashboardFilter.value;
+          }
+          return true;
+        })
+      }))
+    : workspaces;
+
   return (
     <div className="flex flex-col h-screen bg-[#0e0f0f]">
       {/* Onboarding Tutorial */}
@@ -2650,7 +2693,7 @@ export default function Page() {
         leftPanel={
           // Always show sidebar navigation regardless of view mode
           <SidebarNav
-            workspaces={workspaces}
+            workspaces={filteredWorkspaces}
             currentWorkspaceId={currentWorkspaceId}
             currentSOWId={currentSOWId}
             currentView={viewMode}
@@ -2666,6 +2709,9 @@ export default function Page() {
             onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
             onReorderWorkspaces={handleReorderWorkspaces}
             onReorderSOWs={handleReorderSOWs}
+            // 🎯 Phase 1C: Pass filter state and clear handler
+            dashboardFilter={dashboardFilter}
+            onClearFilter={handleClearDashboardFilter}
           />
         }
         mainPanel={
@@ -2779,7 +2825,10 @@ export default function Page() {
               </div>
             </div>
           ) : viewMode === 'dashboard' ? (
-            <EnhancedDashboard />
+            <EnhancedDashboard 
+              onFilterByVertical={handleDashboardFilterByVertical}
+              onFilterByService={handleDashboardFilterByService}
+            />
           ) : viewMode === 'ai-management' ? (
             <div className="w-full h-full bg-[#0E0F0F]">
               <iframe

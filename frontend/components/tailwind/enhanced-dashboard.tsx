@@ -56,7 +56,15 @@ interface ChatMessage {
   timestamp: string;
 }
 
-export function EnhancedDashboard() {
+interface EnhancedDashboardProps {
+  onFilterByVertical?: (vertical: string) => void;
+  onFilterByService?: (serviceLine: string) => void;
+}
+
+export function EnhancedDashboard({ 
+  onFilterByVertical, 
+  onFilterByService 
+}: EnhancedDashboardProps = {}) {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -351,7 +359,10 @@ export function EnhancedDashboard() {
 
         {/* Social Garden Business Intelligence Widgets */}
         <div className="mt-6">
-          <SocialGardenBIWidgets />
+          <SocialGardenBIWidgets 
+            onFilterByVertical={onFilterByVertical}
+            onFilterByService={onFilterByService}
+          />
         </div>
       </div>
 
