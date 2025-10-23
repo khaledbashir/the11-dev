@@ -1997,9 +1997,61 @@ export default function Page() {
     }
   };
 
+  // Normalize AI-generated SOW markdown to enforce mandatory sections and convert placeholders
+  const normalizeSOWMarkdown = (markdown: string) => {
+    let content = markdown;
+
+    // 1) Ensure "## Scope Assumptions" exists immediately after Project Outcomes
+    const hasScopeAssumptions = /\n##\s*Scope Assumptions\s*\n/i.test(content);
+    if (!hasScopeAssumptions) {
+      const outcomesMatch = /(^|\n)##\s*Project Outcomes[\s\S]*?(?=\n##\s|\n#\s|$)/i.exec(content);
+      const insertionIndex = outcomesMatch ? (outcomesMatch.index + outcomesMatch[0].length) : 0;
+      const assumptionsBlock = `\n\n## Scope Assumptions\n\n` +
+        [
+          "• Hours outlined are capped as an estimate",
+          "• Client will provide feedback within 3-7 days",
+          "• Rates are not locked in if agreement not signed within 30 days",
+          "• Project timeline finalized post sign-off",
+          "• HubSpot and related systems access provided by day 2 of project",
+        ].map(b => `- ${b}`).join("\n") + "\n\n";
+
+      if (insertionIndex > 0) {
+        content = content.slice(0, insertionIndex) + assumptionsBlock + content.slice(insertionIndex);
+      } else {
+        // Fallback: prepend at top if Outcomes not found
+        content = assumptionsBlock + content;
+      }
+    }
+
+    // 2) Replace [editablePricingTable] placeholder with a real markdown pricing table
+    if (content.includes('[editablePricingTable]')) {
+      const pricingTable = `\n\n| Role | Description | Hours | Rate |\n| --- | --- | --- | --- |\n` +
+        [
+          { role: 'Strategy Director', desc: 'Strategic oversight & governance', hours: 6 },
+          { role: 'Solutions Architect', desc: 'Solution architecture & design', hours: 5 },
+          { role: 'Senior Developer', desc: 'Complex build & integration', hours: 18 },
+          { role: 'Developer', desc: 'Build & configuration', hours: 12 },
+          { role: 'Senior Designer', desc: 'Template/UI design', hours: 8 },
+          { role: 'Copywriter', desc: 'Copy & tokens', hours: 6 },
+          { role: 'QA Engineer', desc: 'QA & UAT', hours: 8 },
+          { role: 'Project Coordination', desc: 'Coordination & status reporting', hours: 6 },
+          { role: 'Account Management', desc: 'Client comms & governance', hours: 8 },
+        ]
+          // Account Management is last to satisfy ordering; leave Rate blank to auto-fill from rate card
+          .map(r => `| ${r.role} | ${r.desc} | ${r.hours} |  |`)
+          .join("\n") + "\n\n";
+
+      content = content.replace(/\[editablePricingTable\]/g, pricingTable);
+    }
+
+    return content;
+  };
+
   const handleInsertSOWContent = (markdownContent: string) => {
     if (editorRef.current && markdownContent) {
-      const novelContent = convertMarkdownToNovelJSON(markdownContent);
+      // Normalize content to enforce critical requirements before inserting into editor
+      const normalized = normalizeSOWMarkdown(markdownContent);
+      const novelContent = convertMarkdownToNovelJSON(normalized);
       editorRef.current.insertContent(novelContent);
     }
   };
@@ -2088,9 +2140,10 @@ export default function Page() {
       const cleanedContent = cleanSOWContent(content);
       console.log('✅ Content cleaned');
       
-      // Convert markdown content to Novel editor JSON format
-      console.log('🔄 Converting markdown to JSON...');
-      const convertedContent = convertMarkdownToNovelJSON(cleanedContent);
+  // Normalize and convert markdown content to Novel editor JSON format
+  console.log('🔄 Normalizing and converting markdown to JSON...');
+  const normalizedContent = normalizeSOWMarkdown(cleanedContent);
+  const convertedContent = convertMarkdownToNovelJSON(normalizedContent);
       console.log('✅ Content converted');
       
       // Extract title from the content (first heading)
@@ -2213,9 +2266,10 @@ export default function Page() {
           const cleanedMessage = cleanSOWContent(lastAIMessage.content);
           console.log('✅ Content cleaned');
           
-          // Convert markdown content to Novel editor JSON format
-          console.log('🔄 Converting markdown to JSON...');
-          const content = convertMarkdownToNovelJSON(cleanedMessage);
+          // Normalize and convert markdown content to Novel editor JSON format
+          console.log('🔄 Normalizing and converting markdown to JSON...');
+          const normalizedMessage = normalizeSOWMarkdown(cleanedMessage);
+          const content = convertMarkdownToNovelJSON(normalizedMessage);
           console.log('✅ Content converted');
           
           // Extract title from the SOW content (first heading)
