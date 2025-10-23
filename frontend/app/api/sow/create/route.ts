@@ -46,34 +46,45 @@ export async function POST(req: NextRequest) {
     expiresAt.setDate(expiresAt.getDate() + 30);
 
     // Insert into database
-    await query(
-      `INSERT INTO sows (
-        id, title, client_name, client_email, content, total_investment,
-        status, workspace_slug, thread_slug, embed_id, folder_id, creator_email, expires_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        sowId,
-        title,
-        clientName,
-        clientEmail || null,
-        content,
-        totalInvestment || 0,  // Default to 0 if not provided
-        'draft',
-        workspaceSlug || null,
-        threadSlug || null, // 🧵 Store the AnythingLLM thread UUID
-        embedId || null,
-        folderId || null,
-        creatorEmail || null,
-        formatDateForMySQL(expiresAt),
-      ]
-    );
+    try {
+      await query(
+        `INSERT INTO sows (
+          id, title, client_name, client_email, content, total_investment,
+          status, workspace_slug, thread_slug, embed_id, folder_id, creator_email, expires_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          sowId,
+          title,
+          clientName,
+          clientEmail || null,
+          content,
+          totalInvestment || 0,  // Default to 0 if not provided
+          'draft',
+          workspaceSlug || null,
+          threadSlug || null, // 🧵 Store the AnythingLLM thread UUID
+          embedId || null,
+          folderId || null,
+          creatorEmail || null,
+          formatDateForMySQL(expiresAt),
+        ]
+      );
+      console.log(' [SOW CREATE] SOW inserted successfully:', sowId);
+    } catch (dbError) {
+      console.error(' [SOW CREATE] Database insert failed:', dbError instanceof Error ? dbError.message : dbError);
+      throw dbError;
+    }
 
     
     // Log activity
-    await query(
-      `INSERT INTO sow_activities (sow_id, event_type, metadata) VALUES (?, ?, ?)`,
-      [sowId, 'sow_created', JSON.stringify({ creatorEmail, folderId })]
-    );
+    try {
+      await query(
+        `INSERT INTO sow_activities (sow_id, event_type, metadata) VALUES (?, ?, ?)`,
+        [sowId, 'sow_created', JSON.stringify({ creatorEmail, folderId })]
+      );
+      console.log(' [SOW CREATE] Activity logged successfully');
+    } catch (activityError) {
+      console.warn(' [SOW CREATE] Activity logging failed (non-critical):', activityError instanceof Error ? activityError.message : activityError);
+    }
 
     return NextResponse.json({
       success: true,
