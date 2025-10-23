@@ -22,7 +22,8 @@ import {
   Settings,
   Sparkles,
   Zap,
-  Brain
+  Brain,
+  Loader2
 } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 
@@ -60,6 +61,13 @@ interface AgentSidebarProps {
   onDeleteAgent: (id: string) => void;
   chatMessages: ChatMessage[];
   onSendMessage: (message: string) => void;
+  isLoading?: boolean;
+  streamingMessageId?: string | null;
+  viewMode?: 'editor' | 'dashboard' | 'gardner-studio' | 'ai-management';
+  dashboardChatTarget?: string;
+  onDashboardWorkspaceChange?: (workspace: string) => void;
+  availableWorkspaces?: Array<{ slug: string; name: string }>;
+  onInsertToEditor?: (content: string) => void;
 }
 
 const OPENROUTER_API_KEY = "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";
@@ -75,6 +83,13 @@ export default function AgentSidebar({
   onDeleteAgent,
   chatMessages,
   onSendMessage,
+  isLoading = false,
+  streamingMessageId = null,
+  viewMode = 'editor',
+  dashboardChatTarget,
+  onDashboardWorkspaceChange,
+  availableWorkspaces = [],
+  onInsertToEditor,
 }: AgentSidebarProps) {
   const [newAgentName, setNewAgentName] = useState("");
   const [newAgentPrompt, setNewAgentPrompt] = useState("");
@@ -88,6 +103,12 @@ export default function AgentSidebar({
   const [modelSearch, setModelSearch] = useState("");
   const [showFreeOnly, setShowFreeOnly] = useState(false);
   const [loadingModels, setLoadingModels] = useState(false);
+  const [conversations, setConversations] = useState<Array<{ id: string; title: string; timestamp: number }>>([]);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+
+  // Ensure viewMode is properly typed
+  const isDashboard = viewMode === 'dashboard';
 
   useEffect(() => {
     fetchModels();
@@ -163,6 +184,23 @@ export default function AgentSidebar({
     }
   };
 
+  const handleNewChat = () => {
+    const newConversation = {
+      id: `conv-${Date.now()}`,
+      title: "New Conversation",
+      timestamp: Date.now(),
+    };
+    setConversations(prev => [newConversation, ...prev]);
+    setCurrentConversationId(newConversation.id);
+    // Clear current chat (would need to integrate with parent state management)
+  };
+
+  const handleSelectConversation = (conversationId: string) => {
+    setCurrentConversationId(conversationId);
+    setShowHistory(false);
+    // Load conversation messages (would integrate with parent state)
+  };
+
   const currentAgent = agents.find(a => a.id === currentAgentId);
 
   return (
@@ -180,15 +218,19 @@ export default function AgentSidebar({
           <div className="p-4 border-b bg-gradient-to-r from-primary/5 to-secondary/5">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 bg-primary/10 rounded-lg">
-                <Bot className="w-5 h-5 text-primary" />
+                {isDashboard ? <Brain className="w-5 h-5 text-[#1CBF79]" /> : <Bot className="w-5 h-5 text-primary" />}
               </div>
               <div>
-                <h2 className="text-lg font-semibold">AI Assistant</h2>
-                <p className="text-sm text-muted-foreground">Social Garden SOW Generator</p>
+                <h2 className="text-lg font-semibold">
+                  {isDashboard ? 'Ask the Dashboard' : 'AI Assistant'}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {isDashboard ? 'Query your SOW data' : 'Social Garden SOW Generator'}
+                </p>
               </div>
             </div>
 
-            {currentAgent && (
+            {currentAgent && viewMode !== 'dashboard' && (
               <div className="flex items-center gap-2 p-2 bg-accent/50 rounded-lg">
                 <Sparkles className="w-4 h-4 text-primary" />
                 <div className="flex-1">
@@ -205,6 +247,154 @@ export default function AgentSidebar({
           </div>
 
           <Tabs defaultValue="chat" className="flex-1 flex flex-col">
+            {isDashboard ? (
+              // Dashboard mode: Only show chat
+              <div className="flex-1 flex flex-col">
+                <div className="p-3 border-b bg-muted/30 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      onClick={handleNewChat} 
+                      className="flex-1 bg-[#1CBF79] hover:bg-[#1CBF79]/90 text-white"
+                      size="sm"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      New Chat
+                    </Button>
+                    <Button 
+                      onClick={() => setShowHistory(!showHistory)} 
+                      variant="outline"
+                      size="sm"
+                      className="border-[#1CBF79] text-[#1CBF79] hover:bg-[#1CBF79]/10"
+                    >
+                      <MessageSquare className="w-4 h-4 mr-2" />
+                      History ({conversations.length})
+                    </Button>
+                  </div>
+                  
+                  {/* Conversation History Dropdown */}
+                  {showHistory && conversations.length > 0 && (
+                    <div className="bg-background border rounded-lg max-h-64 overflow-y-auto">
+                      <div className="p-2 space-y-1">
+                        {conversations.map(conv => (
+                          <button
+                            key={conv.id}
+                            onClick={() => handleSelectConversation(conv.id)}
+                            className={`w-full text-left p-3 rounded-lg hover:bg-accent transition-colors ${
+                              currentConversationId === conv.id ? 'bg-accent border border-primary' : ''
+                            }`}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">{conv.title}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(conv.timestamp).toLocaleString()}
+                                </p>
+                              </div>
+                              {currentConversationId === conv.id && (
+                                <Badge variant="default" className="ml-2 bg-[#1CBF79]">Active</Badge>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {showHistory && conversations.length === 0 && (
+                    <div className="text-center py-4 text-sm text-muted-foreground">
+                      No conversation history yet. Start a new chat!
+                    </div>
+                  )}
+                </div>
+
+                <ScrollArea className="flex-1 p-4">
+                  <div className="space-y-4">
+                    {chatMessages.length === 0 && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Brain className="w-12 h-12 mx-auto mb-3 text-[#1CBF79]" />
+                        <h3 className="font-semibold text-lg mb-2 text-white">Ask About Your Dashboard</h3>
+                        <p className="text-sm">
+                          Ask questions about your SOWs, metrics, clients, or get insights from your dashboard data.
+                        </p>
+                      </div>
+                    )}
+                    {chatMessages.map(message => (
+                      <div key={message.id} className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        {message.role === 'assistant' && (
+                          <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                            <Bot className="w-4 h-4 text-primary" />
+                          </div>
+                        )}
+                        <div className={`max-w-[80%] ${message.role === 'user' ? 'order-1' : 'order-2'}`}>
+                          <div className={`p-3 rounded-lg ${
+                            message.role === 'user'
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted border'
+                          }`}>
+                            {message.role === 'assistant' ? (
+                              <div className="prose prose-sm max-w-none">
+                                <ReactMarkdown
+                                  components={{
+                                    table: ({ children }) => (
+                                      <div className="overflow-x-auto">
+                                        <table className="sow-table">{children}</table>
+                                      </div>
+                                    ),
+                                    th: ({ children }) => (
+                                      <th className="bg-primary text-primary-foreground">{children}</th>
+                                    ),
+                                    td: ({ children }) => <td>{children}</td>,
+                                    code: ({ children }) => (
+                                      <code className="bg-accent px-1 py-0.5 rounded text-sm">{children}</code>
+                                    ),
+                                    pre: ({ children }) => (
+                                      <pre className="bg-accent p-2 rounded text-sm overflow-x-auto">{children}</pre>
+                                    ),
+                                  }}
+                                >
+                                  {message.content}
+                                </ReactMarkdown>
+                              </div>
+                            ) : (
+                              <p className="text-sm">{message.content}</p>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {new Date(message.timestamp).toLocaleTimeString()}
+                          </p>
+                        </div>
+                        {message.role === 'user' && (
+                          <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center flex-shrink-0">
+                            <User className="w-4 h-4" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+                
+                <div className="p-4 border-t bg-background">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Ask about your dashboard data..."
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+                      className="flex-1"
+                      disabled={isLoading}
+                    />
+                    <Button onClick={handleSendMessage} size="icon" disabled={isLoading || !chatInput.trim()}>
+                      {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Try: "How many SOWs do we have?" or "What's our total revenue?"
+                  </p>
+                </div>
+              </div>
+            ) : (
+              // Editor mode: Show full tabs
+              <>
             <TabsList className="grid w-full grid-cols-3 mx-4 mt-4">
               <TabsTrigger value="chat" className="text-xs">
                 <MessageSquare className="w-3 h-3 mr-1" />
@@ -221,10 +411,78 @@ export default function AgentSidebar({
             </TabsList>
 
             <TabsContent value="chat" className="flex-1 flex flex-col m-0">
-              {currentAgent ? (
+              {currentAgent || isDashboard ? (
                 <>
+                  {/* Dashboard Mode: New Chat + History Header */}
+                  {isDashboard && (
+                    <div className="p-3 border-b bg-muted/30 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          onClick={handleNewChat} 
+                          className="flex-1 bg-[#1CBF79] hover:bg-[#1CBF79]/90 text-white"
+                          size="sm"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          New Chat
+                        </Button>
+                        <Button 
+                          onClick={() => setShowHistory(!showHistory)} 
+                          variant="outline"
+                          size="sm"
+                          className="border-[#1CBF79] text-[#1CBF79] hover:bg-[#1CBF79]/10"
+                        >
+                          <MessageSquare className="w-4 h-4 mr-2" />
+                          History ({conversations.length})
+                        </Button>
+                      </div>
+                      
+                      {/* Conversation History Dropdown */}
+                      {showHistory && conversations.length > 0 && (
+                        <div className="bg-background border rounded-lg max-h-64 overflow-y-auto">
+                          <div className="p-2 space-y-1">
+                            {conversations.map(conv => (
+                              <button
+                                key={conv.id}
+                                onClick={() => handleSelectConversation(conv.id)}
+                                className={`w-full text-left p-3 rounded-lg hover:bg-accent transition-colors ${
+                                  currentConversationId === conv.id ? 'bg-accent border border-primary' : ''
+                                }`}
+                              >
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium truncate">{conv.title}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {new Date(conv.timestamp).toLocaleString()}
+                                    </p>
+                                  </div>
+                                  {currentConversationId === conv.id && (
+                                    <Badge variant="default" className="ml-2 bg-[#1CBF79]">Active</Badge>
+                                  )}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {showHistory && conversations.length === 0 && (
+                        <div className="text-center py-4 text-sm text-muted-foreground">
+                          No conversation history yet. Start a new chat!
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <ScrollArea className="flex-1 p-4">
-                    <div className="space-y-4">
+                    <div className="space-y-4">{chatMessages.length === 0 && isDashboard && (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <Brain className="w-12 h-12 mx-auto mb-3 text-[#1CBF79]" />
+                          <h3 className="font-semibold text-lg mb-2 text-white">Ask About Your Dashboard</h3>
+                          <p className="text-sm">
+                            Ask questions about your SOWs, metrics, clients, or get insights from your dashboard data.
+                          </p>
+                        </div>
+                      )}
                       {chatMessages.map(message => (
                         <div key={message.id} className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                           {message.role === 'assistant' && (
@@ -282,18 +540,22 @@ export default function AgentSidebar({
                   <div className="p-4 border-t bg-background">
                     <div className="flex gap-2">
                       <Input
-                        placeholder="Ask me to generate a SOW..."
+                        placeholder={isDashboard ? "Ask about your dashboard data..." : "Ask me to generate a SOW..."}
                         value={chatInput}
                         onChange={(e) => setChatInput(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
                         className="flex-1"
+                        disabled={isLoading}
                       />
-                      <Button onClick={handleSendMessage} size="icon">
-                        <Send className="w-4 h-4" />
+                      <Button onClick={handleSendMessage} size="icon" disabled={isLoading || !chatInput.trim()}>
+                        {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground mt-2">
-                      Try: "Create a scope of work for OakTree client - email template build"
+                      {isDashboard 
+                        ? 'Try: "How many SOWs do we have?" or "What\'s our total revenue?"'
+                        : 'Try: "Create a scope of work for OakTree client - email template build"'
+                      }
                     </p>
                   </div>
                 </>
@@ -460,6 +722,8 @@ export default function AgentSidebar({
                 </ScrollArea>
               </div>
             </TabsContent>
+              </>
+            )}
           </Tabs>
 
           {editingAgent && (

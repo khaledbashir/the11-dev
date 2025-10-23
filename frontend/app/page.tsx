@@ -2936,26 +2936,13 @@ export default function Page() {
               </div>
             </div>
           ) : viewMode === 'dashboard' ? (
-            <div className="h-full flex bg-[#0e0f0f]">
-              {/* Main Dashboard with BI Widgets */}
-              <div className="flex-1 overflow-auto">
-                <EnhancedDashboard 
-                  onFilterByVertical={handleDashboardFilterByVertical}
-                  onFilterByService={handleDashboardFilterByService}
-                  currentFilter={dashboardFilter}
-                  onClearFilter={handleClearDashboardFilter}
-                />
-              </div>
-              
-              {/* Stateful Chat Sidebar - Right Column */}
-              <div className="w-[420px] border-l border-[#0e2e33] bg-[#1b1b1e] flex flex-col h-screen overflow-hidden">
-                <StatefulDashboardChat 
-                  onFilterByVertical={handleDashboardFilterByVertical}
-                  onFilterByService={handleDashboardFilterByService}
-                  currentFilter={dashboardFilter}
-                  onClearFilter={handleClearDashboardFilter}
-                />
-              </div>
+            <div className="h-full bg-[#0e0f0f]">
+              <EnhancedDashboard 
+                onFilterByVertical={handleDashboardFilterByVertical}
+                onFilterByService={handleDashboardFilterByService}
+                currentFilter={dashboardFilter}
+                onClearFilter={handleClearDashboardFilter}
+              />
             </div>
           ) : viewMode === 'ai-management' ? (
             <div className="w-full h-full bg-[#0E0F0F]">

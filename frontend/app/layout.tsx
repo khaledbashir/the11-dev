@@ -50,6 +50,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning className={jakartaSans.variable}>
+      <head>
+        <script defer data-domain="sow.qandu.me" src="https://ahmad-plausible.840tjq.easypanel.host/js/script.js"></script>
+      </head>
       <body className={jakartaSans.className} suppressHydrationWarning>
         <Providers>{children}</Providers>
       </body>
