@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { queryOne, query } from '@/lib/db';
+import { calculateTotalInvestment } from '@/lib/sow-utils';
 
 export async function GET(
   req: NextRequest,
@@ -93,7 +94,13 @@ export async function GET(
 /**
  * Update SOW
  * PUT /api/sow/[id]
+ * 
+ * ⚡ PROACTIVE FINANCIAL DATA INTEGRITY:
+ * On every SOW update, this endpoint automatically parses the content,
+ * calculates the total_investment from pricing tables, and saves it to the database.
+ * This eliminates the need for manual financial migrations going forward.
  */
+
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -135,10 +142,21 @@ export async function PUT(
       updates.push('content = ?');
       values.push(content);
     }
-    if (totalInvestment !== undefined) {
+    
+    // ⚡ PROACTIVE FINANCIAL CALCULATION
+    // When content is provided, automatically calculate total_investment
+    // This ensures financial data is always synchronized with pricing tables
+    if (content !== undefined) {
+      const calculatedInvestment = calculateTotalInvestment(content);
+      console.log(`💰 [SOW ${sowId}] Auto-calculated total_investment: ${calculatedInvestment}`);
+      updates.push('total_investment = ?');
+      values.push(calculatedInvestment);
+    } else if (totalInvestment !== undefined) {
+      // Only use the provided totalInvestment if content is not being updated
       updates.push('total_investment = ?');
       values.push(totalInvestment);
     }
+    
     if (workspaceSlug !== undefined) {
       updates.push('workspace_slug = ?');
       values.push(workspaceSlug);

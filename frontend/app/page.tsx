@@ -21,6 +21,7 @@ import { THE_ARCHITECT_SYSTEM_PROMPT } from "@/lib/knowledge-base";
 import { InteractiveOnboarding } from "@/components/tailwind/interactive-onboarding";
 import { GuidedClientSetup } from "@/components/tailwind/guided-client-setup";
 import { EnhancedDashboard } from "@/components/tailwind/enhanced-dashboard";
+import { StatefulDashboardChat } from "@/components/tailwind/stateful-dashboard-chat";
 import GardnerStudio from "@/components/gardners/GardnerStudio";
 import { KnowledgeBase } from "@/components/tailwind/knowledge-base";
 import { FloatingDocumentActions } from "@/components/tailwind/document-toolbar";
@@ -2935,7 +2936,7 @@ export default function Page() {
               </div>
             </div>
           ) : viewMode === 'dashboard' ? (
-            <EnhancedDashboard 
+            <StatefulDashboardChat 
               onFilterByVertical={handleDashboardFilterByVertical}
               onFilterByService={handleDashboardFilterByService}
               currentFilter={dashboardFilter}
