@@ -1122,22 +1122,10 @@ export default function Page() {
       if (workspaceType === "sow") {
         console.log('🧠 Configuring SOW workspace with The Architect system prompt...');
         try {
-          const updateResponse = await fetch(`${process.env.NEXT_PUBLIC_ANYTHINGLLM_URL}/api/v1/workspace/${workspace.slug}/update`, {
-            method: 'PATCH',
-            headers: {
-              'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              openAiPrompt: THE_ARCHITECT_SYSTEM_PROMPT,
-              openAiTemp: 0.7,
-              openAiHistory: 25,
-            }),
-          });
-          
-          if (!updateResponse.ok) {
-            const errorData = await updateResponse.json().catch(() => ({ error: 'Unknown error' }));
-            console.error('⚠️ Failed to configure workspace system prompt:', errorData);
+          // Use AnythingLLM service method to avoid client env/key exposure
+          const configured = await anythingLLM.setWorkspacePrompt(workspace.slug, workspaceName, true);
+          if (!configured) {
+            console.warn('⚠️ Failed to configure workspace system prompt via service');
           } else {
             console.log('✅ Workspace configured with The Architect system prompt');
           }
@@ -1314,7 +1302,6 @@ export default function Page() {
         }));
         
         // 🚀 AUTO-NAVIGATE TO NEW SOW EDITOR (not staying on dashboard)
-        const router = require('next/router').useRouter?.() || { push: () => {} };
         if (typeof window !== 'undefined') {
           window.location.href = `/portal/sow/${sowId}`;
         }

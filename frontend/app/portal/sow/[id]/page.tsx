@@ -43,6 +43,10 @@ export default function ClientPortalPage() {
   const [accepted, setAccepted] = useState(false);
   const [activeTab, setActiveTab] = useState<TabView>('overview');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Pricing display controls
+  const [discountPercent, setDiscountPercent] = useState<number>(0);
+  const [hideGrandTotal, setHideGrandTotal] = useState<boolean>(false);
+  const [budgetAdjustmentNotes, setBudgetAdjustmentNotes] = useState<string>('');
   
   // Interactive Pricing Calculator
   const [selectedServices, setSelectedServices] = useState<string[]>(['social-media', 'content-creation']);
@@ -249,6 +253,8 @@ export default function ClientPortalPage() {
           totalInvestment: calculatedTotal,
           selectedServices,
           addOns: selectedAddOns,
+          discountPercent,
+          budgetAdjustmentNotes,
         }),
       });
 
@@ -708,9 +714,11 @@ ${sow.htmlContent}
           .filter(r => selectedAddOns.includes(r.id))
           .reduce((sum, r) => sum + r.recommended_price, 0);
         
-        // Calculate subtotal and GST for display (total comes from useMemo)
-        const subtotal = baseServicesTotal + contentCost + socialCost + adManagementFee + addOnsTotal;
-        const gst = subtotal * 0.1;
+  // Calculate subtotal and GST for display (total comes from useMemo)
+  const subtotal = baseServicesTotal + contentCost + socialCost + adManagementFee + addOnsTotal;
+  const gst = subtotal * 0.1;
+  const discountAmount = (subtotal + gst) * (discountPercent / 100);
+  const grandTotal = (subtotal + gst) - discountAmount;
         
         const toggleService = (serviceId: string) => {
           if (selectedServices.includes(serviceId)) {
@@ -751,9 +759,12 @@ ${sow.htmlContent}
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-400 mb-1">Total Investment</p>
-                    <p className="text-4xl font-bold text-[#1CBF79]">
-                      ${sow.totalInvestment.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
-                    </p>
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-4xl font-bold text-[#1CBF79]">
+                        ${sow.totalInvestment.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                      </p>
+                      <span className="text-xs text-gray-400 font-medium">+ GST</span>
+                    </div>
                   </div>
                   <Button
                     onClick={handleAcceptSOW}
@@ -797,6 +808,39 @@ ${sow.htmlContent}
             <div className="grid grid-cols-3 gap-6">
               {/* Left Column: Service Selection */}
               <div className="col-span-2 space-y-4">
+                {/* Discount & Display Controls */}
+                <div className="bg-[#1A1A1D] border border-[#2A2A2D] rounded-xl p-6">
+                  <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                    <DollarSign className="w-5 h-5 text-[#1CBF79]" />
+                    Pricing Controls
+                  </h3>
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm text-gray-300 mb-2">Discount (%)</label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="range"
+                          min={0}
+                          max={50}
+                          step={1}
+                          value={discountPercent}
+                          onChange={(e) => setDiscountPercent(Number(e.target.value))}
+                          className="w-full h-2 bg-[#2A2A2D] rounded-lg appearance-none cursor-pointer accent-[#1CBF79]"
+                        />
+                        <span className="text-white font-semibold w-12 text-right">{discountPercent}%</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-300 mb-2">Hide Grand Total</label>
+                      <button
+                        onClick={() => setHideGrandTotal(!hideGrandTotal)}
+                        className={`inline-flex items-center px-3 py-2 rounded-lg border-2 transition-all ${hideGrandTotal ? 'border-[#1CBF79] bg-[#1CBF79]/10 text-[#1CBF79]' : 'border-[#2A2A2D] text-gray-300 hover:border-[#1CBF79]/50'}`}
+                      >
+                        {hideGrandTotal ? 'Hidden' : 'Shown'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
                 <div className="bg-[#1A1A1D] border border-[#2A2A2D] rounded-xl p-6">
                   <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                     <Target className="w-5 h-5 text-[#1CBF79]" />
@@ -994,17 +1038,25 @@ ${sow.htmlContent}
                       <span className="text-gray-400">GST (10%)</span>
                       <span className="text-white font-medium">${gst.toLocaleString('en-AU', { minimumFractionDigits: 2 })}</span>
                     </div>
+                    {discountPercent > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-400">Discount ({discountPercent}%)</span>
+                        <span className="text-white font-medium">- ${discountAmount.toLocaleString('en-AU', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="pt-4 border-t-2 border-[#1CBF79]/30">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-gray-300 font-medium">Total Investment</span>
-                      <span className="text-3xl font-bold text-[#1CBF79]">
-                        ${calculatedTotal.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
-                      </span>
+                  {!hideGrandTotal && (
+                    <div className="pt-4 border-t-2 border-[#1CBF79]/30">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-gray-300 font-medium">Grand Total (AUD)</span>
+                        <span className="text-3xl font-bold text-[#1CBF79]">
+                          ${grandTotal.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500">Includes GST and any applied discount.</p>
                     </div>
-                    <p className="text-xs text-gray-500">per month, AUD</p>
-                  </div>
+                  )}
 
                   <button 
                     onClick={() => setAccepted(true)}
@@ -1170,6 +1222,16 @@ ${sow.htmlContent}
                 <div>
                   <h3 className="text-xl font-bold text-white mb-1">Ready to get started?</h3>
                   <p className="text-gray-400 text-sm">Your customized package is ready to launch in 14 days</p>
+                  <div className="mt-4">
+                    <label className="block text-sm text-gray-300 mb-2">Budget Adjustment Notes (optional)</label>
+                    <textarea
+                      value={budgetAdjustmentNotes}
+                      onChange={(e) => setBudgetAdjustmentNotes(e.target.value)}
+                      placeholder="Document changes to modules or hours made to meet budget constraints (internal note)"
+                      className="w-full bg-[#0E0F0F] border border-[#2A2A2D] rounded-lg p-3 text-sm text-gray-200 placeholder:text-gray-500"
+                      rows={3}
+                    />
+                  </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <button 
