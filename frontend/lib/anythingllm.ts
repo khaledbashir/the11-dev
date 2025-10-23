@@ -2,6 +2,7 @@
 // Handles workspace creation, document embedding, and chat integration
 
 import SOCIAL_GARDEN_KNOWLEDGE_BASE from './social-garden-knowledge-base';
+import { THE_ARCHITECT_SYSTEM_PROMPT } from './knowledge-base';
 
 // Get AnythingLLM URL from environment (NEXT_PUBLIC_ANYTHINGLLM_URL must be set in .env)
 // Falls back to Ahmad's instance for local development
@@ -430,10 +431,45 @@ Metadata:
    * Set client-facing system prompt for workspace
    * This prompt is used in the embed widget on the client portal
    */
-  async setWorkspacePrompt(workspaceSlug: string, clientName?: string): Promise<boolean> {
+  async setWorkspacePrompt(workspaceSlug: string, clientName?: string, isSOWWorkspace: boolean = true): Promise<boolean> {
+    // For SOW workspaces: Use The Architect prompt for generation
+    // For other workspaces: Use client-facing prompt for Q&A
+    const prompt = isSOWWorkspace 
+      ? THE_ARCHITECT_SYSTEM_PROMPT
+      : this.getClientFacingPrompt(clientName);
+
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/update`,
+        {
+          method: 'PATCH',
+          headers: this.getHeaders(),
+          body: JSON.stringify({
+            openAiPrompt: prompt,
+            openAiTemp: 0.7,
+            openAiHistory: 25,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        console.error(`❌ Failed to set prompt (${response.status}):`, error);
+        return false;
+      }
+
+      console.log(`✅ ${isSOWWorkspace ? 'Architect' : 'Client-facing'} prompt set for workspace: ${workspaceSlug}`);
+      return true;
+    } catch (error) {
+      console.error('❌ Error setting workspace prompt:', error);
+      return false;
+    }
+  }
+
+  private getClientFacingPrompt(clientName?: string): string {
     const greeting = clientName ? `Hi! I'm the Social Garden AI assistant for ${clientName}.` : `Hi! I'm your Social Garden AI assistant.`;
     
-    const prompt = `${greeting} I have complete access to all your Statement of Work (SOW) documents AND comprehensive knowledge about Social Garden's services, case studies, and capabilities.
+    return `${greeting} I have complete access to all your Statement of Work (SOW) documents AND comprehensive knowledge about Social Garden's services, case studies, and capabilities.
 
 🎯 What I Can Help You With:
 - Project scope, deliverables, and timelines
@@ -475,33 +511,6 @@ I'll always give you clear, accurate answers with specific details from your SOW
 Make you feel completely confident about your investment with Social Garden. Every dollar, every hour, every deliverable - I'm here to make it crystal clear.
 
 Ready to explore your project details? Ask me anything!`;
-
-    try {
-      const response = await fetch(
-        `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/update`,
-        {
-          method: 'PATCH',
-          headers: this.getHeaders(),
-          body: JSON.stringify({
-            openAiPrompt: prompt,
-            openAiTemp: 0.7,
-            openAiHistory: 25,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        console.error(`❌ Failed to set prompt (${response.status}):`, error);
-        return false;
-      }
-
-      console.log(`✅ Client-facing prompt set for workspace: ${workspaceSlug}`);
-      return true;
-    } catch (error) {
-      console.error('❌ Error setting workspace prompt:', error);
-      return false;
-    }
   }
 
   // ========================================

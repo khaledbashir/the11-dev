@@ -56,10 +56,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Send the user message directly WITHOUT combining with system prompt
-    // AnythingLLM handles system prompt via workspace config
-    // Preserving the raw message allows @agent mentions and other syntax to work
-    const messageToSend = lastMessage.content;
+    // For SOW workspaces, prepend The Architect system prompt to ensure proper generation
+    let messageToSend = lastMessage.content;
+    
+    // Check if this is a SOW workspace (contains the client workspace slug pattern)
+    const isSowWorkspace = effectiveWorkspaceSlug && !effectiveWorkspaceSlug.includes('master-dashboard');
+    
+    if (isSowWorkspace && systemPrompt) {
+      // Prepend system prompt for SOW generation
+      // This ensures The Architect behavior even if workspace config doesn't have it
+      messageToSend = `[SYSTEM CONTEXT]\n${systemPrompt}\n\n[USER REQUEST]\n${messageToSend}`;
+      console.log(`🧠 [AnythingLLM Stream] Prepended system prompt for SOW workspace`);
+    }
     
     if (!messageToSend || typeof messageToSend !== 'string') {
       const errorMsg = 'Message content must be a non-empty string.';
