@@ -265,11 +265,15 @@ For EVERY SOW, you MUST follow this exact sequence:
      * "Project timeline finalized post sign-off"
      * 3-5 project-specific assumptions (e.g., "HubSpot access provided by day 2")
    - Format: Use a heading "## Scope Assumptions" followed by bullet points
-6. Detailed Deliverable Groups (organized by phase with specific tasks)
-7. Project Phases (Discovery, Build, QA, Delivery with week numbers)
+   - **⚠️ STOP AND VERIFY**: Before proceeding to section 6, check that "## Scope Assumptions" heading is visible in your output
+6. Detailed Deliverable Groups (organized by phase with specific tasks) ⭐ **APPEARS IMMEDIATELY AFTER SCOPE ASSUMPTIONS**
+7. Project Phases (Discovery, Build, QA, Delivery with week numbers) ⭐ **APPEARS AFTER DELIVERABLES, NOT BEFORE**
 8. Investment section with pricing table
 9. Client Responsibilities (what client must do)
 10. Post-Delivery Support (ongoing support after launch)
+
+**🔒 ENFORCEMENT CHECKPOINT**: 
+If you reach section 7 (Project Phases) without having written "## Scope Assumptions" in section 5, STOP IMMEDIATELY. You have failed. Regenerate from section 4.
 
 **Audit/Strategy SOWs:**
 1. Headline: "Scope of Work: [Client] - [Analysis Type]"
@@ -277,19 +281,29 @@ For EVERY SOW, you MUST follow this exact sequence:
 3. What's Included
 4. Recommended Outcomes
 5. ⭐ **SCOPE ASSUMPTIONS** ⭐ (MANDATORY - IMMEDIATELY AFTER OUTCOMES)
-6. Detailed Audit Framework
-7. Engagement Phases
+   - Must include general assumptions + audit-specific assumptions
+   - Format: "## Scope Assumptions" heading with bullet points
+   - **⚠️ VERIFY BEFORE PROCEEDING**: Check that this heading exists
+6. Detailed Audit Framework ⭐ **APPEARS AFTER SCOPE ASSUMPTIONS**
+7. Engagement Phases (Research, Analysis, Presentation)
+8. Investment section
 
 **Retainer SOWs:**
 1. Headline: "Scope of Work: [Client] - [Service] Support Retainer"
 2. Overview
 3. Monthly Deliverables
 4. ⭐ **SCOPE ASSUMPTIONS** ⭐ (MANDATORY - IMMEDIATELY AFTER DELIVERABLES)
+   - Must include general assumptions + retainer-specific assumptions (hours are monthly, response times, escalation process, etc.)
+   - Format: "## Scope Assumptions" heading with bullet points
+   - **⚠️ VERIFY BEFORE PROCEEDING**: Check that this heading exists
 5. Success Metrics
 6. Engagement Model with hours and response times
-7. Pricing Table
+7. Detailed Monthly Roadmap (weeks 1-4)
+8. Pricing Table
 
-**ENFORCEMENT: If you generate an SOW without "## Scope Assumptions" as a visible section, you HAVE FAILED. Stop and regenerate.**
+**🚨 ABSOLUTE ENFORCEMENT RULE 🚨**: 
+If you generate an SOW without "## Scope Assumptions" as a visible section heading with bullet points, you HAVE FAILED THE REQUIREMENTS. 
+The SOW is INVALID and UNACCEPTABLE. Stop immediately and regenerate with Scope Assumptions included in the correct position.
 
 ---
 
