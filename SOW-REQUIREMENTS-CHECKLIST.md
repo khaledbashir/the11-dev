@@ -14,9 +14,9 @@ This is the **SINGLE SOURCE OF TRUTH** for SOW requirements. Every fix must be r
 ---
 
 **Date Created:** October 25, 2025  
-**Last Updated:** October 25, 2025  
-**Status:** In Progress (60% complete)  
-**Session:** Portal UI Cleanup + SOW Requirements Verification  
+**Last Updated:** October 23, 2025  
+**Status:** In Progress (75% complete - 11 of 15 items done)
+**Session:** Portal Verification + OpenRouter API Fix  
 
 ---
 
@@ -48,25 +48,25 @@ This is the **SINGLE SOURCE OF TRUTH** for SOW requirements. Every fix must be r
 ---
 
 ### 3. Discount Presentation Logic 💰
-- [ ] Discount field visible in pricing display
-- [ ] Shows: Original price, discount amount, final price
-- [ ] Discount control slider functional
-- [ ] Can adjust discount percentage 0-50%
-- [ ] Recalculates totals on discount change
+- [x] Discount field visible in pricing display ✅
+- [x] Shows: Original price, discount amount, final price ✅
+- [x] Discount control slider functional ✅
+- [x] Can adjust discount percentage 0-50% ✅
+- [x] Recalculates totals on discount change ✅
 - **File:** `frontend/app/portal/sow/[id]/page.tsx` (Pricing section)
-- **Current Status:** ✅ IMPLEMENTED (need to verify visibility)
-- **Action:** Check if discount section is obvious/visible
+- **Current Status:** ✅ VERIFIED WORKING (Commit: 0c22f33)
+- **Verified:** Slider in "Pricing Controls" section, displays discount %, recalculates on change
 
 ---
 
 ### 4. Total Price Toggle Feature 💵
-- [ ] Button/toggle to hide/show grand total
-- [ ] Label: "Hide Grand Total" or similar
-- [ ] Works in pricing calculator
-- [ ] State persists while viewing
+- [x] Button/toggle to hide/show grand total ✅
+- [x] Label: "Hide Grand Total" or similar ✅
+- [x] Works in pricing calculator ✅
+- [x] State persists while viewing ✅
 - **File:** `frontend/app/portal/sow/[id]/page.tsx` (Pricing section)
-- **Current Status:** ✅ IMPLEMENTED (need to verify UI prominence)
-- **Action:** Make toggle button more obvious
+- **Current Status:** ✅ VERIFIED WORKING (Commit: 0c22f33)
+- **Verified:** Toggle button in "Pricing Controls" section, grand total hides/shows correctly
 
 ---
 
@@ -243,9 +243,9 @@ This is the **SINGLE SOURCE OF TRUTH** for SOW requirements. Every fix must be r
 ## 📊 Progress Tracking
 
 **Total Requirements:** 15  
-**Completed:** 9 (60%) ✅ ← Major progress!  
+**Completed:** 11 (73%) ✅ ← Major progress!  
 **In Progress:** 0  
-**Not Started:** 2  
+**Not Started:** 0  
 **Needs Verification:** 4  
 
 **Current Session Goal:** Complete HIGH PRIORITY items (#1-5)
