@@ -711,7 +711,7 @@ export default function Page() {
     } else {
       console.warn('⚠️ Document not found for SOW:', currentSOWId);
     }
-  }, [currentSOWId, documents]);
+  }, [currentSOWId]); // 🔧 FIXED: Removed 'documents' dependency to prevent chat clearing on auto-save
 
   // Auto-save SOW content to database with debouncing
   useEffect(() => {
