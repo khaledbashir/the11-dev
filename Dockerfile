@@ -10,9 +10,14 @@ RUN pnpm build
 # Stage 2: Create the final production image
 FROM node:18-alpine
 WORKDIR /app
+
+# Install pnpm in final image
+RUN npm install -g pnpm
+
+# Copy built artifacts from builder stage
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 
 EXPOSE 3001
-CMD ["pnpm", "start"]
+CMD ["npm", "run", "start"]
