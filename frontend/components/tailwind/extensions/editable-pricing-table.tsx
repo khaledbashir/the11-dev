@@ -445,6 +445,12 @@ export const EditablePricingTable = Node.create({
     ];
   },
 
+  // Markdown serialization: skip markdown and use HTML only
+  // This custom node is not suitable for markdown export
+  renderMarkdown() {
+    return null; // Skip markdown rendering for this node
+  },
+
   renderHTML({ node, HTMLAttributes }) {
     const rows: PricingRow[] = node.attrs.rows || [];
     const discount = node.attrs.discount || 0;
