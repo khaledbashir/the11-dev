@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from 'next/navigation';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { 
   Sparkles, Download, CheckCircle, MessageCircle, ArrowLeft, 
   FileText, DollarSign, Calendar, Eye, Share2, Clock,
@@ -319,31 +319,32 @@ export default function ClientPortalPage() {
   };
 
   // 🔥 OPENROUTER CHAT HANDLER - Direct AI without RAG
-  const handleSendChatMessage = async () => {
+  const handleSendChatMessage = useCallback(async () => {
     if (!chatInput.trim() || !sow) return;
     
-    const userMessage = chatInput.trim();
-    setChatInput('');
-    setIsChatLoading(true);
-    
-    // Add user message to chat
-    const newMessages = [
-      ...chatMessages,
-      { role: 'user' as const, content: userMessage }
-    ];
-    setChatMessages(newMessages);
-    
     try {
-      // Call OpenRouter API with SOW context
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'google/gemini-2.0-flash-exp:free', // 🆓 FREE on OpenRouter!
-          messages: [
-            {
-              role: 'system',
-              content: `You are the Social Garden AI Assistant for ${sow.clientName}'s proposal.
+      const userMessage = chatInput.trim();
+      setChatInput('');
+      setIsChatLoading(true);
+      
+      // Add user message to chat
+      const newMessages = [
+        ...chatMessages,
+        { role: 'user' as const, content: userMessage }
+      ];
+      setChatMessages(newMessages);
+      
+      try {
+        // Call OpenRouter API with SOW context
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'google/gemini-2.0-flash-exp:free', // 🆓 FREE on OpenRouter!
+            messages: [
+              {
+                role: 'system',
+                content: `You are the Social Garden AI Assistant for ${sow.clientName}'s proposal.
 
 **Your SOW Document:**
 ${sow.htmlContent}
@@ -359,34 +360,38 @@ ${sow.htmlContent}
 - Cite specific details from the SOW when relevant
 - If asked about pricing, deliverables, or timeline, extract from the SOW content above
 - Keep responses concise and clear`
-            },
-            ...newMessages
-          ]
-        })
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to get AI response');
+              },
+              ...newMessages
+            ]
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to get AI response');
+        }
+        
+        const data = await response.json();
+        const assistantMessage = data.choices[0].message.content;
+        
+        setChatMessages([
+          ...newMessages,
+          { role: 'assistant' as const, content: assistantMessage }
+        ]);
+      } catch (error) {
+        console.error('Error sending chat message:', error);
+        toast.error('Failed to get AI response. Please try again.');
+        setChatMessages([
+          ...newMessages,
+          { role: 'assistant' as const, content: 'Sorry, I encountered an error. Please try again.' }
+        ]);
+      } finally {
+        setIsChatLoading(false);
       }
-      
-      const data = await response.json();
-      const assistantMessage = data.choices[0].message.content;
-      
-      setChatMessages([
-        ...newMessages,
-        { role: 'assistant' as const, content: assistantMessage }
-      ]);
-    } catch (error) {
-      console.error('Error sending chat message:', error);
-      toast.error('Failed to get AI response. Please try again.');
-      setChatMessages([
-        ...newMessages,
-        { role: 'assistant' as const, content: 'Sorry, I encountered an error. Please try again.' }
-      ]);
-    } finally {
+    } catch (outerError) {
+      console.error('Outer error in handleSendChatMessage:', outerError);
       setIsChatLoading(false);
     }
-  };
+  }, [chatInput, sow, chatMessages]);
 
   if (loading) {
     return (
