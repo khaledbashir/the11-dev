@@ -433,10 +433,66 @@ The SOW is INVALID and UNACCEPTABLE. Stop immediately and regenerate with Scope 
 
 CRITICAL: Generate SOWs that clients actually want to sign, not compliance documents. Make them aspirational, specific, and valuable. Every role justified, every hour accounted for, every rate explained.
 
+10. **FINAL VALIDATION CHECKPOINT (MANDATORY ENFORCEMENT):**
+
+🚨 **BEFORE RETURNING ANY SOW, VERIFY ALL SECTIONS ARE PRESENT** 🚨
+
+**For Standard Project SOWs**, confirm these sections exist IN ORDER:
+1. ✓ Headline: "Scope of Work: [Client] - [Project]"
+2. ✓ Overview (1 paragraph explaining project)
+3. ✓ What's Included (5-7 bullet points)
+4. ✓ Project Outcomes (5-6 benefit-focused bullets)
+5. ✓ **## Scope Assumptions** (VISIBLE SECTION HEADING - CRITICAL) followed by bullet points:
+   - General assumptions (hours capped, feedback timelines, rate lock, scope change impact)
+   - Project-specific assumptions (3-5 custom items relevant to THIS project)
+   - Confirmation: Can you see "## Scope Assumptions" as a section heading? YES → Continue | NO → STOP AND REGENERATE
+6. ✓ Detailed Deliverables (organized by phase with specific tasks)
+7. ✓ ## Account & Project Management Services (section heading with bullet-point services)
+8. ✓ Project Phases (timeline with weeks/duration, activities, deliverables)
+9. ✓ Investment section with pricing table
+10. ✓ Client Responsibilities
+11. ✓ Post-Delivery Support
+
+**For Audit/Strategy SOWs**, confirm:
+1. ✓ Headline, Overview, What's Included, Recommended Outcomes
+2. ✓ **## Scope Assumptions** (MANDATORY)
+3. ✓ Detailed Audit Framework
+4. ✓ Engagement Phases
+5. ✓ Investment section
+
+**For Retainer SOWs**, confirm:
+1. ✓ Headline, Overview, Monthly Deliverables
+2. ✓ **## Scope Assumptions** (MANDATORY - including retainer-specific assumptions)
+3. ✓ Success Metrics, Engagement Model
+4. ✓ Monthly Roadmap, Pricing Table
+
+**PRICING TABLE VALIDATION (ALL SOW TYPES):**
+- ✓ Tech-Head Of - Senior Project Management present (5-15 hours minimum)
+- ✓ Tech - Delivery - Project Coordination present (3-10 hours minimum)
+- ✓ Account Management present at BOTTOM of table (6-12 hours minimum)
+- ✓ All roles identified by FULL name from rate card (or flagged as CUSTOM RATE with explanation)
+- ✓ Hours column shows numeric values
+- ✓ Rate/hr column shows values matching role seniority
+- ✓ Subtotal column shows hours × rate
+- ✓ Total hours add up correctly (e.g., 90 hours across all roles)
+- ✓ Grand total = subtotal + 10% GST
+- ✓ **Confirmation: Can you see all three mandatory roles (PM, Coordination, Account Mgmt) in the table? YES → Continue | NO → STOP AND REGENERATE**
+
+**CRITICAL ENFORCEMENT RULE:**
+If ANY of these items are missing or not visible:
+- Scope Assumptions heading not found
+- Three mandatory roles not in pricing table
+- Sections out of order (e.g., Phases before Deliverables)
+- Pricing table incomplete or roles missing
+
+Then: **STOP IMMEDIATELY. DO NOT RETURN THIS SOW. Regenerate from section 5 with all required elements present.**
+
 **COMPLETION MARKER (MANDATORY):**
-When you have finished generating the complete SOW, you MUST end your response with:
+When you have verified ALL checklist items above are present and correct, THEN end your response with:
 
 "---
 ✅ **This concludes the Statement of Work.**"
 
-This marker confirms the SOW is complete and not cut off due to length limits.`;
+This marker confirms the SOW passed final validation and is complete.
+
+If the SOW is incomplete or missing elements, do NOT include this marker. Instead, regenerate with all required sections included.`;
