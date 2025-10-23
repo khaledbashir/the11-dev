@@ -1,24 +1,18 @@
-FROM node:18-alpine
-
+# Stage 1: Build the application
+FROM node:18-alpine AS builder
 WORKDIR /app
-
-# Install pnpm
-RUN npm install -g pnpm
-
-# Copy package files
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
-
-# Install dependencies (use --no-frozen-lockfile for Docker CI environment)
+RUN npm install -g pnpm
 RUN pnpm install --no-frozen-lockfile
-
-# Copy source code
 COPY frontend/ .
-
-# Build the application with environment variables (passed at build time)
 RUN pnpm build
 
-# Expose port
-EXPOSE 3001
+# Stage 2: Create the final production image
+FROM node:18-alpine
+WORKDIR /app
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
 
-# Start the application
+EXPOSE 3001
 CMD ["pnpm", "start"]
