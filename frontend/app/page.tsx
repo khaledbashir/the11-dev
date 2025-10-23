@@ -1294,14 +1294,17 @@ export default function Page() {
       
       toast.success(`✅ Created workspace "${workspaceName}" with blank SOW ready to edit!`);
       
-      // Close progress modal
+      // Close progress modal and navigate to SOW editor
       setTimeout(() => {
         setWorkspaceCreationProgress(prev => ({
           ...prev,
           isOpen: false,
         }));
         
-        // ✅ STAY ON DASHBOARD - user can click SOW in sidebar to open
+        // Navigate to SOW editor
+        if (typeof window !== 'undefined') {
+          window.location.href = `/portal/sow/${sowId}`;
+        }
       }, 500);
     } catch (error) {
       console.error('❌ Error creating workspace:', error);
