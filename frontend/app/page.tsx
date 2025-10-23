@@ -1294,14 +1294,15 @@ export default function Page() {
       
       toast.success(`✅ Created workspace "${workspaceName}" with blank SOW ready to edit!`);
       
-      // Close progress modal - stay on dashboard so user can edit in TipTap
+      // Close progress modal and auto-select the new SOW for editing
       setTimeout(() => {
         setWorkspaceCreationProgress(prev => ({
           ...prev,
           isOpen: false,
         }));
         
-        // Stay on dashboard - user can click SOW in sidebar to edit
+        // Auto-select the newly created SOW in the editor
+        handleSelectDoc(sowId);
       }, 500);
     } catch (error) {
       console.error('❌ Error creating workspace:', error);
