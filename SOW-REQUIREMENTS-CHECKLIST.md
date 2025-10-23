@@ -20,14 +20,34 @@ This is the **SINGLE SOURCE OF TRUTH** for SOW requirements. Every fix must be r
 
 ---
 
-## ⚠️ KNOWN BROKEN ISSUES (NEW SESSION)
+## ⚠️ KNOWN BROKEN ISSUES (NEW SESSION - MUST FIX)
 
-| Issue | Status | Fix Needed |
-|-------|--------|-----------|
-| Chat disappears after message | ❌ BROKEN | Re-render issue - chat panel closes after response |
-| Excel export button missing UI | ⚠️ EXISTS BUT NOT VISIBLE | Button exists in sidebar but not in header like PDF |
-| /api/admin/services returns 404 | ❌ BROKEN | Endpoint doesn't exist - affects pricing customization |
-| Logo image 404 | ⏳ LOW PRIORITY | Missing logo-light.png on server |
+| Issue | Priority | Root Cause | Fix Method |
+|-------|----------|-----------|-----------|
+| **Chat disappears after message sent** | 🔴 HIGH | React re-render closes showChat state | Persist showChat in localStorage or useCallback deps |
+| **Excel export not visible to user** | 🟠 MEDIUM | Button exists (sidebar + header) but user doesn't see it | UI is correct - verify user testing |
+| **Missing `/api/admin/services`** | 🟠 MEDIUM | Endpoint doesn't exist - pricing customization can't load | Create endpoint: `GET /api/admin/services` |
+| **Logo 404 error** | 🟡 LOW | Missing `/images/logo-light.png` on server | Upload logo or use placeholder |
+
+---
+
+## 🎯 NEXT DEVELOPER PRIORITIES (October 23)
+
+### MUST DO FIRST (Today)
+1. **Fix chat disappearing** - Critical UX issue affecting SOW portal usability
+   - Location: `frontend/app/portal/sow/[id]/page.tsx` line 39
+   - Issue: `showChat` state not persisting through re-renders
+   - Solution: Add `useEffect` to persist state or fix renderTabContent memoization
+
+2. **Create `/api/admin/services` endpoint** - Pricing customization broken
+   - Location: `frontend/app/api/admin/services/route.ts` (doesn't exist)
+   - Should return: Array of pricing options for the pricing calculator
+   - Impact: Without this, all services fail to load
+
+3. **Verify Excel export works** - Verify it actually downloads files
+   - Test: Click "Download Excel" button in portal
+   - Should: Download 3-sheet workbook
+   - If broken: Check handleDownloadExcel function
 
 ---## 📋 Critical Requirements (MUST HAVE)
 
