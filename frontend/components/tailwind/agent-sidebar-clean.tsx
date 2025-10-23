@@ -468,115 +468,92 @@ export default function AgentSidebar({
 
   return (
     <div className="h-full w-full bg-[#0e0f0f] border-l border-[#0E2E33] overflow-hidden flex flex-col">
-      <div className="p-5 border-b border-[#0E2E33] bg-[#0e0f0f]">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-base font-bold text-white">
+      <div className="p-3 border-b border-[#0E2E33] bg-[#0e0f0f]">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold text-white">
             {isDashboardMode 
-              ? (isMasterView 
-                  ? "Ask the Dashboard" 
-                  : `Ask the Dashboard (Client: ${currentWorkspaceName})`)
+              ? "Chat" 
               : "AI Agent Chat"}
           </h2>
-          {/* Close button - collapses the panel */}
-          {onToggle && (
-            <button
-              onClick={onToggle}
-              className="p-1 hover:bg-gray-800 rounded transition-colors text-gray-400 hover:text-gray-300"
-              title="Close AI chat"
-              aria-label="Close AI chat"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          )}
-        </div>
-
-        {/* Dashboard Mode: Thread Management */}
-        {isDashboardMode && (
-          <div className="flex gap-2 mb-3">
-            <Button 
-              onClick={handleNewThread} 
-              className="flex-1 bg-[#1CBF79] hover:bg-[#1CBF79]/90 text-white text-xs h-8"
-              size="sm"
-            >
-              <Plus className="w-3 h-3 mr-1" />
-              New Thread
-            </Button>
-            <Button 
-              onClick={() => setShowThreadList(!showThreadList)} 
-              variant="outline"
-              size="sm"
-              className="border-[#0E2E33] text-gray-300 hover:bg-[#0E2E33] text-xs h-8"
-            >
-              📋 Threads ({threads.length})
-            </Button>
-          </div>
-        )}
-
-        {/* Thread List Dropdown */}
-        {isDashboardMode && showThreadList && threads.length > 0 && (
-          <div className="bg-[#0E2E33] border border-[#0E2E33] rounded-lg mb-3 max-h-64 overflow-y-auto">
-            <div className="p-2 space-y-1">
-              {threads.map(thread => (
-                <div
-                  key={thread.slug}
-                  className={`group flex items-center gap-2 p-2 rounded text-xs transition-colors ${
-                    currentThreadSlug === thread.slug 
-                      ? 'bg-[#1CBF79] text-white' 
-                      : 'text-gray-300 hover:bg-[#0e0f0f]'
-                  }`}
+          <div className="flex items-center gap-2">
+            {/* Dashboard Mode: Thread Management - Compact */}
+            {isDashboardMode && (
+              <>
+                <Button 
+                  onClick={handleNewThread} 
+                  className="bg-[#15a366] hover:bg-[#10a35a] text-white text-xs h-7 px-2"
+                  size="sm"
                 >
-                  <button
-                    onClick={() => handleSelectThread(thread.slug)}
-                    className="flex-1 text-left"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span>{currentThreadSlug === thread.slug ? '●' : '○'}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="truncate font-medium">{thread.name}</div>
-                        <div className="text-xs opacity-70">{formatTimestamp(new Date(thread.createdAt).getTime())}</div>
-                      </div>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => handleDeleteThread(thread.slug)}
-                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 rounded transition-opacity"
-                    title="Delete thread"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
+                  <Plus className="w-3 h-3 mr-1" />
+                  New
+                </Button>
+                <Button 
+                  onClick={() => setShowThreadList(!showThreadList)} 
+                  variant="outline"
+                  size="sm"
+                  className="border-[#0E2E33] text-gray-400 hover:bg-[#0E2E33] hover:text-white text-xs h-7 px-2"
+                >
+                  📋 ({threads.length})
+                </Button>
+              </>
+            )}
+            {/* Close button */}
+            {onToggle && (
+              <button
+                onClick={onToggle}
+                className="p-1 hover:bg-gray-800 rounded transition-colors text-gray-400 hover:text-gray-300"
+                title="Close AI chat"
+                aria-label="Close AI chat"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            )}
           </div>
-        )}
+        </div>
+      </div>
 
-        {/* Dashboard mode: Workspace selector */}
-        {isDashboardMode && onDashboardWorkspaceChange && (
-          <div className="mb-3">
-            <Label className="text-xs text-gray-400 mb-2 block">Chat Context</Label>
-            <Select value={dashboardChatTarget} onValueChange={onDashboardWorkspaceChange}>
-              <SelectTrigger className="h-10 text-sm bg-[#0E2E33] border-[#0E2E33] text-white">
-                <SelectValue placeholder="Select workspace" />
-              </SelectTrigger>
-              <SelectContent className="max-h-80 z-50">
-                {availableWorkspaces.map(workspace => (
-                  <SelectItem key={workspace.slug} value={workspace.slug}>
-                    {workspace.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-gray-500 mt-1">
-              {isMasterView 
-                ? "Querying master dashboard (all SOWs metadata)" 
-                : `Querying ${currentWorkspaceName}'s workspace`}
-            </p>
+      {/* Thread List Dropdown - Outside header */}
+      {isDashboardMode && showThreadList && threads.length > 0 && (
+        <div className="bg-[#0E2E33] border-b border-[#0E2E33] max-h-48 overflow-y-auto">
+          <div className="p-2 space-y-1">
+            {threads.map(thread => (
+              <div
+                key={thread.slug}
+                className={`group flex items-center gap-2 p-2 rounded text-xs transition-colors ${
+                  currentThreadSlug === thread.slug 
+                    ? 'bg-[#15a366] text-white' 
+                    : 'text-gray-300 hover:bg-[#0e0f0f]'
+                }`}
+              >
+                <button
+                  onClick={() => handleSelectThread(thread.slug)}
+                  className="flex-1 text-left"
+                >
+                  <div className="flex items-center gap-2">
+                    <span>{currentThreadSlug === thread.slug ? '●' : '○'}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="truncate font-medium">{thread.name}</div>
+                      <div className="text-xs opacity-70">{formatTimestamp(new Date(thread.createdAt).getTime())}</div>
+                    </div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => handleDeleteThread(thread.slug)}
+                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 rounded transition-opacity"
+                  title="Delete thread"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
           </div>
-        )}
-          
-          {/* Show agent selection ONLY in editor mode, HIDE Settings and Create Agent buttons (moved to admin) */}
-          {isEditorMode && (
-            <div className="flex flex-col gap-2">
+        </div>
+      )}
+
+      {/* Show agent selection ONLY in editor mode, HIDE Settings and Create Agent buttons (moved to admin) */}
+      <div className="p-3 border-b border-[#0E2E33]">
+        {isEditorMode && (
+          <div className="flex flex-col gap-2">
               <div className="flex items-center gap-3">
                 <Select value={currentAgentId || undefined} onValueChange={onSelectAgent}>
                   <SelectTrigger className="h-10 text-sm bg-[#0E2E33] border-[#0E2E33] text-white">
@@ -668,7 +645,7 @@ export default function AgentSidebar({
                       <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div className={`w-full max-w-[85%] rounded-xl px-4 py-3 ${
                           msg.role === 'user' 
-                            ? 'bg-[#1CBF79] text-white' 
+                            ? 'bg-[#15a366] text-white' 
                             : 'bg-[#1b1b1e] text-white border border-[#0E2E33]'
                         }`}>
                           {/* Show thinking section with accordion for assistant messages */}
@@ -726,7 +703,7 @@ export default function AgentSidebar({
                       }
                     }}
                     disabled={!chatInput.trim() || isLoading}
-                    className="self-end bg-[#1CBF79] hover:bg-[#15a366] text-white border-0"
+                    className="self-end bg-[#15a366] hover:bg-[#10a35a] text-white border-0"
                   >
                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                   </Button>
@@ -930,7 +907,7 @@ export default function AgentSidebar({
                     onClick={handleSendMessage} 
                     disabled={!chatInput.trim() || isLoading} 
                     size="sm" 
-                    className="self-end bg-[#1CBF79] hover:bg-[#15a366] text-white h-[50px] font-semibold border-0"
+                    className="self-end bg-[#15a366] hover:bg-[#10a35a] text-white h-[50px] font-semibold border-0"
                   >
                     {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                   </Button>
@@ -1025,7 +1002,7 @@ function CreateAgentForm({ models, onCreateAgent }: CreateAgentFormProps) {
               <SelectItem value="anythingllm">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium">🌐 AnythingLLM (Recommended)</span>
-                  <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded">Smart</span>
+                  <span className="text-xs bg-[#15a366] text-white px-2 py-0.5 rounded">Smart</span>
                 </div>
               </SelectItem>
               {models.length === 0 ? (
@@ -1133,7 +1110,7 @@ function EditAgentForm({ agent, models, onUpdateAgent, onDeleteAgent }: EditAgen
               <SelectItem value="anythingllm">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium">🌐 AnythingLLM (Recommended)</span>
-                  <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded">Smart</span>
+                  <span className="text-xs bg-[#15a366] text-white px-2 py-0.5 rounded">Smart</span>
                 </div>
               </SelectItem>
               {models.length === 0 ? (
