@@ -422,6 +422,79 @@ export default function ClientPortalPage() {
   // Round to nearest $5,000
   const grandTotal = Math.round(grandTotalBeforeRounding / 5000) * 5000;
 
+  // 🔥 SEND QUICK QUESTION - For preset buttons
+  const sendQuickQuestion = useCallback(async (question: string) => {
+    if (!sow) return;
+    
+    try {
+      setIsChatLoading(true);
+      
+      // Add user message to chat
+      const newMessages = [
+        ...chatMessages,
+        { role: 'user' as const, content: question }
+      ];
+      setChatMessages(newMessages);
+      
+      try {
+        // Call OpenRouter API with SOW context
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'google/gemini-2.0-flash-exp:free',
+            messages: [
+              {
+                role: 'system',
+                content: `You are the Social Garden AI Assistant for ${sow.clientName}'s proposal.
+
+**Your SOW Document:**
+${sow.htmlContent}
+
+**Key Details:**
+- Client: ${sow.clientName}
+- Total Investment: $${sow.totalInvestment.toLocaleString('en-AU', { minimumFractionDigits: 2 })} AUD
+- Title: ${sow.title}
+
+**Instructions:**
+- Answer questions about this specific SOW
+- Be professional, friendly, and helpful
+- Cite specific details from the SOW when relevant
+- If asked about pricing, deliverables, or timeline, extract from the SOW content above
+- Keep responses concise and clear`
+              },
+              ...newMessages
+            ]
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to get AI response');
+        }
+        
+        const data = await response.json();
+        const assistantMessage = data.choices[0].message.content;
+        
+        setChatMessages([
+          ...newMessages,
+          { role: 'assistant' as const, content: assistantMessage }
+        ]);
+      } catch (error) {
+        console.error('Error sending chat message:', error);
+        toast.error('Failed to get AI response. Please try again.');
+        setChatMessages([
+          ...newMessages,
+          { role: 'assistant' as const, content: 'Sorry, I encountered an error. Please try again.' }
+        ]);
+      } finally {
+        setIsChatLoading(false);
+      }
+    } catch (outerError) {
+      console.error('Outer error in sendQuickQuestion:', outerError);
+      setIsChatLoading(false);
+    }
+  }, [sow, chatMessages]);
+
   // 🔥 OPENROUTER CHAT HANDLER - Direct AI without RAG
   const handleSendChatMessage = useCallback(async () => {
     if (!chatInput.trim() || !sow) return;
@@ -1706,8 +1779,8 @@ ${sow.htmlContent}
                     <button
                       key={i}
                       onClick={() => {
-                        setChatInput(q.text);
-                        handleSendChatMessage();
+                        // Send message directly without setting input state first
+                        sendQuickQuestion(q.text);
                       }}
                       className="w-full text-left text-xs p-2 rounded-lg bg-[#2A2A2D] hover:bg-[#3A3A3D] text-gray-300 transition-all border border-gray-700 hover:border-[#1CBF79] flex items-center gap-2 group"
                     >

@@ -22,12 +22,12 @@ This is the **SINGLE SOURCE OF TRUTH** for SOW requirements. Every fix must be r
 
 ## ⚠️ KNOWN BROKEN ISSUES (NEW SESSION - MUST FIX)
 
-| Issue | Priority | Root Cause | Fix Method |
-|-------|----------|-----------|-----------|
-| **Chat disappears after message sent** | 🔴 HIGH | React re-render closes showChat state | Persist showChat in localStorage or useCallback deps |
-| **Excel export not visible to user** | 🟠 MEDIUM | Button exists (sidebar + header) but user doesn't see it | UI is correct - verify user testing |
-| **Missing `/api/admin/services`** | 🟠 MEDIUM | Endpoint doesn't exist - pricing customization can't load | Create endpoint: `GET /api/admin/services` |
-| **Logo 404 error** | 🟡 LOW | Missing `/images/logo-light.png` on server | Upload logo or use placeholder |
+| Issue | Priority | Root Cause | Fix Method | Status |
+|-------|----------|-----------|-----------|--------|
+| **Chat disappears after message sent** | 🔴 HIGH | Quick question buttons didn't have sendQuickQuestion function | Added sendQuickQuestion() callback function | ✅ FIXED |
+| **Excel export not visible to user** | 🟠 MEDIUM | Button exists (sidebar + header) but user doesn't see it | UI is correct - verify user testing | ⏳ NEEDS TEST |
+| **Missing `/api/admin/services`** | 🟠 MEDIUM | Endpoint doesn't exist - pricing customization can't load | Create endpoint: `GET /api/admin/services` | 🔴 TODO |
+| **Logo 404 error** | 🟡 LOW | Missing `/images/logo-light.png` on server | Upload logo or use placeholder | 🔴 TODO |
 
 ---
 
