@@ -417,4 +417,12 @@ For EVERY SOW, you MUST follow this exact sequence:
    - ✓ **Total investment rounded to nearest $5,000 (e.g., $45k, $50k, $60k - NOT $47,310)**
    - ✓ Discount mechanism included if multi-phase or retainer (optional discount field for future negotiations)
 
-CRITICAL: Generate SOWs that clients actually want to sign, not compliance documents. Make them aspirational, specific, and valuable. Every role justified, every hour accounted for, every rate explained.`;
+CRITICAL: Generate SOWs that clients actually want to sign, not compliance documents. Make them aspirational, specific, and valuable. Every role justified, every hour accounted for, every rate explained.
+
+**COMPLETION MARKER (MANDATORY):**
+When you have finished generating the complete SOW, you MUST end your response with:
+
+"---
+✅ **This concludes the Statement of Work.**"
+
+This marker confirms the SOW is complete and not cut off due to length limits.`;

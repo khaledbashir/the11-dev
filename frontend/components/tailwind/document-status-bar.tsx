@@ -67,7 +67,6 @@ export function DocumentStatusBar({
             </Button>
           )}
           
-          {/* TEMPORARILY HIDDEN - GSheet integration pending
           {onExportExcel && (
             <Button
               onClick={onExportExcel}
@@ -76,10 +75,9 @@ export function DocumentStatusBar({
               className="bg-[#1A1A1D] hover:bg-[#2A2A2D] text-gray-300 hover:text-white border-[#2A2A2D] transition-colors"
             >
               <FileSpreadsheet className="w-4 h-4 mr-2" />
-              GSheet
+              Export Excel
             </Button>
           )}
-          */}
           
           {onSharePortal && (
             <Button

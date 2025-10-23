@@ -2669,7 +2669,7 @@ export default function Page() {
                   saveStatus="saved"
                   isSaving={false}
                   onExportPDF={handleExportPDF}
-                  onExportExcel={handleCreateGSheet}
+                  onExportExcel={handleExportExcel}
                   onSharePortal={async () => {
                     if (!currentDoc) {
                       toast.error('❌ No document selected');

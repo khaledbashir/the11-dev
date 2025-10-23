@@ -34,10 +34,13 @@ This is the **SINGLE SOURCE OF TRUTH** for SOW requirements. Every fix must be r
 ## 🎯 NEXT DEVELOPER PRIORITIES (October 23)
 
 ### ✅ COMPLETED (October 23, 2025)
-1. **✅ FIXED - Chat disappearing bug** (Commit: 10687ec)
-   - Issue: Quick question buttons had race condition with state updates
-   - Solution: Created `sendQuickQuestion()` function that takes question as parameter
-   - Result: Chat messages now persist properly after sending
+1. **✅ FIXED - Chat disappearing bug** (Commits: 10687ec, a8d4044)
+   - **Portal issue**: Quick question buttons had race condition with state updates
+     - Solution: Created `sendQuickQuestion()` function that takes question as parameter
+   - **Dashboard issue** (THE REAL BUG): useEffect with `documents` dependency was clearing chat on every auto-save
+     - Root cause: Auto-save updates `documents` array → triggers useEffect → clears `chatMessages`
+     - Solution: Removed `documents` from dependency array in line 713
+   - Result: Chat messages now persist properly after sending in BOTH portal and dashboard ✅
 
 2. **✅ VERIFIED - `/api/admin/services` endpoint**
    - Endpoint exists at `frontend/app/api/admin/services/route.ts`
