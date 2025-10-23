@@ -16,11 +16,20 @@ This is the **SINGLE SOURCE OF TRUTH** for SOW requirements. Every fix must be r
 **Date Created:** October 25, 2025  
 **Last Updated:** October 23, 2025  
 **Status:** In Progress (75% complete - 11 of 15 items done)
-**Session:** Portal Verification + OpenRouter API Fix  
+**Session:** Portal Verification + OpenRouter API Fix + Rounding Logic
 
 ---
 
-## 📋 Critical Requirements (MUST HAVE)
+## ⚠️ KNOWN BROKEN ISSUES (NEW SESSION)
+
+| Issue | Status | Fix Needed |
+|-------|--------|-----------|
+| Chat disappears after message | ❌ BROKEN | Re-render issue - chat panel closes after response |
+| Excel export button missing UI | ⚠️ EXISTS BUT NOT VISIBLE | Button exists in sidebar but not in header like PDF |
+| /api/admin/services returns 404 | ❌ BROKEN | Endpoint doesn't exist - affects pricing customization |
+| Logo image 404 | ⏳ LOW PRIORITY | Missing logo-light.png on server |
+
+---## 📋 Critical Requirements (MUST HAVE)
 
 ### 1. Modal Styling (UI/Theme) 🎨
 - [x] Modal background: `#0E0F0F` (dark background) ✅
@@ -158,13 +167,14 @@ This is the **SINGLE SOURCE OF TRUTH** for SOW requirements. Every fix must be r
 ---
 
 ### 12. Rounding Logic ($5K Increments) 💯
-- [ ] Total investment rounds to nearest $5,000
-- [ ] Applied to final quote
-- [ ] Clear in UI that rounding applied
-- [ ] Transparent to client
+- [x] Total investment rounds to nearest $5,000 ✅
+- [x] Applied to final quote ✅
+- [x] Clear in UI that rounding applied ✅
+- [x] Transparent to client ✅
 - **File:** `frontend/app/portal/sow/[id]/page.tsx` (pricing calculations)
-- **Current Status:** ⏳ NEEDS VERIFICATION
-- **Action:** Check if rounding logic present
+- **Current Status:** ✅ IMPLEMENTED (Commit: 72329b2)
+- **How It Works:** `Math.round(grandTotal / 5000) * 5000`
+- **UI Note:** Shows "Rounded to nearest $5,000" below grand total
 
 ---
 
@@ -243,10 +253,10 @@ This is the **SINGLE SOURCE OF TRUTH** for SOW requirements. Every fix must be r
 ## 📊 Progress Tracking
 
 **Total Requirements:** 15  
-**Completed:** 11 (73%) ✅ ← Major progress!  
+**Completed:** 12 (80%) ✅ ← MAJOR PROGRESS!  
 **In Progress:** 0  
 **Not Started:** 0  
-**Needs Verification:** 4  
+**Needs Fix:** 3 (new broken issues discovered)  
 
 **Current Session Goal:** Complete HIGH PRIORITY items (#1-5)
 
