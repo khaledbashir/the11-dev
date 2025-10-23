@@ -109,6 +109,27 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
     updateAttributes({ rows, discount, showTotal });
   }, [rows, discount, showTotal]);
 
+  // Auto-sort: Account Management MUST always be at the bottom
+  useEffect(() => {
+    if (rows.length === 0) return;
+
+    const accountManagementIndex = rows.findIndex(row => 
+      row.role.toLowerCase().includes('account management') || 
+      row.role.toLowerCase().includes('account manager')
+    );
+
+    // If Account Management exists and is NOT at the bottom, move it
+    if (accountManagementIndex !== -1 && accountManagementIndex !== rows.length - 1) {
+      const newRows = [...rows];
+      const [accountManagementRow] = newRows.splice(accountManagementIndex, 1);
+      newRows.push(accountManagementRow);
+      setRows(newRows);
+      
+      // Optional: Show toast notification
+      console.log('✅ Account Management auto-sorted to bottom (required position)');
+    }
+  }, [rows]);
+
   const updateRow = (index: number, field: keyof PricingRow, value: string | number) => {
     const newRows = [...rows];
     if (field === 'role') {
