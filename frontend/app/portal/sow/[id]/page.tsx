@@ -5,10 +5,9 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { 
   Sparkles, Download, CheckCircle, MessageCircle, ArrowLeft, 
   FileText, DollarSign, Calendar, Eye, Share2, Clock,
-  Target, TrendingUp, Users, Zap, Home
+  Target, TrendingUp, Users, Zap, Home, FileSpreadsheet
 } from 'lucide-react';
 import { Button } from '@/components/tailwind/ui/button';
-import { CreateSheetButton } from '@/components/sow/create-sheet-button';
 import { toast } from 'sonner';
 
 interface SOWData {
@@ -323,6 +322,103 @@ export default function ClientPortalPage() {
       toast.error('Failed to download PDF. Please try again.');
     }
   };
+
+  const handleDownloadExcel = async () => {
+    if (!sow) return;
+    
+    try {
+      // Import xlsx dynamically to avoid SSR issues
+      const XLSX = await import('xlsx');
+      
+      // Create workbook with multiple sheets
+      const wb = XLSX.utils.book_new();
+      
+      // Sheet 1: Overview
+      const overviewData = [
+        ['Social Garden - Statement of Work', ''],
+        ['', ''],
+        ['Client Name', sow.clientName],
+        ['Document Title', sow.title],
+        ['Total Investment', `$${sow.totalInvestment.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
+        ['Created Date', new Date(sow.createdAt).toLocaleDateString('en-AU')],
+        ['Status', accepted ? 'Accepted ✅' : 'Pending'],
+      ];
+      
+      const overviewSheet = XLSX.utils.aoa_to_sheet(overviewData);
+      overviewSheet['!cols'] = [{ wch: 25 }, { wch: 40 }];
+      XLSX.utils.book_append_sheet(wb, overviewSheet, 'Overview');
+      
+      // Sheet 2: Content (full HTML as text)
+      const contentData = [
+        ['Full Proposal Content'],
+        [''],
+        [sow.htmlContent.replace(/<[^>]*>/g, '')], // Strip HTML tags
+      ];
+      
+      const contentSheet = XLSX.utils.aoa_to_sheet(contentData);
+      contentSheet['!cols'] = [{ wch: 100 }];
+      contentSheet['A3'].alignment = { wrapText: true, vertical: 'top' };
+      XLSX.utils.book_append_sheet(wb, contentSheet, 'Content');
+      
+      // Sheet 3: Pricing Summary
+      const pricingData = [
+        ['Pricing Summary', ''],
+        ['', ''],
+        ['Item', 'Amount (AUD)'],
+        ['Base Services Total', baseServicesTotal || 0],
+        ['Content Cost', contentCost || 0],
+        ['Social Media Cost', socialCost || 0],
+        ['Ad Management Fee', adManagementFee || 0],
+        ['Add-Ons Total', addOnsTotal || 0],
+        ['Subtotal', subtotal || 0],
+        ['GST (10%)', gst || 0],
+        ['Discount (' + discountPercent + '%)', discountAmount || 0],
+        ['GRAND TOTAL', grandTotal],
+      ];
+      
+      const pricingSheet = XLSX.utils.aoa_to_sheet(pricingData);
+      pricingSheet['!cols'] = [{ wch: 30 }, { wch: 20 }];
+      pricingSheet['A11'].font = { bold: true, size: 14 };
+      pricingSheet['B11'].font = { bold: true, size: 14 };
+      XLSX.utils.book_append_sheet(wb, pricingSheet, 'Pricing');
+      
+      // Generate filename with client name and date
+      const filename = `${sow.clientName}-SOW-${new Date().toISOString().split('T')[0]}.xlsx`;
+      
+      // Write file
+      XLSX.writeFile(wb, filename);
+      toast.success('Excel file downloaded successfully!');
+    } catch (error) {
+      console.error('Error downloading Excel:', error);
+      toast.error('Failed to download Excel file. Please try again.');
+    }
+  };
+
+  // Calculate totals for Excel export (same as pricing display)
+  const baseServicesTotal = useMemo(() => {
+    const serviceOptions = dynamicServices.length > 0 ? dynamicServices : [
+      { id: 'social-media', name: 'Social Media Management', basePrice: 1500, description: '', icon: Users },
+      { id: 'content-creation', name: 'Content Creation', basePrice: 2000, description: '', icon: FileText },
+      { id: 'paid-ads', name: 'Paid Advertising', basePrice: 1200, description: '', icon: Target },
+      { id: 'seo', name: 'SEO Optimization', basePrice: 1800, description: '', icon: TrendingUp },
+      { id: 'analytics', name: 'Analytics & Reporting', basePrice: 800, description: '', icon: Eye }
+    ];
+    return serviceOptions
+      .filter(s => selectedServices.includes(s.id))
+      .reduce((sum, s) => sum + s.basePrice, 0);
+  }, [selectedServices, dynamicServices]);
+
+  const contentCost = contentPieces * 150;
+  const socialCost = socialPosts * 25;
+  const adManagementFee = adSpend * 0.15;
+  const addOnsTotal = recommendations
+    .filter(r => selectedAddOns.includes(r.id))
+    .reduce((sum, r) => sum + r.recommended_price, 0);
+
+  const subtotal = baseServicesTotal + contentCost + socialCost + adManagementFee + addOnsTotal;
+  const gst = subtotal * 0.1;
+  const discountAmount = (subtotal + gst) * (discountPercent / 100);
+  const grandTotal = (subtotal + gst) - discountAmount;
 
   // 🔥 OPENROUTER CHAT HANDLER - Direct AI without RAG
   const handleSendChatMessage = useCallback(async () => {
@@ -1405,6 +1501,15 @@ ${sow.htmlContent}
             <Download className="w-4 h-4" />
             Download PDF
           </Button>
+
+          <Button
+            onClick={handleDownloadExcel}
+            variant="outline"
+            className="w-full gap-2 border-gray-600 text-gray-300 hover:bg-[#2A2A2D] hover:text-white"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            Download Excel
+          </Button>
           
           {!accepted && (
             <Button
@@ -1453,6 +1558,26 @@ ${sow.htmlContent}
               )}
               
               <Button
+                onClick={handleDownloadPDF}
+                variant="outline"
+                size="sm"
+                className="gap-2 border-gray-600 text-gray-300 hover:bg-[#2A2A2D] hover:border-[#1CBF79]"
+              >
+                <Download className="w-4 h-4" />
+                PDF
+              </Button>
+
+              <Button
+                onClick={handleDownloadExcel}
+                variant="outline"
+                size="sm"
+                className="gap-2 border-gray-600 text-gray-300 hover:bg-[#2A2A2D] hover:border-blue-500"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                Excel
+              </Button>
+
+              <Button
                 variant="outline"
                 size="sm"
                 className="gap-2 border-gray-600 text-gray-300 hover:bg-[#2A2A2D] hover:border-[#1CBF79]"
@@ -1460,23 +1585,6 @@ ${sow.htmlContent}
                 <Share2 className="w-4 h-4" />
                 Share
               </Button>
-
-              {sow && (
-                <CreateSheetButton
-                  clientName={sow.clientName}
-                  serviceName={sow.title}
-                  sowData={{
-                    overview: sow.htmlContent || '',
-                    deliverables: '',
-                    outcomes: '',
-                    phases: '',
-                    pricing: [],
-                    assumptions: '',
-                    timeline: '',
-                  }}
-                  triggerText="Create Sheet"
-                />
-              )}
             </div>
           </div>
         </header>
