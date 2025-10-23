@@ -169,10 +169,31 @@ export async function PUT(
 
     values.push(sowId);
 
-    await query(
-      `UPDATE sows SET ${updates.join(', ')} WHERE id = ?`,
-      values
-    );
+    try {
+      await query(
+        `UPDATE sows SET ${updates.join(', ')} WHERE id = ?`,
+        values
+      );
+    } catch (updateError: any) {
+      // Fallback: if columns don't exist yet, remove vertical/service_line from update
+      if (updateError?.message?.includes('Unknown column')) {
+        console.warn(' [SOW UPDATE] Phase 1A columns not ready, removing from update');
+        const fallbackUpdates = updates.filter(u => !u.includes('vertical') && !u.includes('service_line'));
+        const fallbackValues = values.slice(0, -1).filter((_, i) => 
+          !updates[i]?.includes('vertical') && !updates[i]?.includes('service_line')
+        );
+        fallbackValues.push(sowId);
+        
+        if (fallbackUpdates.length > 0) {
+          await query(
+            `UPDATE sows SET ${fallbackUpdates.join(', ')} WHERE id = ?`,
+            fallbackValues
+          );
+        }
+      } else {
+        throw updateError;
+      }
+    }
 
     return NextResponse.json({
       success: true,

@@ -49,30 +49,62 @@ export async function POST(req: NextRequest) {
 
     // Insert into database
     try {
-      await query(
-        `INSERT INTO sows (
-          id, title, client_name, client_email, content, total_investment,
-          status, workspace_slug, thread_slug, embed_id, folder_id, creator_email, expires_at, vertical, service_line
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          sowId,
-          title,
-          clientName,
-          clientEmail || null,
-          content,
-          totalInvestment || 0,  // Default to 0 if not provided
-          'draft',
-          workspaceSlug || null,
-          threadSlug || null, // 🧵 Store the AnythingLLM thread UUID
-          embedId || null,
-          folderId || null,
-          creatorEmail || null,
-          formatDateForMySQL(expiresAt),
-          vertical || null, // 📊 Social Garden Business Intelligence
-          serviceLine || null, // 📊 Social Garden Business Intelligence
-        ]
-      );
-      console.log(' [SOW CREATE] SOW inserted successfully:', sowId);
+      // Try with vertical/service_line columns first (Phase 1A)
+      try {
+        await query(
+          `INSERT INTO sows (
+            id, title, client_name, client_email, content, total_investment,
+            status, workspace_slug, thread_slug, embed_id, folder_id, creator_email, expires_at, vertical, service_line
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            sowId,
+            title,
+            clientName,
+            clientEmail || null,
+            content,
+            totalInvestment || 0,
+            'draft',
+            workspaceSlug || null,
+            threadSlug || null,
+            embedId || null,
+            folderId || null,
+            creatorEmail || null,
+            formatDateForMySQL(expiresAt),
+            vertical || null,
+            serviceLine || null,
+          ]
+        );
+        console.log(' [SOW CREATE] SOW inserted successfully (with BI columns):', sowId);
+      } catch (phaseError: any) {
+        // Fallback: insert without vertical/service_line if columns don't exist yet
+        if (phaseError?.message?.includes('Unknown column')) {
+          console.warn(' [SOW CREATE] Phase 1A columns not ready, falling back to basic insert');
+          await query(
+            `INSERT INTO sows (
+              id, title, client_name, client_email, content, total_investment,
+              status, workspace_slug, thread_slug, embed_id, folder_id, creator_email, expires_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              sowId,
+              title,
+              clientName,
+              clientEmail || null,
+              content,
+              totalInvestment || 0,
+              'draft',
+              workspaceSlug || null,
+              threadSlug || null,
+              embedId || null,
+              folderId || null,
+              creatorEmail || null,
+              formatDateForMySQL(expiresAt),
+            ]
+          );
+          console.log(' [SOW CREATE] SOW inserted successfully (basic columns):', sowId);
+        } else {
+          throw phaseError;
+        }
+      }
     } catch (dbError) {
       console.error(' [SOW CREATE] Database insert failed:', dbError instanceof Error ? dbError.message : dbError);
       throw dbError;
