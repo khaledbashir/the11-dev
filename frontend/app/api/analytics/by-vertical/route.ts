@@ -28,7 +28,6 @@ export async function GET() {
           1
         ) as win_rate
       FROM sows
-      WHERE status != 'draft'
       GROUP BY vertical
       ORDER BY total_value DESC`
     );
