@@ -44,7 +44,7 @@ export default function WorkspaceCreationProgress({
 
   return (
     <Dialog open={isOpen} onOpenChange={() => {}}>
-      <DialogContent className="max-w-md bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950 border border-emerald-500/20 rounded-xl shadow-2xl" onOpenAutoFocus={(e) => e.preventDefault()}>
+      <DialogContent className="max-w-md border border-emerald-500/20 rounded-xl shadow-2xl" style={{ backgroundColor: '#0E0F0F' }} onOpenAutoFocus={(e) => e.preventDefault()}>
         {/* Logo Section */}
         <div className="flex justify-center mb-4">
           <img
@@ -59,10 +59,10 @@ export default function WorkspaceCreationProgress({
         </div>
 
         <DialogHeader className="border-b border-emerald-500/10 pb-4">
-          <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-green-300 bg-clip-text text-transparent">
+          <DialogTitle className="text-2xl font-bold text-white">
             Setting Up {workspaceName}
           </DialogTitle>
-          <p className="text-sm text-emerald-300/70 mt-2 font-light">
+          <p className="text-sm text-gray-300 mt-2 font-light">
             Creating your workspace and AI setup...
           </p>
         </DialogHeader>
@@ -94,14 +94,14 @@ export default function WorkspaceCreationProgress({
                     step.completed
                       ? "text-emerald-400"
                       : step.loading
-                        ? "text-emerald-300 font-semibold"
-                        : "text-slate-400"
+                        ? "text-white font-semibold"
+                        : "text-gray-400"
                   }`}
                 >
                   {step.label}
                 </p>
                 {step.loading && (
-                  <p className="text-xs text-emerald-300/60 mt-1 italic">
+                  <p className="text-xs text-gray-300 mt-1 italic">
                     {index === 0 && "🔗 Connecting to AnythingLLM..."}
                     {index === 1 && "💾 Storing workspace details..."}
                     {index === 2 && "💬 Setting up chat thread..."}
@@ -140,7 +140,7 @@ export default function WorkspaceCreationProgress({
         </div>
 
         {/* Footer message */}
-        <p className="text-xs text-emerald-300/50 text-center pb-2 font-light">
+        <p className="text-xs text-gray-400 text-center pb-2 font-light">
           🌱 This usually takes 30-60 seconds...
         </p>
       </DialogContent>
