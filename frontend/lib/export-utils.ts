@@ -140,22 +140,27 @@ export function exportToCSV(sowData: SOWData, filename: string = 'sow-pricing.cs
 }
 
 /**
- * Export pricing table to Excel
+ * Export pricing table to Excel using Social Garden template format
  */
 export function exportToExcel(sowData: SOWData, filename: string = 'sow-pricing.xlsx') {
-  const { pricingRows, discount, title } = sowData;
+  const { pricingRows, discount, title, deliverables, assumptions } = sowData;
   const totals = calculateTotals(pricingRows, discount);
   
-  // Create worksheet data
+  // Create worksheet data matching Social Garden template
   const wsData: any[] = [
-    ['Social Garden - Scope of Work'],
-    [title || 'Statement of Work'],
-    [''],
-    ['Role', 'Hours', 'Rate (AUD)', 'Total (AUD)'],
+    [title || '[PROJECT NAME]'], // Row 1: Project title
+    ['ITEMS', 'ROLE', 'HOURS', 'HOURLY RATE', 'TOTAL COST +GST'], // Row 2: Headers
   ];
   
+  // Add deliverables header if provided
+  if (deliverables && deliverables.length > 0) {
+    wsData.push([`[  DELIVERABLES:\n${deliverables.map(d => '+ ' + d).join('\n')}  ]`, '', '', '', '']);
+  }
+  
+  // Add pricing rows
   pricingRows.forEach(row => {
     wsData.push([
+      '', // Empty ITEMS column
       row.role,
       row.hours,
       row.rate,
@@ -163,34 +168,55 @@ export function exportToExcel(sowData: SOWData, filename: string = 'sow-pricing.
     ]);
   });
   
+  // Add total row
+  wsData.push([
+    'TOTAL',
+    totals.totalHours,
+    Math.round(totals.subtotal / totals.totalHours * 100) / 100, // Avg hourly rate
+    '',
+    totals.subtotal
+  ]);
+  
+  // Add empty rows
   wsData.push(['']);
-  wsData.push(['Total Hours', totals.totalHours, '', '']);
-  wsData.push(['Sub-Total (excl. GST)', '', '', totals.subtotal]);
+  wsData.push(['Scope & Price Overview']);
+  wsData.push(['']);
+  wsData.push(['ESTIMATED TOTAL HOURS', '', 'TOTAL COST']);
+  wsData.push([title || '[PROJECT NAME]', totals.totalHours, totals.subtotal]);
+  wsData.push(['']);
   
-  if (discount && totals.discountAmount > 0) {
-    const discountLabel = discount.type === 'percentage' 
-      ? `Discount (${discount.value}%)` 
-      : 'Discount';
-    wsData.push([discountLabel, '', '', -totals.discountAmount]);
+  // Add assumptions if provided
+  if (assumptions && assumptions.length > 0) {
+    wsData.push(['']);
+    wsData.push(['Deliverable Assumptions:']);
+    assumptions.forEach(assumption => {
+      wsData.push([assumption]);
+    });
   }
-  
-  wsData.push(['Grand Total (excl. GST)', '', '', totals.grandTotal]);
-  wsData.push(['GST (10%)', '', '', totals.gstAmount]);
-  wsData.push(['Total Inc. GST', '', '', totals.grandTotal + totals.gstAmount]);
   
   // Create workbook and worksheet
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet(wsData);
   
-  // Set column widths
+  // Set column widths to match template
   ws['!cols'] = [
-    { wch: 50 },  // Role
-    { wch: 10 },  // Hours
-    { wch: 15 },  // Rate
-    { wch: 20 },  // Total
+    { wch: 45 },  // ITEMS
+    { wch: 35 },  // ROLE
+    { wch: 12 },  // HOURS
+    { wch: 15 },  // HOURLY RATE
+    { wch: 20 },  // TOTAL COST
   ];
   
-  XLSX.utils.book_append_sheet(wb, ws, 'SOW Pricing');
+  // Add styling to match template (bold headers)
+  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+  for (let C = 0; C <= range.e.c; ++C) {
+    const cellAddress = XLSX.utils.encode_cell({ r: 1, c: C }); // Row 2 (headers)
+    if (ws[cellAddress]) {
+      ws[cellAddress].s = { font: { bold: true } };
+    }
+  }
+  
+  XLSX.utils.book_append_sheet(wb, ws, title ? title.substring(0, 30) : 'SOW Pricing');
   XLSX.writeFile(wb, filename);
 }
 
