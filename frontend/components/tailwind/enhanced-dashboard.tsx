@@ -59,11 +59,15 @@ interface ChatMessage {
 interface EnhancedDashboardProps {
   onFilterByVertical?: (vertical: string) => void;
   onFilterByService?: (serviceLine: string) => void;
+  onClearFilter?: () => void;
+  currentFilter?: { type: 'vertical' | 'serviceLine' | null; value: string | null };
 }
 
 export function EnhancedDashboard({ 
   onFilterByVertical, 
-  onFilterByService 
+  onFilterByService,
+  currentFilter,
+  onClearFilter
 }: EnhancedDashboardProps = {}) {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -203,6 +207,22 @@ export function EnhancedDashboard({
           <div>
             <h1 className="text-3xl font-bold text-white">📊 SOW Dashboard</h1>
             <p className="text-gray-400 mt-1">Real-time analytics powered by AI</p>
+            {currentFilter?.value && (
+              <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-[#1CBF79]/20 border border-[#1CBF79] rounded-full">
+                <span className="text-sm text-[#1CBF79]">
+                  Filtered: {currentFilter.type === 'vertical' ? '🏢 Vertical' : '🔧 Service'} = {currentFilter.value}
+                </span>
+                {onClearFilter && (
+                  <button 
+                    onClick={onClearFilter}
+                    className="text-[#1CBF79] hover:text-white transition-colors"
+                    title="Clear filter"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex gap-2">
             <Button

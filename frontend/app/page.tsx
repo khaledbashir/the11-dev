@@ -2828,6 +2828,8 @@ export default function Page() {
             <EnhancedDashboard 
               onFilterByVertical={handleDashboardFilterByVertical}
               onFilterByService={handleDashboardFilterByService}
+              currentFilter={dashboardFilter}
+              onClearFilter={handleClearDashboardFilter}
             />
           ) : viewMode === 'ai-management' ? (
             <div className="w-full h-full bg-[#0E0F0F]">
