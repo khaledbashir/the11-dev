@@ -141,9 +141,9 @@ export function EnhancedDashboard({
   }
 
   return (
-    <div className="h-full flex flex-col bg-[#0e0f0f] overflow-auto py-6 pr-6 pl-2">
+    <div className="w-full h-full flex flex-col bg-[#0e0f0f] overflow-y-auto py-6 pr-6 pl-2">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between flex-shrink-0">
         <div>
           <h1 className="text-3xl font-bold text-white">📊 SOW Dashboard</h1>
           <p className="text-gray-400 mt-1">Real-time analytics powered by AI</p>

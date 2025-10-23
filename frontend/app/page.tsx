@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import TailwindAdvancedEditor from "@/components/tailwind/advanced-editor";
 import SidebarNav from "@/components/tailwind/sidebar-nav";
-import AgentSidebar from "@/components/tailwind/agent-sidebar";
+import AgentSidebar from "@/components/tailwind/agent-sidebar-clean";
 import PricingTableBuilder from "@/components/tailwind/pricing-table-builder";
 import Menu from "@/components/tailwind/ui/menu";
 import { Button } from "@/components/tailwind/ui/button";

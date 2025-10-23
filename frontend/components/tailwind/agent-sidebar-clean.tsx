@@ -84,6 +84,9 @@ export default function AgentSidebar({
   const [showSettings, setShowSettings] = useState(false);
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [selectedModelForAgent, setSelectedModelForAgent] = useState("");
+  const [conversations, setConversations] = useState<Array<{ id: string; title: string; timestamp: number }>>([]);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
   
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
@@ -98,6 +101,21 @@ export default function AgentSidebar({
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
+
+  const handleNewChat = () => {
+    const newConversation = {
+      id: `conv-${Date.now()}`,
+      title: `Chat - ${new Date().toLocaleDateString()}`,
+      timestamp: Date.now(),
+    };
+    setConversations(prev => [newConversation, ...prev]);
+    setCurrentConversationId(newConversation.id);
+  };
+
+  const handleSelectConversation = (conversationId: string) => {
+    setCurrentConversationId(conversationId);
+    setShowHistory(false);
+  };
 
   useEffect(() => {
     if (currentAgentId) {
@@ -204,7 +222,7 @@ export default function AgentSidebar({
   return (
     <div className="h-full w-full bg-[#0e0f0f] border-l border-[#0E2E33] overflow-hidden flex flex-col">
       <div className="p-5 border-b border-[#0E2E33] bg-[#0e0f0f]">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-bold text-white">
             {isDashboardMode 
               ? (isMasterView 
@@ -224,6 +242,50 @@ export default function AgentSidebar({
             </button>
           )}
         </div>
+
+        {/* Dashboard Mode: New Chat + History Buttons */}
+        {isDashboardMode && (
+          <div className="flex gap-2 mb-3">
+            <Button 
+              onClick={handleNewChat} 
+              className="flex-1 bg-[#1CBF79] hover:bg-[#1CBF79]/90 text-white text-xs h-8"
+              size="sm"
+            >
+              <Plus className="w-3 h-3 mr-1" />
+              New Chat
+            </Button>
+            <Button 
+              onClick={() => setShowHistory(!showHistory)} 
+              variant="outline"
+              size="sm"
+              className="border-[#0E2E33] text-gray-300 hover:bg-[#0E2E33] text-xs h-8"
+            >
+              History ({conversations.length})
+            </Button>
+          </div>
+        )}
+
+        {/* Conversation History Dropdown */}
+        {isDashboardMode && showHistory && conversations.length > 0 && (
+          <div className="bg-[#0E2E33] border border-[#0E2E33] rounded-lg mb-3 max-h-48 overflow-y-auto">
+            <div className="p-2 space-y-1">
+              {conversations.map(conv => (
+                <button
+                  key={conv.id}
+                  onClick={() => handleSelectConversation(conv.id)}
+                  className={`w-full text-left p-2 rounded text-xs transition-colors ${
+                    currentConversationId === conv.id 
+                      ? 'bg-[#1CBF79] text-white' 
+                      : 'text-gray-300 hover:bg-[#0e0f0f]'
+                  }`}
+                >
+                  <div className="truncate">{conv.title}</div>
+                  <div className="text-xs text-gray-500">{new Date(conv.timestamp).toLocaleString()}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Dashboard mode: Workspace selector */}
         {isDashboardMode && onDashboardWorkspaceChange && (
