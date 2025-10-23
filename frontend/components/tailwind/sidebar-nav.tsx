@@ -39,11 +39,14 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { SOWTagSelector } from './sow-tag-selector';
 
 interface SOW {
   id: string;
   name: string;
   workspaceId: string;
+  vertical?: 'property' | 'education' | 'finance' | 'healthcare' | 'retail' | 'hospitality' | 'professional-services' | 'technology' | 'other' | null;
+  service_line?: 'crm-implementation' | 'marketing-automation' | 'revops-strategy' | 'managed-services' | 'consulting' | 'training' | 'other' | null;
 }
 
 interface Workspace {
@@ -513,77 +516,90 @@ export default function SidebarNav({
       <div
         ref={setNodeRef}
         style={style}
-        className={`flex items-center gap-2 px-2 py-1.5 rounded-lg group transition-colors ${
+        className={`space-y-1 px-2 py-1.5 rounded-lg group transition-colors ${
           currentSOWId === sow.id
             ? "bg-[#0e2e33] text-white"
             : "text-gray-400 hover:text-gray-300 hover:bg-gray-800/50"
         }`}
       >
-        {/* Doc Icon */}
-        <FileText className="w-4 h-4 flex-shrink-0" />
+        {/* SOW Item Row */}
+        <div className="flex items-center gap-2">
+          {/* Doc Icon */}
+          <FileText className="w-4 h-4 flex-shrink-0" />
 
-        {/* SOW Name - Clickable, max 5 chars with "..." */}
-        <div className="flex-1 min-w-0 max-w-[60px]">
-          {renamingId === sow.id ? (
-            <Input
-              value={renameValue}
-              onChange={(e) => setRenameValue(e.target.value)}
-              onBlur={() => handleRename(sow.id, false)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleRename(sow.id, false);
-              }}
-              className="h-6 py-0 text-xs bg-gray-800 border-gray-600"
-              autoFocus
-              onClick={(e) => e.stopPropagation()}
-            />
-          ) : (
+          {/* SOW Name - Clickable, max 5 chars with "..." */}
+          <div className="flex-1 min-w-0 max-w-[60px]">
+            {renamingId === sow.id ? (
+              <Input
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onBlur={() => handleRename(sow.id, false)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleRename(sow.id, false);
+                }}
+                className="h-6 py-0 text-xs bg-gray-800 border-gray-600"
+                autoFocus
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <button
+                onClick={() => {
+                  console.log('🔍 SOW clicked:', sow.id, sow.name);
+                  onSelectSOW(sow.id);
+                }}
+                className="w-full text-left text-xs hover:text-[#1CBF79] transition-colors"
+                title={sow.name}
+              >
+                {sow.name.length > 5 ? sow.name.substring(0, 5) + '...' : sow.name}
+              </button>
+            )}
+          </div>
+
+          {/* Action Buttons - ALWAYS VISIBLE */}
+          <div className="flex items-center gap-1.5 flex-shrink-0 ml-auto">
+            {/* Rename */}
             <button
-              onClick={() => {
-                console.log('🔍 SOW clicked:', sow.id, sow.name);
-                onSelectSOW(sow.id);
+              onClick={(e) => {
+                e.stopPropagation();
+                setRenamingId(sow.id);
+                setRenameValue(sow.name);
               }}
-              className="w-full text-left text-xs hover:text-[#1CBF79] transition-colors"
-              title={sow.name}
+              className="p-1 text-blue-400 hover:bg-blue-500/30 hover:text-blue-300 rounded transition-all flex-shrink-0"
+              title="Rename SOW"
             >
-              {sow.name.length > 5 ? sow.name.substring(0, 5) + '...' : sow.name}
+              <Edit3 className="w-4 h-4" />
             </button>
-          )}
+
+            {/* Delete */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setConfirmDialog({
+                  open: true,
+                  title: `Delete SOW?`,
+                  message: `Delete "${sow.name}"? This cannot be undone.`,
+                  onConfirm: () => {
+                    onDeleteSOW(sow.id);
+                    toast.success('SOW deleted');
+                  }
+                });
+              }}
+              className="p-1 text-red-400 hover:bg-red-500/30 hover:text-red-300 rounded transition-all flex-shrink-0"
+              title="Delete SOW"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
-        {/* Action Buttons - ALWAYS VISIBLE */}
-        <div className="flex items-center gap-1.5 flex-shrink-0 ml-auto">
-          {/* Rename */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setRenamingId(sow.id);
-              setRenameValue(sow.name);
-            }}
-            className="p-1 text-blue-400 hover:bg-blue-500/30 hover:text-blue-300 rounded transition-all flex-shrink-0"
-            title="Rename SOW"
-          >
-            <Edit3 className="w-4 h-4" />
-          </button>
-
-          {/* Delete */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setConfirmDialog({
-                open: true,
-                title: `Delete SOW?`,
-                message: `Delete "${sow.name}"? This cannot be undone.`,
-                onConfirm: () => {
-                  onDeleteSOW(sow.id);
-                  toast.success('SOW deleted');
-                }
-              });
-            }}
-            className="p-1 text-red-400 hover:bg-red-500/30 hover:text-red-300 rounded transition-all flex-shrink-0"
-            title="Delete SOW"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+        {/* Tag Selector Row */}
+        <div className="pl-6" onClick={(e) => e.stopPropagation()}>
+          <SOWTagSelector
+            sowId={sow.id}
+            sowTitle={sow.name}
+            currentVertical={sow.vertical || null}
+            currentServiceLine={sow.service_line || null}
+          />
         </div>
       </div>
     );

@@ -154,6 +154,8 @@ export interface SOW {
   declined_at: Date | null;
   folder_id: string | null;
   creator_email: string | null;
+  vertical?: 'property' | 'education' | 'finance' | 'healthcare' | 'retail' | 'hospitality' | 'professional-services' | 'technology' | 'other' | null;
+  service_line?: 'crm-implementation' | 'marketing-automation' | 'revops-strategy' | 'managed-services' | 'consulting' | 'training' | 'other' | null;
 }
 
 export interface SOWActivity {

@@ -28,7 +28,9 @@ export async function GET(req: NextRequest) {
         sent_at,
         first_viewed_at,
         last_viewed_at,
-        expires_at
+        expires_at,
+        vertical,
+        service_line
       FROM sows
     `;
 

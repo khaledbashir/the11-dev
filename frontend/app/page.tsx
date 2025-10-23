@@ -589,6 +589,8 @@ export default function Page() {
             id: sow.id,
             name: sow.title || 'Untitled SOW',
             workspaceId: folder.id,
+            vertical: sow.vertical || null,
+            service_line: sow.service_line || null,
           }));
           
           console.log(`   Found ${sows.length} SOWs in this folder`);

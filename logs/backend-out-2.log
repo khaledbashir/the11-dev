@@ -1,7 +1,0 @@
-2025-10-21T15:44:48: INFO:     127.0.0.1:52364 - "GET /docs HTTP/1.1" 200 OK
-2025-10-21T15:45:51: === DEBUG: Received HTML Content ===
-2025-10-21T15:45:51: <p>hello</p>
-2025-10-21T15:45:51: === Has table tag: False ===
-2025-10-21T15:45:51: INFO:     172.18.0.3:47954 - "POST /generate-pdf HTTP/1.1" 200 OK
-2025-10-21T15:53:27: INFO:     66.132.153.127:55736 - "GET / HTTP/1.1" 404 Not Found
-2025-10-21T15:53:36: INFO:     66.132.153.127:51530 - "GET /login HTTP/1.1" 404 Not Found

@@ -32,6 +32,25 @@ Press `Ctrl+C` to stop.
 - **📱 Client Portal** - Share SOWs with clients for review/approval
 - **💬 AnythingLLM Integration** - AI chat with context about each SOW
 - **🗄️ MySQL Database** - Full persistence (folders, documents, agents)
+- **🏷️ Smart Tagging System** - Auto-categorize SOWs by vertical and service line (Phase 1A BI)
+
+### 🏷️ SOW Tagging & BI Dashboard
+
+The system includes intelligent tagging to categorize SOWs for analytics:
+
+**Backfill Existing Data:**
+```bash
+# One-time migration to auto-tag all historical SOWs
+curl https://sow.qandu.me/api/admin/backfill-tags
+```
+
+**Easy Tagging for New SOWs:**
+- Tags appear in sidebar as editable dropdowns next to each SOW
+- Auto-save on selection
+- Once tagged, shows as colored badges
+- Supports: 9 verticals (Property, Education, Finance, etc.) + 7 service lines (CRM, Marketing Automation, etc.)
+
+See [SOW-TAGGING-SYSTEM.md](./SOW-TAGGING-SYSTEM.md) for complete setup & troubleshooting guide.
 
 ### Live Services
 - **Database:** 168.231.115.219:3306 (socialgarden_sow)
