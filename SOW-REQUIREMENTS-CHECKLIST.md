@@ -1,7 +1,21 @@
 # ✅ SOW Finalization Requirements Checklist
 
+⚠️ **MASTER TRACKING DOCUMENT** ⚠️
+
+**If you're reading this file:** YOU MUST UPDATE IT with your progress.
+- Check off completed items with [x]
+- Add notes about fixes you make
+- Update the Progress Tracking section
+- Update the "Last Updated" timestamp at bottom
+- Commit changes to git: `git add SOW-REQUIREMENTS-CHECKLIST.md && git commit -m "Update checklist: [what you fixed]"`
+
+This is the **SINGLE SOURCE OF TRUTH** for SOW requirements. Every fix must be reflected here.
+
+---
+
 **Date Created:** October 25, 2025  
-**Status:** In Progress  
+**Last Updated:** October 25, 2025  
+**Status:** In Progress (60% complete)  
 **Session:** Portal UI Cleanup + SOW Requirements Verification  
 
 ---
@@ -343,7 +357,7 @@
 - Don't forget to `git push` or changes won't deploy!
 - Commits in this repo should explain the fix clearly (for future developers)
 - If deploy fails, check EasyPanel dashboard for build errors
-
+keypoints theres also  3 kinds of ai  one for dashboar one for generation they work it7s just th einline editor doesnt work 
 ---
 
 **Next Action:** Fix OpenRouter API 401 error (Issue #3)  
