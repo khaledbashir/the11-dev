@@ -1123,9 +1123,9 @@ export default function Page() {
         console.log('🧠 Configuring SOW workspace with The Architect system prompt...');
         try {
           const updateResponse = await fetch(`${process.env.NEXT_PUBLIC_ANYTHINGLLM_URL}/api/v1/workspace/${workspace.slug}/update`, {
-            method: 'POST',
+            method: 'PATCH',
             headers: {
-              'Authorization': `Bearer ${process.env.ANYTHINGLLM_API_KEY}`,
+              'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
@@ -1136,8 +1136,8 @@ export default function Page() {
           });
           
           if (!updateResponse.ok) {
-            const errorText = await updateResponse.text();
-            console.error('⚠️ Failed to configure workspace system prompt:', errorText);
+            const errorData = await updateResponse.json().catch(() => ({ error: 'Unknown error' }));
+            console.error('⚠️ Failed to configure workspace system prompt:', errorData);
           } else {
             console.log('✅ Workspace configured with The Architect system prompt');
           }

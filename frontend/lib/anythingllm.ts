@@ -480,19 +480,24 @@ Ready to explore your project details? Ask me anything!`;
       const response = await fetch(
         `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/update`,
         {
-          method: 'POST',
+          method: 'PATCH',
           headers: this.getHeaders(),
           body: JSON.stringify({
             openAiPrompt: prompt,
+            openAiTemp: 0.7,
+            openAiHistory: 25,
           }),
         }
       );
 
-      if (response.ok) {
-        console.log(`✅ Client-facing prompt set for workspace: ${workspaceSlug}`);
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        console.error(`❌ Failed to set prompt (${response.status}):`, error);
+        return false;
       }
 
-      return response.ok;
+      console.log(`✅ Client-facing prompt set for workspace: ${workspaceSlug}`);
+      return true;
     } catch (error) {
       console.error('❌ Error setting workspace prompt:', error);
       return false;
