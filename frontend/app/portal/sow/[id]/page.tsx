@@ -19,6 +19,8 @@ interface SOWData {
   createdAt: string;
   workspaceSlug: string;
   embedId?: string;
+  vertical?: string;
+  serviceLine?: string;
 }
 
 type TabView = 'overview' | 'content' | 'pricing' | 'timeline';
@@ -211,7 +213,9 @@ export default function ClientPortalPage() {
           totalInvestment: parseFloat(sowData.total_investment) || 0,
           createdAt: sowData.created_at,
           workspaceSlug,
-          embedId
+          embedId,
+          vertical: sowData.vertical,
+          serviceLine: sowData.service_line,
         });
       
       setLoading(false);

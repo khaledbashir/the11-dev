@@ -111,6 +111,8 @@ export async function PUT(
       workspaceSlug,
       threadSlug,
       embedId,
+      vertical,
+      serviceLine,
     } = body;
 
     // Build update query dynamically based on provided fields
@@ -148,6 +150,14 @@ export async function PUT(
     if (embedId !== undefined) {
       updates.push('embed_id = ?');
       values.push(embedId);
+    }
+    if (vertical !== undefined) {
+      updates.push('vertical = ?');
+      values.push(vertical);
+    }
+    if (serviceLine !== undefined) {
+      updates.push('service_line = ?');
+      values.push(serviceLine);
     }
 
     if (updates.length === 0) {

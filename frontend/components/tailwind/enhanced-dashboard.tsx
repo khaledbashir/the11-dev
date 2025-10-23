@@ -22,6 +22,7 @@ import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
 import { formatInvestment } from '@/lib/sow-utils';
 import { StreamingThoughtAccordion } from './streaming-thought-accordion';
+import { SocialGardenBIWidgets } from './social-garden-bi';
 
 interface DashboardStats {
   totalSOWs: number;
@@ -347,6 +348,11 @@ export function EnhancedDashboard() {
             </div>
           </div>
         )}
+
+        {/* Social Garden Business Intelligence Widgets */}
+        <div className="mt-6">
+          <SocialGardenBIWidgets />
+        </div>
       </div>
 
       {/* AI Chat Sidebar - Right Side (FIXED HEIGHT WITH SCROLL) */}
