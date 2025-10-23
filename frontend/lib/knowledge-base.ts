@@ -252,8 +252,12 @@ YOUR CORE MISSION
 - Overview (1 paragraph)
 - What's Included (5-7 bullet points)
 - Project Outcomes (5-6 bullets, benefit-focused)
-- Project Phases (Discovery, Build, QA, Delivery)
-- Detailed Deliverable Groups with sub-phases and specific tasks
+- **Scope Assumptions** ⭐ MANDATORY - appears IMMEDIATELY after Project Outcomes, before everything else
+  * Include general assumptions: "Hours outlined are capped as an estimate", "Client will provide feedback within 3-7 days", "Rates are not locked in if agreement not signed within 30 days", "Project timeline finalized post sign-off"
+  * Include project-specific assumptions derived from the brief (3-5 custom items)
+- Detailed Deliverable Groups with sub-phases and specific tasks ⭐ appears IMMEDIATELY after Scope Assumptions
+- Project Phases (Discovery, Build, QA, Delivery) ⭐ appears AFTER Deliverable Groups
+- [If budget adjusted] Budget Adjustment Notes explaining optimization
 - Investment section with pricing table
 - [If custom rates] Footnote explaining rate differences
 
@@ -262,13 +266,17 @@ YOUR CORE MISSION
 - Overview (1 paragraph)
 - What's Included (analysis components)
 - Recommended Outcomes (findings leading to recommendations)
-- Engagement Phases (Research, Analysis, Presentation)
+- **Scope Assumptions** ⭐ MANDATORY
+  * Include general assumptions + audit-specific assumptions
 - Detailed Audit Framework with specific areas
+- Engagement Phases (Research, Analysis, Presentation)
 
 ### Retainer Format:
 - Headline: "Scope of Work: [Client] - [Service] Support Retainer"
 - Overview (1 paragraph)
 - Monthly Deliverables (recurring items mapped to hours)
+- **Scope Assumptions** ⭐ MANDATORY
+  * Include general assumptions + retainer-specific assumptions (hours are monthly, response times, escalation process, etc.)
 - Success Metrics (uptime, response times, etc.)
 - Engagement Model (hours/month, team structure, response times)
 - Detailed Monthly Roadmap (weeks 1-4)
@@ -303,6 +311,21 @@ YOUR CORE MISSION
    - Defined success criteria
    - Client responsibilities (if any)
    - Post-delivery support approach or ongoing model
+   - **Scope Assumptions section** (MANDATORY - contains general + project-specific assumptions)
+   
+   **DISCOUNT & PRICING PRESENTATION (CRITICAL):**
+   When discounts or budget optimization occurs:
+   1. Show PRICING TRANSPARENCY with this format:
+      - Sub-Total (Before Discount): $XX,XXX
+      - Discount (Description / %): -$X,XXX ([percentage]%)
+      - Grand Total (After Discount): $XX,XXX +GST
+   2. If scope was adjusted to meet budget: Include "Budget Adjustment Notes" section that explains:
+      - Original estimate: $X,XXX
+      - Target budget: $Y,YYY
+      - Adjustments made: (Role hours reduced, modules optimized, etc.)
+      - Final investment: $Z,ZZZ +GST
+   3. Always show "+GST" suffix prominently next to final totals
+   4. For annual pricing: Show monthly AND annual: "$5,600/month = $67,200/year +GST"
    
    **MANDATORY TEAM COMPOSITION (SAM GOSSAGE REQUIREMENT):**
    EVERY scope MUST include these THREE roles in pricing table:
