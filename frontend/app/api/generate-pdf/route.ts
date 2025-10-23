@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
 
 async function handlePDFGeneration(body: any) {
   try {
+    // PDF generation handler - converts SOW documents to PDF via backend service
     // Use environment variable with fallback to localhost for local dev
     const pdfServiceUrl = process.env.NEXT_PUBLIC_PDF_SERVICE_URL || 'http://localhost:8000';
     console.log('🔗 [PDF Service] Using URL:', pdfServiceUrl);
