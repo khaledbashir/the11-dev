@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // Support both GET and POST methods
 export async function GET(req: NextRequest) {
+  console.log('🔍 [GET /api/generate-pdf] Request received');
   const searchParams = req.nextUrl.searchParams;
   const sowId = searchParams.get('sowId');
   
   if (!sowId) {
+    console.error('❌ [GET /api/generate-pdf] Missing sowId');
     return NextResponse.json({ error: 'sowId is required' }, { status: 400 });
   }
 
@@ -14,11 +16,13 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  console.log('🔍 [POST /api/generate-pdf] Request received');
   try {
     const body = await req.json();
+    console.log('📄 [POST /api/generate-pdf] Request body:', body);
     return handlePDFGeneration(body);
   } catch (error: any) {
-    console.error('❌ PDF generation error:', error.message, error.cause);
+    console.error('❌ [POST /api/generate-pdf] Error:', error.message, error.cause);
     return NextResponse.json(
       { error: `fetch failed: ${error.message}` },
       { status: 500 }
@@ -30,6 +34,7 @@ async function handlePDFGeneration(body: any) {
   try {
     // Use environment variable with fallback to localhost for local dev
     const pdfServiceUrl = process.env.NEXT_PUBLIC_PDF_SERVICE_URL || 'http://localhost:8000';
+    console.log('🔗 [PDF Service] Using URL:', pdfServiceUrl);
     
     
     // Forward request to PDF service with timeout (increased to 60s for large documents)
@@ -38,6 +43,7 @@ async function handlePDFGeneration(body: any) {
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     
     try {
+      console.log('📨 [PDF Service] Sending request to:', `${pdfServiceUrl}/generate-pdf`);
       const response = await fetch(`${pdfServiceUrl}/generate-pdf`, {
         method: 'POST',
         headers: {
@@ -51,13 +57,14 @@ async function handlePDFGeneration(body: any) {
 
       if (!response.ok) {
         const error = await response.text();
-        console.error('❌ PDF service error:', error);
+        console.error('❌ [PDF Service] Error response:', error);
         return NextResponse.json(
           { 
             error: `PDF service error: ${error}`,
             status: response.status,
             serviceUrl: pdfServiceUrl,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            details: 'This error means the PDF service is not responding correctly. Check if backend is running.'
           },
           { status: response.status }
         );
@@ -65,6 +72,7 @@ async function handlePDFGeneration(body: any) {
 
       // Get PDF blob and return it
       const pdfBlob = await response.blob();
+      console.log('✅ [PDF Service] PDF generated successfully');
       
       return new NextResponse(pdfBlob, {
         status: 200,
