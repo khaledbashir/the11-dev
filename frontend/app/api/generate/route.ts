@@ -133,8 +133,6 @@ export async function POST(req: NextRequest): Promise<Response> {
         headers: {
           'Authorization': `Bearer ${openRouterApiKey}`,
           'Content-Type': 'application/json',
-          'HTTP-Referer': process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:5000',
-          'X-Title': 'Social Garden SOW Generator',
         },
         body: JSON.stringify({
           model: selectedModel,
