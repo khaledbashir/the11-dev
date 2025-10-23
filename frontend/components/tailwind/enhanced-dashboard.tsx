@@ -81,10 +81,11 @@ export function EnhancedDashboard() {
     try {
       setLoading(true);
       
-      // Fetch from database API (no artificial timeout - let browser handle it)
-      const response = await fetch('/api/dashboard/stats', {
-        // Removed AbortController timeout - browser has its own timeout
-        // This prevents premature aborts during slow database queries
+      // Fetch from database API with cache-busting to force fresh data
+      const cacheBuster = `?t=${Date.now()}`;
+      const response = await fetch(`/api/dashboard/stats${cacheBuster}`, {
+        // Add cache: 'no-store' to prevent browser caching
+        cache: 'no-store',
       });
       
       if (response.ok) {

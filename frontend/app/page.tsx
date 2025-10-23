@@ -721,17 +721,22 @@ export default function Page() {
 
     const autoSaveTimer = setTimeout(async () => {
       try {
+        // Calculate total investment from pricing table in content
+        const pricingRows = extractPricingFromContent(currentDoc.content);
+        const totalInvestment = pricingRows.reduce((sum, row) => sum + row.total, 0);
+        
         const response = await fetch(`/api/sow/${currentDocId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             content: currentDoc.content,
             title: currentDoc.title,
+            total_investment: totalInvestment,
           }),
         });
 
         if (response.ok) {
-          console.log('💾 Auto-saved SOW:', currentDocId);
+          console.log('💾 Auto-saved SOW:', currentDocId, `(Total: $${totalInvestment.toFixed(2)})`);
         } else {
           console.warn('⚠️ Auto-save failed for SOW:', currentDocId);
         }
