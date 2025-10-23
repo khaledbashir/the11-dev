@@ -418,7 +418,9 @@ export default function ClientPortalPage() {
   const subtotal = baseServicesTotal + contentCost + socialCost + adManagementFee + addOnsTotal;
   const gst = subtotal * 0.1;
   const discountAmount = (subtotal + gst) * (discountPercent / 100);
-  const grandTotal = (subtotal + gst) - discountAmount;
+  const grandTotalBeforeRounding = (subtotal + gst) - discountAmount;
+  // Round to nearest $5,000
+  const grandTotal = Math.round(grandTotalBeforeRounding / 5000) * 5000;
 
   // 🔥 OPENROUTER CHAT HANDLER - Direct AI without RAG
   const handleSendChatMessage = useCallback(async () => {
@@ -1150,7 +1152,7 @@ ${sow.htmlContent}
                           ${grandTotal.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-500">Includes GST and any applied discount.</p>
+                      <p className="text-xs text-gray-500">Rounded to nearest $5,000. Includes GST and any applied discount.</p>
                     </div>
                   )}
 
