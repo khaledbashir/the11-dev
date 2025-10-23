@@ -55,6 +55,7 @@ interface AgentSidebarProps {
   dashboardChatTarget?: string; // NEW: Workspace slug for dashboard mode
   onDashboardWorkspaceChange?: (slug: string) => void; // NEW: Handler for workspace selection
   availableWorkspaces?: Array<{slug: string, name: string}>; // NEW: Available workspaces
+  onClearChat?: () => void; // NEW: Clear chat messages
 }
 
 export default function AgentSidebar({
@@ -75,6 +76,7 @@ export default function AgentSidebar({
   dashboardChatTarget = 'sow-master-dashboard-54307162', // Default to master dashboard
   onDashboardWorkspaceChange,
   availableWorkspaces = [{ slug: 'sow-master-dashboard-54307162', name: '🎯 All SOWs (Master)' }],
+  onClearChat,
 }: AgentSidebarProps) {
   const [chatInput, setChatInput] = useState("");
   const [models, setModels] = useState<OpenRouterModel[]>([]);
