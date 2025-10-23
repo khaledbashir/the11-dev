@@ -24,7 +24,15 @@ export async function GET(request: NextRequest) {
     };
     
     console.log('✅ [API] Dashboard stats response:', result);
-    return NextResponse.json(result);
+    
+    // Add cache-control headers to prevent caching
+    return NextResponse.json(result, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
+    });
     
   } catch (error: any) {
     console.error('❌ [API] Dashboard stats error:', {
