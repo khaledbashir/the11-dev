@@ -116,51 +116,163 @@ export default function AgentSidebar({
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
 
+  const loadThreads = async () => {
+    if (!dashboardChatTarget) return;
+    
+    console.log('📂 Loading threads for workspace:', dashboardChatTarget);
+    setLoadingThreads(true);
+    
+    try {
+      // Get workspace data which includes threads
+      const response = await fetch(`${process.env.NEXT_PUBLIC_ANYTHINGLLM_URL}/api/v1/workspace/${dashboardChatTarget}`, {
+        headers: {
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load workspace threads');
+      }
+
+      const data = await response.json();
+      const workspaceThreads = data.workspace?.threads || [];
+      
+      setThreads(workspaceThreads.map((t: any) => ({
+        slug: t.slug,
+        name: t.name,
+        id: t.id,
+        createdAt: t.createdAt || new Date().toISOString(),
+      })));
+      
+      // If we have threads, set the first one as active
+      if (workspaceThreads.length > 0 && !currentThreadSlug) {
+        setCurrentThreadSlug(workspaceThreads[0].slug);
+      }
+      
+      console.log('✅ Loaded', workspaceThreads.length, 'threads');
+    } catch (error) {
+      console.error('❌ Failed to load threads:', error);
+      // Don't show alert on initial load failure
+    } finally {
+      setLoadingThreads(false);
+    }
+  };
+
   // 🧵 THREAD MANAGEMENT FUNCTIONS
   const handleNewThread = async () => {
     if (!dashboardChatTarget) return;
     
     console.log('🆕 Creating new thread...');
-    // Call API to create thread
-    // For now, just create local thread (will wire to API next)
-    const newThread = {
-      slug: `thread-${Date.now()}`,
-      name: `New Chat - ${new Date().toLocaleTimeString()}`,
-      id: Date.now(),
-      createdAt: new Date().toISOString(),
-    };
-    setThreads(prev => [newThread, ...prev]);
-    setCurrentThreadSlug(newThread.slug);
+    setLoadingThreads(true);
     
-    // Clear chat messages for new thread
-    if (onClearChat) {
-      onClearChat();
+    try {
+      // Call AnythingLLM API to create thread
+      const response = await fetch(`${process.env.NEXT_PUBLIC_ANYTHINGLLM_URL}/api/v1/workspace/${dashboardChatTarget}/thread/new`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: `New Chat - ${new Date().toLocaleTimeString()}`,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create thread');
+      }
+
+      const data = await response.json();
+      const newThread = {
+        slug: data.thread.slug,
+        name: data.thread.name,
+        id: data.thread.id,
+        createdAt: new Date().toISOString(),
+      };
+      
+      setThreads(prev => [newThread, ...prev]);
+      setCurrentThreadSlug(newThread.slug);
+      
+      // Clear chat messages for new thread
+      if (onClearChat) {
+        onClearChat();
+      }
+      
+      console.log('✅ Thread created:', newThread.slug);
+    } catch (error) {
+      console.error('❌ Failed to create thread:', error);
+      alert('Failed to create new thread. Please try again.');
+    } finally {
+      setLoadingThreads(false);
     }
   };
 
-  const handleSelectThread = (threadSlug: string) => {
+  const handleSelectThread = async (threadSlug: string) => {
     console.log('📂 Switching to thread:', threadSlug);
     setCurrentThreadSlug(threadSlug);
     setShowThreadList(false);
+    setLoadingThreads(true);
     
-    // Load thread history
-    // Will wire to API to load messages
+    try {
+      // Load thread chat history from AnythingLLM
+      const response = await fetch(`${process.env.NEXT_PUBLIC_ANYTHINGLLM_URL}/api/v1/workspace/${dashboardChatTarget}/thread/${threadSlug}/chats`, {
+        headers: {
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load thread history');
+      }
+
+      const data = await response.json();
+      console.log('✅ Loaded thread history:', data.history?.length || 0, 'messages');
+      
+      // TODO: Convert history to ChatMessage format and update parent state
+      // This will be handled when we wire up parent component
+      
+    } catch (error) {
+      console.error('❌ Failed to load thread history:', error);
+    } finally {
+      setLoadingThreads(false);
+    }
   };
 
   const handleDeleteThread = async (threadSlug: string) => {
-    if (!confirm('Delete this chat?')) return;
+    if (!confirm('Delete this chat? This cannot be undone.')) return;
     
     console.log('🗑️ Deleting thread:', threadSlug);
-    setThreads(prev => prev.filter(t => t.slug !== threadSlug));
     
-    // If deleting current thread, switch to another or create new
-    if (currentThreadSlug === threadSlug) {
-      const remainingThreads = threads.filter(t => t.slug !== threadSlug);
-      if (remainingThreads.length > 0) {
-        setCurrentThreadSlug(remainingThreads[0].slug);
-      } else {
-        handleNewThread();
+    try {
+      // Call AnythingLLM API to delete thread
+      const response = await fetch(`${process.env.NEXT_PUBLIC_ANYTHINGLLM_URL}/api/v1/workspace/${dashboardChatTarget}/thread/${threadSlug}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete thread');
       }
+
+      // Remove from local state
+      setThreads(prev => prev.filter(t => t.slug !== threadSlug));
+      
+      // If deleting current thread, switch to another or create new
+      if (currentThreadSlug === threadSlug) {
+        const remainingThreads = threads.filter(t => t.slug !== threadSlug);
+        if (remainingThreads.length > 0) {
+          handleSelectThread(remainingThreads[0].slug);
+        } else {
+          handleNewThread();
+        }
+      }
+      
+      console.log('✅ Thread deleted successfully');
+    } catch (error) {
+      console.error('❌ Failed to delete thread:', error);
+      alert('Failed to delete thread. Please try again.');
     }
   };
 
@@ -172,7 +284,9 @@ export default function AgentSidebar({
     setUploading(true);
     try {
       for (const file of Array.from(files)) {
-        // Read file as base64
+        console.log('📎 Processing file:', file.name, file.type);
+        
+        // Read file as base64 for attachments in chat
         const reader = new FileReader();
         reader.onload = (event) => {
           const contentString = event.target?.result as string;
@@ -181,11 +295,33 @@ export default function AgentSidebar({
             mime: file.type,
             contentString,
           }]);
+          console.log('✅ File ready for attachment:', file.name);
         };
         reader.readAsDataURL(file);
+        
+        // Optionally: Upload to AnythingLLM workspace for embedding
+        // Uncomment if you want files to be embedded in the workspace knowledge base
+        /*
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('addToWorkspaces', dashboardChatTarget);
+        
+        const uploadResponse = await fetch(`${process.env.NEXT_PUBLIC_ANYTHINGLLM_URL}/api/v1/document/upload`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY}`,
+          },
+          body: formData,
+        });
+        
+        if (uploadResponse.ok) {
+          console.log('✅ File uploaded to AnythingLLM workspace');
+        }
+        */
       }
     } catch (error) {
-      console.error('Error reading file:', error);
+      console.error('❌ Error processing file:', error);
+      alert('Failed to process file. Please try again.');
     } finally {
       setUploading(false);
     }
@@ -280,8 +416,22 @@ export default function AgentSidebar({
 
   const handleSendMessage = () => {
     if (!chatInput.trim() || !currentAgentId || isLoading) return;
+    
+    // Send message with thread context and attachments
+    // NOTE: Parent component (page.tsx) will need to be updated to:
+    // 1. Accept currentThreadSlug and attachments as parameters
+    // 2. Route chat to /api/anythingllm/stream-chat with threadSlug
+    // 3. Include attachments in the request body
+    console.log('📤 Sending message:', {
+      message: chatInput,
+      threadSlug: currentThreadSlug,
+      attachments: attachments.length,
+      workspaceSlug: dashboardChatTarget,
+    });
+    
     onSendMessage(chatInput);
     setChatInput("");
+    setAttachments([]); // Clear attachments after sending
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -308,6 +458,13 @@ export default function AgentSidebar({
   // Get current workspace name for dashboard title
   const currentWorkspaceName = availableWorkspaces.find(w => w.slug === dashboardChatTarget)?.name || '🎯 All SOWs (Master)';
   const isMasterView = dashboardChatTarget === 'sow-master-dashboard-54307162';
+
+  // 🧵 LOAD THREADS ON MOUNT (Dashboard mode only)
+  useEffect(() => {
+    if (isDashboardMode && dashboardChatTarget) {
+      loadThreads();
+    }
+  }, [isDashboardMode, dashboardChatTarget]);
 
   return (
     <div className="h-full w-full bg-[#0e0f0f] border-l border-[#0E2E33] overflow-hidden flex flex-col">
