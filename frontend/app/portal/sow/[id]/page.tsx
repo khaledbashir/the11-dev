@@ -393,390 +393,8 @@ ${sow.htmlContent}
     }
   }, [chatInput, sow, chatMessages]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0E0F0F] flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#1CBF79] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading your proposal...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !sow) {
-    return (
-      <div className="min-h-screen bg-[#0E0F0F] flex items-center justify-center p-6">
-        <div className="max-w-md text-center">
-          <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg className="w-10 h-10 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
-          <h1 className="text-3xl font-bold text-white mb-3">Proposal Not Found</h1>
-          <p className="text-gray-400 mb-6">
-            {error || "This proposal doesn't exist or has been removed."}
-          </p>
-          <div className="bg-[#1A1A1D] border border-[#2A2A2D] rounded-lg p-4 mb-6">
-            <p className="text-sm text-gray-400 mb-2">Need help?</p>
-            <p className="text-xs text-gray-500">
-              Contact your account manager or email{' '}
-              <a href="mailto:hello@socialgarden.com.au" className="text-[#1CBF79] hover:underline">
-                hello@socialgarden.com.au
-              </a>
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-[#0E0F0F] flex relative">
-      {/* 🔥 SIDEBAR NAVIGATION - Like main app */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 bg-[#1A1A1D] border-r border-[#2A2A2D] flex flex-col overflow-hidden`}>
-        {/* Logo Header */}
-        <div className="p-6 border-b border-[#2A2A2D]">
-          <div className="flex items-center gap-3">
-            <img 
-              src="/images/logo-light.png" 
-              alt="Social Garden" 
-              className="h-10 w-auto"
-            />
-          </div>
-        </div>
-
-        {/* Navigation Tabs */}
-        <nav className="flex-1 p-4 space-y-2">
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-              activeTab === 'overview' 
-                ? 'bg-[#1CBF79] text-white shadow-lg shadow-[#1CBF79]/20' 
-                : 'text-gray-400 hover:bg-[#2A2A2D] hover:text-white'
-            }`}
-          >
-            <Home className="w-5 h-5" />
-            <span className="font-medium">Overview</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('content')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-              activeTab === 'content' 
-                ? 'bg-[#1CBF79] text-white shadow-lg shadow-[#1CBF79]/20' 
-                : 'text-gray-400 hover:bg-[#2A2A2D] hover:text-white'
-            }`}
-          >
-            <FileText className="w-5 h-5" />
-            <span className="font-medium">Full Document</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('pricing')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-              activeTab === 'pricing' 
-                ? 'bg-[#1CBF79] text-white shadow-lg shadow-[#1CBF79]/20' 
-                : 'text-gray-400 hover:bg-[#2A2A2D] hover:text-white'
-            }`}
-          >
-            <DollarSign className="w-5 h-5" />
-            <span className="font-medium">Pricing</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('timeline')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-              activeTab === 'timeline' 
-                ? 'bg-[#1CBF79] text-white shadow-lg shadow-[#1CBF79]/20' 
-                : 'text-gray-400 hover:bg-[#2A2A2D] hover:text-white'
-            }`}
-          >
-            <Clock className="w-5 h-5" />
-            <span className="font-medium">Timeline</span>
-          </button>
-
-          <div className="pt-4 mt-4 border-t border-[#2A2A2D]">
-            <button
-              onClick={() => setShowChat(!showChat)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                showChat 
-                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/20' 
-                  : 'text-gray-400 hover:bg-[#2A2A2D] hover:text-white'
-              }`}
-            >
-              <Sparkles className="w-5 h-5" />
-              <span className="font-medium">AI Assistant</span>
-            </button>
-          </div>
-        </nav>
-
-        {/* Footer Actions */}
-        <div className="p-4 border-t border-[#2A2A2D] space-y-2">
-          <Button
-            onClick={handleDownloadPDF}
-            variant="outline"
-            className="w-full gap-2 border-gray-600 text-gray-300 hover:bg-[#2A2A2D] hover:text-white"
-          >
-            <Download className="w-4 h-4" />
-            Download PDF
-          </Button>
-          
-          {!accepted && (
-            <Button
-              onClick={handleAcceptSOW}
-              className="w-full gap-2 bg-[#1CBF79] hover:bg-[#15965E] text-white shadow-lg shadow-[#1CBF79]/20"
-            >
-              <CheckCircle className="w-4 h-4" />
-              Accept Proposal
-            </Button>
-          )}
-        </div>
-      </aside>
-
-      {/* 🔥 MAIN CONTENT AREA - Adjust width when chat is open */}
-      <main className={`flex-1 overflow-auto transition-all duration-300 ${showChat ? 'mr-[450px]' : 'mr-0'}`}>
-        {/* Top Bar */}
-        <header className="sticky top-0 z-40 bg-[#1A1A1D]/95 backdrop-blur-xl border-b border-[#2A2A2D] shadow-lg">
-          <div className="px-8 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="p-2 hover:bg-[#2A2A2D] rounded-lg transition-colors text-gray-400 hover:text-white"
-              >
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
-              
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-lg flex items-center justify-center shadow-lg shadow-[#1CBF79]/20">
-                  <span className="text-white font-bold text-sm">SG</span>
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-white">{sow?.clientName}</h1>
-                  <p className="text-sm text-gray-400 truncate max-w-md">{sow?.title}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              {accepted && (
-                <div className="flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-lg shadow-lg shadow-green-500/10">
-                  <CheckCircle className="w-4 h-4 text-green-400" />
-                  <span className="text-sm font-semibold text-green-400">Accepted</span>
-                </div>
-              )}
-              
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 border-gray-600 text-gray-300 hover:bg-[#2A2A2D] hover:border-[#1CBF79]"
-              >
-                <Share2 className="w-4 h-4" />
-                Share
-              </Button>
-
-              {sow && (
-                <CreateSheetButton
-                  clientName={sow.clientName}
-                  serviceName={sow.title}
-                  sowData={{
-                    overview: sow.htmlContent || '',
-                    deliverables: '',
-                    outcomes: '',
-                    phases: '',
-                    pricing: [],
-                    assumptions: '',
-                    timeline: '',
-                  }}
-                  triggerText="Create Sheet"
-                />
-              )}
-            </div>
-          </div>
-        </header>
-
-        {/* Content Area */}
-        <div className="p-8 max-w-full">
-          {renderTabContent()}
-        </div>
-      </main>
-
-      {/* 🔥 AI CHAT PANEL - Responsive sidebar (no overlay on desktop) */}
-      <aside 
-        className={`fixed right-0 top-0 bottom-0 bg-[#1A1A1D] border-l border-[#2A2A2D] flex flex-col shadow-2xl transition-all duration-300 z-50 ${
-          showChat ? 'w-[450px]' : 'w-0'
-        } overflow-hidden`}
-      >
-        {/* Chat Header */}
-        <div className="p-6 border-b border-[#2A2A2D] bg-gradient-to-r from-[#1CBF79]/10 to-[#15965E]/10 flex-shrink-0">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-lg flex items-center justify-center shadow-lg shadow-[#1CBF79]/30">
-                <Sparkles className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h3 className="text-white font-bold text-lg">AI Assistant</h3>
-                <p className="text-xs text-gray-400">Powered by Social Garden</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setShowChat(false)}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          <p className="text-sm text-gray-400">Ask me anything about this proposal - pricing, timeline, deliverables, or scope.</p>
-        </div>
-
-        {/* Chat Content - Scrollable */}
-        <div className="flex-1 overflow-y-auto p-6 bg-[#0E0F0F] space-y-4">
-          {chatMessages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center">
-              <div className="w-20 h-20 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-2xl flex items-center justify-center mb-6 shadow-xl shadow-[#1CBF79]/30">
-                <Sparkles className="w-10 h-10 text-white" />
-              </div>
-              <p className="text-white font-semibold text-lg mb-2">AI Assistant Ready!</p>
-              <p className="text-sm text-gray-400 mb-6">Ask me anything about your proposal</p>
-              <div className="space-y-2 w-full max-w-xs">
-                <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Try asking:</p>
-                <div className="text-left space-y-1 text-sm text-gray-400">
-                  <p>• "What's the total investment?"</p>
-                  <p>• "What deliverables are included?"</p>
-                  <p>• "When does the project start?"</p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {chatMessages.map((msg, idx) => (
-                <div
-                  key={idx}
-                  className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  {msg.role === 'assistant' && (
-                    <div className="w-8 h-8 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Sparkles className="w-5 h-5 text-white" />
-                    </div>
-                  )}
-                  <div
-                    className={`max-w-[80%] rounded-lg p-4 ${
-                      msg.role === 'user'
-                        ? 'bg-[#1CBF79] text-white'
-                        : 'bg-[#1A1A1D] text-gray-200 border border-[#2A2A2D]'
-                    }`}
-                  >
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                  </div>
-                  {msg.role === 'user' && (
-                    <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <span className="text-white font-bold text-sm">You</span>
-                    </div>
-                  )}
-                </div>
-              ))}
-              {isChatLoading && (
-                <div className="flex gap-3 justify-start">
-                  <div className="w-8 h-8 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Sparkles className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="bg-[#1A1A1D] border border-[#2A2A2D] rounded-lg p-4">
-                    <div className="flex gap-1">
-                      <div className="w-2 h-2 bg-[#1CBF79] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                      <div className="w-2 h-2 bg-[#1CBF79] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                      <div className="w-2 h-2 bg-[#1CBF79] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Suggested Questions + Text Input */}
-        <div className="border-t border-[#2A2A2D] bg-[#1A1A1D] flex-shrink-0">
-          <div className="p-4">
-            {chatMessages.length === 0 && (
-              <>
-                <p className="text-xs text-gray-500 mb-2 font-semibold uppercase tracking-wider">Quick Questions</p>
-                <div className="space-y-2 mb-4">
-                  {[
-                    { icon: DollarSign, text: "What's the total investment?" },
-                    { icon: Clock, text: "Timeline for deliverables?" },
-                    { icon: FileText, text: "What's included in the scope?" },
-                  ].map((q, i) => (
-                    <button
-                      key={i}
-                      onClick={() => {
-                        setChatInput(q.text);
-                        handleSendChatMessage();
-                      }}
-                      className="w-full text-left text-xs p-2 rounded-lg bg-[#2A2A2D] hover:bg-[#3A3A3D] text-gray-300 transition-all border border-gray-700 hover:border-[#1CBF79] flex items-center gap-2 group"
-                    >
-                      <q.icon className="w-3 h-3 text-gray-500 group-hover:text-[#1CBF79] transition-colors" />
-                      <span>{q.text}</span>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-            
-            {/* Text Input Field */}
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Type your question here..."
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                className="w-full px-4 py-3 pr-12 bg-[#0E0F0F] border border-[#2A2A2D] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#1CBF79] transition-colors"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey && chatInput.trim()) {
-                    e.preventDefault();
-                    handleSendChatMessage();
-                  }
-                }}
-                disabled={isChatLoading}
-              />
-              <button 
-                onClick={handleSendChatMessage}
-                disabled={isChatLoading || !chatInput.trim()}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-[#1CBF79] hover:bg-[#15a366] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      </aside>
-      
-      {/* Add animation keyframes */}
-      <style jsx global>{`
-        @keyframes slide-in {
-          from {
-            transform: translateX(100%);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
-        }
-        
-        .animate-slide-in {
-          animation: slide-in 0.3s ease-out;
-        }
-      `}</style>
-    </div>
-  );
-
-  // 🔥 RENDER TAB CONTENT
-  function renderTabContent() {
+  // 🔥 RENDER TAB CONTENT - Memoized
+  const renderTabContent = useCallback(() => {
     if (!sow) return null;
 
     switch (activeTab) {
@@ -1596,5 +1214,387 @@ ${sow.htmlContent}
       default:
         return null;
     }
+  }, [sow, activeTab, dynamicServices, selectedServices, contentPieces, socialPosts, adSpend, selectedAddOns, recommendations, accepted, calculatedTotal]);
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0E0F0F] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-[#1CBF79] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading your proposal...</p>
+        </div>
+      </div>
+    );
   }
+
+  if (error || !sow) {
+    return (
+      <div className="min-h-screen bg-[#0E0F0F] flex items-center justify-center p-6">
+        <div className="max-w-md text-center">
+          <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-10 h-10 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h1 className="text-3xl font-bold text-white mb-3">Proposal Not Found</h1>
+          <p className="text-gray-400 mb-6">
+            {error || "This proposal doesn't exist or has been removed."}
+          </p>
+          <div className="bg-[#1A1A1D] border border-[#2A2A2D] rounded-lg p-4 mb-6">
+            <p className="text-sm text-gray-400 mb-2">Need help?</p>
+            <p className="text-xs text-gray-500">
+              Contact your account manager or email{' '}
+              <a href="mailto:hello@socialgarden.com.au" className="text-[#1CBF79] hover:underline">
+                hello@socialgarden.com.au
+              </a>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#0E0F0F] flex relative">
+      {/* 🔥 SIDEBAR NAVIGATION - Like main app */}
+      <aside className={`${sidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 bg-[#1A1A1D] border-r border-[#2A2A2D] flex flex-col overflow-hidden`}>
+        {/* Logo Header */}
+        <div className="p-6 border-b border-[#2A2A2D]">
+          <div className="flex items-center gap-3">
+            <img 
+              src="/images/logo-light.png" 
+              alt="Social Garden" 
+              className="h-10 w-auto"
+            />
+          </div>
+        </div>
+
+        {/* Navigation Tabs */}
+        <nav className="flex-1 p-4 space-y-2">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+              activeTab === 'overview' 
+                ? 'bg-[#1CBF79] text-white shadow-lg shadow-[#1CBF79]/20' 
+                : 'text-gray-400 hover:bg-[#2A2A2D] hover:text-white'
+            }`}
+          >
+            <Home className="w-5 h-5" />
+            <span className="font-medium">Overview</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('content')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+              activeTab === 'content' 
+                ? 'bg-[#1CBF79] text-white shadow-lg shadow-[#1CBF79]/20' 
+                : 'text-gray-400 hover:bg-[#2A2A2D] hover:text-white'
+            }`}
+          >
+            <FileText className="w-5 h-5" />
+            <span className="font-medium">Full Document</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('pricing')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+              activeTab === 'pricing' 
+                ? 'bg-[#1CBF79] text-white shadow-lg shadow-[#1CBF79]/20' 
+                : 'text-gray-400 hover:bg-[#2A2A2D] hover:text-white'
+            }`}
+          >
+            <DollarSign className="w-5 h-5" />
+            <span className="font-medium">Pricing</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('timeline')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+              activeTab === 'timeline' 
+                ? 'bg-[#1CBF79] text-white shadow-lg shadow-[#1CBF79]/20' 
+                : 'text-gray-400 hover:bg-[#2A2A2D] hover:text-white'
+            }`}
+          >
+            <Clock className="w-5 h-5" />
+            <span className="font-medium">Timeline</span>
+          </button>
+
+          <div className="pt-4 mt-4 border-t border-[#2A2A2D]">
+            <button
+              onClick={() => setShowChat(!showChat)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                showChat 
+                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/20' 
+                  : 'text-gray-400 hover:bg-[#2A2A2D] hover:text-white'
+              }`}
+            >
+              <Sparkles className="w-5 h-5" />
+              <span className="font-medium">AI Assistant</span>
+            </button>
+          </div>
+        </nav>
+
+        {/* Footer Actions */}
+        <div className="p-4 border-t border-[#2A2A2D] space-y-2">
+          <Button
+            onClick={handleDownloadPDF}
+            variant="outline"
+            className="w-full gap-2 border-gray-600 text-gray-300 hover:bg-[#2A2A2D] hover:text-white"
+          >
+            <Download className="w-4 h-4" />
+            Download PDF
+          </Button>
+          
+          {!accepted && (
+            <Button
+              onClick={handleAcceptSOW}
+              className="w-full gap-2 bg-[#1CBF79] hover:bg-[#15965E] text-white shadow-lg shadow-[#1CBF79]/20"
+            >
+              <CheckCircle className="w-4 h-4" />
+              Accept Proposal
+            </Button>
+          )}
+        </div>
+      </aside>
+
+      {/* 🔥 MAIN CONTENT AREA - Adjust width when chat is open */}
+      <main className={`flex-1 overflow-auto transition-all duration-300 ${showChat ? 'mr-[450px]' : 'mr-0'}`}>
+        {/* Top Bar */}
+        <header className="sticky top-0 z-40 bg-[#1A1A1D]/95 backdrop-blur-xl border-b border-[#2A2A2D] shadow-lg">
+          <div className="px-8 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="p-2 hover:bg-[#2A2A2D] rounded-lg transition-colors text-gray-400 hover:text-white"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+              
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-lg flex items-center justify-center shadow-lg shadow-[#1CBF79]/20">
+                  <span className="text-white font-bold text-sm">SG</span>
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-white">{sow?.clientName}</h1>
+                  <p className="text-sm text-gray-400 truncate max-w-md">{sow?.title}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {accepted && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-lg shadow-lg shadow-green-500/10">
+                  <CheckCircle className="w-4 h-4 text-green-400" />
+                  <span className="text-sm font-semibold text-green-400">Accepted</span>
+                </div>
+              )}
+              
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 border-gray-600 text-gray-300 hover:bg-[#2A2A2D] hover:border-[#1CBF79]"
+              >
+                <Share2 className="w-4 h-4" />
+                Share
+              </Button>
+
+              {sow && (
+                <CreateSheetButton
+                  clientName={sow.clientName}
+                  serviceName={sow.title}
+                  sowData={{
+                    overview: sow.htmlContent || '',
+                    deliverables: '',
+                    outcomes: '',
+                    phases: '',
+                    pricing: [],
+                    assumptions: '',
+                    timeline: '',
+                  }}
+                  triggerText="Create Sheet"
+                />
+              )}
+            </div>
+          </div>
+        </header>
+
+        {/* Content Area */}
+        <div className="p-8 max-w-full">
+          {renderTabContent()}
+        </div>
+      </main>
+
+      {/* 🔥 AI CHAT PANEL - Responsive sidebar (no overlay on desktop) */}
+      <aside 
+        className={`fixed right-0 top-0 bottom-0 bg-[#1A1A1D] border-l border-[#2A2A2D] flex flex-col shadow-2xl transition-all duration-300 z-50 ${
+          showChat ? 'w-[450px]' : 'w-0'
+        } overflow-hidden`}
+      >
+        {/* Chat Header */}
+        <div className="p-6 border-b border-[#2A2A2D] bg-gradient-to-r from-[#1CBF79]/10 to-[#15965E]/10 flex-shrink-0">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-lg flex items-center justify-center shadow-lg shadow-[#1CBF79]/30">
+                <Sparkles className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-white font-bold text-lg">AI Assistant</h3>
+                <p className="text-xs text-gray-400">Powered by Social Garden</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowChat(false)}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <p className="text-sm text-gray-400">Ask me anything about this proposal - pricing, timeline, deliverables, or scope.</p>
+        </div>
+
+        {/* Chat Content - Scrollable */}
+        <div className="flex-1 overflow-y-auto p-6 bg-[#0E0F0F] space-y-4">
+          {chatMessages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              <div className="w-20 h-20 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-2xl flex items-center justify-center mb-6 shadow-xl shadow-[#1CBF79]/30">
+                <Sparkles className="w-10 h-10 text-white" />
+              </div>
+              <p className="text-white font-semibold text-lg mb-2">AI Assistant Ready!</p>
+              <p className="text-sm text-gray-400 mb-6">Ask me anything about your proposal</p>
+              <div className="space-y-2 w-full max-w-xs">
+                <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Try asking:</p>
+                <div className="text-left space-y-1 text-sm text-gray-400">
+                  <p>• "What's the total investment?"</p>
+                  <p>• "What deliverables are included?"</p>
+                  <p>• "When does the project start?"</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {chatMessages.map((msg, idx) => (
+                <div
+                  key={idx}
+                  className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  {msg.role === 'assistant' && (
+                    <div className="w-8 h-8 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Sparkles className="w-5 h-5 text-white" />
+                    </div>
+                  )}
+                  <div
+                    className={`max-w-[80%] rounded-lg p-4 ${
+                      msg.role === 'user'
+                        ? 'bg-[#1CBF79] text-white'
+                        : 'bg-[#1A1A1D] text-gray-200 border border-[#2A2A2D]'
+                    }`}
+                  >
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                  </div>
+                  {msg.role === 'user' && (
+                    <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <span className="text-white font-bold text-sm">You</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {isChatLoading && (
+                <div className="flex gap-3 justify-start">
+                  <div className="w-8 h-8 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Sparkles className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="bg-[#1A1A1D] border border-[#2A2A2D] rounded-lg p-4">
+                    <div className="flex gap-1">
+                      <div className="w-2 h-2 bg-[#1CBF79] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                      <div className="w-2 h-2 bg-[#1CBF79] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                      <div className="w-2 h-2 bg-[#1CBF79] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Suggested Questions + Text Input */}
+        <div className="border-t border-[#2A2A2D] bg-[#1A1A1D] flex-shrink-0">
+          <div className="p-4">
+            {chatMessages.length === 0 && (
+              <>
+                <p className="text-xs text-gray-500 mb-2 font-semibold uppercase tracking-wider">Quick Questions</p>
+                <div className="space-y-2 mb-4">
+                  {[
+                    { icon: DollarSign, text: "What's the total investment?" },
+                    { icon: Clock, text: "Timeline for deliverables?" },
+                    { icon: FileText, text: "What's included in the scope?" },
+                  ].map((q, i) => (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        setChatInput(q.text);
+                        handleSendChatMessage();
+                      }}
+                      className="w-full text-left text-xs p-2 rounded-lg bg-[#2A2A2D] hover:bg-[#3A3A3D] text-gray-300 transition-all border border-gray-700 hover:border-[#1CBF79] flex items-center gap-2 group"
+                    >
+                      <q.icon className="w-3 h-3 text-gray-500 group-hover:text-[#1CBF79] transition-colors" />
+                      <span>{q.text}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+            
+            {/* Text Input Field */}
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Type your question here..."
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                className="w-full px-4 py-3 pr-12 bg-[#0E0F0F] border border-[#2A2A2D] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#1CBF79] transition-colors"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey && chatInput.trim()) {
+                    e.preventDefault();
+                    handleSendChatMessage();
+                  }
+                }}
+                disabled={isChatLoading}
+              />
+              <button 
+                onClick={handleSendChatMessage}
+                disabled={isChatLoading || !chatInput.trim()}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-[#1CBF79] hover:bg-[#15a366] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </aside>
+      
+      {/* Add animation keyframes */}
+      <style jsx global>{`
+        @keyframes slide-in {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        
+        .animate-slide-in {
+          animation: slide-in 0.3s ease-out;
+        }
+      `}</style>
+    </div>
+  );
+
 }
