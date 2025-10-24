@@ -405,6 +405,10 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
   }
 
   console.log(`📊 Final content has ${content.length} nodes. Pricing table inserted: ${pricingTableInserted}`);
+  // Forensic logging to validate narrative vs pricing merge
+  const pricingCount = content.filter(n => n?.type === 'editablePricingTable').length;
+  const narrativeCount = content.length - pricingCount;
+  console.log(`✅ MERGE COMPLETE - Narrative nodes: ${narrativeCount}, Pricing nodes: ${pricingCount}, Total nodes for insertion: ${content.length}`);
   return { type: 'doc', content };
 };
 
@@ -2465,19 +2469,23 @@ export default function Page() {
       // 5. Merge or set editor content depending on existing content
       let finalContent = convertedContent;
       const existing = editorRef.current?.getContent?.();
-      const nodesToAppend = (convertedContent?.content || []).filter((n: any) => n?.type === 'editablePricingTable');
+      const isTrulyEmpty = !existing 
+        || !Array.isArray(existing.content) 
+        || existing.content.length === 0 
+        || (existing.content.length === 1 
+            && existing.content[0]?.type === 'paragraph' 
+            && (!existing.content[0].content || existing.content[0].content.length === 0));
 
-      const hasExisting = !!(existing && Array.isArray(existing.content) && existing.content.length > 0);
-      if (hasExisting) {
-        // If we already have content, append pricing table nodes if present, otherwise append entire converted content
-        const appendNodes = nodesToAppend.length > 0 ? nodesToAppend : (convertedContent?.content || []);
+      if (!isTrulyEmpty) {
+        // Replace the entire document on first proper insert from AI
+        // The convertedContent already merges narrative + pricing table
         finalContent = {
-          ...(existing || { type: 'doc' }),
-          content: sanitizeEmptyTextNodes([...(existing?.content || []), ...appendNodes])
+          ...convertedContent,
+          content: sanitizeEmptyTextNodes(convertedContent.content)
         } as any;
-        console.log('➕ Appending content to existing document. Nodes appended:', appendNodes.length);
+        console.log('📝 Replacing existing non-empty editor with full merged content');
       } else {
-        // Fresh set
+        // Fresh set for truly empty editor
         finalContent = {
           ...convertedContent,
           content: sanitizeEmptyTextNodes(convertedContent.content)
@@ -2639,19 +2647,22 @@ export default function Page() {
             docTitle = `SOW - ${clientMatch[1]}`;
           }
           
-          // 5. Merge or set content depending on existing editor content
+          // 5. Determine if editor is truly empty; if not, replace with full merged content
           const existing = editorRef.current?.getContent?.();
-          const nodesToAppend = (content?.content || []).filter((n: any) => n?.type === 'editablePricingTable');
-          const hasExisting = !!(existing && Array.isArray(existing.content) && existing.content.length > 0);
-          const finalContent = hasExisting
-            ? {
-                ...(existing || { type: 'doc' }),
-                content: sanitizeEmptyTextNodes([...(existing?.content || []), ...(nodesToAppend.length > 0 ? nodesToAppend : (content?.content || []))])
-              }
-            : { ...content, content: sanitizeEmptyTextNodes(content.content) };
+          const isTrulyEmpty = !existing 
+            || !Array.isArray(existing.content) 
+            || existing.content.length === 0 
+            || (existing.content.length === 1 
+                && existing.content[0]?.type === 'paragraph' 
+                && (!existing.content[0].content || existing.content[0].content.length === 0));
+          const finalContent = {
+            ...content,
+            content: sanitizeEmptyTextNodes(content.content)
+          };
+          console.log('🧩 Chat insert: applying full merged content. Empty editor:', isTrulyEmpty);
 
           // 6. Update the document state
-          console.log('📝 Updating document state:', docTitle, ' Appending:', hasExisting);
+          console.log('📝 Updating document state:', docTitle, ' Empty editor:', isTrulyEmpty);
           setDocuments(prev =>
             prev.map(doc =>
               doc.id === currentDocId
@@ -2676,7 +2687,7 @@ export default function Page() {
             console.error('❌ Database save error:', saveError);
           }
           
-          // 8. Update the editor directly
+          // 8. Update the editor directly with full merged content
           if (editorRef.current) {
             if (editorRef.current.commands?.setContent) {
               editorRef.current.commands.setContent(finalContent);
