@@ -98,11 +98,14 @@ const sanitizeEmptyTextNodes = (content: any): any => {
   return content;
 };
 
-const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []) => {
+type ConvertOptions = { strictRoles?: boolean };
+
+const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = [], options: ConvertOptions = {}) => {
   const lines = markdown.split('\n');
   const content: any[] = [];
   let i = 0;
   let pricingTableInserted = false;
+  const strictRoles = !!options.strictRoles;
 
   const parseTextWithFormatting = (text: string) => {
     // This function handles bold/italic without creating empty text nodes
@@ -206,12 +209,25 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
   };
 
   // Helper function to insert pricing table
+  const buildDefaultCoreZeroHours = () => {
+    // Minimal safe default rows using core roles with hours=0 and known rates
+    const find = (name: string) => ROLES.find(r => r.name === name);
+    const head = find('Tech - Head Of - Senior Project Management');
+    const pc = find('Project Coordination');
+    const am = find('Account Management');
+    return [
+      { role: head?.name || 'Tech - Head Of - Senior Project Management', description: 'Strategic oversight', hours: 0, rate: head?.rate || 365 },
+      { role: pc?.name || 'Project Coordination', description: 'Delivery coordination', hours: 0, rate: pc?.rate || 140 },
+      { role: am?.name || 'Account Management', description: 'Client comms & governance', hours: 0, rate: am?.rate || 150 },
+    ];
+  };
+
   const insertPricingTable = (rolesFromMarkdown: any[] = []) => {
     if (pricingTableInserted) return;
     
     let pricingRows: any[] = [];
     
-    // Use provided suggestedRoles first, fall back to markdown-parsed roles
+    // Use provided suggestedRoles first, else choose strategy based on strictRoles
     if (suggestedRoles.length > 0) {
       console.log('✅ Using suggestedRoles from JSON.');
       pricingRows = suggestedRoles.map(role => {
@@ -223,6 +239,9 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
           rate: matchedRole?.rate || role.rate || 0,
         };
       });
+    } else if (strictRoles) {
+      console.log('✅ SAFE FALLBACK ACTIVATED: Inserting default pricing table with zero hours.');
+      pricingRows = buildDefaultCoreZeroHours();
     } else if (rolesFromMarkdown.length > 0) {
       console.log('✅ Using roles parsed from markdown table.');
       pricingRows = rolesFromMarkdown;
@@ -306,8 +325,8 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
       }
       
       // Try to parse as pricing table
-      const parsedRoles = parseMarkdownTable(tableLines);
-      if (parsedRoles.length > 0) {
+      const parsedRoles = strictRoles ? [] : parseMarkdownTable(tableLines);
+      if (!strictRoles && parsedRoles.length > 0) {
         console.log(`📊 Detected ${parsedRoles.length} roles from markdown table, using for pricing table.`);
         insertPricingTable(parsedRoles);
       } else {
@@ -2444,6 +2463,7 @@ export default function Page() {
       // let suggestedRoles: any[] = []; // Now passed as an argument
       const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
 
+      let hasValidSuggestedRoles = false;
       if (jsonMatch && jsonMatch[1]) {
         try {
           const parsedJson = JSON.parse(jsonMatch[1]);
@@ -2453,6 +2473,7 @@ export default function Page() {
             // Remove the JSON block from the markdown content
             markdownPart = content.replace(jsonMatch[0], '').trim();
             console.log(`✅ Parsed ${suggestedRoles.length} suggested roles from AI response.`);
+            hasValidSuggestedRoles = suggestedRoles.length > 0;
           }
         } catch (e) {
           console.warn('⚠️ Could not parse suggestedRoles JSON from AI response.', e);
@@ -2469,15 +2490,16 @@ export default function Page() {
       console.log('📊 suggestedRoles array:', suggestedRoles);
       console.log('📊 suggestedRoles length:', suggestedRoles?.length || 0);
       
-      // CRITICAL: If no suggestedRoles provided, this is a FAILURE
-      // The AI MUST provide JSON with suggestedRoles - no fallback to markdown parsing
-      if (suggestedRoles.length === 0) {
-        console.error('❌ CRITICAL ERROR: AI did not provide suggestedRoles JSON. The application requires a JSON block with suggestedRoles array. This is not optional.');
-        console.error('❌ Expected format: ```json { "suggestedRoles": [{ "role": "...", "hours": ... }] }```');
-        // Don't attempt any fallback - fail loudly
+      // CRITICAL: If no suggestedRoles provided, activate SAFE FALLBACK
+      let convertedContent;
+      if (!hasValidSuggestedRoles) {
+        console.error('❌ CRITICAL ERROR: AI did not provide suggestedRoles JSON. The application requires a JSON block with suggestedRoles array.');
+        console.log('✅ SAFE FALLBACK ACTIVATED: Inserting SOW narrative with a default, empty pricing table.');
+        toast.warning('Warning: AI failed to generate a valid price table. A default table has been inserted. Please review and update manually.');
+        convertedContent = convertMarkdownToNovelJSON(cleanedContent, [], { strictRoles: true });
+      } else {
+        convertedContent = convertMarkdownToNovelJSON(cleanedContent, suggestedRoles, { strictRoles: false });
       }
-      
-      const convertedContent = convertMarkdownToNovelJSON(cleanedContent, suggestedRoles);
       console.log('✅ Content converted');
       
       // 4. Extract title from the content
@@ -2638,6 +2660,7 @@ export default function Page() {
           let suggestedRoles: any[] = [];
           const jsonMatch = markdownPart.match(/```json\s*([\s\S]*?)\s*```/);
 
+          let hasValidSuggestedRoles = false;
           if (jsonMatch && jsonMatch[1]) {
             try {
               const parsedJson = JSON.parse(jsonMatch[1]);
@@ -2645,6 +2668,7 @@ export default function Page() {
                 suggestedRoles = parsedJson.suggestedRoles;
                 markdownPart = markdownPart.replace(jsonMatch[0], '').trim();
                 console.log(`✅ Parsed ${suggestedRoles.length} roles from "insert" command.`);
+                hasValidSuggestedRoles = suggestedRoles.length > 0;
               }
             } catch (e) {
               console.warn('⚠️ Could not parse suggestedRoles JSON from last AI message.', e);
@@ -2658,7 +2682,15 @@ export default function Page() {
           
           // 3. Convert markdown and roles to Novel/TipTap JSON
           console.log('🔄 Converting markdown to JSON for insertion...');
-          const content = convertMarkdownToNovelJSON(cleanedMessage, suggestedRoles);
+          let content;
+          if (!hasValidSuggestedRoles) {
+            console.error('❌ CRITICAL ERROR: AI did not provide suggestedRoles JSON for insert command.');
+            console.log('✅ SAFE FALLBACK ACTIVATED: Inserting SOW narrative with a default, empty pricing table.');
+            toast.warning('Warning: AI failed to generate a valid price table. A default table has been inserted. Please review and update manually.');
+            content = convertMarkdownToNovelJSON(cleanedMessage, [], { strictRoles: true });
+          } else {
+            content = convertMarkdownToNovelJSON(cleanedMessage, suggestedRoles, { strictRoles: false });
+          }
           console.log('✅ Content converted');
           
           // 4. Extract title from the SOW content

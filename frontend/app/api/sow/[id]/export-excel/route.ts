@@ -5,6 +5,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import ExcelJS from 'exceljs';
+import { promises as fs } from 'fs';
+import path from 'path';
 import { queryOne } from '@/lib/db';
 
 type TipTapNode = {
@@ -195,10 +197,24 @@ export async function GET(
       // to keep UX consistent; the sheet will explain missing structure.
     }
 
-    // Build workbook
+    // Build workbook (attempt to load branded template if available)
     const wb = new ExcelJS.Workbook();
     wb.creator = 'Social Garden';
     wb.created = new Date();
+
+    try {
+      const templatePath = path.join(process.cwd(), 'public', 'templates', 'Social_Garden_SOW_Template.xlsx');
+      const templateBuf = await fs.readFile(templatePath);
+      const arrayBuf = templateBuf.buffer.slice(
+        templateBuf.byteOffset,
+        templateBuf.byteOffset + templateBuf.byteLength
+      );
+      await wb.xlsx.load(arrayBuf as ArrayBuffer);
+    } catch (e) {
+      // If template not found or cannot be loaded, continue with a blank workbook
+      // eslint-disable-next-line no-console
+      console.warn('[Export Excel] Template not found or failed to load. Using blank workbook.', e?.toString?.() || e);
+    }
 
     // Summary Sheet
     const summary = wb.addWorksheet('SOW_Summary');
@@ -315,6 +331,17 @@ export async function GET(
         });
       }
     });
+
+    // Remove any non client-facing sheets (keep only SOW_Summary and ScopeN)
+    const allowedNames = new Set<string>(['SOW_Summary', ...scopes.map((_, i) => `Scope${i + 1}`)]);
+    // Make a copy of current worksheet names to iterate safely
+    const existingNames = wb.worksheets.map((w) => w.name);
+    for (const name of existingNames) {
+      if (!allowedNames.has(name)) {
+        const ws = wb.getWorksheet(name);
+        if (ws) wb.removeWorksheet(ws.id as any);
+      }
+    }
 
     const arrayBuffer = await wb.xlsx.writeBuffer();
     const filename = `${(sow.clientName || 'Client').toString().replace(/[^a-z0-9]/gi, '_')}_Statement_of_Work.xlsx`;
