@@ -2060,7 +2060,7 @@ export default function Page() {
       // 6. Update the editor directly, replacing all content
       if (editorRef.current) {
         console.log('📝 Setting editor content with converted JSON');
-        editorRef.current.commands.setContent(convertedContent);
+        editorRef.current.insertContent(convertedContent);
         console.log('✅ Editor content set successfully');
       }
       
