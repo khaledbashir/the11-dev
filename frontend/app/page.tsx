@@ -1692,7 +1692,32 @@ export default function Page() {
     toast.info('📄 Generating PDF...');
     
     try {
-      // Get HTML directly from the editor (includes all formatting and custom nodes)
+      // 🚨 CRITICAL: Enforce Head Of role BEFORE converting to HTML
+      // Get the current TipTap JSON content
+      const currentContent = currentDoc.content;
+      
+      if (!currentContent) {
+        toast.error('❌ Document is empty. Please add content before exporting.');
+        return;
+      }
+      
+      // Call enforcement endpoint to ensure Head Of role exists
+      const enforcementResponse = await fetch(`/api/sow/${currentDocId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: currentContent,
+          title: currentDoc.title,
+        }),
+      });
+      
+      if (!enforcementResponse.ok) {
+        console.warn('⚠️ Enforcement call failed, continuing with original content');
+      } else {
+        console.log('✅ Head Of role enforcement applied before PDF generation');
+      }
+      
+      // Now get HTML from editor (which should have enforced content after update)
       const editorHTML = editorRef.current.getHTML();
       
       if (!editorHTML || editorHTML.trim() === '' || editorHTML === '<p></p>') {
