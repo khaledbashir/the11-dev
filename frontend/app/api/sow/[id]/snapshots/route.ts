@@ -23,10 +23,10 @@ async function ensureTable() {
   ensured = true;
 }
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string }}) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await ensureTable();
-    const { id } = params;
+    const { id } = await params;
     const url = new URL(_req.url);
     const limit = Math.min(parseInt(url.searchParams.get('limit') || '20', 10), 100);
 
@@ -42,10 +42,10 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   }
 }
 
-export async function POST(req: NextRequest, { params }: { params: { id: string }}) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await ensureTable();
-    const { id } = params;
+    const { id } = await params;
     const pool = getPool();
 
     // Load SOW
