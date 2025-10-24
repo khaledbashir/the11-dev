@@ -1697,8 +1697,8 @@ export default function Page() {
     toast.info('📄 Generating PDF...');
     
     try {
-      // Get HTML from editor
-      const editorHTML = editorRef.current.getHTML();
+      // Build clean HTML from TipTap JSON to ensure proper tables/lists
+      const editorHTML = convertNovelToHTML(currentDoc.content);
       
       if (!editorHTML || editorHTML.trim() === '' || editorHTML === '<p></p>') {
         toast.error('❌ Document is empty. Please add content before exporting.');
@@ -1882,25 +1882,7 @@ export default function Page() {
   const convertNovelToHTML = (content: any) => {
     if (!content || !content.content) return '';
 
-  let html = '<style>';
-  html += 'body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; color: #1a1a1a; line-height: 1.6; }';
-  html += 'h1 { font-size: 28px; font-weight: 700; margin: 20px 0 16px; color: #2C823D; }';
-  html += 'h2 { font-size: 22px; font-weight: 600; margin: 16px 0 12px; color: #2C823D; }';
-  html += 'h3 { font-size: 18px; font-weight: 600; margin: 14px 0 10px; color: #2C823D; }';
-  html += 'p { margin: 8px 0; }';
-  html += 'ul, ol { margin: 8px 0; padding-left: 24px; }';
-  html += 'li { margin: 4px 0; }';
-  html += 'strong { font-weight: 600; }';
-  html += 'table { width: 100%; border-collapse: collapse; margin: 16px 0; }';
-  html += 'thead tr th { background: #0f5132; color: white; }';
-  html += 'th { background: #2C823D; color: white; padding: 12px 8px; text-align: left; font-weight: 600; border: 1px solid #2C823D; }';
-  html += 'td { padding: 10px 8px; border: 1px solid #e0e0e0; }';
-  html += 'tr:nth-child(even) { background: #f8f8f8; }';
-  html += 'hr { border: none; border-top: 2px solid #2C823D; margin: 20px 0; }';
-  html += '.num { text-align: right; white-space: nowrap; }';
-  html += '.summary-table { width: auto; margin-left: auto; }';
-  html += '.summary-table td { padding: 6px 8px; }';
-  html += '</style>';
+  let html = '';
 
     const processTextNode = (textNode: any): string => {
       if (!textNode) return '';
@@ -1922,7 +1904,76 @@ export default function Page() {
 
   const formatCurrency = (n: number) => (Number(n) || 0).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' });
 
-  content.content.forEach((node: any) => {
+  // Helpers for normalization
+  const getPlainText = (node: any): string => {
+    if (!node) return '';
+    if (node.type === 'text') return node.text || '';
+    if (Array.isArray(node.content)) return node.content.map(getPlainText).join('');
+    return '';
+  };
+  const isMarkdownTableLine = (text: string) => /\|.*\|/.test(text.trim());
+
+  // Normalize nodes: strip obsolete 'Investment' markdown section and fix md tables/bullets
+  const nodes = content.content as any[];
+  const normalized: any[] = [];
+  let idx = 0;
+  while (idx < nodes.length) {
+    const node = nodes[idx];
+    // Strip obsolete Investment markdown table section
+    if (node.type === 'heading') {
+      const title = getPlainText(node).trim().toLowerCase();
+      if (title === 'investment') {
+        idx++;
+        while (idx < nodes.length) {
+          const next = nodes[idx];
+          if (next.type === 'heading') break;
+          const t = getPlainText(next).trim();
+          if (!(next.type === 'paragraph' && (isMarkdownTableLine(t) || t.startsWith('|') || /role\s*\|/i.test(t)))) break;
+          idx++;
+        }
+        continue;
+      }
+    }
+    // Group markdown table lines
+    if (node.type === 'paragraph') {
+      const text = getPlainText(node);
+      if (isMarkdownTableLine(text) || text.trim().startsWith('|')) {
+        const lines: string[] = [];
+        while (idx < nodes.length) {
+          const n = nodes[idx];
+          if (n.type !== 'paragraph') break;
+          const t = getPlainText(n).trim();
+          if (!(isMarkdownTableLine(t) || t.startsWith('|'))) break;
+          lines.push(t);
+          idx++;
+        }
+        if (lines.length) {
+          normalized.push({ type: 'mdTable', lines });
+          continue;
+        }
+      }
+      // Group '+' bullets into list
+      if (text.trim().startsWith('+ ')) {
+        const items: string[] = [];
+        while (idx < nodes.length) {
+          const n = nodes[idx];
+          if (n.type !== 'paragraph') break;
+          const t = getPlainText(n);
+          if (!t.trim().startsWith('+ ')) break;
+          items.push(t.trim().replace(/^\+\s+/, ''));
+          idx++;
+        }
+        if (items.length) {
+          normalized.push({ type: 'mdBulletList', items });
+          continue;
+        }
+      }
+    }
+    normalized.push(node);
+    idx++;
+  }
+
+  normalized.forEach((node: any) => {
       switch (node.type) {
         case 'heading':
           const level = node.attrs?.level || 1;
@@ -1930,6 +1981,11 @@ export default function Page() {
           break;
         case 'paragraph':
           html += `<p>${processContent(node.content)}</p>`;
+          break;
+        case 'mdBulletList':
+          html += '<ul>';
+          node.items.forEach((text: string) => { html += `<li>${text}</li>`; });
+          html += '</ul>';
           break;
         case 'bulletList':
           html += '<ul>';
@@ -1949,16 +2005,47 @@ export default function Page() {
           break;
         case 'table':
           html += '<table>';
-          node.content?.forEach((row: any, rowIndex: number) => {
-            html += '<tr>';
-            row.content?.forEach((cell: any) => {
+          if (Array.isArray(node.content) && node.content.length > 0) {
+            const headerRow = node.content[0];
+            html += '<thead><tr>';
+            headerRow.content?.forEach((cell: any) => {
               const cellContent = cell.content?.[0]?.content ? processContent(cell.content[0].content) : '';
-              const tag = rowIndex === 0 || cell.type === 'tableHeader' ? 'th' : 'td';
-              html += `<${tag}>${cellContent}</${tag}>`;
+              html += `<th>${cellContent}</th>`;
             });
-            html += '</tr>';
-          });
+            html += '</tr></thead>';
+            if (node.content.length > 1) {
+              html += '<tbody>';
+              node.content.slice(1).forEach((row: any) => {
+                html += '<tr>';
+                row.content?.forEach((cell: any) => {
+                  const cellContent = cell.content?.[0]?.content ? processContent(cell.content[0].content) : '';
+                  html += `<td>${cellContent}</td>`;
+                });
+                html += '</tr>';
+              });
+              html += '</tbody>';
+            }
+          }
           html += '</table>';
+          break;
+        case 'mdTable': {
+          const rows = node.lines
+            .map((line: string) => line.trim())
+            .filter((line: string) => line.startsWith('|'))
+            .map((line: string) => line.replace(/^\||\|$/g, ''))
+            .map((line: string) => line.split('|').map((c: string) => c.trim()));
+          if (!rows.length) break;
+          const hasAlignRow = rows.length > 1 && rows[1].every((cell: string) => /:?-{3,}:?/.test(cell));
+          const header = rows[0];
+          const bodyRows = hasAlignRow ? rows.slice(2) : rows.slice(1);
+          html += '<table>';
+          html += '<thead><tr>' + header.map((h: string) => `<th>${h}</th>`).join('') + '</tr></thead>';
+          if (bodyRows.length) {
+            html += '<tbody>' + bodyRows.map((r: string[]) => `<tr>${r.map((c: string) => `<td>${c}</td>`).join('')}</tr>`).join('') + '</tbody>';
+          }
+          html += '</table>';
+          break;
+        }
           break;
         case 'horizontalRule':
           html += '<hr />';

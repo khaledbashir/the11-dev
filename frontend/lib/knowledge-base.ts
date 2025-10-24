@@ -209,6 +209,9 @@ Your ONLY task for this section is to provide a JSON code block containing an ob
 
 *   **Do NOT generate a pricing table or markdown table.** Your ONLY pricing-related output is the JSON code block shown above.
 *   **Do NOT include a narrative section titled 'Investment' or 'Pricing Summary'.** The application renders a Smart Pricing Table from your JSON. Provide narrative sections only, then the JSON block.
+*   Do NOT include any additional markdown table for pricing anywhere in the document. Pricing tables are handled exclusively by the application.
+*   If you choose to present "Project Phases" as a table, use a clean standard markdown table format with a header row like: | Phase | Duration | Key Activities |. Avoid any non-standard characters.
+*   For bullet lists, always use '-' hyphen markers (for example: '- Item one'). Do not use '+' as a list marker.
 *   **NEVER deviate from the JSON format.** If you don't provide a JSON block at the end of your response, the entire SOW generation will fail.
 *   **Use ONLY roles from the official Social Garden rate card.** Do not invent new role names. The application has a strict list of 82 valid roles.
 *   **Always include hours for each role.** Each object must have both "role" and "hours" properties.
