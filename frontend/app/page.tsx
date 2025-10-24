@@ -67,14 +67,13 @@ const extractClientName = (prompt: string): string | null => {
 };
 
 // Helper function to convert markdown to Novel editor JSON format
-const convertMarkdownToNovelJSON = (markdown: string) => {
+const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []) => {
   const lines = markdown.split('\n');
   const content: any[] = [];
   let i = 0;
-  let inTable = false;
-  let tableRows: string[] = [];
 
   const parseTextWithFormatting = (text: string) => {
+    // This function can remain as-is, it handles bold/italic.
     const parts: any[] = [];
     let currentText = '';
     let isBold = false;
@@ -109,242 +108,106 @@ const convertMarkdownToNovelJSON = (markdown: string) => {
     return parts.length > 0 ? parts : [{ type: 'text', text: text }];
   };
 
-  const processTable = (rows: string[]) => {
-    if (rows.length < 2) return null;
-    
-    const headerRow = rows[0].split('|').filter(cell => cell.trim() !== '').map(cell => cell.trim());
-    const dataRows = rows.slice(2).map(row => 
-      row.split('|').filter(cell => cell.trim() !== '').map(cell => cell.trim())
-    );
-
-    // Check if this is a pricing table (has Role, Hours, Rate columns)
-    const isPricingTable = headerRow.some(h => h.toLowerCase().includes('role')) &&
-                          headerRow.some(h => h.toLowerCase().includes('hours')) &&
-                          headerRow.some(h => h.toLowerCase().includes('rate'));
-
-    if (isPricingTable) {
-      // Find column indexes
-      const roleIdx = headerRow.findIndex(h => h.toLowerCase().includes('role'));
-      const descIdx = headerRow.findIndex(h => h.toLowerCase().includes('description'));
-      const hoursIdx = headerRow.findIndex(h => h.toLowerCase().includes('hours'));
-      const rateIdx = headerRow.findIndex(h => h.toLowerCase().includes('rate'));
-
-      // Helper function to match role name to ROLES list with better fuzzy matching
-      const matchRole = (roleName: string) => {
-        const cleanRoleName = roleName.trim().replace(/\s+/g, ' ');
-        
-        // 1. Try exact match first
-        const exactMatch = ROLES.find(r => r.name === cleanRoleName);
-        if (exactMatch) return { name: exactMatch.name, rate: exactMatch.rate };
-        
-        // 2. Try case-insensitive match
-        const caseInsensitiveMatch = ROLES.find(r => 
-          r.name.toLowerCase() === cleanRoleName.toLowerCase()
-        );
-        if (caseInsensitiveMatch) return { name: caseInsensitiveMatch.name, rate: caseInsensitiveMatch.rate };
-        
-        // 3. Try splitting by hyphen and matching parts (e.g., "Tech - Producer" should match "Producer")
-        const parts = cleanRoleName.split(/\s*[-–—]\s*/);
-        if (parts.length > 1) {
-          for (const part of parts) {
-            const trimmedPart = part.trim();
-            if (trimmedPart.length > 2) {
-              const partMatch = ROLES.find(r => 
-                r.name.toLowerCase() === trimmedPart.toLowerCase() ||
-                r.name.toLowerCase().includes(trimmedPart.toLowerCase())
-              );
-              if (partMatch) return { name: partMatch.name, rate: partMatch.rate };
-            }
-          }
-        }
-        
-        // 4. Try fuzzy matching by looking for role keywords
-        const keywords = ['tech', 'producer', 'specialist', 'consultant', 'manager', 'coordinator', 'architect', 'designer', 'developer', 'strategist', 'account'];
-        for (const keyword of keywords) {
-          if (cleanRoleName.toLowerCase().includes(keyword)) {
-            const keywordMatch = ROLES.find(r => r.name.toLowerCase().includes(keyword));
-            if (keywordMatch) return { name: keywordMatch.name, rate: keywordMatch.rate };
-          }
-        }
-        
-        // 5. Try partial match (contains)
-        const partialMatch = ROLES.find(r => 
-          r.name.toLowerCase().includes(cleanRoleName.toLowerCase()) ||
-          cleanRoleName.toLowerCase().includes(r.name.toLowerCase())
-        );
-        if (partialMatch) return { name: partialMatch.name, rate: partialMatch.rate };
-        
-        // 6. Default: use the role name as-is but try to extract rate
-        const rateMatch = roleName.match(/\$?(\d+)/);
-        return { 
-          name: cleanRoleName, 
-          rate: rateMatch ? parseFloat(rateMatch[1]) : 0 
-        };
-      };
-
-      // Convert data rows to pricing row format (SKIP subtotal/GST/total rows!)
-      const pricingRows = dataRows
-        .filter(row => {
-          const roleCell = (row[roleIdx] || '').toLowerCase();
-          // Skip calculation rows
-          return !roleCell.includes('subtotal') && 
-                 !roleCell.includes('gst') && 
-                 !roleCell.includes('total') &&
-                 roleCell.trim() !== '';
-        })
-        .map(row => {
-          const rawRole = row[roleIdx] || '';
-          const matchedRole = matchRole(rawRole);
-          const specifiedRate = row[rateIdx] ? parseFloat(row[rateIdx]?.replace(/[^0-9.]/g, '') || '0') : null;
-          
-          console.log(`💼 [Role Match] "${rawRole}" → "${matchedRole.name}" @ $${matchedRole.rate}`);
-          
-          return {
-            role: matchedRole.name, // Use matched role name from ROLES list
-            description: row[descIdx] || '',
-            hours: parseFloat(row[hoursIdx]?.replace(/[^0-9.]/g, '') || '0'),
-            rate: specifiedRate || matchedRole.rate, // Use specified rate or matched role's rate
-          };
-        });
-
-      // ENFORCEMENT 1: Ensure Head Of role exists as FIRST row (2-4h guideline; default 3h)
-      const hasHeadOf = pricingRows.some(r => r.role.toLowerCase().includes('head of'));
-      if (!hasHeadOf) {
-        console.log('⚠️ [Markdown Conversion] Head Of role missing - adding as first row');
-        const headOf = ROLES.find(r => r.name === 'Tech - Head Of - Senior Project Management');
-        pricingRows.unshift({
-          role: headOf?.name || 'Tech - Head Of - Senior Project Management',
-          description: 'Strategic oversight',
-          hours: 3,
-          rate: headOf?.rate || 365,
-        });
-      }
-
-      // ENFORCEMENT 2: Ensure Account Management role exists (6-12h guideline; default 8h)
-      const hasAccountManagement = pricingRows.some(r => r.role.toLowerCase().includes('account management') || r.role.toLowerCase().includes('account manager'));
-      if (!hasAccountManagement) {
-        console.log('⚠️ [Markdown Conversion] Account Management role missing - adding');
-        const am = ROLES.find(r => r.name === 'Account Management');
-        pricingRows.push({
-          role: am?.name || 'Account Management',
-          description: 'Client comms & governance',
-          hours: 8,
-          rate: am?.rate || 150,
-        });
-      }
-
-      // Return editable pricing table node
-      return {
-        type: 'editablePricingTable',
-        attrs: {
-          rows: pricingRows,
-          discount: 0,
-        },
-      };
-    }
-
-    // Regular table
-    const tableNode = {
-      type: 'table',
-      content: [
-        {
-          type: 'tableRow',
-          content: headerRow.map(header => ({
-            type: 'tableHeader',
-            content: [{
-              type: 'paragraph',
-              content: parseTextWithFormatting(header)
-            }]
-          }))
-        },
-        ...dataRows.map(row => ({
-          type: 'tableRow',
-          content: row.map(cell => ({
-            type: 'tableCell',
-            content: [{
-              type: 'paragraph',
-              content: parseTextWithFormatting(cell)
-            }]
-          }))
-        }))
-      ]
-    };
-    
-    return tableNode;
-  };
-
   while (i < lines.length) {
     const line = lines[i];
 
-    if (line.includes('|') && i + 1 < lines.length && lines[i + 1].includes('---')) {
-      // Start of table
-      inTable = true;
-      tableRows = [line];
-      i++;
-      continue;
-    } else if (inTable && line.includes('|')) {
-      tableRows.push(line);
-      i++;
-      continue;
-    } else if (inTable && !line.includes('|')) {
-      // End of table
-      const tableNode = processTable(tableRows);
-      if (tableNode) content.push(tableNode);
-      inTable = false;
-      tableRows = [];
-    }
+    // NEW: Check for our pricing table placeholder
+    if (line.trim() === '[pricing_table]') {
+      if (suggestedRoles.length > 0) {
+        console.log('✅ Found [pricing_table] placeholder, inserting EditablePricingTable with suggested roles.');
+        
+        // Map suggested roles to the format required by the component
+        const pricingRows = suggestedRoles.map(role => {
+          const matchedRole = ROLES.find(r => r.name === role.role);
+          return {
+            role: role.role,
+            description: role.description || '',
+            hours: role.hours || 0,
+            rate: matchedRole?.rate || 0,
+          };
+        });
 
-    if (!inTable) {
-      if (line.startsWith('# ')) {
+        // ENFORCEMENT 1: Ensure Head Of role exists as FIRST row
+        const hasHeadOf = pricingRows.some(r => r.role.toLowerCase().includes('head of'));
+        if (!hasHeadOf) {
+          const headOf = ROLES.find(r => r.name === 'Tech - Head Of - Senior Project Management');
+          pricingRows.unshift({
+            role: headOf?.name || 'Tech - Head Of - Senior Project Management',
+            description: 'Strategic oversight',
+            hours: 3,
+            rate: headOf?.rate || 180,
+          });
+        }
+
+        // ENFORCEMENT 2: Ensure Account Management role exists
+        const hasAccountManagement = pricingRows.some(r => r.role.toLowerCase().includes('account management'));
+        if (!hasAccountManagement) {
+          const am = ROLES.find(r => r.name === 'Account Management');
+          pricingRows.push({
+            role: am?.name || 'Account Management',
+            description: 'Client comms & governance',
+            hours: 8,
+            rate: am?.rate || 150,
+          });
+        }
+
         content.push({
-          type: 'heading',
-          attrs: { level: 1 },
-          content: parseTextWithFormatting(line.substring(2))
-        });
-      } else if (line.startsWith('## ')) {
-        content.push({
-          type: 'heading',
-          attrs: { level: 2 },
-          content: parseTextWithFormatting(line.substring(3))
-        });
-      } else if (line.startsWith('### ')) {
-        content.push({
-          type: 'heading',
-          attrs: { level: 3 },
-          content: parseTextWithFormatting(line.substring(4))
-        });
-      } else if (line.startsWith('- ') || line.startsWith('* ')) {
-        content.push({
-          type: 'bulletList',
-          content: [{
-            type: 'listItem',
-            content: [{
-              type: 'paragraph',
-              content: parseTextWithFormatting(line.substring(2))
-            }]
-          }]
-        });
-      } else if (line.startsWith('---')) {
-        content.push({
-          type: 'horizontalRule'
-        });
-      } else if (line.trim() === '') {
-        // Skip empty lines
-      } else if (line.trim() !== '') {
-        content.push({
-          type: 'paragraph',
-          content: parseTextWithFormatting(line)
+          type: 'editablePricingTable',
+          attrs: {
+            rows: pricingRows,
+            discount: 0,
+          },
         });
       }
+      i++;
+      continue;
+    }
+
+    if (line.startsWith('# ')) {
+      content.push({
+        type: 'heading',
+        attrs: { level: 1 },
+        content: parseTextWithFormatting(line.substring(2))
+      });
+    } else if (line.startsWith('## ')) {
+      content.push({
+        type: 'heading',
+        attrs: { level: 2 },
+        content: parseTextWithFormatting(line.substring(3))
+      });
+    } else if (line.startsWith('### ')) {
+      content.push({
+        type: 'heading',
+        attrs: { level: 3 },
+        content: parseTextWithFormatting(line.substring(4))
+      });
+    } else if (line.startsWith('- ') || line.startsWith('* ')) {
+      // Basic bullet list handling
+      let listItems = [];
+      while (i < lines.length && (lines[i].startsWith('- ') || lines[i].startsWith('* '))) {
+        listItems.push({
+          type: 'listItem',
+          content: [{
+            type: 'paragraph',
+            content: parseTextWithFormatting(lines[i].substring(2))
+          }]
+        });
+        i++;
+      }
+      content.push({ type: 'bulletList', content: listItems });
+      i--; // Decrement because the outer loop will increment
+    } else if (line.startsWith('---')) {
+      content.push({
+        type: 'horizontalRule'
+      });
+    } else if (line.trim() !== '') {
+      content.push({
+        type: 'paragraph',
+        content: parseTextWithFormatting(line)
+      });
     }
 
     i++;
-  }
-
-  // Process any remaining table
-  if (inTable && tableRows.length > 0) {
-    const tableNode = processTable(tableRows);
-    if (tableNode) content.push(tableNode);
   }
 
   return { type: 'doc', content };
@@ -2036,6 +1899,143 @@ export default function Page() {
           const total = subtotal + gst;
           
           html += `<tr><td style="text-align: right; padding-right: 12px;"><strong>GST (10%):</strong></td><td style="text-align: right;">$${gst.toFixed(2)}</td></tr>`;
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get authorization URL');
+      }
+
+      const data = await response.json();
+      
+      // Redirect to Google OAuth
+      window.location.href = data.auth_url;
+    } catch (error) {
+      console.error('Error starting GSheet creation:', error);
+      toast.error('Failed to authorize with Google');
+    }
+  };
+
+  // Helper function to convert Novel JSON to HTML
+  const convertNovelToHTML = (content: any) => {
+    if (!content || !content.content) return '';
+
+    let html = '<style>';
+    html += 'body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; color: #1a1a1a; line-height: 1.6; }';
+    html += 'h1 { font-size: 28px; font-weight: 700; margin: 20px 0 16px; color: #2C823D; }';
+    html += 'h2 { font-size: 22px; font-weight: 600; margin: 16px 0 12px; color: #2C823D; }';
+    html += 'h3 { font-size: 18px; font-weight: 600; margin: 14px 0 10px; color: #2C823D; }';
+    html += 'p { margin: 8px 0; }';
+    html += 'ul, ol { margin: 8px 0; padding-left: 24px; }';
+    html += 'li { margin: 4px 0; }';
+    html += 'strong { font-weight: 600; }';
+    html += 'table { width: 100%; border-collapse: collapse; margin: 16px 0; }';
+    html += 'th { background: #2C823D; color: white; padding: 12px 8px; text-align: left; font-weight: 600; border: 1px solid #2C823D; }';
+    html += 'td { padding: 10px 8px; border: 1px solid #e0e0e0; }';
+    html += 'tr:nth-child(even) { background: #f8f8f8; }';
+    html += 'hr { border: none; border-top: 2px solid #2C823D; margin: 20px 0; }';
+    html += '</style>';
+
+    const processTextNode = (textNode: any): string => {
+      if (!textNode) return '';
+      let text = textNode.text || '';
+      if (textNode.marks) {
+        textNode.marks.forEach((mark: any) => {
+          if (mark.type === 'bold') text = `<strong>${text}</strong>`;
+          if (mark.type === 'italic') text = `<em>${text}</em>`;
+          if (mark.type === 'underline') text = `<u>${text}</u>`;
+        });
+      }
+      return text;
+    };
+
+    const processContent = (contentArray: any[]): string => {
+      if (!contentArray) return '';
+      return contentArray.map(processTextNode).join('');
+    };
+
+    content.content.forEach((node: any) => {
+      switch (node.type) {
+        case 'heading':
+          const level = node.attrs?.level || 1;
+          html += `<h${level}>${processContent(node.content)}</h${level}>`;
+          break;
+        case 'paragraph':
+          html += `<p>${processContent(node.content)}</p>`;
+          break;
+        case 'bulletList':
+          html += '<ul>';
+          node.content?.forEach((item: any) => {
+            const itemContent = item.content?.[0]?.content ? processContent(item.content[0].content) : '';
+            html += `<li>${itemContent}</li>`;
+          });
+          html += '</ul>';
+          break;
+        case 'orderedList':
+          html += '<ol>';
+          node.content?.forEach((item: any) => {
+            const itemContent = item.content?.[0]?.content ? processContent(item.content[0].content) : '';
+            html += `<li>${itemContent}</li>`;
+          });
+          html += '</ol>';
+          break;
+        case 'table':
+          html += '<table>';
+          node.content?.forEach((row: any, rowIndex: number) => {
+            html += '<tr>';
+            row.content?.forEach((cell: any) => {
+              const cellContent = cell.content?.[0]?.content ? processContent(cell.content[0].content) : '';
+              const tag = rowIndex === 0 || cell.type === 'tableHeader' ? 'th' : 'td';
+              html += `<${tag}>${cellContent}</${tag}>`;
+            });
+            html += '</tr>';
+          });
+          html += '</table>';
+          break;
+        case 'horizontalRule':
+          html += '<hr />';
+          break;
+        case 'editablePricingTable':
+          // Render editable pricing table as HTML table for PDF export
+          const rows = node.attrs?.rows || [];
+          const discount = node.attrs?.discount || 0;
+          
+          html += '<h3>Project Pricing</h3>';
+          html += '<table>';
+          html += '<tr><th>Role</th><th>Description</th><th>Hours</th><th>Rate (AUD)</th><th>Cost (AUD)</th></tr>';
+          
+          let subtotal = 0;
+          rows.forEach((row: any) => {
+            const cost = row.hours * row.rate;
+            subtotal += cost;
+            html += `<tr>`;
+            html += `<td>${row.role}</td>`;
+            html += `<td>${row.description}</td>`;
+            html += `<td>${row.hours}</td>`;
+            html += `<td>$${row.rate}</td>`;
+            html += `<td>$${cost.toFixed(2)}</td>`;
+            html += `</tr>`;
+          });
+          
+          html += '</table>';
+          
+          // Summary section
+          html += '<h4 style="margin-top: 20px;">Summary</h4>';
+          html += '<table style="width: auto; margin-left: auto;">';
+          html += `<tr><td style="text-align: right; padding-right: 12px;"><strong>Subtotal:</strong></td><td style="text-align: right;">$${subtotal.toFixed(2)}</td></tr>`;
+          
+          if (discount > 0) {
+            const discountAmount = subtotal * (discount / 100);
+            const afterDiscount = subtotal - discountAmount;
+            html += `<tr><td style="text-align: right; padding-right: 12px; color: #dc2626;"><strong>Discount (${discount}%):</strong></td><td style="text-align: right; color: #dc2626;">-$${discountAmount.toFixed(2)}</td></tr>`;
+            html += `<tr><td style="text-align: right; padding-right: 12px;"><strong>After Discount:</strong></td><td style="text-align: right;">$${afterDiscount.toFixed(2)}</td></tr>`;
+            subtotal = afterDiscount;
+          }
+          
+          const gst = subtotal * 0.1;
+          const total = subtotal + gst;
+          
+          html += `<tr><td style="text-align: right; padding-right: 12px;"><strong>GST (10%):</strong></td><td style="text-align: right;">$${gst.toFixed(2)}</td></tr>`;
           html += `<tr style="border-top: 2px solid #2C823D;"><td style="text-align: right; padding-right: 12px; padding-top: 8px;"><strong>Total Project Value:</strong></td><td style="text-align: right; padding-top: 8px; color: #2C823D; font-size: 18px;"><strong>$${total.toFixed(2)}</strong></td></tr>`;
           html += '</table>';
           break;
@@ -2055,106 +2055,7 @@ export default function Page() {
     }
   };
 
-  // Normalize AI-generated SOW markdown to enforce mandatory sections and convert placeholders
-  const normalizeSOWMarkdown = (markdown: string) => {
-    let content = markdown;
 
-    // 1) Ensure "## Scope Assumptions" appears in the correct position (immediately after Project Outcomes).
-    //    If missing, insert with defaults. If present but misplaced (e.g., at top), move it.
-    const buildDefaultAssumptions = () => (
-      `\n\n## Scope Assumptions\n\n` +
-      [
-        "• Hours outlined are capped as an estimate",
-        "• Client will provide feedback within 3-7 days",
-        "• Rates are not locked in if agreement not signed within 30 days",
-        "• Project timeline finalized post sign-off",
-        "• HubSpot and related systems access provided by day 2 of project",
-      ].map(b => `- ${b}`).join("\n") + "\n\n"
-    );
-
-    const findSectionRange = (pattern: RegExp) => {
-      const match = pattern.exec(content);
-      if (!match) return null;
-      const start = match.index;
-      const end = start + match[0].length;
-      return { start, end };
-    };
-
-    // Match full section blocks until next H2 or H1
-    const sectionRegex = (titlePattern: string) => new RegExp(
-      `(^|\n)##\s*${titlePattern}[\s\S]*?(?=\n##\s|\n#\s|$)`,
-      'i'
-    );
-
-    const outcomesRange = findSectionRange(sectionRegex('(Project\s+Outcomes)'));
-    const includeRange = findSectionRange(sectionRegex('What\s+does\s+the\s+scope\s+include\??'));
-    const overviewRange = findSectionRange(sectionRegex('(Overview)'));
-    let assumptionsRange = findSectionRange(sectionRegex('(Scope\s+Assumptions)'));
-
-    // Extract current assumptions block (if any) and remove from content to avoid duplicates
-    let assumptionsBlockText = '';
-    if (assumptionsRange) {
-      assumptionsBlockText = content.slice(assumptionsRange.start, assumptionsRange.end);
-      // Remove existing block
-      content = content.slice(0, assumptionsRange.start) + content.slice(assumptionsRange.end);
-    }
-
-    // Determine insertion anchor: after Project Outcomes → else after What does the scope include? → else after Overview → else after H1
-    const findAnchorIndex = () => {
-      // Recompute ranges as content might have changed after removal
-      const rOutcomes = findSectionRange(sectionRegex('(Project\s+Outcomes)'));
-      if (rOutcomes) return rOutcomes.end;
-      const rInclude = findSectionRange(sectionRegex('What\s+does\s+the\s+scope\s+include\??'));
-      if (rInclude) return rInclude.end;
-      const rOverview = findSectionRange(sectionRegex('(Overview)'));
-      if (rOverview) return rOverview.end;
-      // After H1 if present
-      const h1Match = /(^|\n)#\s+.+?(?=\n##\s|\n#\s|$)/.exec(content);
-      if (h1Match) return h1Match.index + h1Match[0].length;
-      // Fallback: end of document
-      return content.length;
-    };
-
-    const anchorIndex = findAnchorIndex();
-    const finalAssumptionsBlock = assumptionsBlockText && /##\s*Scope Assumptions/i.test(assumptionsBlockText)
-      ? (assumptionsBlockText.endsWith('\n') ? assumptionsBlockText : assumptionsBlockText + '\n')
-      : buildDefaultAssumptions();
-
-    // Insert assumptions block at the correct position
-    content = content.slice(0, anchorIndex) + finalAssumptionsBlock + content.slice(anchorIndex);
-
-    // 2) Replace [editablePricingTable] placeholder with a real markdown pricing table
-    if (content.includes('[editablePricingTable]')) {
-      const pricingTable = `\n\n| Role | Description | Hours | Rate |\n| --- | --- | --- | --- |\n` +
-        [
-          { role: 'Strategy Director', desc: 'Strategic oversight & governance', hours: 6 },
-          { role: 'Solutions Architect', desc: 'Solution architecture & design', hours: 5 },
-          { role: 'Senior Developer', desc: 'Complex build & integration', hours: 18 },
-          { role: 'Developer', desc: 'Build & configuration', hours: 12 },
-          { role: 'Senior Designer', desc: 'Template/UI design', hours: 8 },
-          { role: 'Copywriter', desc: 'Copy & tokens', hours: 6 },
-          { role: 'QA Engineer', desc: 'QA & UAT', hours: 8 },
-          { role: 'Project Coordination', desc: 'Coordination & status reporting', hours: 6 },
-          { role: 'Account Management', desc: 'Client comms & governance', hours: 8 },
-        ]
-          // Account Management is last to satisfy ordering; leave Rate blank to auto-fill from rate card
-          .map(r => `| ${r.role} | ${r.desc} | ${r.hours} |  |`)
-          .join("\n") + "\n\n";
-
-      content = content.replace(/\[editablePricingTable\]/g, pricingTable);
-    }
-
-    return content;
-  };
-
-  const handleInsertSOWContent = (markdownContent: string) => {
-    if (editorRef.current && markdownContent) {
-      // Normalize content to enforce critical requirements before inserting into editor
-      const normalized = normalizeSOWMarkdown(markdownContent);
-      const novelContent = convertMarkdownToNovelJSON(normalized);
-      editorRef.current.insertContent(novelContent);
-    }
-  };
 
   const handleCreateAgent = async (agent: Omit<Agent, 'id'>) => {
     const newId = `agent${Date.now()}`;
@@ -2235,18 +2136,36 @@ export default function Page() {
     }
 
     try {
-      // Clean the content first - remove non-client-facing elements
+      // 1. Separate Markdown from JSON
+      let markdownPart = content;
+      let suggestedRoles: any[] = [];
+      const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
+
+      if (jsonMatch && jsonMatch[1]) {
+        try {
+          const parsedJson = JSON.parse(jsonMatch[1]);
+          if (parsedJson.suggestedRoles) {
+            suggestedRoles = parsedJson.suggestedRoles;
+            // Remove the JSON block from the markdown content
+            markdownPart = content.replace(jsonMatch[0], '').trim();
+            console.log(`✅ Parsed ${suggestedRoles.length} suggested roles from AI response.`);
+          }
+        } catch (e) {
+          console.warn('⚠️ Could not parse suggestedRoles JSON from AI response.', e);
+        }
+      }
+
+      // 2. Clean the markdown content
       console.log('🧹 Cleaning SOW content...');
-      const cleanedContent = cleanSOWContent(content);
+      const cleanedContent = cleanSOWContent(markdownPart);
       console.log('✅ Content cleaned');
       
-  // Normalize and convert markdown content to Novel editor JSON format
-  console.log('🔄 Normalizing and converting markdown to JSON...');
-  const normalizedContent = normalizeSOWMarkdown(cleanedContent);
-  const convertedContent = convertMarkdownToNovelJSON(normalizedContent);
+      // 3. Convert the cleaned markdown and roles data to Novel/TipTap JSON
+      console.log('🔄 Converting markdown to JSON with suggested roles...');
+      const convertedContent = convertMarkdownToNovelJSON(cleanedContent, suggestedRoles);
       console.log('✅ Content converted');
       
-      // Extract title from the content (first heading)
+      // 4. Extract title from the content
       const titleMatch = cleanedContent.match(/^#\s+(.+)$/m);
       const clientMatch = cleanedContent.match(/\*\*Client:\*\*\s+(.+)$/m);
       const scopeMatch = cleanedContent.match(/Scope of Work:\s+(.+)/);
@@ -2260,7 +2179,7 @@ export default function Page() {
         docTitle = `SOW - ${clientMatch[1]}`;
       }
       
-      // Update the document with new content and title
+      // 5. Update the document state with new content and title
       console.log('📝 Updating document:', docTitle);
       setDocuments(prev =>
         prev.map(doc =>
@@ -2271,14 +2190,14 @@ export default function Page() {
       );
       console.log('✅ Document updated successfully');
       
-      // Also update the editor directly - REPLACE all content (not insert)
+      // 6. Update the editor directly, replacing all content
       if (editorRef.current) {
         console.log('📝 Setting editor content with converted JSON');
         editorRef.current.commands.setContent(convertedContent);
         console.log('✅ Editor content set successfully');
       }
       
-      // Embed SOW in both client workspace and master dashboard
+      // 7. Embed SOW in both client workspace and master dashboard
       const currentAgent = agents.find(a => a.id === currentAgentId);
       const useAnythingLLM = currentAgent?.model === 'anythingllm';
       
@@ -2286,7 +2205,6 @@ export default function Page() {
         console.log('🤖 Embedding SOW in workspaces...');
         try {
           const clientWorkspaceSlug = getWorkspaceForAgent(currentAgentId);
-          // Fixed parameter order: (workspaceSlug, title, content)
           const success = await anythingLLM.embedSOWInBothWorkspaces(clientWorkspaceSlug, docTitle, cleanedContent);
           
           if (success) {
@@ -2367,18 +2285,35 @@ export default function Page() {
       
       if (lastAIMessage && currentDocId) {
         try {
-          // Clean the content first - remove non-client-facing elements
-          console.log('🧹 Cleaning SOW content...');
-          const cleanedMessage = cleanSOWContent(lastAIMessage.content);
+          // 1. Separate Markdown from JSON from the last AI message
+          let markdownPart = lastAIMessage.content;
+          let suggestedRoles: any[] = [];
+          const jsonMatch = markdownPart.match(/```json\s*([\s\S]*?)\s*```/);
+
+          if (jsonMatch && jsonMatch[1]) {
+            try {
+              const parsedJson = JSON.parse(jsonMatch[1]);
+              if (parsedJson.suggestedRoles) {
+                suggestedRoles = parsedJson.suggestedRoles;
+                markdownPart = markdownPart.replace(jsonMatch[0], '').trim();
+                console.log(`✅ Parsed ${suggestedRoles.length} roles from "insert" command.`);
+              }
+            } catch (e) {
+              console.warn('⚠️ Could not parse suggestedRoles JSON from last AI message.', e);
+            }
+          }
+
+          // 2. Clean the markdown content
+          console.log('🧹 Cleaning SOW content for insertion...');
+          const cleanedMessage = cleanSOWContent(markdownPart);
           console.log('✅ Content cleaned');
           
-          // Normalize and convert markdown content to Novel editor JSON format
-          console.log('🔄 Normalizing and converting markdown to JSON...');
-          const normalizedMessage = normalizeSOWMarkdown(cleanedMessage);
-          const content = convertMarkdownToNovelJSON(normalizedMessage);
+          // 3. Convert markdown and roles to Novel/TipTap JSON
+          console.log('🔄 Converting markdown to JSON for insertion...');
+          const content = convertMarkdownToNovelJSON(cleanedMessage, suggestedRoles);
           console.log('✅ Content converted');
           
-          // Extract title from the SOW content (first heading)
+          // 4. Extract title from the SOW content
           const titleMatch = cleanedMessage.match(/^#\s+(.+)$/m);
           const clientMatch = cleanedMessage.match(/\*\*Client:\*\*\s+(.+)$/m);
           const scopeMatch = cleanedMessage.match(/Scope of Work:\s+(.+)/);
@@ -2392,7 +2327,7 @@ export default function Page() {
             docTitle = `SOW - ${clientMatch[1]}`;
           }
           
-          // Update the document with new content and title
+          // 5. Update the document state
           console.log('📝 Updating document:', docTitle);
           setDocuments(prev =>
             prev.map(doc =>
@@ -2401,59 +2336,46 @@ export default function Page() {
                 : doc
             )
           );
-          console.log('✅ Document updated successfully');
           
-          // 💾 SAVE TO DATABASE
+          // 6. Save to database (this is a critical user action)
           console.log('💾 Saving SOW to database...');
           try {
-            const saveResponse = await fetch('/api/sow/update', {
+            await fetch(`/api/sow/${currentDocId}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                id: currentDocId,
                 title: docTitle,
-                content: JSON.stringify(content),
+                content: content, // Send the rich JSON content
               }),
             });
-            
-            if (saveResponse.ok) {
-              console.log('✅ SOW saved to database successfully');
-            } else {
-              console.warn('⚠️ Failed to save SOW to database');
-            }
+            console.log('✅ SOW saved to database successfully');
           } catch (saveError) {
             console.error('❌ Database save error:', saveError);
           }
           
-          // Also update the editor directly
+          // 7. Update the editor directly
           if (editorRef.current) {
-            editorRef.current.insertContent(content);
+            editorRef.current.commands.setContent(content);
           }
           
-          // Embed SOW in both client workspace and master dashboard
+          // 8. Embed SOW in both client workspace and master dashboard
           const currentAgent = agents.find(a => a.id === currentAgentId);
-          const useAnythingLLM = currentAgent?.model === 'anythingllm';
-          
-          if (useAnythingLLM && currentAgentId) {
+          if (currentAgent?.model === 'anythingllm' && currentAgentId) {
             console.log('🤖 Embedding SOW in AnythingLLM workspaces...');
             try {
               const clientWorkspaceSlug = getWorkspaceForAgent(currentAgentId);
-              // Fixed parameter order: (workspaceSlug, title, content)
-              const success = await anythingLLM.embedSOWInBothWorkspaces(clientWorkspaceSlug, docTitle, cleanedMessage);
-              
-              if (success) {
-                console.log('✅ SOW embedded in both AnythingLLM workspaces');
-              }
+              await anythingLLM.embedSOWInBothWorkspaces(clientWorkspaceSlug, docTitle, cleanedMessage);
+              console.log('✅ SOW embedded in both AnythingLLM workspaces');
             } catch (embedError) {
               console.error('⚠️ AnythingLLM embedding error:', embedError);
             }
           }
           
-          // Add confirmation message
+          // 9. Add confirmation message to chat
           const confirmMessage: ChatMessage = {
             id: `msg${Date.now()}`,
             role: 'assistant',
-            content: "✅ SOW has been inserted into the editor, saved to database, and embedded in AnythingLLM!",
+            content: "✅ SOW has been inserted into the editor, saved, and embedded in the knowledge base!",
             timestamp: Date.now(),
           };
           setChatMessages(prev => [...prev, confirmMessage]);
@@ -2468,8 +2390,6 @@ export default function Page() {
             timestamp: Date.now(),
           };
           setChatMessages(prev => [...prev, errorMessage]);
-          
-          // ⚠️ REMOVED DATABASE SAVE - AnythingLLM handles all message storage
           return;
         }
       }
@@ -3048,16 +2968,36 @@ export default function Page() {
                 console.log('🧹 Clearing chat messages for new thread');
                 setChatMessages([]);
               }}
-              onInsertToEditor={(content) => {
+                onInsertToEditor={(content) => {
                 console.log('📝 Insert to Editor button clicked from AI chat');
-                // Clean all AI thinking tags before inserting
-                let cleanContent = content
+                
+                // 1. Separate Markdown from JSON
+                let markdownPart = content;
+                let suggestedRoles: any[] = [];
+                const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
+
+                if (jsonMatch && jsonMatch[1]) {
+                  try {
+                    const parsedJson = JSON.parse(jsonMatch[1]);
+                    if (parsedJson.suggestedRoles) {
+                      suggestedRoles = parsedJson.suggestedRoles;
+                      markdownPart = content.replace(jsonMatch[0], '').trim();
+                    }
+                  } catch (e) {
+                    // Ignore if JSON is malformed
+                  }
+                }
+
+                // 2. Clean all AI thinking tags before inserting
+                let cleanContent = markdownPart
                   .replace(/<AI_THINK>[\s\S]*?<\/AI_THINK>/gi, '')
                   .replace(/<think>[\s\S]*?<\/think>/gi, '')
                   .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '')
                   .replace(/<\/?[A-Z_]+>/gi, '')
                   .trim();
-                handleInsertContent(cleanContent || content);
+                  
+                // 3. Call the refactored insertion logic
+                handleInsertSOWContent(cleanContent, suggestedRoles);
               }}
             />
           ) : null // Return null to completely remove the panel from the component tree
