@@ -130,8 +130,40 @@ export async function PUT(
     console.log(`🚨 [PUT /api/sow/${sowId}] About to enforce Head Of role, content exists: ${!!content}`);
     if (content) {
       console.log(`🚨 [PUT /api/sow/${sowId}] CALLING enforceHeadOfRole NOW`);
-      content = enforceHeadOfRole(content);
-      console.log('✅ [SOW UPDATE] Head Of role enforcement applied');
+      const enforcedContent = enforceHeadOfRole(content);
+      const serializedContent = typeof enforcedContent === 'string'
+        ? enforcedContent
+        : JSON.stringify(enforcedContent);
+
+      try {
+        const parsed = typeof enforcedContent === 'string'
+          ? JSON.parse(enforcedContent)
+          : enforcedContent;
+        const pricingNode = Array.isArray(parsed?.content)
+          ? parsed.content.find((node: any) => node?.type === 'editablePricingTable')
+          : null;
+        const rows = pricingNode?.attrs?.rows || [];
+        const hasHeadOf = rows.some((row: any) =>
+          String(row?.role || '').toLowerCase().includes('head of')
+        );
+        const firstRow = rows[0] || null;
+        console.log(`✅ [PUT /api/sow/${sowId}] Head Of enforcement report:`, {
+          tableFound: !!pricingNode,
+          rowCount: rows.length,
+          headOfPresent: hasHeadOf,
+          firstRow,
+        });
+      } catch (logError) {
+        console.warn(`⚠️ [PUT /api/sow/${sowId}] Failed to log enforcement details:`, logError);
+      }
+
+      console.log(`✅ [PUT /api/sow/${sowId}] Head Of role enforcement applied`, {
+        originalType: typeof content,
+        enforcedType: typeof enforcedContent,
+        serializedLength: serializedContent.length,
+      });
+
+      content = serializedContent;
     } else {
       console.warn(`⚠️ [PUT /api/sow/${sowId}] NO CONTENT - skipping enforcement`);
     }

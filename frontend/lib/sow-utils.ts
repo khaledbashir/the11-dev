@@ -128,6 +128,14 @@ export function calculateTotalInvestment(contentJSON: string | any): number {
  */
 export function enforceHeadOfRole(contentJSON: string | any): any {
   console.log('🔍 [Head Of Enforcement] START - Input type:', typeof contentJSON);
+  try {
+    const preview = typeof contentJSON === 'string'
+      ? contentJSON.slice(0, 400)
+      : JSON.stringify(contentJSON).slice(0, 400);
+    console.log('🔍 [Head Of Enforcement] Input preview:', preview);
+  } catch (previewError) {
+    console.warn('⚠️ [Head Of Enforcement] Failed to serialize input for preview:', previewError);
+  }
   
   // Guard: empty or null content
   if (!contentJSON) {
@@ -213,6 +221,15 @@ export function enforceHeadOfRole(contentJSON: string | any): any {
     const result = typeof contentJSON === 'string' 
       ? JSON.stringify(content) 
       : content;
+    
+    try {
+      const preview = typeof result === 'string'
+        ? result.slice(0, 400)
+        : JSON.stringify(result).slice(0, 400);
+      console.log('🔍 [Head Of Enforcement] Output preview:', preview);
+    } catch (previewError) {
+      console.warn('⚠️ [Head Of Enforcement] Failed to serialize output for preview:', previewError);
+    }
     
     console.log('✅ [Head Of Enforcement] END - Returning modified content');
     return result;
