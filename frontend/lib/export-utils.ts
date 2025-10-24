@@ -582,6 +582,17 @@ async function exportArchitectExcel(data: ArchitectSOW, filename?: string) {
     { width: 18 },
   ];
 
+  // --- Final workbook sanitization ---
+  // Only keep SOW_Summary and Scope sheets visible. Hide Pricing and any other helper sheets.
+  workbook.worksheets.forEach((ws) => {
+    const name = ws.name || '';
+    const isScope = /^Scope\d+$/i.test(name);
+    const isSummary = name === 'SOW_Summary';
+    if (!isScope && !isSummary) {
+      ws.state = 'hidden';
+    }
+  });
+
   // Filename and download
   const dateStr = new Date().toISOString().split('T')[0];
   const outName = filename || `SOW-${dateStr}.xlsx`;
