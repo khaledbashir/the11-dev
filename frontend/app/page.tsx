@@ -227,13 +227,27 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
     i++;
   }
 
-  // If we reach the end and pricing table hasn't been inserted, insert it at the end before the last section
+  // CRITICAL: If we reach the end and pricing table hasn't been inserted, ALWAYS insert it
   if (!pricingTableInserted && suggestedRoles.length > 0) {
-    console.log('⚠️ Pricing table not auto-inserted before Project Phases, inserting at optimal location.');
-    // Find the last section and insert before it, or just append
+    console.log('⚠️ Pricing table not auto-inserted earlier, inserting NOW at end of content.');
+    
+    // Add a separator before the pricing table
+    content.push({
+      type: 'horizontalRule'
+    });
+    
+    // Add a heading for the pricing section
+    content.push({
+      type: 'heading',
+      attrs: { level: 2 },
+      content: [{ type: 'text', text: 'Investment Breakdown' }]
+    });
+    
+    // Insert the pricing table
     insertPricingTable();
   }
 
+  console.log(`📊 Final content has ${content.length} nodes. Pricing table inserted: ${pricingTableInserted}`);
   return { type: 'doc', content };
 };
 
