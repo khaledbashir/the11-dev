@@ -308,6 +308,37 @@ export default function AgentSidebar({
     }
   };
 
+  // Toggle thread list with lazy loading and robust guards
+  const handleToggleThreads = async () => {
+    try {
+      const opening = !showThreadList;
+      // Determine workspace based on mode
+      const ws = isDashboardMode ? dashboardChatTarget : editorWorkspaceSlug;
+      if (!ws) {
+        console.warn('[Threads] No workspace selected');
+        alert('No workspace selected. Please select a SOW or workspace first.');
+        return;
+      }
+      if (opening && threads.length === 0 && !loadingThreads) {
+        setLoadingThreads(true);
+        try {
+          await loadThreads(ws);
+        } catch (e) {
+          console.error('[Threads] Failed to load threads on toggle:', e);
+          alert('Failed to load threads. Check network or credentials.');
+          return;
+        } finally {
+          setLoadingThreads(false);
+        }
+      }
+      setShowThreadList(prev => !prev);
+      console.log('[Threads] showThreadList ->', !showThreadList);
+    } catch (err) {
+      console.error('[Threads] Unexpected toggle error:', err);
+      alert('Unexpected error while opening Threads.');
+    }
+  };
+
   const handleSelectThread = async (threadSlug: string) => {
     console.log('📂 Switching to thread:', threadSlug);
     setCurrentThreadSlug(threadSlug);
@@ -612,7 +643,7 @@ export default function AgentSidebar({
                   New Chat
                 </Button>
                 <Button
-                  onClick={() => setShowThreadList(!showThreadList)}
+                  onClick={handleToggleThreads}
                   className="bg-[#1c1c1c] hover:bg-[#222] text-white text-xs h-7 px-2 border border-[#2a2a2a]"
                   size="sm"
                 >
@@ -672,10 +703,14 @@ export default function AgentSidebar({
       </div>
 
       {/* Thread List Dropdown - Outside header */}
-      {(isDashboardMode || isEditorMode) && showThreadList && threads.length > 0 && (
+      {(isDashboardMode || isEditorMode) && showThreadList && (
         <div className="bg-[#0E2E33] border-b border-[#0E2E33] max-h-48 overflow-y-auto">
           <div className="p-2 space-y-1">
-            {threads.map(thread => (
+            {threads.length === 0 ? (
+              <div className="text-xs text-gray-300 px-2 py-3">
+                No threads yet. Click "New Chat" to create one.
+              </div>
+            ) : threads.map(thread => (
               <div
                 key={thread.slug}
                 className={`group flex items-center gap-2 p-2 rounded text-xs transition-colors ${
@@ -739,8 +774,8 @@ export default function AgentSidebar({
                       const cleaned = msg.content.replace(/<think>[\s\S]*?<\/think>/gi, '');
                       const segments = msg.role === 'assistant' ? splitMarkdownJsonBlocks(cleaned) : [{ type: 'text' as const, content: msg.content }];
                       return (
-                        <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`w-full max-w-[85%] rounded-xl px-4 py-3 ${
+                        <div key={msg.id} className={`flex min-w-0 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`w-full max-w-[85%] min-w-0 rounded-xl px-4 py-3 break-words whitespace-pre-wrap ${
                             msg.role === 'user' 
                               ? 'bg-[#15a366] text-white' 
                               : 'bg-[#1b1b1e] text-white border border-[#0E2E33]'

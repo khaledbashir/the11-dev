@@ -167,10 +167,12 @@ export function extractPricingFromHTML(html: string): PricingRow[] {
   const text = html.replace(/<[^>]*>/g, ' ');
   const rows: PricingRow[] = [];
 
-  const pricingPatterns = [
+    const pricingPatterns = [
     /\|\s*([^|]+?)\s*\|\s*(\d+(?:\.\d+)?)\s*(?:hours?)?\s*\|\s*\$?\s*(\d+(?:\.\d+)?)\s*(?:\/hour)?\s*\|\s*\$?\s*(\d+(?:,\d{3})*(?:\.\d+)?)/gi,
     /[-*]\s*\*\*([^*:]+)\*\*:?:?\s*(\d+(?:\.\d+)?)\s*(?:hours?)?\s*[×x]\s*\$?\s*(\d+(?:\.\d+)?)\s*(?:\/hour)?\s*=\s*\$?\s*(\d+(?:,\d{3})*(?:\.\d+)?)/gi,
     /([^:\n]+):\s*(\d+(?:\.\d+)?)\s*hours?\s*[×x]\s*\$?\s*(\d+(?:\.\d+)?)\s*(?:\/hour)?\s*=\s*\$?\s*(\d+(?:,\d{3})*(?:\.\d+)?)/gi,
+      /([^:\n]+?)\s*[—–-]\s*(\d+(?:\.\d+)?)\s*h(?:ours?)?\s*(?:at|@)\s*\$?\s*(\d+(?:\.\d+)?)\s*(?:\/h(?:our)?)?\s*=\s*\$?\s*(\d+(?:,\d{3})*(?:\.\d+)?)/gi,
+    /([^:\n]+?)\s*[—–-]\s*(\d+(?:\.\d+)?)\s*h(?:ours?)?\s*(?:at|@)\s*\$?\s*(\d+(?:\.\d+)?)\s*(?:\/h(?:our)?)?\s*=\s*\$?\s*(\d+(?:,\d{3})*(?:\.\d+)?)/gi,
   ];
 
   pricingPatterns.forEach((pattern) => {
