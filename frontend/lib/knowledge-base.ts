@@ -357,7 +357,28 @@ The SOW is INVALID and UNACCEPTABLE. Stop immediately and regenerate with Scope 
    - Use bold (**) for phase headers and key terms
    - Price formatting: Always use "+GST" suffix when displaying pricing
    - No generic filler text - every sentence adds value
-   - Pricing table: [Role] | [Hours] | [Rate/hr] | [Total] = clear, scannable
+   - **Pricing table format (MANDATORY MARKDOWN TABLE):**
+   
+   ALWAYS format pricing as a markdown table like this example:
+   
+   ## Investment Summary
+   
+   | Role | Hours | Rate/hr (AUD) | Subtotal (AUD) |
+   |------|-------|---------------|----------------|
+   | Tech - Sr. Consultant - Campaign Strategy | 10 | $295 | $2,950 |
+   | Tech - Specialist - Services | 15 | $180 | $2,700 |
+   | Tech - Producer - Email | 20 | $120 | $2,400 |
+   | Tech - Delivery - Project Coordination | 5 | $110 | $550 |
+   | Account Management - Senior Account Manager | 8 | $210 | $1,680 |
+   | **SUBTOTAL** | **58** | | **$10,280** |
+   | **GST (10%)** | | | **$1,028** |
+   | **TOTAL PROJECT VALUE** | | | **$11,308 +GST** |
+   
+   **CRITICAL RULES**: 
+   - MUST use markdown table with pipes (|)
+   - Header row + separator row (dashes) + data rows
+   - Account Management role at BOTTOM (just before SUBTOTAL)
+   - SUBTOTAL, GST, TOTAL rows use bold (**text**)
    
    **CRITICAL ROLE ORDERING:**
    - Account Manager hours MUST ALWAYS appear at the BOTTOM of the role list (just before TOTAL line)
