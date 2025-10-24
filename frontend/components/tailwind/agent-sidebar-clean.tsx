@@ -139,6 +139,22 @@ export default function AgentSidebar({
     return segments;
   };
 
+  // 🧼 Utility: Extract only non-JSON, non-code text for safe editor insertion
+  const extractNonJsonText = (markdown: string): string => {
+    // Remove fenced code blocks of any language, including json
+    const withoutFences = markdown.replace(/```[\s\S]*?```/g, "");
+    // Remove inline code ticks conservatively
+    const withoutInline = withoutFences.replace(/`([^`]+)`/g, "$1");
+    // Split by JSON fences if any remain and keep only text segments
+    const segments = splitMarkdownJsonBlocks(withoutInline);
+    const text = segments
+      .filter(seg => seg.type === 'text')
+      .map(seg => seg.content.trim())
+      .filter(Boolean)
+      .join("\n\n");
+    return text.trim();
+  };
+
   // 📦 Collapsible JSON viewer component
   const JsonCollapsible: React.FC<{ json: string; defaultOpen?: boolean }> = ({ json, defaultOpen = false }) => {
     const [open, setOpen] = useState(defaultOpen);
@@ -746,8 +762,23 @@ export default function AgentSidebar({
                                 )
                               ))}
                             </div>
-                            <div className="text-xs mt-2 opacity-60">
-                              {formatTimestamp(msg.timestamp)}
+                            <div className="flex items-center gap-2 mt-2">
+                              <span className="text-xs opacity-60 flex-1">{formatTimestamp(msg.timestamp)}</span>
+                              {msg.role === 'assistant' && onInsertToEditor && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 px-2 text-xs border-[#0E2E33] text-gray-300 hover:text-white hover:bg-[#0E2E33]"
+                                  onClick={() => {
+                                    const textOnly = extractNonJsonText(cleaned);
+                                    if (!textOnly) return;
+                                    onInsertToEditor(textOnly);
+                                  }}
+                                  title="Insert this reply into the editor"
+                                >
+                                  📝 Insert
+                                </Button>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -855,17 +886,17 @@ export default function AgentSidebar({
                               <p className="text-xs mt-1 opacity-70 flex-1">{formatTimestamp(msg.timestamp)}</p>
                               {shouldShowButton && (
                                 <Button 
-                                  size="sm" 
-                                  className="text-xs h-8 px-4 bg-[#1b5e5e] hover:bg-[#1b5e5e]/80 text-white font-semibold border border-[#0E2E33]"
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-xs h-8 px-2 border-[#0E2E33] text-gray-300 hover:text-white hover:bg-[#0E2E33]"
                                   onClick={() => {
-                                    console.log('🖱️ Insert to Editor button clicked');
-                                    console.log('📤 Inserting content without thinking tags');
-                                    // Extract content without thinking tags
-                                    const cleanedContent = cleaned.trim();
-                                    onInsertToEditor(cleanedContent || msg.content);
+                                    const textOnly = extractNonJsonText(cleaned);
+                                    if (!textOnly) return;
+                                    onInsertToEditor(textOnly);
                                   }}
+                                  title="Insert this reply into the editor"
                                 >
-                                  📝 Insert to Editor
+                                  📝 Insert
                                 </Button>
                               )}
                             </div>
@@ -992,20 +1023,23 @@ export default function AgentSidebar({
                       </Button>
                     </div>
                   </div>
-                  {/* Persistent Insert-to-Editor for latest assistant reply (editor mode only) */}
+                  {/* Compact 'Insert last reply' (editor mode only) */}
                   {isEditorMode && onInsertToEditor && chatMessages.some(m => m.role === 'assistant') && (
                     <Button
                       onClick={() => {
                         const lastAssistant = [...chatMessages].reverse().find(m => m.role === 'assistant');
                         if (!lastAssistant) return;
                         const cleaned = lastAssistant.content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-                        onInsertToEditor(cleaned || lastAssistant.content);
+                        const textOnly = extractNonJsonText(cleaned || lastAssistant.content);
+                        if (!textOnly) return;
+                        onInsertToEditor(textOnly);
                       }}
                       size="sm"
-                      className="self-end bg-[#1b5e5e] hover:bg-[#1b5e5e]/80 text-white h-[50px] font-semibold border border-[#0E2E33]"
+                      variant="outline"
+                      className="self-end h-8 px-2 text-xs border-[#0E2E33] text-gray-300 hover:text-white hover:bg-[#0E2E33]"
                       title="Insert the latest AI reply into the editor"
                     >
-                      📝 Insert last reply
+                      📝 Insert
                     </Button>
                   )}
 

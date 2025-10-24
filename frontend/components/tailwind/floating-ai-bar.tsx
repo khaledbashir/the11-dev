@@ -102,12 +102,9 @@ export function FloatingAIBar({ onGenerate, editor: editorProp }: FloatingAIBarP
 
     // Listen for custom event from slash command
     const handleOpenAIBar = () => {
-      setShowToolbar(false); // Hide selection toolbar
-      setTriggerSource('slash');
-      setIsVisible(true);
-      setHasSelection(false);
-      setShowActions(false); // Don't show quick actions for slash command mode
-      setPrompt(""); // Clear any previous prompt
+      // Disable separate floating bar when triggered via slash command.
+      // We keep the selection toolbar experience only.
+      return;
     };
 
     window.addEventListener('open-ai-bar', handleOpenAIBar as EventListener);
@@ -128,13 +125,9 @@ export function FloatingAIBar({ onGenerate, editor: editorProp }: FloatingAIBarP
         if (from !== to) {
           handleToolbarAskAI();
         } else {
-          // Otherwise open the full bar (slash-like)
-          setShowToolbar(false);
-          setTriggerSource('slash');
-          setIsVisible(true);
-          setHasSelection(false);
-          setShowActions(false);
-          setPrompt("");
+          // No separate bar when nothing is selected
+          // Provide gentle nudge instead of opening overlay
+          toast.message("Select text, then press Alt+A or click Ask the AI");
         }
       }
     };
@@ -201,6 +194,11 @@ export function FloatingAIBar({ onGenerate, editor: editorProp }: FloatingAIBarP
         });
 
         if (!response.ok) {
+          if (response.status === 401) {
+            toast.error("AI is not configured (401). Set OPENROUTER_API_KEY on the server.");
+          } else if (response.status === 400) {
+            toast.error("AI is not configured (400). Check OPENROUTER_API_KEY.");
+          }
           throw new Error(`API error: ${response.status}`);
         }
 
@@ -259,6 +257,11 @@ export function FloatingAIBar({ onGenerate, editor: editorProp }: FloatingAIBarP
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          toast.error("AI is not configured (401). Set OPENROUTER_API_KEY on the server.");
+        } else if (response.status === 400) {
+          toast.error("AI is not configured (400). Check OPENROUTER_API_KEY.");
+        }
         throw new Error(`API error: ${response.status}`);
       }
 

@@ -3406,12 +3406,20 @@ export default function Page() {
                 onFilterByService={handleDashboardFilterByService}
                 currentFilter={dashboardFilter}
                 onClearFilter={handleClearDashboardFilter}
-                onNavigateToSOW={(sowId: string) => {
+                onOpenInEditor={(sowId: string) => {
+                  if (!sowId) return;
+                  try {
+                    handleSelectDoc(sowId);
+                  } catch (e) {
+                    console.warn('⚠️ Failed to open SOW in editor:', e);
+                  }
+                }}
+                onOpenInPortal={(sowId: string) => {
                   if (!sowId) return;
                   try {
                     router.push(`/portal/sow/${sowId}`);
                   } catch (e) {
-                    console.warn('⚠️ Failed to navigate to SOW:', e);
+                    console.warn('⚠️ Failed to open SOW portal:', e);
                   }
                 }}
               />

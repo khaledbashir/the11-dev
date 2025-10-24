@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/tailwind/ui/button';
 import { toast } from 'sonner';
 import { exportToExcel, extractPricingFromHTML } from '@/lib/export-utils';
+import { SocialGardenHeader } from '@/components/header/sg-header';
 
 interface SOWData {
   id: string;
@@ -1440,7 +1441,9 @@ ${sow.htmlContent}
   }
 
   return (
-    <div className="min-h-screen bg-[#0E0F0F] flex relative">
+    <>
+      <SocialGardenHeader />
+      <div className="min-h-screen bg-[#0E0F0F] flex relative">
       {/* 🔥 SIDEBAR NAVIGATION - Like main app */}
       <aside className={`${sidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 bg-[#1A1A1D] border-r border-[#2A2A2D] flex flex-col overflow-hidden`}>
         {/* Logo Header */}
@@ -1454,7 +1457,7 @@ ${sow.htmlContent}
           </div>
         </div>
 
-        {/* Navigation Tabs */}
+  {/* Navigation Tabs */}
         <nav className="flex-1 p-4 space-y-2">
           <button
             onClick={() => setActiveTab('overview')}
@@ -1793,6 +1796,7 @@ ${sow.htmlContent}
         }
       `}</style>
     </div>
+    </>
   );
 
 }

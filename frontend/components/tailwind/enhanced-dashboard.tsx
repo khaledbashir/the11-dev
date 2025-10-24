@@ -55,7 +55,8 @@ interface EnhancedDashboardProps {
   onFilterByService?: (serviceLine: string) => void;
   onClearFilter?: () => void;
   currentFilter?: { type: 'vertical' | 'serviceLine' | null; value: string | null };
-  onNavigateToSOW?: (sowId: string) => void;
+  onOpenInEditor?: (sowId: string) => void;
+  onOpenInPortal?: (sowId: string) => void;
 }
 
 export function EnhancedDashboard({ 
@@ -63,7 +64,8 @@ export function EnhancedDashboard({
   onFilterByService,
   currentFilter,
   onClearFilter,
-  onNavigateToSOW
+  onOpenInEditor,
+  onOpenInPortal
 }: EnhancedDashboardProps = {}) {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -148,7 +150,14 @@ export function EnhancedDashboard({
       {/* Header */}
       <div className="mb-6 flex items-center justify-between flex-shrink-0">
         <div>
-          <h1 className="text-3xl font-bold text-white">📊 SOW Dashboard</h1>
+          <div className="flex items-center gap-3">
+            <img
+              src="/images/logo-light.png"
+              alt="Social Garden"
+              className="h-8 w-auto"
+            />
+            <h1 className="text-3xl font-bold text-white">📊 SOW Dashboard</h1>
+          </div>
           <p className="text-gray-400 mt-1">Real-time analytics powered by AI</p>
           {currentFilter?.value && (
             <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-[#1CBF79]/20 border border-[#1CBF79] rounded-full">
@@ -178,7 +187,7 @@ export function EnhancedDashboard({
           </Button>
         </div>
       </div>
-
+      
         {/* Empty State */}
         {stats.totalSOWs === 0 && (
           <div className="bg-gradient-to-br from-[#0e2e33] to-[#1b1b1e] border border-[#20e28f]/30 rounded-xl p-8 mb-6 text-center">
@@ -244,8 +253,7 @@ export function EnhancedDashboard({
                   stats.recentActivity.map((activity, idx) => (
                     <div 
                       key={idx} 
-                      className="bg-[#0e0f0f] border border-[#0e2e33] rounded-lg p-4 hover:border-blue-400/50 transition-colors cursor-pointer"
-                      onClick={() => onNavigateToSOW?.(activity.id)}
+                      className="bg-[#0e0f0f] border border-[#0e2e33] rounded-lg p-4 hover:border-blue-400/50 transition-colors"
                     >
                       <div className="font-semibold text-white">{activity.clientName}</div>
                       <div className="text-sm text-gray-400 mt-1">{activity.sowTitle}</div>
@@ -254,6 +262,14 @@ export function EnhancedDashboard({
                           {formatInvestment(activity.value)}
                         </span>
                         <span className="text-xs text-gray-500">{activity.date}</span>
+                      </div>
+                      <div className="mt-3 flex items-center gap-2">
+                        <Button size="sm" className="bg-[#1CBF79] hover:bg-[#15a366]" onClick={() => onOpenInEditor?.(activity.id)}>
+                          Open in Editor
+                        </Button>
+                        <Button size="sm" variant="outline" className="border-[#1CBF79] text-[#1CBF79] hover:bg-[#1CBF79]/10" onClick={() => onOpenInPortal?.(activity.id)}>
+                          Open Portal
+                        </Button>
                       </div>
                     </div>
                   ))
