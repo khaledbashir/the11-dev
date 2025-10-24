@@ -216,8 +216,8 @@ export async function GET(
       console.warn('[Export Excel] Template not found or failed to load. Using blank workbook.', e?.toString?.() || e);
     }
 
-    // Summary Sheet
-    const summary = wb.addWorksheet('SOW_Summary');
+  // Summary Sheet (reuse if exists in template)
+  const summary = wb.getWorksheet('SOW_Summary') || wb.addWorksheet('SOW_Summary');
     summary.columns = [
       { width: 40 },
       { width: 16 },
@@ -272,7 +272,8 @@ export async function GET(
 
     // Scope sheets
     scopes.forEach((s, i) => {
-      const ws = wb.addWorksheet(`Scope${i + 1}`);
+      const name = `Scope${i + 1}`;
+      const ws = wb.getWorksheet(name) || wb.addWorksheet(name);
       ws.columns = [
         { width: 42 },
         { width: 14 },
@@ -331,17 +332,6 @@ export async function GET(
         });
       }
     });
-
-    // Remove any non client-facing sheets (keep only SOW_Summary and ScopeN)
-    const allowedNames = new Set<string>(['SOW_Summary', ...scopes.map((_, i) => `Scope${i + 1}`)]);
-    // Make a copy of current worksheet names to iterate safely
-    const existingNames = wb.worksheets.map((w) => w.name);
-    for (const name of existingNames) {
-      if (!allowedNames.has(name)) {
-        const ws = wb.getWorksheet(name);
-        if (ws) wb.removeWorksheet(ws.id as any);
-      }
-    }
 
     const arrayBuffer = await wb.xlsx.writeBuffer();
     const filename = `${(sow.clientName || 'Client').toString().replace(/[^a-z0-9]/gi, '_')}_Statement_of_Work.xlsx`;
