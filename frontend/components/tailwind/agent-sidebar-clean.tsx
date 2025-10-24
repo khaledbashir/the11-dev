@@ -681,7 +681,7 @@ export default function AgentSidebar({
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
                         if (chatInput.trim() && !isLoading) {
-                          onSendMessage(chatInput.trim());
+                          onSendMessage(chatInput.trim(), currentThreadSlug || null);
                           setChatInput("");
                         }
                       }
@@ -693,7 +693,7 @@ export default function AgentSidebar({
                   <Button 
                     onClick={() => {
                       if (chatInput.trim() && !isLoading) {
-                        onSendMessage(chatInput.trim());
+                        onSendMessage(chatInput.trim(), currentThreadSlug || null);
                         setChatInput("");
                       }
                     }}

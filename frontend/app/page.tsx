@@ -3099,6 +3099,24 @@ export default function Page() {
                 } catch (e) {
                   console.warn('⚠️ Failed to persist threadSlug change:', e);
                 }
+                // Load thread history into chat panel when a thread is selected (or clear when null)
+                try {
+                  if (slug && currentDoc?.workspaceSlug) {
+                    const history = await anythingLLM.getThreadChats(currentDoc.workspaceSlug, slug);
+                    const messages: ChatMessage[] = (history || []).map((msg: any) => ({
+                      id: `msg${Date.now()}-${Math.random()}`,
+                      role: msg.role === 'user' ? 'user' : 'assistant',
+                      content: msg.content || '',
+                      timestamp: Date.now(),
+                    }));
+                    setChatMessages(messages);
+                  } else {
+                    setChatMessages([]);
+                  }
+                } catch (err) {
+                  console.warn('⚠️ Failed to load thread history:', err);
+                  setChatMessages([]);
+                }
               }}
                 onInsertToEditor={(content) => {
                 console.log('📝 Insert to Editor button clicked from AI chat');

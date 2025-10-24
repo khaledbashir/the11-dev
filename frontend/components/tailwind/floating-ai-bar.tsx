@@ -117,6 +117,31 @@ export function FloatingAIBar({ onGenerate, editor: editorProp }: FloatingAIBarP
     };
   }, [editor]);
 
+  // Keyboard shortcut: Alt+A to open AI bar
+  useEffect(() => {
+    if (!editor) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && (e.key === 'a' || e.key === 'A')) {
+        e.preventDefault();
+        // If there is a selection, open in selection mode (like clicking Ask AI)
+        const { from, to } = editor.state.selection;
+        if (from !== to) {
+          handleToolbarAskAI();
+        } else {
+          // Otherwise open the full bar (slash-like)
+          setShowToolbar(false);
+          setTriggerSource('slash');
+          setIsVisible(true);
+          setHasSelection(false);
+          setShowActions(false);
+          setPrompt("");
+        }
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [editor, hasSelection]);
+
   // Auto-focus input when visible
   useEffect(() => {
     if (isVisible && inputRef.current && !completion) {
