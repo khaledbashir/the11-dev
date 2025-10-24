@@ -1,5 +1,6 @@
 "use client";
 
+// 🔧 Chat sidebar with thread management, attachments, and streaming support
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
