@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { enforceHeadOfRole } from '@/lib/sow-utils';
 
 // Support both GET and POST methods
 // PDF generation endpoint for SOW documents
@@ -34,6 +35,12 @@ export async function POST(req: NextRequest) {
 
 async function handlePDFGeneration(body: any) {
   try {
+    // 🚨 CRITICAL ENFORCEMENT: Ensure Head Of role exists in pricing table BEFORE PDF generation
+    if (body.content) {
+      body.content = enforceHeadOfRole(body.content);
+      console.log('✅ [PDF Export] Head Of role enforcement applied');
+    }
+    
     // PDF generation handler - converts SOW documents to PDF via backend service
     // Use environment variable with fallback to localhost for local dev
     const pdfServiceUrl = process.env.NEXT_PUBLIC_PDF_SERVICE_URL || 'http://localhost:8000';
