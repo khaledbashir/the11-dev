@@ -1991,6 +1991,11 @@ export default function Page() {
     console.log('📝 Editor ref exists:', !!editorRef.current);
     console.log('📄 Current doc ID:', currentDocId);
     
+    if (!editorRef.current) {
+      console.error("Editor not initialized, cannot insert content.");
+      return;
+    }
+    
     if (!content || !currentDocId) {
       console.error('❌ Missing content or document ID');
       return;
