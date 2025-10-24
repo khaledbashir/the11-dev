@@ -732,3 +732,86 @@ export function cleanSOWContent(content: string): string {
     .replace(/<\/?[A-Z_]+>/gi, '')
     .trim();
 }
+
+/**
+ * Extract the modular Architect SOW JSON from an AI response.
+ * Looks for a ```json ... ``` code block containing a shape with scopeItems[].
+ * Returns a normalized ArchitectSOW or null if not found/invalid.
+ */
+export function extractSOWStructuredJson(text: string): ArchitectSOW | null {
+  if (!text) return null;
+
+  // Prefer fenced JSON blocks first
+  const codeBlockRegex = /```json\s*([\s\S]*?)\s*```/gi;
+  let match: RegExpExecArray | null;
+
+  const tryParse = (raw: string): ArchitectSOW | null => {
+    try {
+      const obj = JSON.parse(raw);
+      if (!obj || !Array.isArray(obj.scopeItems)) return null;
+
+      // Normalize minimal fields
+      const title = typeof obj.title === 'string' && obj.title.trim().length > 0
+        ? obj.title.trim()
+        : 'Statement of Work';
+      const overview = typeof obj.overview === 'string' ? obj.overview : undefined;
+      const outcomes = Array.isArray(obj.outcomes) ? obj.outcomes.filter(Boolean) : undefined;
+      const assumptions = Array.isArray(obj.assumptions) ? obj.assumptions.filter(Boolean) : undefined;
+
+      const scopeItems: ScopeItem[] = obj.scopeItems.map((s: any) => {
+        const name = typeof s?.name === 'string' ? s.name : 'Scope Item';
+        const rolesArr: ScopeRole[] = Array.isArray(s?.roles)
+          ? s.roles
+              .map((r: any) => ({
+                role: String(r?.role || '').trim(),
+                hours: Number(r?.hours) || 0,
+              }))
+              .filter((r: ScopeRole) => r.role && r.hours >= 0)
+          : [];
+        const deliverables = Array.isArray(s?.deliverables) ? s.deliverables.filter(Boolean) : undefined;
+        const sAssumptions = Array.isArray(s?.assumptions) ? s.assumptions.filter(Boolean) : undefined;
+        const overview = typeof s?.overview === 'string' ? s.overview : undefined;
+        return {
+          name,
+          overview,
+          roles: rolesArr,
+          deliverables,
+          assumptions: sAssumptions,
+        } as ScopeItem;
+      });
+
+      if (!scopeItems.length) return null;
+
+      return {
+        title,
+        overview,
+        outcomes,
+        assumptions,
+        scopeItems,
+      } as ArchitectSOW;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  while ((match = codeBlockRegex.exec(text)) !== null) {
+    const raw = match[1];
+    const parsed = tryParse(raw);
+    if (parsed) return parsed;
+  }
+
+  // Fallback: try to locate a JSON object in the text containing "scopeItems"
+  const scopeIdx = text.indexOf('scopeItems');
+  if (scopeIdx !== -1) {
+    // Heuristic: take the largest {...} block that contains scopeItems
+    const firstBrace = text.lastIndexOf('{', scopeIdx);
+    const lastBrace = text.indexOf('}', scopeIdx);
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      const candidate = text.substring(firstBrace, lastBrace + 1);
+      const parsed = tryParse(candidate);
+      if (parsed) return parsed;
+    }
+  }
+
+  return null;
+}

@@ -33,6 +33,8 @@ import {
   parseSOWMarkdown,
   cleanSOWContent
 } from "@/lib/export-utils";
+import type { ArchitectSOW } from "@/lib/export-utils";
+import { extractSOWStructuredJson } from "@/lib/export-utils";
 import { anythingLLM } from "@/lib/anythingllm";
 import { ROLES } from "@/components/tailwind/extensions/editable-pricing-table";
 import { getWorkspaceForAgent } from "@/lib/workspace-config";
@@ -567,6 +569,8 @@ export default function Page() {
   const [availableWorkspaces, setAvailableWorkspaces] = useState<Array<{slug: string, name: string}>>([
     { slug: 'sow-master-dashboard', name: '🎯 All SOWs (Master)' }
   ]);
+  // Structured SOW from AI (Architect modular JSON)
+  const [structuredSow, setStructuredSow] = useState<ArchitectSOW | null>(null);
 
   // Initialize master dashboard on app load
   useEffect(() => {
@@ -1935,6 +1939,15 @@ export default function Page() {
     toast.info('📊 Generating Excel...');
     
     try {
+      // Prefer modular Architect JSON if available
+      if (structuredSow?.scopeItems?.length) {
+        const safeName = `${(currentDoc.title || structuredSow.title || 'SOW')}`
+          .replace(/[^a-z0-9]/gi, '_');
+        exportToExcel(structuredSow, `${safeName}_pricing.xlsx`);
+        toast.success('✅ Excel downloaded successfully!');
+        return;
+      }
+
       // Extract pricing data from document
       const pricingRows = extractPricingFromContent(currentDoc.content);
       
@@ -2996,6 +3009,15 @@ export default function Page() {
             console.log(`🎯 Updated document ${currentDocId} with work type: ${detectedWorkType}`);
           }
 
+          // 🧩 Also try to capture modular Architect JSON into state for Excel engine v2
+          try {
+            const structured = extractSOWStructuredJson(accumulatedContent);
+            if (structured?.scopeItems?.length) {
+              setStructuredSow(structured);
+              console.log('✅ Captured structured SOW JSON for Excel export');
+            }
+          } catch {}
+
           // ✅ ENFORCE JSON CONTRACT: If the AI didn't include the required suggestedRoles JSON,
           // automatically ask for it in a follow-up message and append to the assistant reply.
           const hasSuggestedRolesJson = /```json\s*([\s\S]*?)\s*```/m.test(accumulatedContent);
@@ -3136,6 +3158,15 @@ export default function Page() {
           };
           setChatMessages(prev => [...prev, aiMessage]);
           console.log('✅ Non-streaming response complete');
+
+          // 🧩 Try to parse structured SOW JSON from non-streaming response
+          try {
+            const structured = extractSOWStructuredJson(aiMessage.content);
+            if (structured?.scopeItems?.length) {
+              setStructuredSow(structured);
+              console.log('✅ Captured structured SOW JSON for Excel export');
+            }
+          } catch {}
         }
       } catch (error) {
         console.error("❌ Chat API error:", error);
