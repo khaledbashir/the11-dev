@@ -2251,9 +2251,11 @@ export default function Page() {
       );
       console.log('✅ Document updated successfully');
       
-      // Also update the editor directly
+      // Also update the editor directly - REPLACE all content (not insert)
       if (editorRef.current) {
-        editorRef.current.insertContent(convertedContent);
+        console.log('📝 Setting editor content with converted JSON');
+        editorRef.current.commands.setContent(convertedContent);
+        console.log('✅ Editor content set successfully');
       }
       
       // Embed SOW in both client workspace and master dashboard
