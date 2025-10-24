@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     // Get recent activity (last 5 SOWs)
     const recentActivity = await query<any>(`
       SELECT 
+        id,
         client_name as clientName,
         title as sowTitle,
         total_investment as value,
@@ -56,6 +57,7 @@ export async function GET(request: NextRequest) {
       totalValue: totalValue[0]?.total || 0,
       masterDashboard: 'sow-master-dashboard',
       recentActivity: recentActivity.map((activity: any) => ({
+        id: activity.id,
         clientName: activity.clientName || 'Unknown Client',
         sowTitle: activity.sowTitle || 'Untitled SOW',
         value: parseFloat(activity.value) || 0,

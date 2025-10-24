@@ -15,6 +15,7 @@ interface ResizableLayoutProps {
   rightDefaultSize?: number;
   sidebarOpen?: boolean;
   aiChatOpen?: boolean;
+  aiChatExpanded?: boolean; // NEW: Wider AI chat panel
   onToggleSidebar?: () => void;
   onToggleAiChat?: () => void;
   viewMode?: 'editor' | 'dashboard' | 'gardner-studio' | 'ai-management'; // NEW: Context awareness
@@ -32,6 +33,7 @@ export function ResizableLayout({
   rightDefaultSize = 25,
   sidebarOpen = true,
   aiChatOpen = true,
+  aiChatExpanded = false,
   onToggleSidebar,
   onToggleAiChat,
   viewMode = 'editor', // Default to editor mode
@@ -92,7 +94,9 @@ export function ResizableLayout({
         {rightPanel && (
           <div 
             className={`h-full overflow-hidden flex-shrink-0 border-l border-gray-700 transition-all duration-300 bg-gray-950 ${
-              aiChatOpen ? 'w-[35%] min-w-96' : 'w-0 border-l-0'
+              aiChatOpen
+                ? (aiChatExpanded ? 'w-[48%] min-w-[640px]' : 'w-[35%] min-w-96')
+                : 'w-0 border-l-0'
             }`}
           >
             {aiChatOpen && rightPanel}

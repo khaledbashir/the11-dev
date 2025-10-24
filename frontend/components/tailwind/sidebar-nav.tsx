@@ -59,8 +59,8 @@ interface Workspace {
 }
 
 interface SidebarNavProps {
-  currentView: "dashboard" | "gardner-studio" | "editor" | "ai-management";
-  onViewChange: (view: "dashboard" | "gardner-studio" | "editor" | "ai-management") => void;
+  currentView: "dashboard" | "editor" | "gardner-studio" | "ai-management";
+  onViewChange: (view: "dashboard" | "editor" | "gardner-studio" | "ai-management") => void;
   
   workspaces: Workspace[];
   currentWorkspaceId: string;
@@ -659,32 +659,6 @@ export default function SidebarNav({
             <span>Clear {dashboardFilter.type === 'vertical' ? 'Vertical' : 'Service'} Filter: {dashboardFilter.value}</span>
           </button>
         )}
-
-        {/* Gardner Studio Link */}
-        <button
-          onClick={() => onViewChange("gardner-studio")}
-          className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-colors ${
-            currentView === "gardner-studio"
-              ? "bg-[#0e2e33] text-white"
-              : "text-gray-400 hover:text-gray-300 hover:bg-gray-900/50"
-          }`}
-        >
-          <Sparkles className="w-5 h-5 flex-shrink-0" />
-          <span className="text-sm font-medium">Gardner Studio</span>
-        </button>
-
-        {/* AI Management Link */}
-        <button
-          onClick={() => onViewChange("ai-management")}
-          className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-colors ${
-            currentView === "ai-management"
-              ? "bg-[#0e2e33] text-white"
-              : "text-gray-400 hover:text-gray-300 hover:bg-gray-900/50"
-          }`}
-        >
-          <Settings className="w-5 h-5 flex-shrink-0" />
-          <span className="text-sm font-medium">AI Management</span>
-        </button>
 
         {/* Requirements Verification Link */}
         <a

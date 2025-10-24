@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from 'next/navigation';
 import TailwindAdvancedEditor from "@/components/tailwind/advanced-editor";
 import SidebarNav from "@/components/tailwind/sidebar-nav";
 import AgentSidebar from "@/components/tailwind/agent-sidebar-clean";
@@ -506,12 +507,14 @@ const extractWorkType = (content: string): 'project' | 'audit' | 'retainer' => {
 };
 
 export default function Page() {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [currentDocId, setCurrentDocId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [agentSidebarOpen, setAgentSidebarOpen] = useState(true);
+  const [aiChatExpanded, setAiChatExpanded] = useState(false); // NEW: Expand/shrink AI chat width
   const [agents, setAgents] = useState<Agent[]>([]);
   const [currentAgentId, setCurrentAgentId] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -527,7 +530,7 @@ export default function Page() {
     lastShared?: string;
   } | null>(null);
   const [showGuidedSetup, setShowGuidedSetup] = useState(false);
-  const [viewMode, setViewMode] = useState<'editor' | 'dashboard' | 'gardner-studio' | 'ai-management'>('dashboard'); // NEW: View mode - START WITH DASHBOARD
+  const [viewMode, setViewMode] = useState<'editor' | 'dashboard'>('dashboard'); // NEW: View mode - START WITH DASHBOARD
   
   // Workspace & SOW state (NEW) - Start empty, load from AnythingLLM
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
@@ -1697,13 +1700,9 @@ export default function Page() {
     }
   };
 
-  const handleViewChange = (view: 'dashboard' | 'gardner-studio' | 'editor' | 'ai-management') => {
-    if (view === 'gardner-studio') {
-      setViewMode('gardner-studio');
-    } else if (view === 'dashboard') {
+  const handleViewChange = (view: 'dashboard' | 'editor') => {
+    if (view === 'dashboard') {
       setViewMode('dashboard');
-    } else if (view === 'ai-management') {
-      setViewMode('ai-management');
     } else {
       setViewMode('editor');
     }
@@ -3262,6 +3261,7 @@ export default function Page() {
         <ResizableLayout
         sidebarOpen={sidebarOpen}
         aiChatOpen={agentSidebarOpen}
+  aiChatExpanded={aiChatExpanded}
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         onToggleAiChat={() => setAgentSidebarOpen(!agentSidebarOpen)}
         viewMode={viewMode} // Pass viewMode for context awareness
@@ -3406,24 +3406,23 @@ export default function Page() {
                 onFilterByService={handleDashboardFilterByService}
                 currentFilter={dashboardFilter}
                 onClearFilter={handleClearDashboardFilter}
-              />
-            </div>
-          ) : viewMode === 'ai-management' ? (
-            <div className="w-full h-full bg-[#0E0F0F]">
-              <iframe
-                src="https://ahmad-anything-llm.840tjq.easypanel.host/"
-                className="w-full h-full border-0"
-                title="AI Management"
-                sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-pointer-lock allow-top-navigation allow-top-navigation-by-user-activation"
-                style={{ width: '100%', height: '100%', display: 'block', border: 'none' }}
+                onNavigateToSOW={(sowId: string) => {
+                  if (!sowId) return;
+                  try {
+                    router.push(`/portal/sow/${sowId}`);
+                  } catch (e) {
+                    console.warn('⚠️ Failed to navigate to SOW:', e);
+                  }
+                }}
               />
             </div>
           ) : (
-            <GardnerStudio onSelectGardner={(slug) => {
-              // TODO: Route to Gardner chat
-              console.log('Selected Gardner:', slug);
-              toast.success('Gardner selected! Chat integration coming soon.');
-            }} />
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <p className="text-gray-400 text-lg mb-4">No document selected</p>
+                <p className="text-gray-500 text-sm">Create a new workspace to get started</p>
+              </div>
+            </div>
           )
         }
         rightPanel={
@@ -3433,6 +3432,8 @@ export default function Page() {
             <AgentSidebar
               isOpen={agentSidebarOpen}
               onToggle={() => setAgentSidebarOpen(!agentSidebarOpen)}
+              isExpanded={aiChatExpanded}
+              onToggleExpand={() => setAiChatExpanded(prev => !prev)}
               agents={agents}
               currentAgentId={currentAgentId}
               onSelectAgent={handleSelectAgent}

@@ -9,10 +9,11 @@ import { ScrollArea } from "./ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Card } from "./ui/card";
 import { Label } from "./ui/label";
-import { ChevronRight, Send, Bot, Settings, Plus, Loader2, Zap } from "lucide-react";
+import { ChevronRight, Send, Bot, Settings, Plus, Loader2, Zap, Maximize2, Minimize2 } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { StreamingThoughtAccordion } from "./streaming-thought-accordion";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 interface Agent {
   id: string;
@@ -40,6 +41,8 @@ interface OpenRouterModel {
 interface AgentSidebarProps {
   isOpen: boolean;
   onToggle: () => void;
+  isExpanded?: boolean; // NEW: Whether the panel is expanded
+  onToggleExpand?: () => void; // NEW: Toggle expand/shrink
   agents: Agent[];
   currentAgentId: string | null;
   onSelectAgent: (id: string) => void;
@@ -65,6 +68,8 @@ interface AgentSidebarProps {
 export default function AgentSidebar({
   isOpen,
   onToggle,
+  isExpanded = false,
+  onToggleExpand,
   agents,
   currentAgentId,
   onSelectAgent,
@@ -111,6 +116,55 @@ export default function AgentSidebar({
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 🔎 Utility: Split markdown into text and JSON code blocks for collapsible rendering
+  const splitMarkdownJsonBlocks = (markdown: string): Array<{ type: 'text' | 'json'; content: string }> => {
+    const segments: Array<{ type: 'text' | 'json'; content: string }> = [];
+    const regex = /```\s*json\s*([\s\S]*?)```/gi;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(markdown)) !== null) {
+      const matchStart = match.index;
+      const matchEnd = regex.lastIndex;
+      const before = markdown.slice(lastIndex, matchStart);
+      if (before.trim()) segments.push({ type: 'text', content: before });
+      const jsonBlock = match[1]?.trim() || '';
+      if (jsonBlock) segments.push({ type: 'json', content: jsonBlock });
+      lastIndex = matchEnd;
+    }
+    const after = markdown.slice(lastIndex);
+    if (after.trim()) segments.push({ type: 'text', content: after });
+    // If no json fences found, return as a single text segment
+    if (segments.length === 0) return [{ type: 'text', content: markdown }];
+    return segments;
+  };
+
+  // 📦 Collapsible JSON viewer component
+  const JsonCollapsible: React.FC<{ json: string; defaultOpen?: boolean }> = ({ json, defaultOpen = false }) => {
+    const [open, setOpen] = useState(defaultOpen);
+    let pretty = json;
+    try {
+      pretty = JSON.stringify(JSON.parse(json), null, 2);
+    } catch {
+      // keep original if not valid JSON
+    }
+    return (
+      <div className="border border-[#1b5e5e] rounded-md bg-[#0E2E33]/40">
+        <button
+          className="w-full flex items-center justify-between px-3 py-2 text-left text-sm text-white hover:bg-[#0E2E33]"
+          onClick={() => setOpen(o => !o)}
+        >
+          <span>Structured JSON</span>
+          {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </button>
+        {open && (
+          <pre className="max-h-64 overflow-auto text-xs p-3 text-green-200 bg-[#0b1c1c] rounded-b-md">
+            {pretty}
+          </pre>
+        )}
+      </div>
+    );
+  };
 
   // Debug: Log when onInsertToEditor is available (DISABLED for performance)
   // useEffect(() => {
@@ -543,6 +597,30 @@ export default function AgentSidebar({
                 >
                   Threads
                 </Button>
+                {/* Expand/Shrink AI chat panel width */}
+                {onToggleExpand && (
+                  <Button
+                    onClick={onToggleExpand}
+                    className="bg-[#1c1c1c] hover:bg-[#222] text-white text-xs h-7 px-2 border border-[#2a2a2a]"
+                    size="sm"
+                    title={isExpanded ? 'Shrink chat' : 'Expand chat'}
+                    aria-label={isExpanded ? 'Shrink chat' : 'Expand chat'}
+                  >
+                    {isExpanded ? <Minimize2 className="h-4 w-4 mr-1" /> : <Maximize2 className="h-4 w-4 mr-1" />}
+                    {isExpanded ? 'Shrink' : 'Expand'}
+                  </Button>
+                )}
+                {/* Collapse/Hide AI chat panel */}
+                <Button
+                  onClick={onToggle}
+                  className="bg-[#1c1c1c] hover:bg-[#222] text-white text-xs h-7 px-2 border border-[#2a2a2a]"
+                  size="sm"
+                  title="Hide chat"
+                  aria-label="Hide chat"
+                >
+                  <ChevronRight className="h-4 w-4 mr-1" />
+                  Hide
+                </Button>
               </>
             )}
           </div>
@@ -636,36 +714,45 @@ export default function AgentSidebar({
                       </p>
                     </div>
                   ) : (
-                    chatMessages.map((msg) => (
-                      <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`w-full max-w-[85%] rounded-xl px-4 py-3 ${
-                          msg.role === 'user' 
-                            ? 'bg-[#15a366] text-white' 
-                            : 'bg-[#1b1b1e] text-white border border-[#0E2E33]'
-                        }`}>
-                          {/* Show thinking section with accordion for assistant messages */}
-                          {msg.role === 'assistant' && (
-                            <div className="mb-4">
-                              <StreamingThoughtAccordion 
-                                content={msg.content}
-                                messageId={msg.id}
-                                isStreaming={streamingMessageId === msg.id}
-                              />
+                    chatMessages.map((msg) => {
+                      const cleaned = msg.content.replace(/<think>[\s\S]*?<\/think>/gi, '');
+                      const segments = msg.role === 'assistant' ? splitMarkdownJsonBlocks(cleaned) : [{ type: 'text' as const, content: msg.content }];
+                      return (
+                        <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`w-full max-w-[85%] rounded-xl px-4 py-3 ${
+                            msg.role === 'user' 
+                              ? 'bg-[#15a366] text-white' 
+                              : 'bg-[#1b1b1e] text-white border border-[#0E2E33]'
+                          }`}>
+                            {msg.role === 'assistant' && (
+                              <div className="mb-4">
+                                <StreamingThoughtAccordion 
+                                  content={msg.content}
+                                  messageId={msg.id}
+                                  isStreaming={streamingMessageId === msg.id}
+                                />
+                              </div>
+                            )}
+                            <div className="space-y-3">
+                              {segments.map((seg, i) => (
+                                seg.type === 'text' ? (
+                                  <div key={i} className="prose prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-1">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                      {seg.content}
+                                    </ReactMarkdown>
+                                  </div>
+                                ) : (
+                                  <JsonCollapsible key={i} json={seg.content} />
+                                )
+                              ))}
                             </div>
-                          )}
-                          
-                          {/* Show actual content */}
-                          <div className="prose prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-1">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                              {msg.content.replace(/<think>[\s\S]*?<\/think>/gi, '')}
-                            </ReactMarkdown>
-                          </div>
-                          <div className="text-xs mt-2 opacity-60">
-                            {formatTimestamp(msg.timestamp)}
+                            <div className="text-xs mt-2 opacity-60">
+                              {formatTimestamp(msg.timestamp)}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                   <div ref={chatEndRef} />
                 </div>
@@ -718,6 +805,8 @@ export default function AgentSidebar({
                   ) : (
                     chatMessages.map(msg => {
                       const shouldShowButton = msg.role === 'assistant' && onInsertToEditor;
+                      const cleaned = msg.content.replace(/<think>[\s\S]*?<\/think>/gi, '');
+                      const segments = msg.role === 'assistant' ? splitMarkdownJsonBlocks(cleaned) : [{ type: 'text' as const, content: msg.content }];
                       
                       // Debug logging disabled for performance
                       // if (msg.role === 'assistant') {
@@ -749,12 +838,18 @@ export default function AgentSidebar({
                               </div>
                             )}
                             
-                            {/* Show actual content for user messages */}
-                            {msg.role === 'user' && (
-                              <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose prose-invert max-w-none text-sm">
-                                {msg.content}
-                              </ReactMarkdown>
-                            )}
+                            {/* Content rendering with JSON collapsible for assistant */}
+                            <div className="space-y-3">
+                              {segments.map((seg, i) => (
+                                seg.type === 'text' ? (
+                                  <ReactMarkdown key={i} remarkPlugins={[remarkGfm]} className="prose prose-invert max-w-none text-sm">
+                                    {seg.content}
+                                  </ReactMarkdown>
+                                ) : (
+                                  <JsonCollapsible key={i} json={seg.content} />
+                                )
+                              ))}
+                            </div>
                             
                             <div className="flex gap-2 mt-4 items-center">
                               <p className="text-xs mt-1 opacity-70 flex-1">{formatTimestamp(msg.timestamp)}</p>
@@ -766,7 +861,7 @@ export default function AgentSidebar({
                                     console.log('🖱️ Insert to Editor button clicked');
                                     console.log('📤 Inserting content without thinking tags');
                                     // Extract content without thinking tags
-                                    const cleanedContent = msg.content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+                                    const cleanedContent = cleaned.trim();
                                     onInsertToEditor(cleanedContent || msg.content);
                                   }}
                                 >
@@ -897,7 +992,23 @@ export default function AgentSidebar({
                       </Button>
                     </div>
                   </div>
-                  
+                  {/* Persistent Insert-to-Editor for latest assistant reply (editor mode only) */}
+                  {isEditorMode && onInsertToEditor && chatMessages.some(m => m.role === 'assistant') && (
+                    <Button
+                      onClick={() => {
+                        const lastAssistant = [...chatMessages].reverse().find(m => m.role === 'assistant');
+                        if (!lastAssistant) return;
+                        const cleaned = lastAssistant.content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+                        onInsertToEditor(cleaned || lastAssistant.content);
+                      }}
+                      size="sm"
+                      className="self-end bg-[#1b5e5e] hover:bg-[#1b5e5e]/80 text-white h-[50px] font-semibold border border-[#0E2E33]"
+                      title="Insert the latest AI reply into the editor"
+                    >
+                      📝 Insert last reply
+                    </Button>
+                  )}
+
                   <Button 
                     onClick={handleSendMessage} 
                     disabled={!chatInput.trim() || isLoading} 

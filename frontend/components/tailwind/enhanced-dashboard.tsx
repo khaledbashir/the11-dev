@@ -30,6 +30,7 @@ interface DashboardStats {
   activeSOWs: number;
   thisMonthSOWs: number;
   recentActivity: Array<{
+    id: string;
     clientName: string;
     sowTitle: string;
     value: number;
@@ -54,13 +55,15 @@ interface EnhancedDashboardProps {
   onFilterByService?: (serviceLine: string) => void;
   onClearFilter?: () => void;
   currentFilter?: { type: 'vertical' | 'serviceLine' | null; value: string | null };
+  onNavigateToSOW?: (sowId: string) => void;
 }
 
 export function EnhancedDashboard({ 
   onFilterByVertical, 
   onFilterByService,
   currentFilter,
-  onClearFilter
+  onClearFilter,
+  onNavigateToSOW
 }: EnhancedDashboardProps = {}) {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -239,7 +242,11 @@ export function EnhancedDashboard({
               <div className="space-y-4">
                 {stats.recentActivity && stats.recentActivity.length > 0 ? (
                   stats.recentActivity.map((activity, idx) => (
-                    <div key={idx} className="bg-[#0e0f0f] border border-[#0e2e33] rounded-lg p-4 hover:border-blue-400/50 transition-colors">
+                    <div 
+                      key={idx} 
+                      className="bg-[#0e0f0f] border border-[#0e2e33] rounded-lg p-4 hover:border-blue-400/50 transition-colors cursor-pointer"
+                      onClick={() => onNavigateToSOW?.(activity.id)}
+                    >
                       <div className="font-semibold text-white">{activity.clientName}</div>
                       <div className="text-sm text-gray-400 mt-1">{activity.sowTitle}</div>
                       <div className="flex items-center justify-between mt-2">

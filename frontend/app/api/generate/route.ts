@@ -19,7 +19,8 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   // Get model from request or fall back to env var, then to default
   const { prompt, option, command, model } = await req.json();
-  const defaultModel = process.env.OPENROUTER_DEFAULT_MODEL || "google/gemini-2.0-flash-exp:free";
+  // Default to requested model if not explicitly provided by client
+  const defaultModel = process.env.OPENROUTER_DEFAULT_MODEL || "openai/gpt-oss-20b:free";
   const selectedModel = model || defaultModel;
 
   const messages = match(option)
