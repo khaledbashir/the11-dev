@@ -19,6 +19,7 @@ import {
   ChevronLeft,
   GripVertical,
   Settings,
+  CheckCircle2,
 } from "lucide-react";
 import {
   DndContext,
@@ -684,6 +685,17 @@ export default function SidebarNav({
           <Settings className="w-5 h-5 flex-shrink-0" />
           <span className="text-sm font-medium">AI Management</span>
         </button>
+
+        {/* Requirements Verification Link */}
+        <a
+          href="/portal/requirements"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-colors text-gray-400 hover:text-gray-300 hover:bg-gray-900/50"
+        >
+          <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+          <span className="text-sm font-medium">Requirements</span>
+        </a>
       </div>
 
       {/* WORKSPACES SECTION */}

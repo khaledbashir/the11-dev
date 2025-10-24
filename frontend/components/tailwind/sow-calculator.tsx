@@ -87,22 +87,22 @@ export default function SOWCalculator({ onInsertToEditor }: SOWCalculatorProps) 
 
 **Client:** ${clientName}
 **Date:** ${new Date().toLocaleDateString('en-AU', { day: '2-digit', month: 'long', year: 'numeric' })}
-**Total Investment:** $${total.toLocaleString('en-AU', { minimumFractionDigits: 2 })} AUD (ex GST)
+**Total Investment:** AUD ${total.toLocaleString('en-AU', { minimumFractionDigits: 2 })} +GST
 
 ## Pricing Summary by Role
 
 | Role | Hours | Hourly Rate | Total Cost |
 |------|-------|-------------|------------|
 ${Object.entries(roleSummary).map(([role, data]) => 
-  `| ${role} | ${data.hours} | $${data.rate.toLocaleString('en-AU', { minimumFractionDigits: 2 })} | $${data.cost.toLocaleString('en-AU', { minimumFractionDigits: 2 })} |`
+  `| ${role} | ${data.hours} | AUD ${data.rate.toLocaleString('en-AU', { minimumFractionDigits: 2 })} | AUD ${data.cost.toLocaleString('en-AU', { minimumFractionDigits: 2 })} +GST |`
 ).join('\n')}
 
 ## Investment Summary
 
 | Item | Amount |
 |------|--------|
-| Subtotal | $${subtotal.toLocaleString('en-AU', { minimumFractionDigits: 2 })} |
-${discount > 0 ? `| Discount (${discount}%) | -$${discountAmount.toLocaleString('en-AU', { minimumFractionDigits: 2 })} |\n` : ''}| **Total Investment** | **$${total.toLocaleString('en-AU', { minimumFractionDigits: 2 })} AUD (ex GST)** |
+| Subtotal | AUD ${subtotal.toLocaleString('en-AU', { minimumFractionDigits: 2 })} |
+${discount > 0 ? `| Discount (${discount}%) | -AUD ${discountAmount.toLocaleString('en-AU', { minimumFractionDigits: 2 })} |\n` : ''}| **Total Investment** | **AUD ${total.toLocaleString('en-AU', { minimumFractionDigits: 2 })} +GST** |
 `;
     return content;
   };

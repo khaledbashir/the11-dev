@@ -207,11 +207,10 @@ export function SendToClientModal({
                 </p>
                 {document.totalInvestment && (
                   <p className="text-sm text-muted-foreground">
-                    <strong>Investment:</strong> $
+                    <strong>Investment:</strong> AUD{" "}
                     {document.totalInvestment.toLocaleString("en-AU", {
                       minimumFractionDigits: 2,
-                    })}{" "}
-                    AUD
+                    })}
                   </p>
                 )}
               </div>

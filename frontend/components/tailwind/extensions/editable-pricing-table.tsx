@@ -350,7 +350,7 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
                         <option value="">Select role...</option>
                         {ROLES.map((role) => (
                           <option key={role.name} value={role.name}>
-                            {role.name} - ${role.rate}/hr
+                            {role.name} - AUD {role.rate}/hr
                           </option>
                         ))}
                       </select>
@@ -370,7 +370,7 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
                   </td>
                   {showTotal && (
                     <td className="border border-border px-3 py-2 text-right text-sm font-semibold">
-                      ${(row.hours * row.rate).toFixed(2)}
+                      AUD {(row.hours * row.rate).toFixed(2)} +GST
                     </td>
                   )}
                   <td className="border border-border p-2 text-center">
@@ -424,17 +424,17 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
                   </div>
                   <div className="flex justify-between text-sm text-foreground dark:text-gray-100">
                     <span>Subtotal:</span>
-                    <span className="font-semibold">${calculateSubtotal().toFixed(2)}</span>
+                    <span className="font-semibold">AUD {calculateSubtotal().toFixed(2)}</span>
                   </div>
                   {discount > 0 && (
                     <>
                       <div className="flex justify-between text-sm text-red-600">
                         <span>Discount ({discount}%):</span>
-                        <span>-${calculateDiscount().toFixed(2)}</span>
+                        <span>-AUD {calculateDiscount().toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-sm text-foreground dark:text-gray-100">
                         <span>Subtotal after Discount:</span>
-                        <span className="font-semibold">${calculateSubtotalAfterDiscount().toFixed(2)}</span>
+                        <span className="font-semibold">AUD {calculateSubtotalAfterDiscount().toFixed(2)}</span>
                       </div>
                     </>
                   )}
@@ -443,15 +443,15 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
                   <div className="border-t border-border pt-2 mt-2 space-y-1">
                     <div className="flex justify-between text-base font-bold text-foreground dark:text-gray-100">
                       <span>Total Project Value:</span>
-                      <span className="text-[#0e2e33]">${calculateSubtotalAfterDiscount().toFixed(2)} <span className="text-sm font-normal">+GST</span></span>
+                      <span className="text-[#0e2e33]">AUD {calculateSubtotalAfterDiscount().toFixed(2)} <span className="text-sm font-normal">+GST</span></span>
                     </div>
                     <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                       <span>GST (10%):</span>
-                      <span>${calculateGST().toFixed(2)}</span>
+                      <span>AUD {calculateGST().toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 italic">
                       <span>Total incl. GST:</span>
-                      <span>${calculateTotal().toFixed(2)}</span>
+                      <span>AUD {calculateTotal().toFixed(2)}</span>
                     </div>
                   </div>
                 </>
@@ -564,8 +564,8 @@ export const EditablePricingTable = Node.create({
             ['td', { style: 'padding:0.875rem 1rem; border:1px solid #d1d5db;' }, row.description || ''],
             ...(showTotal ? [
               ['td', { style: 'padding:0.875rem 1rem; border:1px solid #d1d5db; text-align:right;' }, row.hours.toString()],
-              ['td', { style: 'padding:0.875rem 1rem; border:1px solid #d1d5db; text-align:right;' }, `$${row.rate.toFixed(2)}`],
-              ['td', { style: 'padding:0.875rem 1rem; border:1px solid #d1d5db; text-align:right; font-weight:600;' }, `$${rowTotal.toFixed(2)}`],
+              ['td', { style: 'padding:0.875rem 1rem; border:1px solid #d1d5db; text-align:right;' }, `AUD ${row.rate.toFixed(2)}`],
+              ['td', { style: 'padding:0.875rem 1rem; border:1px solid #d1d5db; text-align:right; font-weight:600;' }, `AUD ${rowTotal.toFixed(2)} +GST`],
             ] : []),
           ];
         })
@@ -588,18 +588,18 @@ export const EditablePricingTable = Node.create({
             ['span', {}, `Discount (${discount}%):`],
             ['span', {}, `-$${discountAmount.toFixed(2)}`]
           ],
-          ['div', { style: 'display:flex; justify-content:space-between; padding:0.5rem 0;' },
-            ['span', { style: 'font-weight:600;' }, 'Subtotal After Discount:'],
-            ['span', { style: 'font-weight:600;' }, `$${subtotalAfterDiscount.toFixed(2)}`]
-          ]
-        ] : []),
+        ['div', { style: 'display:flex; justify-content:space-between; padding:0.5rem 0;' },
+          ['span', { style: 'font-weight:600;' }, 'Subtotal After Discount:'],
+          ['span', { style: 'font-weight:600;' }, `AUD ${subtotalAfterDiscount.toFixed(2)}`]
+        ]
+      ] : []),
         ['div', { style: 'display:flex; justify-content:space-between; padding:0.5rem 0;' },
           ['span', {}, 'GST (10%):'],
-          ['span', {}, `$${gst.toFixed(2)}`]
+          ['span', {}, `AUD ${gst.toFixed(2)}`]
         ],
         ['div', { style: 'display:flex; justify-content:space-between; padding:0.75rem 0; border-top:2px solid #0e2e33; margin-top:0.5rem;' },
           ['span', { style: 'font-size:1.25rem; font-weight:700; color:#0e2e33;' }, 'Total Investment:'],
-          ['span', { style: 'font-size:1.25rem; font-weight:700; color:#0e2e33;' }, `$${total.toFixed(2)}`]
+          ['span', { style: 'font-size:1.25rem; font-weight:700; color:#0e2e33;' }, `AUD ${total.toFixed(2)}`]
         ]
       ]
     ];
