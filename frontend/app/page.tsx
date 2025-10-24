@@ -2268,7 +2268,11 @@ export default function Page() {
   const [lastMessageSentTime, setLastMessageSentTime] = useState<number>(0);
   const MESSAGE_RATE_LIMIT = 1000; // Wait at least 1 second between messages to avoid rate limiting
 
-  const handleSendMessage = async (message: string) => {
+  const handleSendMessage = async (
+    message: string, 
+    dashboardThreadSlug?: string | null, 
+    attachments?: Array<{name: string; mime: string; contentString: string}>
+  ) => {
     // In dashboard mode, we don't need an agent selected - use dashboard workspace directly
     const isDashboardMode = viewMode === 'dashboard';
     
@@ -2554,6 +2558,17 @@ export default function Page() {
           setChatMessages(prev => [...prev, initialAIMessage]);
           setStreamingMessageId(aiMessageId);
 
+          // Determine thread slug based on mode
+          let threadSlugToUse: string | undefined;
+          if (isDashboardMode) {
+            // Dashboard mode: use the thread slug from sidebar (passed as parameter)
+            threadSlugToUse = dashboardThreadSlug || undefined;
+            console.log('🧵 [Dashboard Thread]', threadSlugToUse);
+          } else if (currentDocId) {
+            // Editor mode: use thread slug from current document
+            threadSlugToUse = documents.find(d => d.id === currentDocId)?.threadSlug || undefined;
+          }
+
           const response = await fetch(streamEndpoint, {
             method: "POST",
             headers: {
@@ -2563,7 +2578,8 @@ export default function Page() {
             body: JSON.stringify({
               model: effectiveAgent.model,
               workspace: workspaceSlug,
-              threadSlug: !isDashboardMode && currentDocId ? (documents.find(d => d.id === currentDocId)?.threadSlug || undefined) : undefined,
+              threadSlug: threadSlugToUse,
+              attachments: attachments || [], // Include file attachments from sidebar
               messages: [
                 { role: "system", content: effectiveAgent.systemPrompt },
                 ...newMessages.map(m => ({ role: m.role, content: m.content })),

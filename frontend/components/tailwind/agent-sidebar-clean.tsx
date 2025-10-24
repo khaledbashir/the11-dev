@@ -47,7 +47,7 @@ interface AgentSidebarProps {
   onUpdateAgent: (id: string, updates: Partial<Agent>) => void;
   onDeleteAgent: (id: string) => void;
   chatMessages: ChatMessage[];
-  onSendMessage: (message: string) => void;
+  onSendMessage: (message: string, threadSlug?: string | null, attachments?: Array<{name: string; mime: string; contentString: string}>) => void;
   isLoading?: boolean;
   onInsertToEditor?: (content: string) => void;
   streamingMessageId?: string | null; // Track which message is streaming
@@ -427,21 +427,23 @@ export default function AgentSidebar({
   });
 
   const handleSendMessage = () => {
-    if (!chatInput.trim() || !currentAgentId || isLoading) return;
+    if (!chatInput.trim() || isLoading) return;
+    
+    // Dashboard mode doesn't require agent selection
+    if (!isDashboardMode && !currentAgentId) return;
     
     // Send message with thread context and attachments
-    // NOTE: Parent component (page.tsx) will need to be updated to:
-    // 1. Accept currentThreadSlug and attachments as parameters
-    // 2. Route chat to /api/anythingllm/stream-chat with threadSlug
-    // 3. Include attachments in the request body
     console.log('📤 Sending message:', {
       message: chatInput,
       threadSlug: currentThreadSlug,
       attachments: attachments.length,
       workspaceSlug: dashboardChatTarget,
+      isDashboardMode,
     });
     
-    onSendMessage(chatInput);
+    // Pass message with thread context to parent
+    // Parent will use currentThreadSlug for dashboard mode routing
+    onSendMessage(chatInput, currentThreadSlug, attachments);
     setChatInput("");
     setAttachments([]); // Clear attachments after sending
   };
