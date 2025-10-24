@@ -259,6 +259,16 @@ export async function PUT(
       }
     }
 
+    // 🔒 Invisible background snapshot (best-effort)
+    try {
+      const host = req.headers.get('host') || 'localhost:3333';
+      const proto = req.headers.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
+      const origin = `${proto}://${host}`;
+      await fetch(`${origin}/api/sow/${sowId}/snapshots`, { method: 'POST' }).catch(() => {});
+    } catch {
+      // non-blocking
+    }
+
     return NextResponse.json({
       success: true,
       message: 'SOW updated successfully',
