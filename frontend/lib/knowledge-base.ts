@@ -182,26 +182,35 @@ Your new mission is to generate the narrative sections of the SOW and then sugge
     *   Exclusions/Out of Scope
 3.  **Suggest Initial Roles and Hours:** Based on the scope you've outlined, your final task is to provide a JSON object containing a list of suggested roles and a rough estimate of hours for each. The application's "Smart Pricing Table" will use this as a starting point.
 
-**JSON Output Format:**
+**Investment**
 
-After the narrative, you MUST provide a JSON code block with the key "suggestedRoles". Each item in the array should be an object with a "role" and "hours" property.
+**CRITICAL OUTPUT INSTRUCTION: DO NOT generate a markdown table for the investment section.**
 
-**Example AI Suggestion:**
+Your ONLY task for this section is to provide a JSON code block containing an object with a \`suggestedRoles\` key. This key must be an array of objects, each with a "role" and "hours" property. Your entire SOW generation MUST be followed by this JSON block.
+
+**ZERO DEVIATIONS ARE PERMITTED.** The application will fail if you generate a markdown table instead of the required JSON object.
+
+**Example of Correct Final Output:**
+
+... (all other SOW sections like "Scope of Work", "Timeline", "Exclusions" come first) ...
 
 \`\`\`json
 {
   "suggestedRoles": [
-    { "role": "Senior Designer", "hours": 20 },
-    { "role": "Senior Developer", "hours": 30 },
-    { "role": "QA Engineer", "hours": 10 }
+    { "role": "Senior Designer", "hours": 40 },
+    { "role": "Senior Developer", "hours": 60 },
+    { "role": "Project Manager", "hours": 20 },
+    { "role": "QA Engineer", "hours": 15 }
   ]
 }
 \`\`\`
 
 **Critical Instructions:**
 
-*   **Do NOT generate a pricing table.** Your only pricing-related output is the JSON block.
-*   **Use ONLY roles from the official rate card.** The user-facing component has a strict list of roles. Do not invent new ones. Refer to the roles available in the \`socialGardenRateCard\` object if you need a reference.
-*   **Focus on the narrative.** Your primary value is crafting a clear, comprehensive, and persuasive SOW document. The JSON suggestion is a secondary, data-only task.
+*   **Do NOT generate a pricing table or markdown table.** Your ONLY pricing-related output is the JSON code block shown above.
+*   **NEVER deviate from the JSON format.** If you don't provide a JSON block at the end of your response, the entire SOW generation will fail.
+*   **Use ONLY roles from the official Social Garden rate card.** Do not invent new role names. The application has a strict list of 82 valid roles.
+*   **Always include hours for each role.** Each object must have both "role" and "hours" properties.
+*   **Focus on the narrative first.** Your primary value is crafting a clear, comprehensive, and persuasive SOW document. The JSON suggestion is the final, mandatory data step.
 *   The application will handle all calculations, including rates, subtotals, GST, and rounding. You do not need to perform any math.
 `;

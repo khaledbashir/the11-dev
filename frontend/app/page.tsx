@@ -68,53 +68,31 @@ const extractClientName = (prompt: string): string | null => {
 
 // Helper function to convert markdown to Novel editor JSON format
 // Extract pricing roles from markdown table format
-const extractPricingFromMarkdown = (markdown: string): any[] => {
-  const roles: any[] = [];
-  const lines = markdown.split('\n');
+
+// 🧹 SANITIZATION: Remove empty text nodes recursively from TipTap JSON
+const sanitizeEmptyTextNodes = (content: any): any => {
+  if (!content) return content;
   
-  // Look for markdown table with pricing info
-  let inTable = false;
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-    
-    // Detect table start (header with Role/Hours/Rate columns)
-    if (line.includes('|') && (line.toLowerCase().includes('role') || line.toLowerCase().includes('hours') || line.toLowerCase().includes('rate'))) {
-      inTable = true;
-      continue; // Skip header
-    }
-    
-    // Skip separator line
-    if (inTable && line.match(/^\|[\s\-:]+\|/)) {
-      continue;
-    }
-    
-    // Parse table rows
-    if (inTable && line.includes('|')) {
-      const parts = line.split('|').map(p => p.trim()).filter(p => p);
-      if (parts.length >= 3) {
-        const role = parts[0];
-        const hours = parseFloat(parts[1]) || 0;
-        const rateText = parts[2];
-        const rate = parseFloat(rateText.replace(/[^0-9.]/g, '')) || 0;
-        
-        if (role && hours > 0 && rate > 0) {
-          roles.push({
-            role,
-            description: '',
-            hours,
-            rate,
-          });
+  if (Array.isArray(content)) {
+    // Filter out text nodes with empty text
+    return content
+      .filter(node => {
+        // Remove text nodes where text is empty or whitespace-only
+        if (node.type === 'text' && (!node.text || node.text.trim() === '')) {
+          return false;
         }
-      }
-    }
-    
-    // Exit table when we hit a non-table line
-    if (inTable && !line.includes('|')) {
-      break;
-    }
+        return true;
+      })
+      .map(node => {
+        // Recursively sanitize nested content
+        if (node.content && Array.isArray(node.content)) {
+          return { ...node, content: sanitizeEmptyTextNodes(node.content) };
+        }
+        return node;
+      });
   }
   
-  return roles;
+  return content;
 };
 
 const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []) => {
@@ -2148,16 +2126,17 @@ export default function Page() {
       const cleanedContent = cleanSOWContent(markdownPart);
       console.log('✅ Content cleaned');
       
-      // 3. Parse pricing table from markdown content if no suggestedRoles provided
+      // 3. Validate suggestedRoles were properly extracted
       console.log('🔄 Converting markdown to JSON with suggested roles...');
       console.log('📊 suggestedRoles array:', suggestedRoles);
       console.log('📊 suggestedRoles length:', suggestedRoles?.length || 0);
       
-      // If no suggestedRoles, try to extract from markdown table
+      // CRITICAL: If no suggestedRoles provided, this is a FAILURE
+      // The AI MUST provide JSON with suggestedRoles - no fallback to markdown parsing
       if (suggestedRoles.length === 0) {
-        console.log('⚠️ No suggestedRoles provided, extracting from markdown table...');
-        suggestedRoles = extractPricingFromMarkdown(cleanedContent);
-        console.log(`✅ Extracted ${suggestedRoles.length} roles from markdown table`);
+        console.error('❌ CRITICAL ERROR: AI did not provide suggestedRoles JSON. The application requires a JSON block with suggestedRoles array. This is not optional.');
+        console.error('❌ Expected format: ```json { "suggestedRoles": [{ "role": "...", "hours": ... }] }```');
+        // Don't attempt any fallback - fail loudly
       }
       
       const convertedContent = convertMarkdownToNovelJSON(cleanedContent, suggestedRoles);
@@ -2180,7 +2159,12 @@ export default function Page() {
       // 5. Update the editor directly FIRST, replacing all content BEFORE state updates
       if (editorRef.current) {
         console.log('📝 Setting editor content with converted JSON');
-        editorRef.current.insertContent(convertedContent);
+        // 🧹 SANITIZE: Remove any empty text nodes before passing to TipTap
+        const sanitizedContent = {
+          ...convertedContent,
+          content: sanitizeEmptyTextNodes(convertedContent.content)
+        };
+        editorRef.current.insertContent(sanitizedContent);
         console.log('✅ Editor content set successfully');
       } else {
         console.warn('⚠️ Editor ref not available, skipping direct update');
