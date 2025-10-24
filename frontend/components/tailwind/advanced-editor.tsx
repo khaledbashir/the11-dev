@@ -57,11 +57,13 @@ const TailwindAdvancedEditor = forwardRef(({
   useImperativeHandle(ref, () => ({
     insertContent: (content: JSONContent) => {
       if (editor) {
+        console.log("ADVANCED-EDITOR: Received content to insert:", JSON.stringify(content, null, 2));
         // Defer the setContent call to avoid React flushSync issues
         setTimeout(() => {
           try {
-            editor.commands.insertContent(content);
+            editor.commands.setContent(content);
             setSaveStatus("Unsaved");
+            console.log("ADVANCED-EDITOR: Successfully called setContent.");
           } catch (error) {
             console.error('Error setting content:', error);
           }
