@@ -1899,143 +1899,6 @@ export default function Page() {
           const total = subtotal + gst;
           
           html += `<tr><td style="text-align: right; padding-right: 12px;"><strong>GST (10%):</strong></td><td style="text-align: right;">$${gst.toFixed(2)}</td></tr>`;
-        method: 'GET',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to get authorization URL');
-      }
-
-      const data = await response.json();
-      
-      // Redirect to Google OAuth
-      window.location.href = data.auth_url;
-    } catch (error) {
-      console.error('Error starting GSheet creation:', error);
-      toast.error('Failed to authorize with Google');
-    }
-  };
-
-  // Helper function to convert Novel JSON to HTML
-  const convertNovelToHTML = (content: any) => {
-    if (!content || !content.content) return '';
-
-    let html = '<style>';
-    html += 'body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; color: #1a1a1a; line-height: 1.6; }';
-    html += 'h1 { font-size: 28px; font-weight: 700; margin: 20px 0 16px; color: #2C823D; }';
-    html += 'h2 { font-size: 22px; font-weight: 600; margin: 16px 0 12px; color: #2C823D; }';
-    html += 'h3 { font-size: 18px; font-weight: 600; margin: 14px 0 10px; color: #2C823D; }';
-    html += 'p { margin: 8px 0; }';
-    html += 'ul, ol { margin: 8px 0; padding-left: 24px; }';
-    html += 'li { margin: 4px 0; }';
-    html += 'strong { font-weight: 600; }';
-    html += 'table { width: 100%; border-collapse: collapse; margin: 16px 0; }';
-    html += 'th { background: #2C823D; color: white; padding: 12px 8px; text-align: left; font-weight: 600; border: 1px solid #2C823D; }';
-    html += 'td { padding: 10px 8px; border: 1px solid #e0e0e0; }';
-    html += 'tr:nth-child(even) { background: #f8f8f8; }';
-    html += 'hr { border: none; border-top: 2px solid #2C823D; margin: 20px 0; }';
-    html += '</style>';
-
-    const processTextNode = (textNode: any): string => {
-      if (!textNode) return '';
-      let text = textNode.text || '';
-      if (textNode.marks) {
-        textNode.marks.forEach((mark: any) => {
-          if (mark.type === 'bold') text = `<strong>${text}</strong>`;
-          if (mark.type === 'italic') text = `<em>${text}</em>`;
-          if (mark.type === 'underline') text = `<u>${text}</u>`;
-        });
-      }
-      return text;
-    };
-
-    const processContent = (contentArray: any[]): string => {
-      if (!contentArray) return '';
-      return contentArray.map(processTextNode).join('');
-    };
-
-    content.content.forEach((node: any) => {
-      switch (node.type) {
-        case 'heading':
-          const level = node.attrs?.level || 1;
-          html += `<h${level}>${processContent(node.content)}</h${level}>`;
-          break;
-        case 'paragraph':
-          html += `<p>${processContent(node.content)}</p>`;
-          break;
-        case 'bulletList':
-          html += '<ul>';
-          node.content?.forEach((item: any) => {
-            const itemContent = item.content?.[0]?.content ? processContent(item.content[0].content) : '';
-            html += `<li>${itemContent}</li>`;
-          });
-          html += '</ul>';
-          break;
-        case 'orderedList':
-          html += '<ol>';
-          node.content?.forEach((item: any) => {
-            const itemContent = item.content?.[0]?.content ? processContent(item.content[0].content) : '';
-            html += `<li>${itemContent}</li>`;
-          });
-          html += '</ol>';
-          break;
-        case 'table':
-          html += '<table>';
-          node.content?.forEach((row: any, rowIndex: number) => {
-            html += '<tr>';
-            row.content?.forEach((cell: any) => {
-              const cellContent = cell.content?.[0]?.content ? processContent(cell.content[0].content) : '';
-              const tag = rowIndex === 0 || cell.type === 'tableHeader' ? 'th' : 'td';
-              html += `<${tag}>${cellContent}</${tag}>`;
-            });
-            html += '</tr>';
-          });
-          html += '</table>';
-          break;
-        case 'horizontalRule':
-          html += '<hr />';
-          break;
-        case 'editablePricingTable':
-          // Render editable pricing table as HTML table for PDF export
-          const rows = node.attrs?.rows || [];
-          const discount = node.attrs?.discount || 0;
-          
-          html += '<h3>Project Pricing</h3>';
-          html += '<table>';
-          html += '<tr><th>Role</th><th>Description</th><th>Hours</th><th>Rate (AUD)</th><th>Cost (AUD)</th></tr>';
-          
-          let subtotal = 0;
-          rows.forEach((row: any) => {
-            const cost = row.hours * row.rate;
-            subtotal += cost;
-            html += `<tr>`;
-            html += `<td>${row.role}</td>`;
-            html += `<td>${row.description}</td>`;
-            html += `<td>${row.hours}</td>`;
-            html += `<td>$${row.rate}</td>`;
-            html += `<td>$${cost.toFixed(2)}</td>`;
-            html += `</tr>`;
-          });
-          
-          html += '</table>';
-          
-          // Summary section
-          html += '<h4 style="margin-top: 20px;">Summary</h4>';
-          html += '<table style="width: auto; margin-left: auto;">';
-          html += `<tr><td style="text-align: right; padding-right: 12px;"><strong>Subtotal:</strong></td><td style="text-align: right;">$${subtotal.toFixed(2)}</td></tr>`;
-          
-          if (discount > 0) {
-            const discountAmount = subtotal * (discount / 100);
-            const afterDiscount = subtotal - discountAmount;
-            html += `<tr><td style="text-align: right; padding-right: 12px; color: #dc2626;"><strong>Discount (${discount}%):</strong></td><td style="text-align: right; color: #dc2626;">-$${discountAmount.toFixed(2)}</td></tr>`;
-            html += `<tr><td style="text-align: right; padding-right: 12px;"><strong>After Discount:</strong></td><td style="text-align: right;">$${afterDiscount.toFixed(2)}</td></tr>`;
-            subtotal = afterDiscount;
-          }
-          
-          const gst = subtotal * 0.1;
-          const total = subtotal + gst;
-          
-          html += `<tr><td style="text-align: right; padding-right: 12px;"><strong>GST (10%):</strong></td><td style="text-align: right;">$${gst.toFixed(2)}</td></tr>`;
           html += `<tr style="border-top: 2px solid #2C823D;"><td style="text-align: right; padding-right: 12px; padding-top: 8px;"><strong>Total Project Value:</strong></td><td style="text-align: right; padding-top: 8px; color: #2C823D; font-size: 18px;"><strong>$${total.toFixed(2)}</strong></td></tr>`;
           html += '</table>';
           break;
@@ -2054,8 +1917,6 @@ export default function Page() {
       setDocuments(prev => prev.map(d => d.id === currentDocId ? { ...d, content } : d));
     }
   };
-
-
 
   const handleCreateAgent = async (agent: Omit<Agent, 'id'>) => {
     const newId = `agent${Date.now()}`;
@@ -2125,7 +1986,7 @@ export default function Page() {
     }
   };
 
-  const handleInsertContent = async (content: string) => {
+  const handleInsertContent = async (content: string, suggestedRoles: any[] = []) => {
     console.log('📝 Inserting content into editor:', content.substring(0, 100));
     console.log('📝 Editor ref exists:', !!editorRef.current);
     console.log('📄 Current doc ID:', currentDocId);
@@ -2138,14 +1999,15 @@ export default function Page() {
     try {
       // 1. Separate Markdown from JSON
       let markdownPart = content;
-      let suggestedRoles: any[] = [];
+      // let suggestedRoles: any[] = []; // Now passed as an argument
       const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
 
       if (jsonMatch && jsonMatch[1]) {
         try {
           const parsedJson = JSON.parse(jsonMatch[1]);
           if (parsedJson.suggestedRoles) {
-            suggestedRoles = parsedJson.suggestedRoles;
+            // If roles are embedded in the content, merge them with any passed roles
+            suggestedRoles = [...suggestedRoles, ...parsedJson.suggestedRoles];
             // Remove the JSON block from the markdown content
             markdownPart = content.replace(jsonMatch[0], '').trim();
             console.log(`✅ Parsed ${suggestedRoles.length} suggested roles from AI response.`);
@@ -2970,34 +2832,7 @@ export default function Page() {
               }}
                 onInsertToEditor={(content) => {
                 console.log('📝 Insert to Editor button clicked from AI chat');
-                
-                // 1. Separate Markdown from JSON
-                let markdownPart = content;
-                let suggestedRoles: any[] = [];
-                const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
-
-                if (jsonMatch && jsonMatch[1]) {
-                  try {
-                    const parsedJson = JSON.parse(jsonMatch[1]);
-                    if (parsedJson.suggestedRoles) {
-                      suggestedRoles = parsedJson.suggestedRoles;
-                      markdownPart = content.replace(jsonMatch[0], '').trim();
-                    }
-                  } catch (e) {
-                    // Ignore if JSON is malformed
-                  }
-                }
-
-                // 2. Clean all AI thinking tags before inserting
-                let cleanContent = markdownPart
-                  .replace(/<AI_THINK>[\s\S]*?<\/AI_THINK>/gi, '')
-                  .replace(/<think>[\s\S]*?<\/think>/gi, '')
-                  .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '')
-                  .replace(/<\/?[A-Z_]+>/gi, '')
-                  .trim();
-                  
-                // 3. Call the refactored insertion logic
-                handleInsertSOWContent(cleanContent, suggestedRoles);
+                handleInsertContent(content);
               }}
             />
           ) : null // Return null to completely remove the panel from the component tree

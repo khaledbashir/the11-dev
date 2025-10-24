@@ -20,8 +20,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/tailwind/ui/button";
+import { Input } from "@/components/tailwind/ui/input";
 import {
   Table,
   TableBody,
@@ -30,7 +30,7 @@ import {
   TableHeader,
   TableRow,
   TableFooter,
-} from "@/components/ui/table";
+} from "@/components/tailwind/ui/table";
 import {
   Command,
   CommandEmpty,
@@ -38,12 +38,12 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command";
+} from "@/components/tailwind/ui/command";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
+} from "@/components/tailwind/ui/popover";
 
 type PricingTableRow = {
   id: string;
