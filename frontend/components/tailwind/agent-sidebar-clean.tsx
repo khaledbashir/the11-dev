@@ -349,8 +349,12 @@ export default function AgentSidebar({
     console.log('🗑️ Deleting thread:', threadSlug);
     
     try {
-      // Call AnythingLLM API to delete thread
-      const response = await fetch(`${process.env.NEXT_PUBLIC_ANYTHINGLLM_URL}/api/v1/workspace/${dashboardChatTarget}/thread/${threadSlug}`, {
+      // Determine correct workspace for deletion based on context
+      const ws = isDashboardMode ? dashboardChatTarget : editorWorkspaceSlug;
+      if (!ws) throw new Error('No workspace selected for thread deletion');
+
+      // Call AnythingLLM API to delete thread in the right workspace
+      const response = await fetch(`${process.env.NEXT_PUBLIC_ANYTHINGLLM_URL}/api/v1/workspace/${ws}/thread/${threadSlug}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY}`,
@@ -752,7 +756,10 @@ export default function AgentSidebar({
                             <div className="space-y-3">
                               {segments.map((seg, i) => (
                                 seg.type === 'text' ? (
-                                  <div key={i} className="prose prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-1">
+                                  <div
+                                    key={i}
+                                    className="prose prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-1 break-words whitespace-pre-wrap prose-pre:whitespace-pre-wrap prose-pre:overflow-x-auto overflow-x-auto"
+                                  >
                                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                       {seg.content}
                                     </ReactMarkdown>
@@ -852,7 +859,7 @@ export default function AgentSidebar({
                       
                       return (
                         <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`w-full rounded-lg p-4 ${
+                          <div className={`w-full rounded-lg p-4 break-words whitespace-pre-wrap ${
                             msg.role === 'user' 
                               ? 'bg-[#0E2E33]/30 text-white border border-[#1CBF79]' 
                               : 'bg-[#0E2E33] text-white border border-[#1b5e5e]'
@@ -873,7 +880,11 @@ export default function AgentSidebar({
                             <div className="space-y-3">
                               {segments.map((seg, i) => (
                                 seg.type === 'text' ? (
-                                  <ReactMarkdown key={i} remarkPlugins={[remarkGfm]} className="prose prose-invert max-w-none text-sm">
+                                  <ReactMarkdown
+                                    key={i}
+                                    remarkPlugins={[remarkGfm]}
+                                    className="prose prose-invert max-w-none text-sm break-words whitespace-pre-wrap prose-pre:whitespace-pre-wrap prose-pre:overflow-x-auto overflow-x-auto"
+                                  >
                                     {seg.content}
                                   </ReactMarkdown>
                                 ) : (
