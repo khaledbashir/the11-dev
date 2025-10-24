@@ -157,38 +157,106 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
     return parts.length > 0 ? parts : [];
   };
 
-  // Helper function to insert pricing table
-  const insertPricingTable = () => {
-    if (pricingTableInserted || suggestedRoles.length === 0) return;
+  // Helper function to check if a line is a markdown table row
+  const isMarkdownTableRow = (line: string): boolean => {
+    return /^\s*\|.*\|\s*$/.test(line.trim());
+  };
+
+  // Helper function to parse markdown table rows into pricing rows
+  const parseMarkdownTable = (tableLines: string[]): any[] => {
+    if (tableLines.length < 2) return [];
     
-    console.log('✅ Inserting EditablePricingTable with suggested roles (auto-insert).');
+    const rows: any[] = [];
+    
+    // Skip alignment row (usually the second row)
+    let dataStartIndex = 1;
+    if (tableLines[1] && /^\s*\|[\s|:=-]+\|\s*$/.test(tableLines[1])) {
+      dataStartIndex = 2;
+    }
+    
+    // Parse each data row
+    for (let idx = dataStartIndex; idx < tableLines.length; idx++) {
+      const line = tableLines[idx];
+      if (!isMarkdownTableRow(line)) break;
+      
+      const cells = line.split('|').map(cell => cell.trim()).filter(cell => cell.length > 0);
+      
+      // Expected format: Role | Description | Hours | Rate
+      if (cells.length >= 4) {
+        const role = cells[0];
+        const description = cells[1];
+        const hours = parseInt(cells[2]) || 0;
+        const rate = parseInt(cells[3]) || 0;
+        
+        if (role.toLowerCase() !== 'role') { // Skip header
+          rows.push({
+            role,
+            description,
+            hours,
+            rate,
+          });
+        }
+      }
+    }
+    
+    return rows;
+  };
+
+  // Helper function to insert pricing table
+  const insertPricingTable = (rolesFromMarkdown: any[] = []) => {
+    if (pricingTableInserted) return;
+    
+    let pricingRows: any[] = [];
+    
+    // Use provided suggestedRoles first, fall back to markdown-parsed roles
+    if (suggestedRoles.length > 0) {
+      console.log('✅ Using suggestedRoles from JSON.');
+      pricingRows = suggestedRoles.map(role => {
+        const matchedRole = ROLES.find(r => r.name === role.role);
+        return {
+          role: role.role,
+          description: role.description || '',
+          hours: role.hours || 0,
+          rate: matchedRole?.rate || role.rate || 0,
+        };
+      });
+    } else if (rolesFromMarkdown.length > 0) {
+      console.log('✅ Using roles parsed from markdown table.');
+      pricingRows = rolesFromMarkdown;
+    } else {
+      console.log('⚠️ No roles available for pricing table.');
+      return; // Can't create pricing table without any roles
+    }
+    
     pricingTableInserted = true;
     
-    // Map suggested roles to the format required by the component
-    const pricingRows = suggestedRoles.map(role => {
-      const matchedRole = ROLES.find(r => r.name === role.role);
-      return {
-        role: role.role,
-        description: role.description || '',
-        hours: role.hours || 0,
-        rate: matchedRole?.rate || 0,
-      };
-    });
-
     // ENFORCEMENT 1: Ensure Head Of role exists as FIRST row
-    const hasHeadOf = pricingRows.some(r => r.role.toLowerCase().includes('head of'));
+    const normalize = (s: string) => (s || '').trim().toLowerCase();
+    const hasHeadOf = pricingRows.some(r => normalize(r.role).includes('head of'));
     if (!hasHeadOf) {
       const headOf = ROLES.find(r => r.name === 'Tech - Head Of - Senior Project Management');
       pricingRows.unshift({
         role: headOf?.name || 'Tech - Head Of - Senior Project Management',
         description: 'Strategic oversight',
         hours: 3,
-        rate: headOf?.rate || 180,
+        rate: headOf?.rate || 365,
       });
     }
 
-    // ENFORCEMENT 2: Ensure Account Management role exists
-    const hasAccountManagement = pricingRows.some(r => r.role.toLowerCase().includes('account management'));
+    // ENFORCEMENT 2: Ensure Project Coordination exists
+    const hasProjectCoord = pricingRows.some(r => normalize(r.role).includes('project coordination'));
+    if (!hasProjectCoord) {
+      const pc = ROLES.find(r => r.name === 'Project Coordination');
+      pricingRows.splice(1, 0, {
+        role: pc?.name || 'Project Coordination',
+        description: 'Delivery coordination',
+        hours: 6,
+        rate: pc?.rate || 140,
+      });
+    }
+
+    // ENFORCEMENT 3: Ensure Account Management role exists and is LAST
+    const hasAccountManagement = pricingRows.some(r => normalize(r.role).includes('account management'));
     if (!hasAccountManagement) {
       const am = ROLES.find(r => r.name === 'Account Management');
       pricingRows.push({
@@ -197,8 +265,16 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
         hours: 8,
         rate: am?.rate || 150,
       });
+    } else {
+      // Move Account Management to the end
+      const amIndex = pricingRows.findIndex(r => normalize(r.role).includes('account management'));
+      if (amIndex !== -1 && amIndex !== pricingRows.length - 1) {
+        const [amRow] = pricingRows.splice(amIndex, 1);
+        pricingRows.push(amRow);
+      }
     }
 
+    console.log('✅ Inserting EditablePricingTable with', pricingRows.length, 'roles.');
     content.push({
       type: 'editablePricingTable',
       attrs: {
@@ -218,10 +294,32 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
       continue;
     }
 
+    // Check if this is the start of a markdown table
+    if (isMarkdownTableRow(line)) {
+      const tableLines = [];
+      while (i < lines.length && (isMarkdownTableRow(lines[i]) || /^\s*\|[\s|:=-]+\|\s*$/.test(lines[i].trim()))) {
+        tableLines.push(lines[i]);
+        i++;
+      }
+      
+      // Try to parse as pricing table
+      const parsedRoles = parseMarkdownTable(tableLines);
+      if (parsedRoles.length > 0) {
+        console.log(`📊 Detected ${parsedRoles.length} roles from markdown table, using for pricing table.`);
+        insertPricingTable(parsedRoles);
+      } else {
+        // Not a pricing table, treat as regular table
+        // For now, skip it (tables will be handled by PDF export)
+        console.log('⚠️ Markdown table detected but not recognized as pricing table.');
+      }
+      i--; // Decrement to compensate for the outer loop increment
+      i++;
+      continue;
+    }
+
     // Auto-insert pricing table BEFORE "Project Phases" section if not already inserted
     if ((line.trim() === '## Project Phases' || line.trim() === '### Project Phases') && !pricingTableInserted && suggestedRoles.length > 0) {
       insertPricingTable();
-      // Don't add empty paragraphs - TipTap doesn't allow empty text nodes
     }
 
     if (line.startsWith('# ')) {
@@ -289,23 +387,21 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
   }
 
   // CRITICAL: If we reach the end and pricing table hasn't been inserted, ALWAYS insert it
-  if (!pricingTableInserted && suggestedRoles.length > 0) {
-    console.log('⚠️ Pricing table not auto-inserted earlier, inserting NOW at end of content.');
-    
-    // Add a separator before the pricing table
-    content.push({
-      type: 'horizontalRule'
-    });
-    
-    // Add a heading for the pricing section
-    content.push({
-      type: 'heading',
-      attrs: { level: 2 },
-      content: [{ type: 'text', text: 'Investment Breakdown' }]
-    });
-    
-    // Insert the pricing table
-    insertPricingTable();
+  if (!pricingTableInserted) {
+    if (suggestedRoles.length > 0) {
+      console.log('⚠️ Pricing table not auto-inserted earlier, inserting NOW at end of content (with JSON roles).');
+      content.push({
+        type: 'horizontalRule'
+      });
+      content.push({
+        type: 'heading',
+        attrs: { level: 2 },
+        content: [{ type: 'text', text: 'Investment Breakdown' }]
+      });
+      insertPricingTable();
+    } else {
+      console.warn('⚠️ No pricing table inserted and no suggestedRoles provided. User will need to add pricing manually.');
+    }
   }
 
   console.log(`📊 Final content has ${content.length} nodes. Pricing table inserted: ${pricingTableInserted}`);
@@ -861,9 +957,9 @@ export default function Page() {
   }, [currentDocId]); // 🔧 FIXED: Removed 'currentDoc' dependency - only run on ID change, not content updates
 
   const handleSelectDoc = (id: string) => {
+    setCurrentSOWId(id); // This will trigger the useEffect that loads chat history
     setCurrentDocId(id);
-    // Clear chat messages for clean state when switching documents
-    setChatMessages([]);
+    // Don't clear chat messages here - let the useEffect load them instead
     // Switch to editor view when selecting a document
     if (viewMode !== 'editor') {
       setViewMode('editor');
