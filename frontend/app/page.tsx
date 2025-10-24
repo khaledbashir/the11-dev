@@ -797,7 +797,8 @@ export default function Page() {
     }, 2000); // Save after 2 seconds of inactivity
 
     return () => clearTimeout(autoSaveTimer);
-  }, [currentDocId, documents]);
+  }, [currentDocId]); // 🔧 FIXED: Removed 'documents' dependency - auto-save only needs currentDocId
+  // The document content is read directly from editorRef, not from documents array
 
   useEffect(() => {
     if (currentDocId) {
@@ -872,11 +873,13 @@ export default function Page() {
   const currentDoc = documents.find(d => d.id === currentDocId);
 
   useEffect(() => {
-    if (currentDoc && editorRef.current) {
-      // Update editor content when document changes
+    if (currentDoc && editorRef.current && !editorRef.current.isInitialized) {
+      // ONLY on first load: Initialize editor with document content
+      // DO NOT reload on every keystroke - this breaks cursor position!
       editorRef.current.insertContent(currentDoc.content);
+      editorRef.current.isInitialized = true;
     }
-  }, [currentDocId, currentDoc]);
+  }, [currentDocId]); // 🔧 FIXED: Removed 'currentDoc' dependency - only run on ID change, not content updates
 
   const handleSelectDoc = (id: string) => {
     setCurrentDocId(id);
