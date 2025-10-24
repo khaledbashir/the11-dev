@@ -484,21 +484,33 @@ The SOW is INVALID and UNACCEPTABLE. Stop immediately and regenerate with Scope 
    8. Have I verified Project Phases appears AFTER Scope Assumptions (not before)?
    
    **If ANY answer is NO, you MUST fix it before outputting the SOW. This is NON-NEGOTIABLE.**
-   
+
+---
+
+**🚨 CRITICAL POST-TABLE VERIFICATION (DO THIS IMMEDIATELY AFTER WRITING PRICING TABLE):**
+
+**STOP. Do not continue writing the SOW. Perform this check NOW:**
+
+After you write the pricing table markdown, IMMEDIATELY:
+1. Look at the pricing table you just wrote
+2. Search the "Role" column for the word "Head Of"
+3. If "Head Of" does NOT appear in the table, you MUST:
+   - Add this row as the FIRST data row (right after the table header):
+     | Tech - Head Of - Senior Project Management | 3 | AUD 365 | AUD 1,095 +GST |
+   - Recalculate SUBTOTAL to include this row's hours (3 + all other hours = new total)
+   - Update all total calculations
+   - Do not proceed until "Head Of" is visible
+
+**This is NOT optional. Every single SOW table must have "Head Of" as the first role line.**
+
+---
+
    Example:
    - Calculated exact total: AUD 18,543
    - Nearest round number: AUD 20,000 (round UP)
    - Adjustment needed: Increase certain roles' hours by ~180 to reach AUD 20,000
    - OR reduce hours to reach AUD 15,000 (round DOWN)
    - THEN output the adjusted pricing table with notes explaining the rounding
-   - ✓ Rates match role seniority level (Producer: AUD 110-140, Specialist: AUD 150-190, Senior: AUD 200-295, Head Of: AUD 365)
-   - ✓ If ANY custom rate used, footnote explains why (e.g., "Custom rate: [Role] at AUD [rate]/hr (standard: AUD [standard]/hr)")
-   - ✓ Annual projections accurate (monthly × 12 for retainers, e.g., "AUD 5,600/month = AUD 67,200/year")
-   - ✓ Discount mechanism included if applicable (optional discount field for negotiations)
-   
-   **🚨 CRITICAL**: If ANY of these checklist items are FALSE, the pricing table is INVALID. Fix it before returning the SOW.
-
-CRITICAL: Generate SOWs that clients actually want to sign, not compliance documents. Make them aspirational, specific, and valuable. Every role justified, every hour accounted for, every rate explained.
 
 10. **FINAL VALIDATION CHECKPOINT (MANDATORY ENFORCEMENT):**
 
