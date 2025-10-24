@@ -2639,6 +2639,92 @@ export default function Page() {
             );
             console.log(`🎯 Updated document ${currentDocId} with work type: ${detectedWorkType}`);
           }
+
+          // ✅ ENFORCE JSON CONTRACT: If the AI didn't include the required suggestedRoles JSON,
+          // automatically ask for it in a follow-up message and append to the assistant reply.
+          const hasSuggestedRolesJson = /```json\s*([\s\S]*?)\s*```/m.test(accumulatedContent);
+          if (!hasSuggestedRolesJson && useAnythingLLM && workspaceSlug) {
+            try {
+              const followUpPrompt = [
+                'FINAL MANDATORY STEP: Return ONLY a JSON code block with this exact schema. No prose, no explanation.',
+                '```json',
+                '{',
+                '  "suggestedRoles": [',
+                '    { "role": "<valid role from rate card>", "hours": <number> }',
+                '  ]',
+                '}',
+                '```',
+                '',
+                'Constraints:',
+                '- Use only valid Social Garden role names from the rate card system prompt.',
+                '- Include hours for each role. Do NOT include rates or totals.',
+                '- Output must be a single JSON code block exactly as shown above.'
+              ].join('\n');
+
+              // Stream a short follow-up request on the same thread to obtain the JSON
+              const followUpResponse = await fetch(streamEndpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                signal: controller.signal,
+                body: JSON.stringify({
+                  model: effectiveAgent.model,
+                  workspace: workspaceSlug,
+                  threadSlug: threadSlugToUse,
+                  attachments: [],
+                  messages: [
+                    { role: 'user', content: followUpPrompt }
+                  ],
+                }),
+              });
+
+              if (followUpResponse.ok) {
+                const reader2 = followUpResponse.body?.getReader();
+                const decoder2 = new TextDecoder();
+                let buffer2 = '';
+                let accumulatedJson = '';
+                if (reader2) {
+                  let done2 = false;
+                  while (!done2) {
+                    const { done, value } = await reader2.read();
+                    done2 = done;
+                    if (value) {
+                      buffer2 += decoder2.decode(value, { stream: true });
+                      const lines2 = buffer2.split('\n');
+                      buffer2 = lines2.pop() || '';
+                      for (const line2 of lines2) {
+                        if (!line2.trim() || !line2.startsWith('data: ')) continue;
+                        try {
+                          const jsonStr2 = line2.substring(6);
+                          const data2 = JSON.parse(jsonStr2);
+                          if (data2.type === 'textResponseChunk' && data2.textResponse) {
+                            accumulatedJson += data2.textResponse;
+                          } else if (data2.type === 'textResponse' && (data2.content || data2.textResponse)) {
+                            accumulatedJson += (data2.content || data2.textResponse || '');
+                          }
+                        } catch {}
+                      }
+                    }
+                  }
+                }
+
+                // Extract JSON code block and append to assistant message
+                const jsonBlockMatch = accumulatedJson.match(/```json\s*([\s\S]*?)\s*```/m);
+                if (jsonBlockMatch && jsonBlockMatch[0]) {
+                  const appendBlock = `\n\n${jsonBlockMatch[0]}\n`;
+                  accumulatedContent += appendBlock;
+                  // Update the last assistant message to include the JSON block
+                  setChatMessages(prev => prev.map(msg => msg.id === aiMessageId ? { ...msg, content: accumulatedContent } : msg));
+                  console.log('✅ Appended suggestedRoles JSON block obtained via follow-up prompt.');
+                } else {
+                  console.warn('⚠️ Follow-up request did not return a valid JSON code block for suggestedRoles.');
+                }
+              } else {
+                console.warn('⚠️ Follow-up stream request failed while attempting to obtain suggestedRoles JSON.');
+              }
+            } catch (e) {
+              console.warn('⚠️ Error while attempting follow-up JSON extraction:', e);
+            }
+          }
         } else {
           // 📦 NON-STREAMING MODE: Standard fetch for OpenRouter
           const response = await fetch(endpoint, {
