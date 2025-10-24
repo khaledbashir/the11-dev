@@ -22,6 +22,28 @@ export interface SOWData {
   timeline?: string;
 }
 
+// Architect JSON shapes (for Excel engine v2)
+export interface ScopeRole {
+  role: string;
+  hours: number;
+}
+
+export interface ScopeItem {
+  name: string;
+  overview?: string;
+  roles: ScopeRole[];
+  deliverables?: string[];
+  assumptions?: string[];
+}
+
+export interface ArchitectSOW {
+  title: string;
+  overview?: string;
+  outcomes?: string[];
+  assumptions?: string[];
+  scopeItems: ScopeItem[];
+}
+
 /**
  * Extract pricing data from Novel editor content
  * Supports both TipTap tables AND markdown text format
@@ -251,8 +273,17 @@ export function exportToCSV(sowData: SOWData, filename: string = 'sow-pricing.cs
 /**
  * Export pricing table to Excel using Social Garden template format
  */
-export async function exportToExcel(sowData: SOWData, filename?: string) {
-  const { pricingRows, discount, title, client, deliverables, assumptions } = sowData;
+export async function exportToExcel(
+  sowData: SOWData | ArchitectSOW,
+  filename?: string
+) {
+  // If Architect JSON shape is provided (scopeItems), use the modular engine
+  if ((sowData as ArchitectSOW)?.scopeItems) {
+    return exportArchitectExcel(sowData as ArchitectSOW, filename);
+  }
+
+  // Fallback to legacy pricing-table export using the static template
+  const { pricingRows, discount, title, client, deliverables, assumptions } = sowData as SOWData;
   const totals = calculateTotals(pricingRows, discount);
 
   // Load the Excel template from public folder
@@ -356,6 +387,183 @@ export async function exportToExcel(sowData: SOWData, filename?: string) {
   const outName = filename || (safeClient ? `${safeClient}-SOW-${dateStr}.xlsx` : `SOW-${dateStr}.xlsx`);
 
   // Download
+  const outBuffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([outBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = outName;
+  link.click();
+}
+
+// Excel Engine v2: Build multi-sheet workbook from Architect JSON
+async function exportArchitectExcel(data: ArchitectSOW, filename?: string) {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Social Garden SOW Engine';
+  workbook.created = new Date();
+
+  // Helper to create safe sheet names
+  const sheetName = (base: string) => base.replace(/[^A-Za-z0-9_]/g, '').slice(0, 28);
+
+  // Create sheets in order: Pricing, Scope1..N, SOW_Summary
+  const pricingSheet = workbook.addWorksheet('Pricing');
+
+  const scopeSheets = data.scopeItems.map((s, i) => {
+    const name = `Scope${i + 1}`;
+    return {
+      meta: s,
+      sheet: workbook.addWorksheet(sheetName(name)),
+      name,
+    };
+  });
+
+  const summarySheet = workbook.addWorksheet('SOW_Summary');
+
+  // Build Scope sheets with VLOOKUP to Pricing
+  for (const { meta, sheet } of scopeSheets) {
+    // Headers
+    sheet.getCell('A1').value = meta.name;
+    if (meta.overview) sheet.getCell('A2').value = meta.overview;
+    let rowIdx = 4;
+    sheet.getRow(rowIdx).values = ['Role', 'Hours', 'Rate (AUD)', 'Total (AUD)'];
+    sheet.getRow(rowIdx).font = { bold: true };
+    rowIdx++;
+
+    for (const r of meta.roles) {
+      const row = sheet.getRow(rowIdx);
+      row.getCell(1).value = r.role;
+      row.getCell(2).value = r.hours;
+      // VLOOKUP to Pricing sheet for rate
+      const rateCell = sheet.getCell(rowIdx, 3);
+      rateCell.value = {
+        formula: `IFERROR(VLOOKUP(A${rowIdx}, Pricing!$A:$B, 2, FALSE), 0)`,
+      } as any;
+      // Total = Hours * Rate
+      sheet.getCell(rowIdx, 4).value = { formula: `B${rowIdx}*C${rowIdx}` } as any;
+      rowIdx++;
+    }
+
+    // Totals row
+    const totalRow = sheet.getRow(rowIdx);
+    totalRow.getCell(1).value = 'TOTAL';
+    totalRow.getCell(2).value = { formula: `SUM(B5:B${rowIdx - 1})` } as any;
+    totalRow.getCell(4).value = { formula: `SUM(D5:D${rowIdx - 1})` } as any;
+    totalRow.font = { bold: true };
+
+    // Optional: deliverables and assumptions
+    let write = rowIdx + 2;
+    if (meta.deliverables && meta.deliverables.length) {
+      sheet.getCell(`A${write++}`).value = 'Deliverables:';
+      for (const d of meta.deliverables) sheet.getCell(`A${write++}`).value = `• ${d}`;
+    }
+    if (meta.assumptions && meta.assumptions.length) {
+      write += 1;
+      sheet.getCell(`A${write++}`).value = 'Assumptions:';
+      for (const a of meta.assumptions) sheet.getCell(`A${write++}`).value = `• ${a}`;
+    }
+
+    // Column widths
+    sheet.columns = [
+      { width: 40 },
+      { width: 12 },
+      { width: 14 },
+      { width: 16 },
+    ];
+  }
+
+  // Build Pricing sheet with role rate table and SUMIF aggregation
+  const uniqueRoles = Array.from(
+    new Set(
+      data.scopeItems.flatMap((s) => s.roles.map((r) => r.role.trim()))
+    )
+  ).sort((a, b) => a.localeCompare(b));
+
+  pricingSheet.getRow(1).values = ['Role', 'Hourly Rate (AUD)', 'Total Hours', 'Cost (AUD)'];
+  pricingSheet.getRow(1).font = { bold: true };
+
+  let rIdx = 2;
+  for (const role of uniqueRoles) {
+    pricingSheet.getCell(rIdx, 1).value = role;
+    // Hourly rate left blank for user or Architect to fill later
+    pricingSheet.getCell(rIdx, 2).value = 0;
+
+    // SUMIF across each Scope sheet for hours
+    const sumifParts = scopeSheets.map(({ name }) => `SUMIF(${name}!$A:$A, Pricing!A${rIdx}, ${name}!$B:$B)`);
+    pricingSheet.getCell(rIdx, 3).value = { formula: `SUM(${sumifParts.join(',')})` } as any;
+    // Cost = Hours * Rate
+    pricingSheet.getCell(rIdx, 4).value = { formula: `C${rIdx}*B${rIdx}` } as any;
+    rIdx++;
+  }
+
+  // Pricing totals
+  pricingSheet.getCell(rIdx, 1).value = 'TOTALS';
+  pricingSheet.getCell(rIdx, 1).font = { bold: true };
+  pricingSheet.getCell(rIdx, 3).value = { formula: `SUM(C2:C${rIdx - 1})` } as any;
+  pricingSheet.getCell(rIdx, 4).value = { formula: `SUM(D2:D${rIdx - 1})` } as any;
+  pricingSheet.columns = [
+    { width: 40 },
+    { width: 18 },
+    { width: 14 },
+    { width: 16 },
+  ];
+
+  // Build SOW Summary sheet
+  summarySheet.getCell('A1').value = data.title || 'Scope of Work Summary';
+  summarySheet.getCell('A1').font = { bold: true, size: 14 };
+  if (data.overview) {
+    summarySheet.getCell('A2').value = data.overview;
+  }
+
+  let sRow = 4;
+  summarySheet.getRow(sRow).values = ['Scope', 'Total Hours', 'Subtotal (ex. GST)', 'GST (10%)', 'Total (inc. GST)'];
+  summarySheet.getRow(sRow).font = { bold: true };
+  sRow++;
+
+  scopeSheets.forEach(({ name, meta }, idx) => {
+    const sheet = workbook.getWorksheet(name)!;
+    // Find total row: we set totals at last data row + 1. Data starts at row 5 and ends at 5 + roles.length - 1
+    const totalRowIndex = 5 + (meta.roles?.length || 0);
+    summarySheet.getCell(sRow, 1).value = meta.name;
+    // Hours = Scope sheet SUM column B (already totals in B total row)
+    summarySheet.getCell(sRow, 2).value = { formula: `${name}!B${totalRowIndex}` } as any;
+    // Subtotal = Scope sheet total cost cell (column D total row)
+    summarySheet.getCell(sRow, 3).value = { formula: `${name}!D${totalRowIndex}` } as any;
+    // GST and Inc GST
+    summarySheet.getCell(sRow, 4).value = { formula: `C${sRow}*0.1` } as any;
+    summarySheet.getCell(sRow, 5).value = { formula: `C${sRow}+D${sRow}` } as any;
+    sRow++;
+  });
+
+  // Summary totals
+  summarySheet.getCell(sRow, 1).value = 'TOTALS';
+  summarySheet.getCell(sRow, 1).font = { bold: true };
+  summarySheet.getCell(sRow, 2).value = { formula: `SUM(B5:B${sRow - 1})` } as any;
+  summarySheet.getCell(sRow, 3).value = { formula: `SUM(C5:C${sRow - 1})` } as any;
+  summarySheet.getCell(sRow, 4).value = { formula: `SUM(D5:D${sRow - 1})` } as any;
+  summarySheet.getCell(sRow, 5).value = { formula: `SUM(E5:E${sRow - 1})` } as any;
+
+  // Outcomes and assumptions
+  let textRow = sRow + 2;
+  if (data.outcomes?.length) {
+    summarySheet.getCell(`A${textRow++}`).value = 'Desired Outcomes:';
+    for (const o of data.outcomes) summarySheet.getCell(`A${textRow++}`).value = `• ${o}`;
+  }
+  if (data.assumptions?.length) {
+    textRow += 1;
+    summarySheet.getCell(`A${textRow++}`).value = 'Global Assumptions:';
+    for (const a of data.assumptions) summarySheet.getCell(`A${textRow++}`).value = `• ${a}`;
+  }
+
+  summarySheet.columns = [
+    { width: 40 },
+    { width: 14 },
+    { width: 18 },
+    { width: 14 },
+    { width: 18 },
+  ];
+
+  // Filename and download
+  const dateStr = new Date().toISOString().split('T')[0];
+  const outName = filename || `SOW-${dateStr}.xlsx`;
   const outBuffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([outBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const link = document.createElement('a');
