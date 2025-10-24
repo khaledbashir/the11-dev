@@ -332,15 +332,21 @@ export default function ClientPortalPage() {
   const handleDownloadExcel = async () => {
     if (!sow) return;
     try {
-      const pricingRows = extractPricingFromHTML(sow.htmlContent);
-      if (pricingRows.length === 0) {
-        console.warn('No pricing rows detected in HTML; proceeding with empty pricing.');
+      const res = await fetch(`/api/sow/${sowId}/export-excel`, { method: 'GET' });
+      if (!res.ok) {
+        console.error('Failed to generate Excel:', await res.text());
+        toast.error('Failed to download Excel. Please try again.');
+        return;
       }
-      await exportToExcel({
-        title: sow.title,
-        client: sow.clientName,
-        pricingRows,
-      });
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${(sow.clientName || 'Client')}-SOW.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
       toast.success('Excel file downloaded successfully!');
     } catch (error) {
       console.error('Error downloading Excel:', error);

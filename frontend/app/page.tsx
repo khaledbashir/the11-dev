@@ -1956,48 +1956,34 @@ export default function Page() {
     }
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     if (!currentDoc) {
       toast.error('❌ No document selected');
       return;
     }
-    
     toast.info('📊 Generating Excel...');
-    
     try {
-      // Prefer modular Architect JSON if it includes roles per scope; otherwise fallback to legacy
-      const hasRoles = Array.isArray(structuredSow?.scopeItems) && (structuredSow?.scopeItems || []).some(si => Array.isArray((si as any).roles) && (si as any).roles.length > 0);
-      if (structuredSow?.scopeItems?.length && hasRoles) {
-        const safeName = `${(currentDoc.title || structuredSow.title || 'SOW')}`
-          .replace(/[^a-z0-9]/gi, '_');
-        exportToExcel(structuredSow, `${safeName}_pricing.xlsx`);
-        toast.success('✅ Excel downloaded successfully!');
-        return;
+      const res = await fetch(`/api/sow/${currentDocId}/export-excel`, {
+        method: 'GET',
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(`Export failed (${res.status}): ${txt}`);
       }
-
-      // Extract pricing data from document
-      const pricingRows = extractPricingFromContent(currentDoc.content);
-      
-      if (pricingRows.length === 0) {
-        toast.error('❌ No pricing table found in document. Please generate a SOW first.');
-        return;
-      }
-      
-      // Get last AI message for additional SOW data
-      const lastAIMessage = [...chatMessages].reverse().find(msg => msg.role === 'assistant');
-      const sowData = lastAIMessage ? parseSOWMarkdown(lastAIMessage.content) : {};
-      
-      const filename = `${currentDoc.title.replace(/[^a-z0-9]/gi, '_')}_pricing.xlsx`;
-      exportToExcel({
-        title: currentDoc.title,
-        pricingRows,
-        ...sowData,
-      }, filename);
-      
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const safeTitle = (currentDoc.title || 'Statement_of_Work').replace(/[^a-z0-9]/gi, '_');
+      a.download = `${safeTitle}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
       toast.success('✅ Excel downloaded successfully!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error exporting Excel:', error);
-      toast.error(`❌ Error exporting Excel: ${error.message}`);
+      toast.error(`❌ Error exporting Excel: ${error?.message || 'Unknown error'}`);
     }
   };
 
