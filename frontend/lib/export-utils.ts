@@ -291,8 +291,11 @@ export async function exportToExcel(sowData: SOWData, filename?: string) {
   const findHeaderRow = (): number => {
     const headers = ['ITEMS', 'ROLE', 'HOURS', 'HOURLY RATE', 'TOTAL COST'];
     for (let r = 1; r <= Math.min(50, pricingSheet.rowCount + 5); r++) {
-      const rowValues = pricingSheet.getRow(r).values
-        .map((v: any) => (typeof v === 'string' ? v.trim().toUpperCase() : String(v || '').trim().toUpperCase()));
+      const vals: any = pricingSheet.getRow(r).values as any;
+      const arr: any[] = Array.isArray(vals) ? vals : (vals == null ? [] : [vals]);
+      const rowValues = arr.map((v: any) =>
+        typeof v === 'string' ? v.trim().toUpperCase() : String(v ?? '').trim().toUpperCase()
+      );
       const matchCount = headers.filter(h => rowValues.includes(h)).length;
       if (matchCount >= 3) return r; // heuristic
     }
@@ -304,8 +307,10 @@ export async function exportToExcel(sowData: SOWData, filename?: string) {
 
   // Clear any existing data rows under header (basic cleanup up to 1000 rows)
   for (let r = writeRow; r <= writeRow + 1000; r++) {
-    const row = pricingSheet.getRow(r);
-    if (!row || row.every((c: any) => !c || c.value == null)) break;
+    const vals: any = pricingSheet.getRow(writeRow).values as any;
+    const arr: any[] = Array.isArray(vals) ? vals : (vals == null ? [] : [vals]);
+    const hasAny = arr.some((v: any) => v != null && v !== '');
+    if (!hasAny) break;
     pricingSheet.spliceRows(writeRow, 1);
   }
 

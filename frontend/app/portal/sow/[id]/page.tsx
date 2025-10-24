@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/tailwind/ui/button';
 import { toast } from 'sonner';
+import { exportToExcel, extractPricingFromHTML } from '@/lib/export-utils';
 
 interface SOWData {
   id: string;
@@ -329,68 +330,16 @@ export default function ClientPortalPage() {
 
   const handleDownloadExcel = async () => {
     if (!sow) return;
-    
     try {
-      // Import xlsx dynamically to avoid SSR issues
-      const XLSX = await import('xlsx');
-      
-      // Create workbook with multiple sheets
-      const wb = XLSX.utils.book_new();
-      
-      // Sheet 1: Overview
-      const overviewData = [
-        ['Social Garden - Statement of Work', ''],
-        ['', ''],
-        ['Client Name', sow.clientName],
-        ['Document Title', sow.title],
-        ['Total Investment', `$${sow.totalInvestment.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
-        ['Created Date', new Date(sow.createdAt).toLocaleDateString('en-AU')],
-        ['Status', accepted ? 'Accepted ✅' : 'Pending'],
-      ];
-      
-      const overviewSheet = XLSX.utils.aoa_to_sheet(overviewData);
-      overviewSheet['!cols'] = [{ wch: 25 }, { wch: 40 }];
-      XLSX.utils.book_append_sheet(wb, overviewSheet, 'Overview');
-      
-      // Sheet 2: Content (full HTML as text)
-      const contentData = [
-        ['Full Proposal Content'],
-        [''],
-        [sow.htmlContent.replace(/<[^>]*>/g, '')], // Strip HTML tags
-      ];
-      
-      const contentSheet = XLSX.utils.aoa_to_sheet(contentData);
-      contentSheet['!cols'] = [{ wch: 100 }];
-      contentSheet['A3'].alignment = { wrapText: true, vertical: 'top' };
-      XLSX.utils.book_append_sheet(wb, contentSheet, 'Content');
-      
-      // Sheet 3: Pricing Summary
-      const pricingData = [
-        ['Pricing Summary', ''],
-        ['', ''],
-        ['Item', 'Amount (AUD)'],
-        ['Base Services Total', baseServicesTotal || 0],
-        ['Content Cost', contentCost || 0],
-        ['Social Media Cost', socialCost || 0],
-        ['Ad Management Fee', adManagementFee || 0],
-        ['Add-Ons Total', addOnsTotal || 0],
-        ['Subtotal', subtotal || 0],
-        ['GST (10%)', gst || 0],
-        ['Discount (' + discountPercent + '%)', discountAmount || 0],
-        ['GRAND TOTAL', grandTotal],
-      ];
-      
-      const pricingSheet = XLSX.utils.aoa_to_sheet(pricingData);
-      pricingSheet['!cols'] = [{ wch: 30 }, { wch: 20 }];
-      pricingSheet['A11'].font = { bold: true, size: 14 };
-      pricingSheet['B11'].font = { bold: true, size: 14 };
-      XLSX.utils.book_append_sheet(wb, pricingSheet, 'Pricing');
-      
-      // Generate filename with client name and date
-      const filename = `${sow.clientName}-SOW-${new Date().toISOString().split('T')[0]}.xlsx`;
-      
-      // Write file
-      XLSX.writeFile(wb, filename);
+      const pricingRows = extractPricingFromHTML(sow.htmlContent);
+      if (pricingRows.length === 0) {
+        console.warn('No pricing rows detected in HTML; proceeding with empty pricing.');
+      }
+      await exportToExcel({
+        title: sow.title,
+        client: sow.clientName,
+        pricingRows,
+      });
       toast.success('Excel file downloaded successfully!');
     } catch (error) {
       console.error('Error downloading Excel:', error);
