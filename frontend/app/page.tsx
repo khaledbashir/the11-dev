@@ -67,6 +67,56 @@ const extractClientName = (prompt: string): string | null => {
 };
 
 // Helper function to convert markdown to Novel editor JSON format
+// Extract pricing roles from markdown table format
+const extractPricingFromMarkdown = (markdown: string): any[] => {
+  const roles: any[] = [];
+  const lines = markdown.split('\n');
+  
+  // Look for markdown table with pricing info
+  let inTable = false;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    
+    // Detect table start (header with Role/Hours/Rate columns)
+    if (line.includes('|') && (line.toLowerCase().includes('role') || line.toLowerCase().includes('hours') || line.toLowerCase().includes('rate'))) {
+      inTable = true;
+      continue; // Skip header
+    }
+    
+    // Skip separator line
+    if (inTable && line.match(/^\|[\s\-:]+\|/)) {
+      continue;
+    }
+    
+    // Parse table rows
+    if (inTable && line.includes('|')) {
+      const parts = line.split('|').map(p => p.trim()).filter(p => p);
+      if (parts.length >= 3) {
+        const role = parts[0];
+        const hours = parseFloat(parts[1]) || 0;
+        const rateText = parts[2];
+        const rate = parseFloat(rateText.replace(/[^0-9.]/g, '')) || 0;
+        
+        if (role && hours > 0 && rate > 0) {
+          roles.push({
+            role,
+            description: '',
+            hours,
+            rate,
+          });
+        }
+      }
+    }
+    
+    // Exit table when we hit a non-table line
+    if (inTable && !line.includes('|')) {
+      break;
+    }
+  }
+  
+  return roles;
+};
+
 const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []) => {
   const lines = markdown.split('\n');
   const content: any[] = [];
@@ -2065,8 +2115,18 @@ export default function Page() {
       const cleanedContent = cleanSOWContent(markdownPart);
       console.log('✅ Content cleaned');
       
-      // 3. Convert the cleaned markdown and roles data to Novel/TipTap JSON
+      // 3. Parse pricing table from markdown content if no suggestedRoles provided
       console.log('🔄 Converting markdown to JSON with suggested roles...');
+      console.log('📊 suggestedRoles array:', suggestedRoles);
+      console.log('📊 suggestedRoles length:', suggestedRoles?.length || 0);
+      
+      // If no suggestedRoles, try to extract from markdown table
+      if (suggestedRoles.length === 0) {
+        console.log('⚠️ No suggestedRoles provided, extracting from markdown table...');
+        suggestedRoles = extractPricingFromMarkdown(cleanedContent);
+        console.log(`✅ Extracted ${suggestedRoles.length} roles from markdown table`);
+      }
+      
       const convertedContent = convertMarkdownToNovelJSON(cleanedContent, suggestedRoles);
       console.log('✅ Content converted');
       
