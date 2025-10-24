@@ -100,6 +100,26 @@ const sanitizeEmptyTextNodes = (content: any): any => {
 
 type ConvertOptions = { strictRoles?: boolean };
 
+// Build suggestedRoles[] from Architect structured JSON (scopeItems[].roles)
+const buildSuggestedRolesFromArchitectSOW = (structured: ArchitectSOW | null) => {
+  if (!structured || !Array.isArray(structured.scopeItems)) return [] as Array<{ role: string; hours: number; description?: string; rate?: number }>;
+  const hoursByRole = new Map<string, number>();
+  for (const item of structured.scopeItems) {
+    const roles = Array.isArray(item?.roles) ? item.roles : [];
+    for (const r of roles) {
+      const name = (r?.role || '').toString().trim();
+      const hrs = Number(r?.hours) || 0;
+      if (!name) continue;
+      hoursByRole.set(name, (hoursByRole.get(name) || 0) + hrs);
+    }
+  }
+  // Map to suggestedRoles shape and attach rate from ROLES where possible
+  return Array.from(hoursByRole.entries()).map(([role, hours]) => {
+    const match = ROLES.find(x => x.name === role);
+    return { role, hours, description: '', rate: match?.rate || 0 };
+  });
+};
+
 const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = [], options: ConvertOptions = {}) => {
   const lines = markdown.split('\n');
   const content: any[] = [];
@@ -2474,6 +2494,15 @@ export default function Page() {
             markdownPart = content.replace(jsonMatch[0], '').trim();
             console.log(`✅ Parsed ${suggestedRoles.length} suggested roles from AI response.`);
             hasValidSuggestedRoles = suggestedRoles.length > 0;
+          } else if (parsedJson.scopeItems) {
+            // Architect structured JSON detected - derive roles from scopeItems[].roles
+            const derived = buildSuggestedRolesFromArchitectSOW(parsedJson as ArchitectSOW);
+            if (derived.length > 0) {
+              suggestedRoles = derived;
+              markdownPart = content.replace(jsonMatch[0], '').trim();
+              hasValidSuggestedRoles = true;
+              console.log(`✅ Derived ${suggestedRoles.length} roles from Architect structured JSON (scopeItems).`);
+            }
           }
         } catch (e) {
           console.warn('⚠️ Could not parse suggestedRoles JSON from AI response.', e);
@@ -2490,13 +2519,21 @@ export default function Page() {
       console.log('📊 suggestedRoles array:', suggestedRoles);
       console.log('📊 suggestedRoles length:', suggestedRoles?.length || 0);
       
-      // CRITICAL: If no suggestedRoles provided, activate SAFE FALLBACK
+      // CRITICAL: If no suggestedRoles provided from JSON, try extracting Architect structured JSON from the message body
       let convertedContent;
       if (!hasValidSuggestedRoles) {
-        console.error('❌ CRITICAL ERROR: AI did not provide suggestedRoles JSON. The application requires a JSON block with suggestedRoles array.');
-        console.log('✅ SAFE FALLBACK ACTIVATED: Inserting SOW narrative with a default, empty pricing table.');
-        toast.warning('Warning: AI failed to generate a valid price table. A default table has been inserted. Please review and update manually.');
-        convertedContent = convertMarkdownToNovelJSON(cleanedContent, [], { strictRoles: true });
+        // Attempt to parse Architect structured JSON (scopeItems) and derive roles
+        const structured = extractSOWStructuredJson(markdownPart);
+        const derived = buildSuggestedRolesFromArchitectSOW(structured);
+        if (derived.length > 0) {
+          console.log(`✅ Using ${derived.length} roles derived from Architect structured JSON.`);
+          convertedContent = convertMarkdownToNovelJSON(cleanedContent, derived, { strictRoles: false });
+        } else {
+          console.error('❌ CRITICAL ERROR: AI did not provide suggestedRoles JSON. The application requires a JSON block with suggestedRoles array.');
+          console.log('✅ SAFE FALLBACK ACTIVATED: Inserting SOW narrative with a default, empty pricing table.');
+          toast.warning('Warning: AI failed to generate a valid price table. A default table has been inserted. Please review and update manually.');
+          convertedContent = convertMarkdownToNovelJSON(cleanedContent, [], { strictRoles: true });
+        }
       } else {
         convertedContent = convertMarkdownToNovelJSON(cleanedContent, suggestedRoles, { strictRoles: false });
       }
@@ -2669,6 +2706,14 @@ export default function Page() {
                 markdownPart = markdownPart.replace(jsonMatch[0], '').trim();
                 console.log(`✅ Parsed ${suggestedRoles.length} roles from "insert" command.`);
                 hasValidSuggestedRoles = suggestedRoles.length > 0;
+              } else if (parsedJson.scopeItems) {
+                const derived = buildSuggestedRolesFromArchitectSOW(parsedJson as ArchitectSOW);
+                if (derived.length > 0) {
+                  suggestedRoles = derived;
+                  markdownPart = markdownPart.replace(jsonMatch[0], '').trim();
+                  hasValidSuggestedRoles = true;
+                  console.log(`✅ Derived ${suggestedRoles.length} roles from Architect structured JSON (insert command).`);
+                }
               }
             } catch (e) {
               console.warn('⚠️ Could not parse suggestedRoles JSON from last AI message.', e);
@@ -2684,10 +2729,18 @@ export default function Page() {
           console.log('🔄 Converting markdown to JSON for insertion...');
           let content;
           if (!hasValidSuggestedRoles) {
-            console.error('❌ CRITICAL ERROR: AI did not provide suggestedRoles JSON for insert command.');
-            console.log('✅ SAFE FALLBACK ACTIVATED: Inserting SOW narrative with a default, empty pricing table.');
-            toast.warning('Warning: AI failed to generate a valid price table. A default table has been inserted. Please review and update manually.');
-            content = convertMarkdownToNovelJSON(cleanedMessage, [], { strictRoles: true });
+            // Try deriving roles from Architect structured JSON in the chat message
+            const structured = extractSOWStructuredJson(markdownPart);
+            const derived = buildSuggestedRolesFromArchitectSOW(structured);
+            if (derived.length > 0) {
+              console.log(`✅ Using ${derived.length} roles derived from Architect structured JSON (insert command).`);
+              content = convertMarkdownToNovelJSON(cleanedMessage, derived, { strictRoles: false });
+            } else {
+              console.error('❌ CRITICAL ERROR: AI did not provide suggestedRoles JSON for insert command.');
+              console.log('✅ SAFE FALLBACK ACTIVATED: Inserting SOW narrative with a default, empty pricing table.');
+              toast.warning('Warning: AI failed to generate a valid price table. A default table has been inserted. Please review and update manually.');
+              content = convertMarkdownToNovelJSON(cleanedMessage, [], { strictRoles: true });
+            }
           } else {
             content = convertMarkdownToNovelJSON(cleanedMessage, suggestedRoles, { strictRoles: false });
           }
