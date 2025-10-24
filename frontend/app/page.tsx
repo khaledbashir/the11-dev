@@ -537,6 +537,8 @@ export default function Page() {
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string>('');
   const [currentSOWId, setCurrentSOWId] = useState<string | null>(null);
   const editorRef = useRef<any>(null);
+  // Track latest editor JSON to drive debounced auto-saves reliably
+  const [latestEditorJSON, setLatestEditorJSON] = useState<any | null>(null);
 
   // 🎯 Phase 1C: Dashboard filter state (vertical/service line click-to-filter)
   const [dashboardFilter, setDashboardFilter] = useState<{
@@ -831,65 +833,79 @@ export default function Page() {
     }
   }, [currentSOWId]); // 🔧 FIXED: Removed 'documents' dependency to prevent chat clearing on auto-save
 
-  // Auto-save SOW content to database with debouncing
+  // Auto-save SOW content whenever editor content changes (debounced)
   useEffect(() => {
     if (!currentDocId) return;
 
-    const autoSaveTimer = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       try {
-        // 🔧 CRITICAL FIX: Get content from editor ref, not from stale documents array
-        const editorContent = editorRef.current?.getContent?.();
+        // Always try to pull the freshest content from the live editor
+        const editorContent = editorRef.current?.getContent?.() || latestEditorJSON;
+
+        // DEBUG: prove what we're about to save
+        console.log('🟡 Attempting to save...', {
+          docId: currentDocId,
+          hasEditorRef: !!editorRef.current,
+          hasGetContent: !!editorRef.current?.getContent,
+          contentType: typeof editorContent,
+          isDoc: editorContent && editorContent.type === 'doc',
+          nodeCount: Array.isArray(editorContent?.content) ? editorContent.content.length : null,
+        });
+
         if (!editorContent) {
           console.warn('⚠️ No editor content to save for:', currentDocId);
           return;
         }
 
+        // Extra verbose log: full JSON being sent
+        try {
+          console.log('📦 Editor JSON to save:', JSON.stringify(editorContent));
+        } catch (_) {
+          // ignore stringify errors
+        }
+
         // Calculate total investment from pricing table in content
         const pricingRows = extractPricingFromContent(editorContent);
-        
+
         // 🔧 SAFETY: Filter out invalid rows and handle NaN values
         const validRows = pricingRows.filter(row => {
-          // Ensure hours and rate are valid numbers
           const hours = Number(row.hours) || 0;
           const rate = Number(row.rate) || 0;
-          const total = Number(row.total) || (hours * rate); // Calculate if total is missing
+          const total = Number(row.total) || (hours * rate);
           return hours >= 0 && rate >= 0 && total >= 0 && !isNaN(total);
         });
-        
-        // 🧮 Calculate total, handling NaN gracefully
+
         const totalInvestment = validRows.reduce((sum, row) => {
           const rowTotal = Number(row.total) || (Number(row.hours) * Number(row.rate)) || 0;
           return sum + (isNaN(rowTotal) ? 0 : rowTotal);
         }, 0);
-        
-        // Only log if we have actual pricing data
-        if (validRows.length > 0 || totalInvestment > 0) {
-          console.log('💾 Auto-saved SOW:', currentDocId, `(Total: $${totalInvestment.toFixed(2)})`);
-        }
-        
+
         const currentDoc = documents.find(d => d.id === currentDocId);
+
         const response = await fetch(`/api/sow/${currentDocId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            content: editorContent, // 🔧 CRITICAL: Use fresh editor content, not stale documents
+            content: editorContent, // tiptap JSON
             title: currentDoc?.title || 'Untitled SOW',
             total_investment: isNaN(totalInvestment) ? 0 : totalInvestment,
-            vertical: currentDoc?.vertical || null, // 📊 Social Garden BI
-            serviceLine: currentDoc?.serviceLine || null, // 📊 Social Garden BI
+            vertical: currentDoc?.vertical || null,
+            serviceLine: currentDoc?.serviceLine || null,
           }),
         });
 
         if (!response.ok) {
           console.warn('⚠️ Auto-save failed for SOW:', currentDocId, 'Status:', response.status);
+        } else {
+          console.log('💾 Auto-save success for', currentDocId, `(Total: $${(isNaN(totalInvestment) ? 0 : totalInvestment).toFixed(2)})`);
         }
       } catch (error) {
         console.error('❌ Error auto-saving SOW:', error);
       }
-    }, 2000); // Save after 2 seconds of inactivity
+    }, 1500); // 1.5s debounce after content changes
 
-    return () => clearTimeout(autoSaveTimer);
-  }, [currentDocId]); // ✅ FIXED: Only depends on currentDocId because we read from editorRef, not documents
+    return () => clearTimeout(timer);
+  }, [latestEditorJSON, currentDocId]);
 
   useEffect(() => {
     if (currentDocId) {
@@ -977,7 +993,16 @@ export default function Page() {
   // Synchronous save helper used before navigating away from a document
   const saveCurrentSOWNow = async (docId: string): Promise<boolean> => {
     try {
-      const editorContent = editorRef.current?.getContent?.();
+      const editorContent = editorRef.current?.getContent?.() || latestEditorJSON;
+      console.log('🟡 Attempting to save (immediate)...', {
+        docId,
+        hasEditorRef: !!editorRef.current,
+        hasGetContent: !!editorRef.current?.getContent,
+        contentType: typeof editorContent,
+        isDoc: editorContent && editorContent.type === 'doc',
+        nodeCount: Array.isArray(editorContent?.content) ? editorContent.content.length : null,
+      });
+      try { console.log('📦 Editor JSON to save (immediate):', JSON.stringify(editorContent)); } catch (_) {}
       if (!editorContent) {
         console.warn('⚠️ saveCurrentSOWNow: No editor content to save for:', docId);
         return true; // Nothing to save; don't block navigation
@@ -997,7 +1022,7 @@ export default function Page() {
 
       const docMeta = documents.find(d => d.id === docId);
 
-      console.log('💾 Saving SOW before navigation:', docId, `(Total: $${(isNaN(totalInvestment) ? 0 : totalInvestment).toFixed(2)})`);
+  console.log('💾 Saving SOW before navigation:', docId, `(Total: $${(isNaN(totalInvestment) ? 0 : totalInvestment).toFixed(2)})`);
       const response = await fetch(`/api/sow/${docId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -2299,6 +2324,8 @@ export default function Page() {
   };
 
   const handleUpdateDoc = (content: any) => {
+    // Track the newest JSON to trigger save effect
+    setLatestEditorJSON(content);
     if (currentDocId) {
       setDocuments(prev => prev.map(d => d.id === currentDocId ? { ...d, content } : d));
     }
