@@ -1693,31 +1693,53 @@ export default function Page() {
     
     try {
       // 🚨 CRITICAL: Enforce Head Of role BEFORE converting to HTML
-      // Get the current TipTap JSON content
-      const currentContent = currentDoc.content;
-      
-      if (!currentContent) {
-        toast.error('❌ Document is empty. Please add content before exporting.');
-        return;
-      }
+      console.log('🔒 [PDF Export] Step 1: Enforcing Head Of role...');
       
       // Call enforcement endpoint to ensure Head Of role exists
       const enforcementResponse = await fetch(`/api/sow/${currentDocId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          content: currentContent,
+          content: currentDoc.content,
           title: currentDoc.title,
         }),
       });
       
       if (!enforcementResponse.ok) {
-        console.warn('⚠️ Enforcement call failed, continuing with original content');
-      } else {
-        console.log('✅ Head Of role enforcement applied before PDF generation');
+        console.error('❌ [PDF Export] Enforcement failed');
+        toast.error('Failed to enforce document rules before export');
+        return;
       }
       
-      // Now get HTML from editor (which should have enforced content after update)
+      console.log('✅ [PDF Export] Step 2: Fetching enforced content from database...');
+      
+      // Fetch the ENFORCED content from database
+      const fetchResponse = await fetch(`/api/sow/${currentDocId}`);
+      if (!fetchResponse.ok) {
+        console.error('❌ [PDF Export] Failed to fetch enforced content');
+        toast.error('Failed to fetch updated content');
+        return;
+      }
+      
+      const updatedSOW = await fetchResponse.json();
+      console.log('✅ [PDF Export] Step 3: Reloading enforced content into editor...');
+      
+      // Update the document in state with enforced content
+      setDocuments(prev => prev.map(doc => 
+        doc.id === currentDocId ? { ...doc, content: updatedSOW.content } : doc
+      ));
+      
+      // Update the editor with enforced content
+      if (editorRef.current && updatedSOW.content) {
+        editorRef.current.commands.setContent(updatedSOW.content);
+      }
+      
+      // Wait for editor to render the new content
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log('✅ [PDF Export] Step 4: Converting enforced content to HTML...');
+      
+      // Now get HTML from editor (which has enforced content)
       const editorHTML = editorRef.current.getHTML();
       
       if (!editorHTML || editorHTML.trim() === '' || editorHTML === '<p></p>') {
@@ -1725,6 +1747,7 @@ export default function Page() {
         return;
       }
       
+      console.log('✅ [PDF Export] Step 5: Sending to PDF service...');
       const filename = currentDoc.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
       
       // Call WeasyPrint PDF service via Next.js API
