@@ -2494,7 +2494,8 @@ export default function Page() {
         console.error('❌ CRITICAL ERROR: AI did not provide suggestedRoles JSON. The application requires a JSON block with suggestedRoles array.');
         console.log('✅ SAFE FALLBACK ACTIVATED: Inserting SOW narrative with a default, empty pricing table.');
         toast.warning('Warning: AI failed to generate a valid price table. A default table has been inserted. Please review and update manually.');
-        convertedContent = convertMarkdownToNovelJSON(cleanedContent, [], { strictRoles: true });
+        // Allow parsing of a valid markdown pricing table if present; fallback will still create a zero-hour table if none is detected.
+        convertedContent = convertMarkdownToNovelJSON(cleanedContent, [], { strictRoles: false });
       } else {
         convertedContent = convertMarkdownToNovelJSON(cleanedContent, suggestedRoles, { strictRoles: false });
       }
@@ -2685,7 +2686,8 @@ export default function Page() {
             console.error('❌ CRITICAL ERROR: AI did not provide suggestedRoles JSON for insert command.');
             console.log('✅ SAFE FALLBACK ACTIVATED: Inserting SOW narrative with a default, empty pricing table.');
             toast.warning('Warning: AI failed to generate a valid price table. A default table has been inserted. Please review and update manually.');
-            content = convertMarkdownToNovelJSON(cleanedMessage, [], { strictRoles: true });
+            // Allow parsing of a valid markdown pricing table if present; fallback will still create a zero-hour table if none is detected.
+            content = convertMarkdownToNovelJSON(cleanedMessage, [], { strictRoles: false });
           } else {
             content = convertMarkdownToNovelJSON(cleanedMessage, suggestedRoles, { strictRoles: false });
           }
