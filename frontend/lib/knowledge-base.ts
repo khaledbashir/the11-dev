@@ -368,6 +368,17 @@ The SOW is INVALID and UNACCEPTABLE. Stop immediately and regenerate with Scope 
    - No generic filler text - every sentence adds value
    - **Pricing table format (MANDATORY MARKDOWN TABLE):**
    
+   🚨 **CRITICAL: ROLE NAMES MUST BE EXACT MATCHES FROM RATE CARD**
+   When building pricing table, use THESE EXACT role names from the rate card:
+   - "Tech - Head Of - Senior Project Management" (AUD 365/hr) ← ALWAYS include this as first line
+   - "Tech - Delivery - Project Coordination" (AUD 160/hr)
+   - "Account Management - Senior Account Manager" (AUD 200/hr)
+   - "Tech - Sr. Consultant - Campaign Strategy" (AUD 295/hr)
+   - "Tech - Specialist - Campaign Orchestration" (AUD 180/hr)
+   - etc. (use other roles as needed for project scope)
+   
+   DO NOT modify role names. DO NOT use abbreviations. Copy the EXACT names above.
+   
    ALWAYS format pricing as a markdown table like this example:
    
    ## Investment Summary
