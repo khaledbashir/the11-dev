@@ -35,10 +35,18 @@ export async function POST(req: NextRequest) {
 
 async function handlePDFGeneration(body: any) {
   try {
+    console.log('📋 [PDF Export] Body keys:', Object.keys(body));
+    console.log('📋 [PDF Export] Has content:', !!body.content);
+    console.log('📋 [PDF Export] Has html_content:', !!body.html_content);
+    console.log('📋 [PDF Export] Has sowId:', !!body.sowId);
+    
     // 🚨 CRITICAL ENFORCEMENT: Ensure Head Of role exists in pricing table BEFORE PDF generation
     if (body.content) {
+      console.log('🚨 [PDF Export] Enforcing Head Of role on TipTap JSON content');
       body.content = enforceHeadOfRole(body.content);
       console.log('✅ [PDF Export] Head Of role enforcement applied');
+    } else {
+      console.warn('⚠️ [PDF Export] NO TIPTAP CONTENT - enforcement cannot run on HTML!');
     }
     
     // PDF generation handler - converts SOW documents to PDF via backend service
