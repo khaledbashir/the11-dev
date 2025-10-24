@@ -182,25 +182,48 @@ const convertMarkdownToNovelJSON = (markdown: string) => {
         };
       };
 
-      // Convert data rows to pricing row format
-      const pricingRows = dataRows.map(row => {
-        const rawRole = row[roleIdx] || '';
-        const matchedRole = matchRole(rawRole);
-        const specifiedRate = row[rateIdx] ? parseFloat(row[rateIdx]?.replace(/[^0-9.]/g, '') || '0') : null;
-        
-        console.log(`💼 [Role Match] "${rawRole}" → "${matchedRole.name}" @ $${matchedRole.rate}`);
-        
-        return {
-          role: matchedRole.name, // Use matched role name from ROLES list
-          description: row[descIdx] || '',
-          hours: parseFloat(row[hoursIdx]?.replace(/[^0-9.]/g, '') || '0'),
-          rate: specifiedRate || matchedRole.rate, // Use specified rate or matched role's rate
-        };
-      });
+      // Convert data rows to pricing row format (SKIP subtotal/GST/total rows!)
+      const pricingRows = dataRows
+        .filter(row => {
+          const roleCell = (row[roleIdx] || '').toLowerCase();
+          // Skip calculation rows
+          return !roleCell.includes('subtotal') && 
+                 !roleCell.includes('gst') && 
+                 !roleCell.includes('total') &&
+                 roleCell.trim() !== '';
+        })
+        .map(row => {
+          const rawRole = row[roleIdx] || '';
+          const matchedRole = matchRole(rawRole);
+          const specifiedRate = row[rateIdx] ? parseFloat(row[rateIdx]?.replace(/[^0-9.]/g, '') || '0') : null;
+          
+          console.log(`💼 [Role Match] "${rawRole}" → "${matchedRole.name}" @ $${matchedRole.rate}`);
+          
+          return {
+            role: matchedRole.name, // Use matched role name from ROLES list
+            description: row[descIdx] || '',
+            hours: parseFloat(row[hoursIdx]?.replace(/[^0-9.]/g, '') || '0'),
+            rate: specifiedRate || matchedRole.rate, // Use specified rate or matched role's rate
+          };
+        });
 
-      // ENFORCEMENT: Ensure Account Management role exists (6-12h guideline; default 8h)
+      // ENFORCEMENT 1: Ensure Head Of role exists as FIRST row (2-4h guideline; default 3h)
+      const hasHeadOf = pricingRows.some(r => r.role.toLowerCase().includes('head of'));
+      if (!hasHeadOf) {
+        console.log('⚠️ [Markdown Conversion] Head Of role missing - adding as first row');
+        const headOf = ROLES.find(r => r.name === 'Tech - Head Of - Senior Project Management');
+        pricingRows.unshift({
+          role: headOf?.name || 'Tech - Head Of - Senior Project Management',
+          description: 'Strategic oversight',
+          hours: 3,
+          rate: headOf?.rate || 365,
+        });
+      }
+
+      // ENFORCEMENT 2: Ensure Account Management role exists (6-12h guideline; default 8h)
       const hasAccountManagement = pricingRows.some(r => r.role.toLowerCase().includes('account management') || r.role.toLowerCase().includes('account manager'));
       if (!hasAccountManagement) {
+        console.log('⚠️ [Markdown Conversion] Account Management role missing - adding');
         const am = ROLES.find(r => r.name === 'Account Management');
         pricingRows.push({
           role: am?.name || 'Account Management',
