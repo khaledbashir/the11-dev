@@ -124,7 +124,7 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
   let pricingTableInserted = false;
 
   const parseTextWithFormatting = (text: string) => {
-    // This function can remain as-is, it handles bold/italic.
+    // This function handles bold/italic without creating empty text nodes
     const parts: any[] = [];
     let currentText = '';
     let isBold = false;
@@ -133,14 +133,28 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
     for (let i = 0; i < text.length; i++) {
       if (text.substring(i, i + 2) === '**') {
         if (currentText) {
-          parts.push({ type: 'text', text: currentText, marks: isBold || isItalic ? [isBold ? { type: 'bold' } : { type: 'italic' }] : undefined });
+          const marks = [];
+          if (isBold) marks.push({ type: 'bold' });
+          if (isItalic) marks.push({ type: 'italic' });
+          parts.push({ 
+            type: 'text', 
+            text: currentText, 
+            marks: marks.length > 0 ? marks : undefined 
+          });
           currentText = '';
         }
         isBold = !isBold;
         i++;
       } else if (text[i] === '*' || text[i] === '_') {
         if (currentText) {
-          parts.push({ type: 'text', text: currentText, marks: isBold || isItalic ? [isBold ? { type: 'bold' } : { type: 'italic' }] : undefined });
+          const marks = [];
+          if (isBold) marks.push({ type: 'bold' });
+          if (isItalic) marks.push({ type: 'italic' });
+          parts.push({ 
+            type: 'text', 
+            text: currentText, 
+            marks: marks.length > 0 ? marks : undefined 
+          });
           currentText = '';
         }
         isItalic = !isItalic;
@@ -153,10 +167,16 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
       const marks = [];
       if (isBold) marks.push({ type: 'bold' });
       if (isItalic) marks.push({ type: 'italic' });
-      parts.push({ type: 'text', text: currentText, marks: marks.length > 0 ? marks : undefined });
+      parts.push({ 
+        type: 'text', 
+        text: currentText, 
+        marks: marks.length > 0 ? marks : undefined 
+      });
     }
     
-    return parts.length > 0 ? parts : [{ type: 'text', text: text }];
+    // Never return empty parts - if text is empty, return one node with that empty text
+    // (TipTap requires at least one node, but it will be handled by parent)
+    return parts.length > 0 ? parts : [];
   };
 
   // Helper function to insert pricing table
@@ -223,55 +243,68 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
     // Auto-insert pricing table BEFORE "Project Phases" section if not already inserted
     if ((line.trim() === '## Project Phases' || line.trim() === '### Project Phases') && !pricingTableInserted && suggestedRoles.length > 0) {
       insertPricingTable();
-      // Add a small gap before the section
-      content.push({
-        type: 'paragraph',
-        content: [{ type: 'text', text: '' }]
-      });
+      // Don't add empty paragraphs - TipTap doesn't allow empty text nodes
     }
 
     if (line.startsWith('# ')) {
-      content.push({
-        type: 'heading',
-        attrs: { level: 1 },
-        content: parseTextWithFormatting(line.substring(2))
-      });
+      const textContent = parseTextWithFormatting(line.substring(2));
+      if (textContent.length > 0) {
+        content.push({
+          type: 'heading',
+          attrs: { level: 1 },
+          content: textContent
+        });
+      }
     } else if (line.startsWith('## ')) {
-      content.push({
-        type: 'heading',
-        attrs: { level: 2 },
-        content: parseTextWithFormatting(line.substring(3))
-      });
+      const textContent = parseTextWithFormatting(line.substring(3));
+      if (textContent.length > 0) {
+        content.push({
+          type: 'heading',
+          attrs: { level: 2 },
+          content: textContent
+        });
+      }
     } else if (line.startsWith('### ')) {
-      content.push({
-        type: 'heading',
-        attrs: { level: 3 },
-        content: parseTextWithFormatting(line.substring(4))
-      });
+      const textContent = parseTextWithFormatting(line.substring(4));
+      if (textContent.length > 0) {
+        content.push({
+          type: 'heading',
+          attrs: { level: 3 },
+          content: textContent
+        });
+      }
     } else if (line.startsWith('- ') || line.startsWith('* ')) {
       // Basic bullet list handling
       let listItems = [];
       while (i < lines.length && (lines[i].startsWith('- ') || lines[i].startsWith('* '))) {
-        listItems.push({
-          type: 'listItem',
-          content: [{
-            type: 'paragraph',
-            content: parseTextWithFormatting(lines[i].substring(2))
-          }]
-        });
+        const itemContent = parseTextWithFormatting(lines[i].substring(2));
+        if (itemContent.length > 0) {
+          listItems.push({
+            type: 'listItem',
+            content: [{
+              type: 'paragraph',
+              content: itemContent
+            }]
+          });
+        }
         i++;
       }
-      content.push({ type: 'bulletList', content: listItems });
+      if (listItems.length > 0) {
+        content.push({ type: 'bulletList', content: listItems });
+      }
       i--; // Decrement because the outer loop will increment
     } else if (line.startsWith('---')) {
       content.push({
         type: 'horizontalRule'
       });
     } else if (line.trim() !== '') {
-      content.push({
-        type: 'paragraph',
-        content: parseTextWithFormatting(line)
-      });
+      const textContent = parseTextWithFormatting(line);
+      if (textContent.length > 0) {
+        content.push({
+          type: 'paragraph',
+          content: textContent
+        });
+      }
     }
 
     i++;
