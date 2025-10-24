@@ -127,8 +127,11 @@ export function calculateTotalInvestment(contentJSON: string | any): number {
  * @returns Modified content with Head Of role guaranteed to be present
  */
 export function enforceHeadOfRole(contentJSON: string | any): any {
+  console.log('🔍 [Head Of Enforcement] START - Input type:', typeof contentJSON);
+  
   // Guard: empty or null content
   if (!contentJSON) {
+    console.log('❌ [Head Of Enforcement] Empty content, returning unchanged');
     return contentJSON;
   }
 
@@ -138,25 +141,43 @@ export function enforceHeadOfRole(contentJSON: string | any): any {
       ? JSON.parse(contentJSON) 
       : contentJSON;
 
+    console.log('🔍 [Head Of Enforcement] Parsed content type:', content.type);
+    console.log('🔍 [Head Of Enforcement] Content has nodes:', content.content?.length || 0);
+
     // Guard: no content array
     if (!content.content || !Array.isArray(content.content)) {
+      console.log('❌ [Head Of Enforcement] No content array, returning unchanged');
       return contentJSON;
     }
 
     // Find the first pricing table node
-    for (const node of content.content) {
+    let tableFound = false;
+    for (let i = 0; i < content.content.length; i++) {
+      const node = content.content[i];
+      console.log(`🔍 [Head Of Enforcement] Node ${i}: type="${node.type}"`);
+      
       if (node.type === 'editablePricingTable' && node.attrs?.rows) {
+        tableFound = true;
         const rows = node.attrs.rows;
+        console.log('✅ [Head Of Enforcement] Found pricing table with', rows.length, 'rows');
 
         // Guard: rows is not an array
         if (!Array.isArray(rows)) {
           continue;
         }
 
+        // Log all existing roles
+        console.log('🔍 [Head Of Enforcement] Existing roles:');
+        rows.forEach((row, idx) => {
+          console.log(`  Row ${idx}: role="${row.role}" hours=${row.hours} rate=${row.rate}`);
+        });
+
         // Check if Head Of role already exists
         const headOfExists = rows.some(row => {
           const roleName = String(row.role || '').toLowerCase();
-          return roleName.includes('head of') || roleName.includes('head-of');
+          const hasHeadOf = roleName.includes('head of') || roleName.includes('head-of');
+          console.log(`🔍 [Head Of Enforcement] Checking "${row.role}" → hasHeadOf: ${hasHeadOf}`);
+          return hasHeadOf;
         });
 
         if (!headOfExists) {
@@ -174,6 +195,7 @@ export function enforceHeadOfRole(contentJSON: string | any): any {
           rows.unshift(headOfRow);
           
           console.log('✅ [Head Of Enforcement] Head Of role inserted as first row');
+          console.log('✅ [Head Of Enforcement] Table now has', rows.length, 'rows');
         } else {
           console.log('✅ [Head Of Enforcement] Head Of role already present');
         }
@@ -182,15 +204,23 @@ export function enforceHeadOfRole(contentJSON: string | any): any {
         break;
       }
     }
+    
+    if (!tableFound) {
+      console.warn('⚠️ [Head Of Enforcement] NO PRICING TABLE FOUND in content!');
+    }
 
     // Return modified content in same format as input
-    return typeof contentJSON === 'string' 
+    const result = typeof contentJSON === 'string' 
       ? JSON.stringify(content) 
       : content;
+    
+    console.log('✅ [Head Of Enforcement] END - Returning modified content');
+    return result;
 
   } catch (error) {
-    console.error('[Head Of Enforcement] Failed to enforce Head Of role:', {
-      error: error instanceof Error ? error.message : String(error)
+    console.error('❌ [Head Of Enforcement] EXCEPTION - Failed to enforce Head Of role:', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
     });
     // On error, return original content unchanged (safe default)
     return contentJSON;
