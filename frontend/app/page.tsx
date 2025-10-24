@@ -71,6 +71,7 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
   const lines = markdown.split('\n');
   const content: any[] = [];
   let i = 0;
+  let pricingTableInserted = false;
 
   const parseTextWithFormatting = (text: string) => {
     // This function can remain as-is, it handles bold/italic.
@@ -108,59 +109,75 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
     return parts.length > 0 ? parts : [{ type: 'text', text: text }];
   };
 
+  // Helper function to insert pricing table
+  const insertPricingTable = () => {
+    if (pricingTableInserted || suggestedRoles.length === 0) return;
+    
+    console.log('✅ Inserting EditablePricingTable with suggested roles (auto-insert).');
+    pricingTableInserted = true;
+    
+    // Map suggested roles to the format required by the component
+    const pricingRows = suggestedRoles.map(role => {
+      const matchedRole = ROLES.find(r => r.name === role.role);
+      return {
+        role: role.role,
+        description: role.description || '',
+        hours: role.hours || 0,
+        rate: matchedRole?.rate || 0,
+      };
+    });
+
+    // ENFORCEMENT 1: Ensure Head Of role exists as FIRST row
+    const hasHeadOf = pricingRows.some(r => r.role.toLowerCase().includes('head of'));
+    if (!hasHeadOf) {
+      const headOf = ROLES.find(r => r.name === 'Tech - Head Of - Senior Project Management');
+      pricingRows.unshift({
+        role: headOf?.name || 'Tech - Head Of - Senior Project Management',
+        description: 'Strategic oversight',
+        hours: 3,
+        rate: headOf?.rate || 180,
+      });
+    }
+
+    // ENFORCEMENT 2: Ensure Account Management role exists
+    const hasAccountManagement = pricingRows.some(r => r.role.toLowerCase().includes('account management'));
+    if (!hasAccountManagement) {
+      const am = ROLES.find(r => r.name === 'Account Management');
+      pricingRows.push({
+        role: am?.name || 'Account Management',
+        description: 'Client comms & governance',
+        hours: 8,
+        rate: am?.rate || 150,
+      });
+    }
+
+    content.push({
+      type: 'editablePricingTable',
+      attrs: {
+        rows: pricingRows,
+        discount: 0,
+      },
+    });
+  };
+
   while (i < lines.length) {
     const line = lines[i];
 
-    // NEW: Check for our pricing table placeholder
+    // Check for explicit pricing table placeholder
     if (line.trim() === '[pricing_table]') {
-      if (suggestedRoles.length > 0) {
-        console.log('✅ Found [pricing_table] placeholder, inserting EditablePricingTable with suggested roles.');
-        
-        // Map suggested roles to the format required by the component
-        const pricingRows = suggestedRoles.map(role => {
-          const matchedRole = ROLES.find(r => r.name === role.role);
-          return {
-            role: role.role,
-            description: role.description || '',
-            hours: role.hours || 0,
-            rate: matchedRole?.rate || 0,
-          };
-        });
-
-        // ENFORCEMENT 1: Ensure Head Of role exists as FIRST row
-        const hasHeadOf = pricingRows.some(r => r.role.toLowerCase().includes('head of'));
-        if (!hasHeadOf) {
-          const headOf = ROLES.find(r => r.name === 'Tech - Head Of - Senior Project Management');
-          pricingRows.unshift({
-            role: headOf?.name || 'Tech - Head Of - Senior Project Management',
-            description: 'Strategic oversight',
-            hours: 3,
-            rate: headOf?.rate || 180,
-          });
-        }
-
-        // ENFORCEMENT 2: Ensure Account Management role exists
-        const hasAccountManagement = pricingRows.some(r => r.role.toLowerCase().includes('account management'));
-        if (!hasAccountManagement) {
-          const am = ROLES.find(r => r.name === 'Account Management');
-          pricingRows.push({
-            role: am?.name || 'Account Management',
-            description: 'Client comms & governance',
-            hours: 8,
-            rate: am?.rate || 150,
-          });
-        }
-
-        content.push({
-          type: 'editablePricingTable',
-          attrs: {
-            rows: pricingRows,
-            discount: 0,
-          },
-        });
-      }
+      insertPricingTable();
       i++;
       continue;
+    }
+
+    // Auto-insert pricing table BEFORE "Project Phases" section if not already inserted
+    if ((line.trim() === '## Project Phases' || line.trim() === '### Project Phases') && !pricingTableInserted && suggestedRoles.length > 0) {
+      insertPricingTable();
+      // Add a small gap before the section
+      content.push({
+        type: 'paragraph',
+        content: [{ type: 'text', text: '' }]
+      });
     }
 
     if (line.startsWith('# ')) {
@@ -208,6 +225,13 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
     }
 
     i++;
+  }
+
+  // If we reach the end and pricing table hasn't been inserted, insert it at the end before the last section
+  if (!pricingTableInserted && suggestedRoles.length > 0) {
+    console.log('⚠️ Pricing table not auto-inserted before Project Phases, inserting at optimal location.');
+    // Find the last section and insert before it, or just append
+    insertPricingTable();
   }
 
   return { type: 'doc', content };
