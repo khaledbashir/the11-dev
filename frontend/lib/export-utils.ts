@@ -2,6 +2,7 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import ExcelJS from 'exceljs';
+import { ROLES } from '@/components/tailwind/extensions/editable-pricing-table';
 
 export interface PricingRow {
   role: string;
@@ -486,21 +487,25 @@ async function exportArchitectExcel(data: ArchitectSOW, filename?: string) {
     ];
   }
 
-  // Build Pricing sheet with role rate table and SUMIF aggregation
-  const uniqueRoles = Array.from(
-    new Set(
-      data.scopeItems.flatMap((s) => s.roles.map((r) => r.role.trim()))
-    )
-  ).sort((a, b) => a.localeCompare(b));
+  // Build Pricing sheet with Master Rate Card and SUMIF aggregation
+  // Combine master roles with any extra roles found in scopes
+  const masterRoleMap = new Map<string, number>();
+  ROLES.forEach(r => masterRoleMap.set(r.name, Number(r.rate) || 0));
+  const extraRoles = Array.from(new Set(
+    data.scopeItems.flatMap(s => s.roles.map(r => r.role.trim()))
+  )).filter(name => !masterRoleMap.has(name));
+  extraRoles.forEach(name => masterRoleMap.set(name, 0));
+
+  const pricingRoles = Array.from(masterRoleMap.keys());
 
   pricingSheet.getRow(1).values = ['Role', 'Hourly Rate (AUD)', 'Total Hours', 'Cost (AUD)'];
   pricingSheet.getRow(1).font = { bold: true };
 
   let rIdx = 2;
-  for (const role of uniqueRoles) {
+  for (const role of pricingRoles) {
     pricingSheet.getCell(rIdx, 1).value = role;
-    // Hourly rate left blank for user or Architect to fill later
-    pricingSheet.getCell(rIdx, 2).value = 0;
+    // Pre-populate with master rate (0 if not found in rate card)
+    pricingSheet.getCell(rIdx, 2).value = masterRoleMap.get(role) ?? 0;
 
     // SUMIF across each Scope sheet for hours
     const sumifParts = scopeSheets.map(({ name }) => `SUMIF(${name}!$A:$A, Pricing!A${rIdx}, ${name}!$B:$B)`);

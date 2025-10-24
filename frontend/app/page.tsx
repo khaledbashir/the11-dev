@@ -2861,7 +2861,7 @@ export default function Page() {
         
         if (shouldStream) {
           // 🔒 Enforce JSON contract by appending instruction to the last user prompt (request-only)
-          const contractSuffix = "IMPORTANT: Your final output MUST be a valid JSON object wrapped in a single ```json fence. The JSON object must have a \"scopeItems\" array, where each item in the array is an object with \"name\", \"overview\", \"roles\", \"deliverables\", and \"assumptions\" keys, corresponding to the distinct phases of the project. Do not use the old \"suggestedRoles\" format.";
+          const contractSuffix = "IMPORTANT: Your response MUST contain two parts in order: first, a complete SOW narrative written in Markdown, and second, a single ```json code block at the end. The JSON object must have a \"scopeItems\" array, where each item corresponds to the distinct phases of the project as described in the narrative.";
           const requestMessages = [
             { role: "system", content: effectiveAgent.systemPrompt },
             ...newMessages.slice(0, Math.max(0, newMessages.length - 1)).map(m => ({ role: m.role, content: m.content })),
@@ -3028,25 +3028,32 @@ export default function Page() {
             }
           } catch {}
 
-          // ✅ ENFORCE JSON CONTRACT: If the AI didn't include the required suggestedRoles JSON,
+          // ✅ ENFORCE JSON CONTRACT: If the AI didn't include a scopeItems JSON block,
           // automatically ask for it in a follow-up message and append to the assistant reply.
-          const hasSuggestedRolesJson = /```json\s*([\s\S]*?)\s*```/m.test(accumulatedContent);
-          if (!hasSuggestedRolesJson && useAnythingLLM && workspaceSlug) {
+          const jsonMatch = accumulatedContent.match(/```json\s*([\s\S]*?)\s*```/m);
+          const hasScopeItemsJson = !!(jsonMatch && /"scopeItems"\s*:\s*\[/m.test(jsonMatch[1] || ''));
+          if (!hasScopeItemsJson && useAnythingLLM && workspaceSlug) {
             try {
               const followUpPrompt = [
-                'FINAL MANDATORY STEP: Return ONLY a JSON code block with this exact schema. No prose, no explanation.',
+                'FINAL MANDATORY STEP: Return ONLY a JSON code block with this exact schema (no prose).',
                 '```json',
                 '{',
-                '  "suggestedRoles": [',
-                '    { "role": "<valid role from rate card>", "hours": <number> }',
+                '  "scopeItems": [',
+                '    {',
+                '      "name": "<Phase Name>",',
+                '      "overview": "<Short overview>",',
+                '      "roles": [ { "role": "<Valid role from rate card>", "hours": <number> } ],',
+                '      "deliverables": ["..."],',
+                '      "assumptions": ["..."]',
+                '    }',
                 '  ]',
                 '}',
                 '```',
                 '',
                 'Constraints:',
-                '- Use only valid Social Garden role names from the rate card system prompt.',
-                '- Include hours for each role. Do NOT include rates or totals.',
-                '- Output must be a single JSON code block exactly as shown above.'
+                '- The phases must align with the narrative you provided earlier.',
+                '- Use valid role names from the Social Garden rate card.',
+                '- Do NOT include rates or totals.'
               ].join('\n');
 
               // Stream a short follow-up request on the same thread to obtain the JSON
@@ -3116,7 +3123,7 @@ export default function Page() {
         } else {
           // 📦 NON-STREAMING MODE: Standard fetch for OpenRouter
           // 🔒 Enforce JSON contract (request-only) on the last user message
-          const contractSuffix = "IMPORTANT: Your final output MUST be a valid JSON object wrapped in a single ```json fence. The JSON object must have a \"scopeItems\" array, where each item in the array is an object with \"name\", \"overview\", \"roles\", \"deliverables\", and \"assumptions\" keys, corresponding to the distinct phases of the project. Do not use the old \"suggestedRoles\" format.";
+          const contractSuffix = "IMPORTANT: Your response MUST contain two parts in order: first, a complete SOW narrative written in Markdown, and second, a single ```json code block at the end. The JSON object must have a \"scopeItems\" array, where each item corresponds to the distinct phases of the project as described in the narrative.";
           const requestMessages = [
             { role: "system", content: effectiveAgent.systemPrompt },
             ...newMessages.slice(0, Math.max(0, newMessages.length - 1)).map(m => ({ role: m.role, content: m.content })),
