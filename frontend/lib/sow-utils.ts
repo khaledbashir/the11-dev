@@ -54,14 +54,17 @@ interface TipTapContent {
  * const totalInvestment = calculateTotalInvestment(sowContent);
  * // Returns 22000 (2.5 days × 40 hrs/day × $220/hr)
  */
-export function calculateTotalInvestment(contentJSON: string): number {
+export function calculateTotalInvestment(contentJSON: string | any): number {
   // Guard: empty or null content
   if (!contentJSON) {
     return 0;
   }
 
   try {
-    const content: TipTapContent = JSON.parse(contentJSON);
+    // Handle both JSON string and object inputs
+    const content: TipTapContent = typeof contentJSON === 'string' 
+      ? JSON.parse(contentJSON) 
+      : contentJSON;
     let totalInvestment = 0;
 
     // Guard: no content array
@@ -110,6 +113,87 @@ export function calculateTotalInvestment(contentJSON: string): number {
       contentLength: contentJSON?.length || 0
     });
     return 0; // Return 0 on any parsing error (safe default)
+  }
+}
+
+/**
+ * CRITICAL ENFORCEMENT: Ensures mandatory "Tech - Head Of - Senior Project Management" role exists in pricing table.
+ * 
+ * This function programmatically enforces Sam Gossage's requirement that EVERY SOW must include
+ * the Head Of role in the pricing table. If the role is missing, it is automatically inserted
+ * as the FIRST row in the table.
+ * 
+ * @param contentJSON - The SOW content (either JSON string or TipTap object)
+ * @returns Modified content with Head Of role guaranteed to be present
+ */
+export function enforceHeadOfRole(contentJSON: string | any): any {
+  // Guard: empty or null content
+  if (!contentJSON) {
+    return contentJSON;
+  }
+
+  try {
+    // Handle both JSON string and object inputs
+    const content: TipTapContent = typeof contentJSON === 'string' 
+      ? JSON.parse(contentJSON) 
+      : contentJSON;
+
+    // Guard: no content array
+    if (!content.content || !Array.isArray(content.content)) {
+      return contentJSON;
+    }
+
+    // Find the first pricing table node
+    for (const node of content.content) {
+      if (node.type === 'editablePricingTable' && node.attrs?.rows) {
+        const rows = node.attrs.rows;
+
+        // Guard: rows is not an array
+        if (!Array.isArray(rows)) {
+          continue;
+        }
+
+        // Check if Head Of role already exists
+        const headOfExists = rows.some(row => {
+          const roleName = String(row.role || '').toLowerCase();
+          return roleName.includes('head of') || roleName.includes('head-of');
+        });
+
+        if (!headOfExists) {
+          console.warn('⚠️ [Head Of Enforcement] Head Of role MISSING - inserting now');
+          
+          // Define the mandatory Head Of row
+          const headOfRow: PricingTableRow = {
+            role: 'Tech - Head Of - Senior Project Management',
+            hours: 3,
+            rate: 365,
+            description: undefined // Will show as "AUD 1,095 +GST" in subtotal column
+          };
+
+          // Insert at the beginning of the rows array (first line after header)
+          rows.unshift(headOfRow);
+          
+          console.log('✅ [Head Of Enforcement] Head Of role inserted as first row');
+        } else {
+          console.log('✅ [Head Of Enforcement] Head Of role already present');
+        }
+
+        // Only process the first pricing table
+        break;
+      }
+    }
+
+    // Return modified content in same format as input
+    return typeof contentJSON === 'string' 
+      ? JSON.stringify(content) 
+      : content;
+
+  } catch (error) {
+    console.error('[Head Of Enforcement] Failed to enforce Head Of role:', {
+      error: error instanceof Error ? error.message : String(error)
+    });
+    // On error, return original content unchanged (safe default)
+    return contentJSON;
   }
 }
 

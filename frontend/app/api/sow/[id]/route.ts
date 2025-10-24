@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { queryOne, query } from '@/lib/db';
-import { calculateTotalInvestment } from '@/lib/sow-utils';
+import { calculateTotalInvestment, enforceHeadOfRole } from '@/lib/sow-utils';
 
 export async function GET(
   req: NextRequest,
@@ -109,7 +109,7 @@ export async function PUT(
     const { id: sowId } = await params;
     const body = await req.json();
 
-    const {
+    let {
       title,
       clientName,
       clientEmail,
@@ -121,6 +121,12 @@ export async function PUT(
       vertical,
       serviceLine,
     } = body;
+    
+    // 🚨 CRITICAL ENFORCEMENT: Ensure Head Of role exists in pricing table
+    if (content) {
+      content = enforceHeadOfRole(content);
+      console.log('✅ [SOW UPDATE] Head Of role enforcement applied');
+    }
 
     // Build update query dynamically based on provided fields
     const updates: string[] = [];

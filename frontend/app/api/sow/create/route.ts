@@ -5,18 +5,25 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { query, generateSOWId, formatDateForMySQL } from '@/lib/db';
+import { enforceHeadOfRole } from '@/lib/sow-utils';
 
 export async function POST(req: NextRequest) {
   
   try {
     const body = await req.json();
-    console.log(' [SOW CREATE] Incoming body keys:', Object.keys(body));
+    console.log('📝 [SOW CREATE] Incoming body keys:', Object.keys(body));
 
     // Accept both camelCase and snake_case payloads from various callers
     const title = body.title || body.title_text || body.name || null;
     const clientName = body.clientName || body.client_name || body.client || null;
     const clientEmail = body.clientEmail || body.client_email || null;
-    const content = body.content || body.body || body.sowContent || null;
+    let content = body.content || body.body || body.sowContent || null;
+    
+    // 🚨 CRITICAL ENFORCEMENT: Ensure Head Of role exists in pricing table
+    if (content) {
+      content = enforceHeadOfRole(content);
+      console.log('✅ [SOW CREATE] Head Of role enforcement applied');
+    }
     const totalInvestment = body.totalInvestment ?? body.total_investment ?? 0;
     const folderId = body.folderId || body.folder_id || null;
     const creatorEmail = body.creatorEmail || body.creator_email || null;
