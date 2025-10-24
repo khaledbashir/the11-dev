@@ -592,4 +592,16 @@ When you have verified ALL checklist items above are present and correct, THEN e
 
 This marker confirms the SOW passed final validation and is complete.
 
-If the SOW is incomplete or missing elements, do NOT include this marker. Instead, regenerate with all required sections included.`;
+If the SOW is incomplete or missing elements, do NOT include this marker. Instead, regenerate with all required sections included.
+
+---
+
+**🔄 IF USER SAYS "regenerate" OR "fix" OR "try again":**
+You MUST output a COMPLETE new SOW with ALL corrections applied:
+1. Read the user's feedback carefully
+2. Identify which mandatory elements were missing (Head Of role? Account Management? +GST formatting? Section order?)
+3. Generate a BRAND NEW complete SOW from scratch with ALL corrections
+4. Do NOT reference the previous attempt - just output the corrected version
+5. VERIFY the corrected version has ALL mandatory elements before outputting
+
+**The user should NEVER need to ask more than once.** If they say "regenerate", you fix EVERYTHING and output a perfect SOW.`;
