@@ -333,6 +333,166 @@ export async function GET(
       }
     });
 
+    // Pricing_Editable sheet (flat, finance-friendly, easy to modify)
+    const pricingWsName = 'Pricing_Editable';
+    const pricing = wb.getWorksheet(pricingWsName) || wb.addWorksheet(pricingWsName);
+    pricing.columns = [
+      { width: 36 }, // Scope
+      { width: 36 }, // Role
+      { width: 12 }, // Hours
+      { width: 16 }, // Hourly Rate (AUD)
+      { width: 16 }, // Cost (AUD)
+      { width: 2 },  // Spacer
+      { width: 18 }, // Label/Param Key
+      { width: 14 }, // Param Value
+    ];
+    // Headers
+    pricing.getRow(1).values = ['Scope', 'Role', 'Hours', 'Hourly Rate (AUD)', 'Cost (AUD)', '', 'Parameters', 'Value'];
+    for (let c = 1; c <= 5; c++) {
+      const cell = pricing.getCell(1, c);
+      cell.font = { bold: true } as any;
+      cell.alignment = { horizontal: 'center' } as any;
+    }
+    pricing.getCell(1, 7).font = { bold: true } as any;
+
+    // Parameter defaults (editable by AMs)
+    pricing.getCell(2, 7).value = 'Discount %';
+    pricing.getCell(2, 8).value = 0; // default 0%
+    pricing.getCell(3, 7).value = 'Round to Nearest';
+    pricing.getCell(3, 8).value = 5000; // default 5000
+
+    // Populate rows
+    let prow = 2;
+    scopes.forEach((s) => {
+      s.roles.forEach((rItem) => {
+        pricing.getCell(prow, 1).value = s.title;
+        pricing.getCell(prow, 2).value = rItem.role;
+        pricing.getCell(prow, 3).value = rItem.hours;
+        pricing.getCell(prow, 4).value = rItem.rate;
+        pricing.getCell(prow, 5).value = { formula: `C${prow}*D${prow}` } as any;
+        pricing.getCell(prow, 4).numFmt = '$#,##0.00';
+        pricing.getCell(prow, 5).numFmt = '$#,##0.00';
+        pricing.getCell(prow, 3).alignment = { horizontal: 'right' } as any;
+        pricing.getCell(prow, 4).alignment = { horizontal: 'right' } as any;
+        pricing.getCell(prow, 5).alignment = { horizontal: 'right' } as any;
+        prow++;
+      });
+    });
+
+    const firstDataRow = 2;
+    const lastDataRow = Math.max(firstDataRow, prow - 1);
+
+    // Totals block (to the right, under parameters)
+    let tr = 6;
+    pricing.getCell(tr, 7).value = 'Subtotal (ex. GST)';
+    pricing.getCell(tr, 8).value = { formula: `SUM(E${firstDataRow}:E${lastDataRow})` } as any;
+    pricing.getCell(tr, 8).numFmt = '$#,##0.00';
+    tr++;
+    pricing.getCell(tr, 7).value = 'Discount Amount';
+    pricing.getCell(tr, 8).value = { formula: `H${tr - 1} * (H2/100)` } as any; // Subtotal * (Discount%/100)
+    pricing.getCell(tr, 8).numFmt = '$#,##0.00';
+    tr++;
+    pricing.getCell(tr, 7).value = 'Grand Total (ex. GST)';
+    pricing.getCell(tr, 8).value = { formula: `H${tr - 2} - H${tr - 1}` } as any;
+    pricing.getCell(tr, 8).numFmt = '$#,##0.00';
+    tr++;
+    pricing.getCell(tr, 7).value = 'GST (10%)';
+    pricing.getCell(tr, 8).value = { formula: `H${tr - 1}*0.10` } as any;
+    pricing.getCell(tr, 8).numFmt = '$#,##0.00';
+    tr++;
+    pricing.getCell(tr, 7).value = 'Total (inc. GST)';
+    pricing.getCell(tr, 8).value = { formula: `H${tr - 1}+H${tr - 2}` } as any; // GST + Grand Total ex GST
+    pricing.getCell(tr, 8).numFmt = '$#,##0.00';
+    tr++;
+    pricing.getCell(tr, 7).value = 'Rounded Total (inc. GST)';
+    // =ROUND(TotalIncGST / RoundTo, 0) * RoundTo
+    pricing.getCell(tr, 8).value = { formula: `ROUND(H${tr - 1}/H3,0)*H3` } as any;
+    pricing.getCell(tr, 8).numFmt = '$#,##0.00';
+
+    // Thin borders for header row
+    for (let c = 1; c <= 5; c++) {
+      const cell = pricing.getCell(1, c);
+      cell.border = {
+        top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' },
+      } as any;
+    }
+    // Optional borders for data area
+    for (let r = firstDataRow; r <= lastDataRow; r++) {
+      for (let c = 1; c <= 5; c++) {
+        const cell = pricing.getCell(r, c);
+        cell.border = { left: { style: 'thin' }, right: { style: 'thin' } } as any;
+      }
+    }
+
+    // Attempt to populate existing "Scope & Pricing Overview" sheet in template if present
+    const overviewSheet = wb.getWorksheet('Scope & Pricing Overview');
+    if (overviewSheet) {
+      try {
+        // Find header row by scanning for known column headers
+        const expectedHeaders = new Set([
+          'PROJECT DATES', 'TOTAL HOURS', 'AVG. HOURLY RATE', 'DISCOUNT', 'MONTH COST', 'DISCOUNT COST', 'TOTAL COST'
+        ]);
+        const maxRowsToScan = Math.min(50, overviewSheet.rowCount + 5);
+        let headerRow = -1;
+        let headerMap: Record<string, number> = {};
+        for (let rr = 1; rr <= maxRowsToScan && headerRow === -1; rr++) {
+          const row = overviewSheet.getRow(rr);
+          const values = row.values as any[];
+          const upper = values.map(v => typeof v === 'string' ? v.trim().toUpperCase() : String(v ?? '').trim().toUpperCase());
+          const matchCount = Array.from(expectedHeaders).filter(h => upper.includes(h)).length;
+          if (matchCount >= 3) {
+            headerRow = rr;
+            // Build a header map for this row
+            upper.forEach((val, idx) => {
+              if (expectedHeaders.has(val)) headerMap[val] = idx;
+            });
+          }
+        }
+
+        if (headerRow !== -1) {
+          // Write one row per scope beneath the header
+          scopes.forEach((s, i) => {
+            const rowIdx = headerRow + 1 + i;
+            const totalHours = s.roles.reduce((acc, x) => acc + x.hours, 0);
+            const subtotal = s.roles.reduce((acc, x) => acc + x.total, 0);
+            const avgRate = totalHours > 0 ? subtotal / totalHours : 0;
+            // Optional defaults
+            const projectDates = 'TBC';
+            const discountPct = 0;
+            const discountCost = 0;
+            const monthCost = subtotal; // For one-off scopes, treat as subtotal
+            const totalCost = subtotal; // Keep ex. GST as default to avoid double-taxing
+
+            // If there's a first descriptive column before headers, write title in first col
+            // We will place title in column A regardless, it won't hurt
+            overviewSheet.getCell(rowIdx, 1).value = s.title;
+            if (headerMap['PROJECT DATES']) overviewSheet.getCell(rowIdx, headerMap['PROJECT DATES']).value = projectDates;
+            if (headerMap['TOTAL HOURS']) overviewSheet.getCell(rowIdx, headerMap['TOTAL HOURS']).value = totalHours;
+            if (headerMap['AVG. HOURLY RATE']) {
+              overviewSheet.getCell(rowIdx, headerMap['AVG. HOURLY RATE']).value = avgRate;
+              overviewSheet.getCell(rowIdx, headerMap['AVG. HOURLY RATE']).numFmt = '$#,##0.00';
+            }
+            if (headerMap['DISCOUNT']) overviewSheet.getCell(rowIdx, headerMap['DISCOUNT']).value = discountPct;
+            if (headerMap['MONTH COST']) {
+              overviewSheet.getCell(rowIdx, headerMap['MONTH COST']).value = monthCost;
+              overviewSheet.getCell(rowIdx, headerMap['MONTH COST']).numFmt = '$#,##0.00';
+            }
+            if (headerMap['DISCOUNT COST']) {
+              overviewSheet.getCell(rowIdx, headerMap['DISCOUNT COST']).value = discountCost;
+              overviewSheet.getCell(rowIdx, headerMap['DISCOUNT COST']).numFmt = '$#,##0.00';
+            }
+            if (headerMap['TOTAL COST']) {
+              overviewSheet.getCell(rowIdx, headerMap['TOTAL COST']).value = totalCost;
+              overviewSheet.getCell(rowIdx, headerMap['TOTAL COST']).numFmt = '$#,##0.00';
+            }
+          });
+        }
+      } catch (e) {
+        // Non-blocking: if unable to write into the overview sheet, proceed with other sheets
+        console.warn('[Export Excel] Could not populate Scope & Pricing Overview:', e);
+      }
+    }
+
     const arrayBuffer = await wb.xlsx.writeBuffer();
     const filename = `${(sow.clientName || 'Client').toString().replace(/[^a-z0-9]/gi, '_')}_Statement_of_Work.xlsx`;
 
