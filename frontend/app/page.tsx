@@ -822,14 +822,19 @@ export default function Page() {
 
   // Auto-save SOW content to database with debouncing
   useEffect(() => {
-    // Find current doc in documents array
-    const currentDoc = documents.find(d => d.id === currentDocId);
-    if (!currentDocId || !currentDoc?.content) return;
+    if (!currentDocId) return;
 
     const autoSaveTimer = setTimeout(async () => {
       try {
+        // 🔧 CRITICAL FIX: Get content from editor ref, not from stale documents array
+        const editorContent = editorRef.current?.getContent?.();
+        if (!editorContent) {
+          console.warn('⚠️ No editor content to save for:', currentDocId);
+          return;
+        }
+
         // Calculate total investment from pricing table in content
-        const pricingRows = extractPricingFromContent(currentDoc.content);
+        const pricingRows = extractPricingFromContent(editorContent);
         
         // 🔧 SAFETY: Filter out invalid rows and handle NaN values
         const validRows = pricingRows.filter(row => {
@@ -851,20 +856,21 @@ export default function Page() {
           console.log('💾 Auto-saved SOW:', currentDocId, `(Total: $${totalInvestment.toFixed(2)})`);
         }
         
+        const currentDoc = documents.find(d => d.id === currentDocId);
         const response = await fetch(`/api/sow/${currentDocId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            content: currentDoc.content,
-            title: currentDoc.title,
+            content: editorContent, // 🔧 CRITICAL: Use fresh editor content, not stale documents
+            title: currentDoc?.title || 'Untitled SOW',
             total_investment: isNaN(totalInvestment) ? 0 : totalInvestment,
-            vertical: currentDoc.vertical || null, // 📊 Social Garden BI
-            serviceLine: currentDoc.serviceLine || null, // 📊 Social Garden BI
+            vertical: currentDoc?.vertical || null, // 📊 Social Garden BI
+            serviceLine: currentDoc?.serviceLine || null, // 📊 Social Garden BI
           }),
         });
 
         if (!response.ok) {
-          console.warn('⚠️ Auto-save failed for SOW:', currentDocId);
+          console.warn('⚠️ Auto-save failed for SOW:', currentDocId, 'Status:', response.status);
         }
       } catch (error) {
         console.error('❌ Error auto-saving SOW:', error);
@@ -872,8 +878,7 @@ export default function Page() {
     }, 2000); // Save after 2 seconds of inactivity
 
     return () => clearTimeout(autoSaveTimer);
-  }, [currentDocId]); // 🔧 FIXED: Removed 'documents' dependency - auto-save only needs currentDocId
-  // The document content is read directly from editorRef, not from documents array
+  }, [currentDocId]); // ✅ FIXED: Only depends on currentDocId because we read from editorRef, not documents
 
   useEffect(() => {
     if (currentDocId) {
