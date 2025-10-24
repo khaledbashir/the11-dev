@@ -160,14 +160,22 @@ export default function AgentSidebar({
 
   // 🧵 THREAD MANAGEMENT FUNCTIONS
   const handleNewThread = async () => {
-    if (!dashboardChatTarget) return;
-    
-    console.log('🆕 Creating new thread...');
+    // Provide immediate feedback if no workspace is selected
+    if (!dashboardChatTarget) {
+      console.warn('No dashboard workspace selected (dashboardChatTarget is empty)');
+      alert('No workspace selected. Pick a workspace from the Chat Context dropdown before creating a new chat.');
+      return;
+    }
+
+    console.log('🆕 Creating new thread in workspace:', dashboardChatTarget);
     setLoadingThreads(true);
-    
+
     try {
+      const url = `${process.env.NEXT_PUBLIC_ANYTHINGLLM_URL}/api/v1/workspace/${dashboardChatTarget}/thread/new`;
+      console.log('POST', url);
+
       // Call AnythingLLM API to create thread
-      const response = await fetch(`${process.env.NEXT_PUBLIC_ANYTHINGLLM_URL}/api/v1/workspace/${dashboardChatTarget}/thread/new`, {
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY}`,
@@ -178,30 +186,34 @@ export default function AgentSidebar({
         }),
       });
 
+      console.log('Response status:', response.status);
+
       if (!response.ok) {
-        throw new Error('Failed to create thread');
+        const text = await response.text().catch(() => '');
+        console.error('Create thread failed response body:', text);
+        throw new Error(`Failed to create thread: ${response.status}`);
       }
 
       const data = await response.json();
       const newThread = {
-        slug: data.thread.slug,
-        name: data.thread.name,
-        id: data.thread.id,
+        slug: data.thread?.slug || data.slug || `thread-${Date.now()}`,
+        name: data.thread?.name || data.name || `New Chat - ${new Date().toLocaleTimeString()}`,
+        id: data.thread?.id || data.id || Date.now(),
         createdAt: new Date().toISOString(),
       };
-      
+
+      // Update local thread list and select it
       setThreads(prev => [newThread, ...prev]);
       setCurrentThreadSlug(newThread.slug);
-      
-      // Clear chat messages for new thread
-      if (onClearChat) {
-        onClearChat();
-      }
-      
+
+      // Ask parent to clear chat messages if provided
+      if (onClearChat) onClearChat();
+
       console.log('✅ Thread created:', newThread.slug);
-    } catch (error) {
-      console.error('❌ Failed to create thread:', error);
-      alert('Failed to create new thread. Please try again.');
+    } catch (error: any) {
+      console.error('❌ Failed to create thread:', error?.message || error);
+      // Surface more actionable error to the user
+      alert(`Failed to create new thread: ${error?.message || 'unknown error'}`);
     } finally {
       setLoadingThreads(false);
     }
