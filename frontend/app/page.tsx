@@ -953,22 +953,98 @@ export default function Page() {
   const currentDoc = documents.find(d => d.id === currentDocId);
 
   useEffect(() => {
-    if (currentDoc && editorRef.current && !editorRef.current.isInitialized) {
-      // ONLY on first load: Initialize editor with document content
-      // DO NOT reload on every keystroke - this breaks cursor position!
-      editorRef.current.insertContent(currentDoc.content);
-      editorRef.current.isInitialized = true;
+    if (currentDoc && editorRef.current) {
+      // On document change, load the new document content explicitly
+      console.log('📄 Loading content for SOW', currentDocId, '...');
+      editorRef.current.commands?.setContent
+        ? editorRef.current.commands.setContent(currentDoc.content)
+        : editorRef.current.insertContent(currentDoc.content);
+      console.log('✅ LOAD SUCCESS for', currentDocId);
     }
-  }, [currentDocId]); // 🔧 FIXED: Removed 'currentDoc' dependency - only run on ID change, not content updates
+  }, [currentDocId]);
+
+  // Synchronous save helper used before navigating away from a document
+  const saveCurrentSOWNow = async (docId: string): Promise<boolean> => {
+    try {
+      const editorContent = editorRef.current?.getContent?.();
+      if (!editorContent) {
+        console.warn('⚠️ saveCurrentSOWNow: No editor content to save for:', docId);
+        return true; // Nothing to save; don't block navigation
+      }
+
+      const pricingRows = extractPricingFromContent(editorContent);
+      const validRows = pricingRows.filter(row => {
+        const hours = Number(row.hours) || 0;
+        const rate = Number(row.rate) || 0;
+        const total = Number(row.total) || (hours * rate);
+        return hours >= 0 && rate >= 0 && total >= 0 && !isNaN(total);
+      });
+      const totalInvestment = validRows.reduce((sum, row) => {
+        const rowTotal = Number(row.total) || (Number(row.hours) * Number(row.rate)) || 0;
+        return sum + (isNaN(rowTotal) ? 0 : rowTotal);
+      }, 0);
+
+      const docMeta = documents.find(d => d.id === docId);
+
+      console.log('💾 Saving SOW before navigation:', docId, `(Total: $${(isNaN(totalInvestment) ? 0 : totalInvestment).toFixed(2)})`);
+      const response = await fetch(`/api/sow/${docId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: editorContent,
+          title: docMeta?.title || 'Untitled SOW',
+          total_investment: isNaN(totalInvestment) ? 0 : totalInvestment,
+          vertical: docMeta?.vertical || null,
+          serviceLine: docMeta?.serviceLine || null,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error('❌ SAVE FAILED for', docId, 'Status:', response.status);
+        return false;
+      }
+      console.log('✅ SAVE SUCCESS for', docId);
+      return true;
+    } catch (error) {
+      console.error('❌ Error in saveCurrentSOWNow:', error);
+      return false;
+    }
+  };
 
   const handleSelectDoc = (id: string) => {
-    setCurrentSOWId(id); // This will trigger the useEffect that loads chat history
-    setCurrentDocId(id);
-    // Don't clear chat messages here - let the useEffect load them instead
-    // Switch to editor view when selecting a document
-    if (viewMode !== 'editor') {
-      setViewMode('editor');
-    }
+    if (id === currentDocId) return; // No-op if selecting the same doc
+
+    (async () => {
+      console.log('➡️ NAVIGATION TRIGGERED for SOW', id, '. Starting save for', currentDocId, '...');
+      // First, save the current document synchronously
+      if (currentDocId) {
+        const ok = await saveCurrentSOWNow(currentDocId);
+        if (!ok) {
+          console.error('❌ SAVE FAILED for', currentDocId, '. Halting navigation.');
+          return; // Abort navigation on save failure
+        }
+        console.log('✅ SAVE SUCCESS for', currentDocId, '. Now loading new document.');
+      }
+
+      // Proceed with navigation
+      setCurrentSOWId(id); // Triggers chat history load
+      setCurrentDocId(id);
+
+      // Proactively load editor content for the new document
+      const nextDoc = documents.find(d => d.id === id);
+      if (nextDoc && editorRef.current) {
+        console.log('📄 Loading content for SOW', id, '...');
+        editorRef.current.commands?.setContent
+          ? editorRef.current.commands.setContent(nextDoc.content)
+          : editorRef.current.insertContent(nextDoc.content);
+        console.log('✅ LOAD SUCCESS for', id);
+      }
+
+      // Ensure we are in editor view
+      if (viewMode !== 'editor') {
+        setViewMode('editor');
+      }
+    })();
   };
 
   const handleNewDoc = async (folderId?: string) => {
@@ -2386,30 +2462,52 @@ export default function Page() {
         docTitle = `SOW - ${clientMatch[1]}`;
       }
       
-      // 5. Update the editor directly FIRST, replacing all content BEFORE state updates
-      if (editorRef.current) {
-        console.log('📝 Setting editor content with converted JSON');
-        // 🧹 SANITIZE: Remove any empty text nodes before passing to TipTap
-        const sanitizedContent = {
+      // 5. Merge or set editor content depending on existing content
+      let finalContent = convertedContent;
+      const existing = editorRef.current?.getContent?.();
+      const nodesToAppend = (convertedContent?.content || []).filter((n: any) => n?.type === 'editablePricingTable');
+
+      const hasExisting = !!(existing && Array.isArray(existing.content) && existing.content.length > 0);
+      if (hasExisting) {
+        // If we already have content, append pricing table nodes if present, otherwise append entire converted content
+        const appendNodes = nodesToAppend.length > 0 ? nodesToAppend : (convertedContent?.content || []);
+        finalContent = {
+          ...(existing || { type: 'doc' }),
+          content: sanitizeEmptyTextNodes([...(existing?.content || []), ...appendNodes])
+        } as any;
+        console.log('➕ Appending content to existing document. Nodes appended:', appendNodes.length);
+      } else {
+        // Fresh set
+        finalContent = {
           ...convertedContent,
           content: sanitizeEmptyTextNodes(convertedContent.content)
-        };
-        editorRef.current.insertContent(sanitizedContent);
-        console.log('✅ Editor content set successfully');
+        } as any;
+        console.log('🆕 Setting content on empty editor');
+      }
+
+      // Update editor
+      if (editorRef.current) {
+        if (editorRef.current.commands?.setContent) {
+          editorRef.current.commands.setContent(finalContent);
+        } else {
+          editorRef.current.insertContent(finalContent);
+        }
+        console.log('✅ Editor content updated successfully');
       } else {
         console.warn('⚠️ Editor ref not available, skipping direct update');
       }
-      
-      // 6. Now update the document state with new content and title
-      console.log('📝 Updating document:', docTitle);
+
+      // 6. Update the document state with new content and title
+      console.log('📝 Updating document state and title:', docTitle);
+      const newContentForState = finalContent;
       setDocuments(prev =>
         prev.map(doc =>
           doc.id === currentDocId
-            ? { ...doc, content: convertedContent, title: docTitle }
+            ? { ...doc, content: newContentForState, title: docTitle }
             : doc
         )
       );
-      console.log('✅ Document updated successfully');
+      console.log('✅ Document state updated successfully');
       
       // 7. Embed SOW in both client workspace and master dashboard
       const currentAgent = agents.find(a => a.id === currentAgentId);
@@ -2541,17 +2639,28 @@ export default function Page() {
             docTitle = `SOW - ${clientMatch[1]}`;
           }
           
-          // 5. Update the document state
-          console.log('📝 Updating document:', docTitle);
+          // 5. Merge or set content depending on existing editor content
+          const existing = editorRef.current?.getContent?.();
+          const nodesToAppend = (content?.content || []).filter((n: any) => n?.type === 'editablePricingTable');
+          const hasExisting = !!(existing && Array.isArray(existing.content) && existing.content.length > 0);
+          const finalContent = hasExisting
+            ? {
+                ...(existing || { type: 'doc' }),
+                content: sanitizeEmptyTextNodes([...(existing?.content || []), ...(nodesToAppend.length > 0 ? nodesToAppend : (content?.content || []))])
+              }
+            : { ...content, content: sanitizeEmptyTextNodes(content.content) };
+
+          // 6. Update the document state
+          console.log('📝 Updating document state:', docTitle, ' Appending:', hasExisting);
           setDocuments(prev =>
             prev.map(doc =>
               doc.id === currentDocId
-                ? { ...doc, content, title: docTitle }
+                ? { ...doc, content: finalContent, title: docTitle }
                 : doc
             )
           );
-          
-          // 6. Save to database (this is a critical user action)
+
+          // 7. Save to database (this is a critical user action)
           console.log('💾 Saving SOW to database...');
           try {
             await fetch(`/api/sow/${currentDocId}`, {
@@ -2559,7 +2668,7 @@ export default function Page() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 title: docTitle,
-                content: content, // Send the rich JSON content
+                content: finalContent, // Send the merged rich JSON content
               }),
             });
             console.log('✅ SOW saved to database successfully');
@@ -2567,12 +2676,16 @@ export default function Page() {
             console.error('❌ Database save error:', saveError);
           }
           
-          // 7. Update the editor directly
+          // 8. Update the editor directly
           if (editorRef.current) {
-            editorRef.current.commands.setContent(content);
+            if (editorRef.current.commands?.setContent) {
+              editorRef.current.commands.setContent(finalContent);
+            } else {
+              editorRef.current.insertContent(finalContent);
+            }
           }
           
-          // 8. Embed SOW in both client workspace and master dashboard
+          // 9. Embed SOW in both client workspace and master dashboard
           const currentAgent = agents.find(a => a.id === currentAgentId);
           if (currentAgent?.model === 'anythingllm' && currentAgentId) {
             console.log('🤖 Embedding SOW in AnythingLLM workspaces...');
@@ -2585,7 +2698,7 @@ export default function Page() {
             }
           }
           
-          // 9. Add confirmation message to chat
+          // 10. Add confirmation message to chat
           const confirmMessage: ChatMessage = {
             id: `msg${Date.now()}`,
             role: 'assistant',
