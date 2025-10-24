@@ -485,45 +485,71 @@ export default function AgentSidebar({
       <div className="p-3 border-b border-[#0E2E33] bg-[#0e0f0f]">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold text-white">
-            {isDashboardMode 
-              ? "Chat" 
-              : "AI Agent Chat"}
+            {isDashboardMode ? "Chat" : "AI Agent Chat"}
           </h2>
           <div className="flex items-center gap-2">
-            {/* Dashboard Mode: Thread Management - Compact */}
+            {isEditorMode && currentAgent && (
+              <div className="flex items-center gap-2 bg-gray-800 px-3 py-1 rounded-md">
+                <Bot className="h-4 w-4 text-gray-400" />
+                <span className="text-sm font-medium text-white">{currentAgent.name}</span>
+              </div>
+            )}
             {isDashboardMode && (
               <>
-                <Button 
-                  onClick={handleNewThread} 
+                <Button
+                  onClick={handleNewThread}
                   className="bg-[#15a366] hover:bg-[#10a35a] text-white text-xs h-7 px-2"
                   size="sm"
                 >
-                  <Plus className="w-3 h-3 mr-1" />
-                  New
-                </Button>
-                <Button 
-                  onClick={() => setShowThreadList(!showThreadList)} 
-                  variant="outline"
-                  size="sm"
-                  className="border-[#0E2E33] text-gray-400 hover:bg-[#0E2E33] hover:text-white text-xs h-7 px-2"
-                >
-                  📋 ({threads.length})
+                  <Plus className="h-4 w-4 mr-1" />
+                  New Chat
                 </Button>
               </>
             )}
-            {/* Close button */}
-            {onToggle && (
-              <button
-                onClick={onToggle}
-                className="p-1 hover:bg-gray-800 rounded transition-colors text-gray-400 hover:text-gray-300"
-                title="Close AI chat"
-                aria-label="Close AI chat"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            )}
           </div>
         </div>
+
+        {!isDashboardMode && (
+          <div className="mt-3">
+            <Select
+              value={currentAgentId || ""}
+              onValueChange={onSelectAgent}
+              disabled={true}
+            >
+              <SelectTrigger className="w-full bg-[#1c1c1c] border-[#2a2a2a] text-white h-9">
+                <SelectValue placeholder="Select an AI agent..." />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1c1c1c] border-[#2a2a2a] text-white">
+                {agents.map((agent) => (
+                  <SelectItem key={agent.id} value={agent.id}>
+                    {agent.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {isDashboardMode && (
+          <div className="mt-3">
+            <Select
+              value={dashboardChatTarget}
+              onValueChange={onDashboardWorkspaceChange}
+              disabled={loadingThreads}
+            >
+              <SelectTrigger className="w-full bg-[#1c1c1c] border-[#2a2a2a] text-white h-9">
+                <SelectValue placeholder="Select a workspace..." />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1c1c1c] border-[#2a2a2a] text-white">
+                {availableWorkspaces.map((workspace) => (
+                  <SelectItem key={workspace.slug} value={workspace.slug}>
+                    {workspace.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       {/* Thread List Dropdown - Outside header */}
