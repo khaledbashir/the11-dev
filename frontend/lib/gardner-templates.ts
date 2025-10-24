@@ -94,17 +94,7 @@ This scope of work details a proposed solution for Social Garden to support [CLI
 
 ---
 
-## Pricing Summary
-
-| Role | Hours | Rate (AUD) | Total (AUD) |
-|------|-------|------------|-------------|
-| [Role Name] | [Hours] | $[Rate] | $[Total] +GST |
-| Tech - Head Of - Senior Project Management | [2-10] | $365 | $[Total] +GST |
-| Tech - Delivery - Project Coordination | [3-10] | $110 | $[Total] +GST |
-| Account Management - (Senior Account Manager) | [6-12] | $210 | $[Total] +GST |
-| **Totals** | **[Total Hours]** | | **$[Grand Total] +GST** |
-
----
+<!-- Pricing Summary intentionally omitted. The application will render the Smart Pricing Table using the suggestedRoles JSON. -->
 
 ## Scope Assumptions
 • Please note if dependencies and assumptions cannot be met, the estimate may be adjusted or re-scoped
