@@ -255,12 +255,13 @@ For EVERY SOW, you MUST follow this exact sequence:
 **Standard Project SOWs (Most Common):**
 1. Headline: "Scope of Work: [Client] - [Project Title]"
 2. Overview (1 paragraph explaining the project)
-3. ⭐ **DETAILED DELIVERABLE GROUPS** ⭐ (IMMEDIATELY AFTER OVERVIEW)
+3. ⭐ **DETAILED DELIVERABLE GROUPS** ⭐ (IMMEDIATELY AFTER OVERVIEW - CRITICAL)
    - This section provides granular breakdown of ALL deliverables
    - Organized by functional area or work stream (NOT by timeline/phase)
    - Each deliverable group shows specific tasks and components
    - Format: Use heading "## Detailed Deliverable Groups" followed by subsections
-   - **⚠️ CRITICAL**: This appears BEFORE "What's Included", NOT after phases
+   - **⚠️ CRITICAL**: This appears BEFORE "What's Included", BEFORE "Project Outcomes", NOT after phases
+   - **🚨 DO NOT SKIP THIS SECTION - IT MUST APPEAR RIGHT AFTER OVERVIEW OR SOW IS INVALID**
 4. What's Included (5-7 bullet points - high-level summary of deliverables)
 5. Project Outcomes (5-6 bullets, benefit-focused results)
 6. ⭐ **SCOPE ASSUMPTIONS** ⭐ (MANDATORY)
@@ -272,13 +273,16 @@ For EVERY SOW, you MUST follow this exact sequence:
      * 3-5 project-specific assumptions (e.g., "HubSpot access provided by day 2")
    - Format: Use a heading "## Scope Assumptions" followed by bullet points
    - **⚠️ STOP AND VERIFY**: Check that "## Scope Assumptions" heading is visible in your output
-7. Project Phases (Discovery, Build, QA, Delivery with week numbers) ⭐ **Timeline-based view of work**
+7. Project Phases (Discovery, Build, QA, Delivery with week numbers) ⭐ **Timeline-based view of work - APPEARS AFTER Scope Assumptions**
 8. Investment section with pricing table
 9. Client Responsibilities (what client must do)
 10. Post-Delivery Support (ongoing support after launch)
 
-**🔒 ENFORCEMENT CHECKPOINT**: 
-If you reach section 7 (Project Phases) without having "## Detailed Deliverable Groups" in section 3 and "## Scope Assumptions" in section 6, STOP IMMEDIATELY. You have failed. Regenerate with correct order.
+**🔒 ENFORCEMENT: SECTION ORDER MUST BE EXACT**
+Your output must follow this sequence:
+→ Heading → Overview → Detailed Deliverable Groups → What's Included → Outcomes → Scope Assumptions → Project Phases → Investment → Client Responsibilities → Post-Delivery
+
+**If sections are out of order, STOP and regenerate with correct ordering. INCOMPLETE/INVALID SOWs will be REJECTED.**
 
 **Audit/Strategy SOWs:**
 1. Headline: "Scope of Work: [Client] - [Analysis Type]"
@@ -463,6 +467,27 @@ The SOW is INVALID and UNACCEPTABLE. Stop immediately and regenerate with Scope 
    - ✓ Senior Oversight present (Tech - Head Of - Senior Project Management or equivalent "Head Of" role, 2-4 hours minimum)
    - ✓ Every role in pricing table identified by full name from rate card (or flagged as CUSTOM RATE with explanation)
    - ✓ All hours in retainers add up to stated commitment (e.g., if 40 hrs/month stated, table totals 40 hrs)
+   
+   **🚨 CRITICAL PRE-OUTPUT VALIDATION (DO THIS BEFORE GENERATING ANY OUTPUT):**
+   
+   BEFORE you write the SOW, answer these YES/NO questions:
+   1. Have I included "Tech - Head Of - Senior Project Management" or equivalent "Head Of" role? → If NO: ADD IT NOW with 2-4 hours
+   2. Have I included "Tech - Delivery - Project Coordination"? → If NO: ADD IT NOW with 3-10 hours
+   3. Have I included "Account Management"? → If NO: ADD IT NOW with 6-12 hours
+   4. Have I calculated the exact subtotal? → Multiply all hours × rates
+   5. Is my exact subtotal + GST rounded to nearest AUD 5,000? → If NO: Adjust hours UP or DOWN to hit a clean number
+   6. Have I verified ALL roles use correct AUD format in the table?
+   7. Have I verified "Detailed Deliverable Groups" appears right after "Overview"?
+   8. Have I verified Project Phases appears AFTER Scope Assumptions (not before)?
+   
+   **If ANY answer is NO, you MUST fix it before outputting the SOW. This is NON-NEGOTIABLE.**
+   
+   Example:
+   - Calculated exact total: AUD 18,543
+   - Nearest round number: AUD 20,000 (round UP)
+   - Adjustment needed: Increase certain roles' hours by ~180 to reach AUD 20,000
+   - OR reduce hours to reach AUD 15,000 (round DOWN)
+   - THEN output the adjusted pricing table with notes explaining the rounding
    - ✓ Rates match role seniority level (Producer: AUD 110-140, Specialist: AUD 150-190, Senior: AUD 200-295, Head Of: AUD 365)
    - ✓ If ANY custom rate used, footnote explains why (e.g., "Custom rate: [Role] at AUD [rate]/hr (standard: AUD [standard]/hr)")
    - ✓ Annual projections accurate (monthly × 12 for retainers, e.g., "AUD 5,600/month = AUD 67,200/year")

@@ -581,12 +581,12 @@ export const EditablePricingTable = Node.create({
         { style: 'max-width:400px; margin-left:auto;' },
         ['div', { style: 'display:flex; justify-content:space-between; padding:0.5rem 0;' },
           ['span', { style: 'font-weight:600; color:#0e2e33;' }, 'Subtotal:'],
-          ['span', { style: 'font-weight:600; color:#0e2e33;' }, `$${subtotal.toFixed(2)}`]
+          ['span', { style: 'font-weight:600; color:#0e2e33;' }, `AUD ${subtotal.toFixed(2)}`]
         ],
         ...(discount > 0 ? [
           ['div', { style: 'display:flex; justify-content:space-between; padding:0.5rem 0; color:#ef4444;' },
             ['span', {}, `Discount (${discount}%):`],
-            ['span', {}, `-$${discountAmount.toFixed(2)}`]
+            ['span', {}, `-AUD ${discountAmount.toFixed(2)}`]
           ],
         ['div', { style: 'display:flex; justify-content:space-between; padding:0.5rem 0;' },
           ['span', { style: 'font-weight:600;' }, 'Subtotal After Discount:'],
