@@ -1,7 +1,7 @@
 // Export utilities for SOW documents
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 export interface PricingRow {
   role: string;
@@ -137,6 +137,42 @@ export function extractPricingFromContent(content: any): PricingRow[] {
 }
 
 /**
+ * Extract pricing data from HTML by stripping tags and applying the same text regexes
+ */
+export function extractPricingFromHTML(html: string): PricingRow[] {
+  if (!html) return [];
+  const text = html.replace(/<[^>]*>/g, ' ');
+  const rows: PricingRow[] = [];
+
+  const pricingPatterns = [
+    /\|\s*([^|]+?)\s*\|\s*(\d+(?:\.\d+)?)\s*(?:hours?)?\s*\|\s*\$?\s*(\d+(?:\.\d+)?)\s*(?:\/hour)?\s*\|\s*\$?\s*(\d+(?:,\d{3})*(?:\.\d+)?)/gi,
+    /[-*]\s*\*\*([^*:]+)\*\*:?:?\s*(\d+(?:\.\d+)?)\s*(?:hours?)?\s*[×x]\s*\$?\s*(\d+(?:\.\d+)?)\s*(?:\/hour)?\s*=\s*\$?\s*(\d+(?:,\d{3})*(?:\.\d+)?)/gi,
+    /([^:\n]+):\s*(\d+(?:\.\d+)?)\s*hours?\s*[×x]\s*\$?\s*(\d+(?:\.\d+)?)\s*(?:\/hour)?\s*=\s*\$?\s*(\d+(?:,\d{3})*(?:\.\d+)?)/gi,
+  ];
+
+  pricingPatterns.forEach((pattern) => {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      const role = match[1].trim();
+      const hours = parseFloat(match[2]);
+      const rate = parseFloat(match[3]);
+      const total = parseFloat(match[4].replace(/,/g, ''));
+      if (
+        role &&
+        !role.toLowerCase().includes('role') &&
+        !role.toLowerCase().includes('total') &&
+        hours > 0 &&
+        rate > 0
+      ) {
+        rows.push({ role, hours, rate, total });
+      }
+    }
+  });
+
+  return rows;
+}
+
+/**
  * Calculate totals with optional discount
  */
 export function calculateTotals(rows: PricingRow[], discount?: { type: 'percentage' | 'fixed'; value: number }) {
@@ -215,82 +251,112 @@ export function exportToCSV(sowData: SOWData, filename: string = 'sow-pricing.cs
 /**
  * Export pricing table to Excel using Social Garden template format
  */
-export function exportToExcel(sowData: SOWData, filename: string = 'sow-pricing.xlsx') {
-  const { pricingRows, discount, title, deliverables, assumptions } = sowData;
+export async function exportToExcel(sowData: SOWData, filename?: string) {
+  const { pricingRows, discount, title, client, deliverables, assumptions } = sowData;
   const totals = calculateTotals(pricingRows, discount);
-  
-  // Create worksheet data matching Social Garden template
-  const wsData: any[] = [
-    [title || '[PROJECT NAME]'], // Row 1: Project title
-    ['ITEMS', 'ROLE', 'HOURS', 'HOURLY RATE', 'TOTAL COST +GST'], // Row 2: Headers
-  ];
-  
-  // Add deliverables header if provided
+
+  // Load the Excel template from public folder
+  const res = await fetch('/templates/Social_Garden_SOW_Template.xlsx');
+  if (!res.ok) throw new Error('Failed to load Excel template');
+  const arrayBuffer = await res.arrayBuffer();
+
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(arrayBuffer);
+
+  // Try to access well-known sheets, with graceful fallbacks
+  const overviewSheet =
+    workbook.getWorksheet('Overview') || workbook.getWorksheet(1);
+  const pricingSheet =
+    workbook.getWorksheet('Pricing') ||
+    workbook.getWorksheet('Pricing Breakdown') ||
+    workbook.getWorksheet(2) ||
+    workbook.worksheets[workbook.worksheets.length - 1];
+
+  // Populate overview data (best-effort due to unknown template positions)
+  try {
+    // Common placements
+    // A1: Title, A3: Client, A5: Date, A7: Grand Total
+    overviewSheet.getCell('A1').value = title || '[PROJECT NAME]';
+    overviewSheet.getCell('A3').value = 'Client Name';
+    overviewSheet.getCell('B3').value = client || '';
+    overviewSheet.getCell('A5').value = 'Created Date';
+    overviewSheet.getCell('B5').value = new Date().toLocaleDateString('en-AU');
+    overviewSheet.getCell('A7').value = 'Grand Total (ex. GST)';
+    overviewSheet.getCell('B7').value = totals.subtotal;
+  } catch (e) {
+    console.warn('Overview sheet population warning:', e);
+  }
+
+  // Find header row in pricing sheet by scanning for expected headers
+  const findHeaderRow = (): number => {
+    const headers = ['ITEMS', 'ROLE', 'HOURS', 'HOURLY RATE', 'TOTAL COST'];
+    for (let r = 1; r <= Math.min(50, pricingSheet.rowCount + 5); r++) {
+      const rowValues = pricingSheet.getRow(r).values
+        .map((v: any) => (typeof v === 'string' ? v.trim().toUpperCase() : String(v || '').trim().toUpperCase()));
+      const matchCount = headers.filter(h => rowValues.includes(h)).length;
+      if (matchCount >= 3) return r; // heuristic
+    }
+    return 2; // default header row
+  };
+
+  const headerRowIdx = findHeaderRow();
+  let writeRow = headerRowIdx + 1;
+
+  // Clear any existing data rows under header (basic cleanup up to 1000 rows)
+  for (let r = writeRow; r <= writeRow + 1000; r++) {
+    const row = pricingSheet.getRow(r);
+    if (!row || row.every((c: any) => !c || c.value == null)) break;
+    pricingSheet.spliceRows(writeRow, 1);
+  }
+
+  // Write pricing rows
+  for (const row of pricingRows) {
+    const excelRow = pricingSheet.getRow(writeRow++);
+    // Assume columns: A: ITEMS, B: ROLE, C: HOURS, D: HOURLY RATE, E: TOTAL COST +GST
+    excelRow.getCell(1).value = '';
+    excelRow.getCell(2).value = row.role;
+    excelRow.getCell(3).value = row.hours;
+    excelRow.getCell(4).value = row.rate;
+    excelRow.getCell(5).value = row.total;
+    excelRow.commit();
+  }
+
+  // Totals row
+  const totalsRow = pricingSheet.getRow(writeRow++);
+  totalsRow.getCell(1).value = 'TOTAL';
+  totalsRow.getCell(2).value = totals.totalHours; // total hours
+  totalsRow.getCell(3).value = Math.round((totals.subtotal / Math.max(1, totals.totalHours)) * 100) / 100; // avg rate
+  totalsRow.getCell(5).value = totals.subtotal; // subtotal (ex. GST)
+  totalsRow.commit();
+
+  // Optional sections: deliverables and assumptions (append beneath)
   if (deliverables && deliverables.length > 0) {
-    wsData.push([`[  DELIVERABLES:\n${deliverables.map(d => '+ ' + d).join('\n')}  ]`, '', '', '', '']);
-  }
-  
-  // Add pricing rows
-  pricingRows.forEach(row => {
-    wsData.push([
-      '', // Empty ITEMS column
-      row.role,
-      row.hours,
-      row.rate,
-      row.total
-    ]);
-  });
-  
-  // Add total row
-  wsData.push([
-    'TOTAL',
-    totals.totalHours,
-    Math.round(totals.subtotal / totals.totalHours * 100) / 100, // Avg hourly rate
-    '',
-    totals.subtotal
-  ]);
-  
-  // Add empty rows
-  wsData.push(['']);
-  wsData.push(['Scope & Price Overview']);
-  wsData.push(['']);
-  wsData.push(['ESTIMATED TOTAL HOURS', '', 'TOTAL COST']);
-  wsData.push([title || '[PROJECT NAME]', totals.totalHours, totals.subtotal]);
-  wsData.push(['']);
-  
-  // Add assumptions if provided
-  if (assumptions && assumptions.length > 0) {
-    wsData.push(['']);
-    wsData.push(['Deliverable Assumptions:']);
-    assumptions.forEach(assumption => {
-      wsData.push([assumption]);
-    });
-  }
-  
-  // Create workbook and worksheet
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet(wsData);
-  
-  // Set column widths to match template
-  ws['!cols'] = [
-    { wch: 45 },  // ITEMS
-    { wch: 35 },  // ROLE
-    { wch: 12 },  // HOURS
-    { wch: 15 },  // HOURLY RATE
-    { wch: 20 },  // TOTAL COST
-  ];
-  
-  // Add styling to match template (bold headers)
-  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-  for (let C = 0; C <= range.e.c; ++C) {
-    const cellAddress = XLSX.utils.encode_cell({ r: 1, c: C }); // Row 2 (headers)
-    if (ws[cellAddress]) {
-      ws[cellAddress].s = { font: { bold: true } };
+    writeRow += 1;
+    pricingSheet.getCell(`A${writeRow++}`).value = 'Deliverables:';
+    for (const d of deliverables) {
+      pricingSheet.getCell(`A${writeRow++}`).value = `• ${d}`;
     }
   }
-  
-  XLSX.utils.book_append_sheet(wb, ws, title ? title.substring(0, 30) : 'SOW Pricing');
-  XLSX.writeFile(wb, filename);
+  if (assumptions && assumptions.length > 0) {
+    writeRow += 1;
+    pricingSheet.getCell(`A${writeRow++}`).value = 'Assumptions:';
+    for (const a of assumptions) {
+      pricingSheet.getCell(`A${writeRow++}`).value = `• ${a}`;
+    }
+  }
+
+  // Prepare filename
+  const safeClient = (client || '').replace(/[^a-z0-9]/gi, '_');
+  const dateStr = new Date().toISOString().split('T')[0];
+  const outName = filename || (safeClient ? `${safeClient}-SOW-${dateStr}.xlsx` : `SOW-${dateStr}.xlsx`);
+
+  // Download
+  const outBuffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([outBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = outName;
+  link.click();
 }
 
 /**

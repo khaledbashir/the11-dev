@@ -57,6 +57,7 @@
     "clsx": "^2.1.0",
     "cmdk": "^1.0.4",
     "eventsource-parser": "^1.1.2",
+    "exceljs": "^4.4.0",
     "highlight.js": "^11.9.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.3",
@@ -86,8 +87,7 @@
     "ts-pattern": "^5.0.8",
     "typescript": "^5.4.2",
     "use-debounce": "^10.0.0",
-    "uuid": "^13.0.0",
-    "xlsx": "^0.18.5"
+    "uuid": "^13.0.0"
   },
   "pnpm": {
     "overrides": {
