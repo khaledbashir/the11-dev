@@ -165,47 +165,6 @@ function applyTableBorders(ws: ExcelJS.Worksheet, startRow: number, endRow: numb
   }
 }
 
-function extractGlobalDiscount(doc: any): number {
-  try {
-    const nodes: TipTapNode[] = Array.isArray(doc?.content) ? doc.content : [];
-    for (const node of nodes) {
-      if (node?.type === 'editablePricingTable' && typeof node?.attrs?.discount === 'number') {
-        const pct = Number(node.attrs.discount) || 0;
-        if (pct >= 0 && pct <= 100) return pct;
-      }
-      if (Array.isArray(node?.content)) {
-        const nestedDoc = { content: node.content } as any;
-        const nested = extractGlobalDiscount(nestedDoc);
-        if (typeof nested === 'number' && nested >= 0) return nested;
-      }
-    }
-  } catch {}
-  return 0;
-}
-
-function findOverviewHeaderRow(ws: ExcelJS.Worksheet): { row: number; col: number } | null {
-  const expected = new Set([
-    'PROJECT DATES', 'TOTAL HOURS', 'AVG. HOURLY RATE', 'DISCOUNT', 'MONTH COST', 'DISCOUNT COST', 'TOTAL COST',
-  ]);
-  const maxRows = Math.min(ws.rowCount || 50, 50);
-  const maxCols = Math.min(ws.columnCount || 12, 12);
-  for (let r = 1; r <= maxRows; r++) {
-    const values: string[] = [];
-    for (let c = 1; c <= maxCols; c++) {
-      const v = ws.getCell(r, c).value;
-      const s = (typeof v === 'string' ? v : (v as any)?.toString?.() || '').trim().toUpperCase();
-      values.push(s);
-    }
-    const match = Array.from(expected).filter(h => values.includes(h)).length;
-    if (match >= 4) {
-      // Find the column of 'PROJECT DATES' (usually B)
-      const col = Math.max(1, values.indexOf('PROJECT DATES'));
-      return { row: r, col };
-    }
-  }
-  return null;
-}
-
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -232,8 +191,7 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid SOW content' }, { status: 400 });
     }
 
-  const scopes = parseScopesFromTipTap(content);
-  const discountPct = extractGlobalDiscount(content);
+    const scopes = parseScopesFromTipTap(content);
     if (!scopes.length) {
       // Provide an empty but valid workbook rather than erroring
       // to keep UX consistent; the sheet will explain missing structure.
@@ -374,44 +332,6 @@ export async function GET(
         });
       }
     });
-
-    // Fill Scope & Pricing Overview if present (align with template layout)
-    const overviewWs = wb.getWorksheet('Scope & Pricing Overview');
-    if (overviewWs) {
-      const anchor = findOverviewHeaderRow(overviewWs);
-      const headerRow = anchor?.row ?? 5;
-      const startRow = headerRow + 1;
-      // Columns by observation: A (scope name), B Project Dates, C Total Hours, D Avg Rate, E Discount, F Month Cost, G Discount Cost, H Total Cost
-      let writeRow = startRow;
-      // Optional cleanup of a small block beneath header
-      for (let r = 0; r < 20; r++) {
-        const row = overviewWs.getRow(startRow + r);
-        // Clear only the data columns we intend to write (A, C, D, E, G, H)
-        [1, 3, 4, 5, 7, 8].forEach((c) => (row.getCell(c).value = null));
-      }
-
-      scopes.forEach((s) => {
-        const totalHours = s.roles.reduce((acc, x) => acc + x.hours, 0);
-        const subtotal = s.roles.reduce((acc, x) => acc + x.total, 0);
-        // A: Scope Title
-        overviewWs.getCell(writeRow, 1).value = s.title;
-        // C: Total Hours
-        overviewWs.getCell(writeRow, 3).value = totalHours;
-        // H: Total Cost (ex. GST) — keep as pre-discount so Avg Rate remains stable
-        overviewWs.getCell(writeRow, 8).value = subtotal;
-        overviewWs.getCell(writeRow, 8).numFmt = '$#,##0.00';
-        // D: Avg Hourly Rate = H/C
-        overviewWs.getCell(writeRow, 4).value = { formula: `H${writeRow}/C${writeRow}` } as any;
-        // E: Discount % (from editor global discount)
-        overviewWs.getCell(writeRow, 5).value = discountPct;
-        // G: Discount Cost = H * (E%)
-        overviewWs.getCell(writeRow, 7).value = { formula: `H${writeRow}*(E${writeRow}/100)` } as any;
-        overviewWs.getCell(writeRow, 7).numFmt = '$#,##0.00';
-        // Align numeric columns
-        [3, 4, 7, 8].forEach((c) => (overviewWs.getCell(writeRow, c).alignment = { horizontal: 'right' } as any));
-        writeRow++;
-      });
-    }
 
     // Pricing_Editable sheet (flat, finance-friendly, easy to modify)
     const pricingWsName = 'Pricing_Editable';
