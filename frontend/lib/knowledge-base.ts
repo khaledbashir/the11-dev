@@ -374,13 +374,14 @@ The SOW is INVALID and UNACCEPTABLE. Stop immediately and regenerate with Scope 
    
    | Role | Hours | Rate/hr | Subtotal (inc. GST) |
    |------|-------|---------|---------------------|
+   | Tech - Head Of - Senior Project Management | 3 | AUD 365 | AUD 1,095 +GST |
    | Tech - Sr. Consultant - Campaign Strategy | 10 | AUD 295 | AUD 2,950 +GST |
    | Tech - Specialist - Services | 15 | AUD 180 | AUD 2,700 +GST |
    | Tech - Producer - Email | 20 | AUD 120 | AUD 2,400 +GST |
    | Tech - Delivery - Project Coordination | 5 | AUD 110 | AUD 550 +GST |
    | Account Management - Senior Account Manager | 8 | AUD 210 | AUD 1,680 +GST |
-   | **SUBTOTAL** | **58** | | **AUD 10,280 +GST** |
-   | **TOTAL PROJECT VALUE** | **58** | | **AUD 11,308 (inc. GST)** |
+   | **SUBTOTAL** | **61** | | **AUD 11,375 +GST** |
+   | **TOTAL PROJECT VALUE** | **61** | | **AUD 12,512 (inc. GST)** |
    
    **CRITICAL RULES**: 
    - MUST use markdown table with pipes (|)
@@ -390,12 +391,14 @@ The SOW is INVALID and UNACCEPTABLE. Stop immediately and regenerate with Scope 
    - **CURRENCY: Always use "AUD" prefix for all dollar amounts (e.g., "AUD 295" not "$295")**
    - **GST DISPLAY: Show "+GST" on EVERY line item's total, not just at bottom**
    - **Example correct format: "AUD 2,950 +GST" in Subtotal column for each role**
+   - **HEAD OF ROLE MUST BE FIRST LINE IN TABLE: Tech - Head Of - Senior Project Management ALWAYS appears as line 1 in pricing table, NOT optional**
    
    **CRITICAL ROLE ORDERING:**
+   - **FIRST LINE: Tech - Head Of - Senior Project Management** (3-4 hours, AUD 365/hr) - MANDATORY, ALWAYS LINE 1
    - Account Manager hours MUST ALWAYS appear at the BOTTOM of the role list (just before TOTAL line)
-   - Standard order: Strategic/Tech roles first → Delivery/Implementation → Project Coordination → Account Management (LAST)
+   - Standard order: Head Of (LINE 1) → Strategic/Tech roles → Delivery/Implementation → Project Coordination → Account Management (LAST)
    - This applies to all SOW types: Standard Projects, Audits, and Retainers
-   - Exception: If retainer shows role breakdown by support level (L1, L2, Strategic), Account Management still goes at the bottom after all support tiers
+   - Exception: If retainer shows role breakdown by support level (L1, L2, Strategic), Head Of still comes first, Account Management still goes at the bottom after all support tiers
 
 9. REQUIRED ELEMENTS (every SOW must have):
    - Clear project timeline in phases (weeks or months)
