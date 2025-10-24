@@ -410,20 +410,18 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
 
   // CRITICAL: If we reach the end and pricing table hasn't been inserted, ALWAYS insert it
   if (!pricingTableInserted) {
-    if (suggestedRoles.length > 0) {
-      console.log('⚠️ Pricing table not auto-inserted earlier, inserting NOW at end of content (with JSON roles).');
-      content.push({
-        type: 'horizontalRule'
-      });
-      content.push({
-        type: 'heading',
-        attrs: { level: 2 },
-        content: [{ type: 'text', text: 'Investment Breakdown' }]
-      });
-      insertPricingTable();
-    } else {
-      console.warn('⚠️ No pricing table inserted and no suggestedRoles provided. User will need to add pricing manually.');
-    }
+    console.log('⚠️ Pricing table not auto-inserted earlier, inserting NOW at end of content (fallback/default).');
+    content.push({
+      type: 'horizontalRule'
+    });
+    content.push({
+      type: 'heading',
+      attrs: { level: 2 },
+      content: [{ type: 'text', text: 'Investment Breakdown' }]
+    });
+    // Always attempt to insert a pricing table at the end.
+    // If suggestedRoles are present, they will be used; otherwise, strict fallback will create a default zero-hour table.
+    insertPricingTable();
   }
 
   console.log(`📊 Final content has ${content.length} nodes. Pricing table inserted: ${pricingTableInserted}`);
