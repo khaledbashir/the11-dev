@@ -2983,6 +2983,10 @@ export default function Page() {
               dashboardChatTarget={dashboardChatTarget}
               onDashboardWorkspaceChange={setDashboardChatTarget}
               availableWorkspaces={availableWorkspaces}
+              onClearChat={() => {
+                console.log('🧹 Clearing chat messages for new thread');
+                setChatMessages([]);
+              }}
               onInsertToEditor={(content) => {
                 console.log('📝 Insert to Editor button clicked from AI chat');
                 // Clean all AI thinking tags before inserting
