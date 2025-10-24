@@ -751,9 +751,11 @@ export function parseSOWMarkdown(markdown: string): Partial<SOWData> {
 /**
  * Clean SOW content by removing non-client-facing elements
  */
+import { PLACEHOLDER_SANITIZATION_ENABLED, PLACEHOLDER_BRANDS } from './policy';
+
 export function cleanSOWContent(content: string): string {
   // Remove any internal comments, thinking tags, tool calls, etc.
-  return content
+  let out = content
     // Remove <AI_THINK> tags
     .replace(/<AI_THINK>[\s\S]*?<\/AI_THINK>/gi, '')
     // Remove <think> tags
@@ -765,6 +767,17 @@ export function cleanSOWContent(content: string): string {
     // Remove any remaining XML-style tags that might be internal
     .replace(/<\/?[A-Z_]+>/gi, '')
     .trim();
+
+  // Optional: sanitize placeholder client brands in narrative when no explicit client is set
+  if (PLACEHOLDER_SANITIZATION_ENABLED) {
+    // Heuristic: replace common placeholders with 'Client' (case-insensitive), only when standalone words
+    for (const p of PLACEHOLDER_BRANDS) {
+      const pattern = new RegExp(`\\b${p.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b`, 'gi');
+      out = out.replace(pattern, 'Client');
+    }
+  }
+
+  return out;
 }
 
 /**
