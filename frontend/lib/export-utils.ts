@@ -31,9 +31,30 @@ export function extractPricingFromContent(content: any): PricingRow[] {
   
   if (!content || !content.content) return rows;
 
-  // First, try to extract from TipTap tables
+  // First, try to extract from TipTap tables (including editablePricingTable)
   const findTables = (nodes: any[]): void => {
     nodes.forEach((node: any) => {
+      // Handle editablePricingTable custom node
+      if (node.type === 'editablePricingTable' && node.attrs?.rows) {
+        const rows_data = node.attrs.rows;
+        if (Array.isArray(rows_data)) {
+          rows_data.forEach((row: any) => {
+            const hours = Number(row.hours) || 0;
+            const rate = Number(row.rate) || 0;
+            const total = hours * rate; // Always recalculate total
+            const role = String(row.role || '').trim();
+            
+            // Skip header/total rows and invalid data
+            if (role && !role.toLowerCase().includes('total') && 
+                !role.toLowerCase().includes('role') &&
+                hours > 0 && rate > 0) {
+              rows.push({ role, hours, rate, total: isNaN(total) ? 0 : total });
+            }
+          });
+        }
+      }
+      
+      // Handle standard table nodes
       if (node.type === 'table' && node.content) {
         // Skip header row, process data rows
         const dataRows = node.content.slice(1);
@@ -42,14 +63,19 @@ export function extractPricingFromContent(content: any): PricingRow[] {
           if (row.type === 'tableRow' && row.content && row.content.length >= 4) {
             const cells = row.content;
             const role = cells[0]?.content?.[0]?.content?.[0]?.text || '';
-            const hours = parseFloat(cells[1]?.content?.[0]?.content?.[0]?.text || '0');
+            const hoursText = cells[1]?.content?.[0]?.content?.[0]?.text || '0';
+            const hours = parseFloat(hoursText) || 0;
             const rateText = cells[2]?.content?.[0]?.content?.[0]?.text || '';
-            const rate = parseFloat(rateText.replace(/[$,]/g, ''));
-            const totalText = cells[3]?.content?.[0]?.content?.[0]?.text || '';
-            const total = parseFloat(totalText.replace(/[$,+GST]/g, ''));
+            const rate = parseFloat(rateText.replace(/[$,\s]/g, '')) || 0;
             
-            if (role && !role.includes('Total') && !role.includes('Role')) {
-              rows.push({ role, hours, rate, total });
+            // Calculate total from hours × rate (more reliable than parsing)
+            const total = hours * rate;
+            
+            // Skip header/total rows and invalid data
+            if (role && !role.toLowerCase().includes('total') && 
+                !role.toLowerCase().includes('role') &&
+                hours > 0 && rate > 0) {
+              rows.push({ role, hours, rate, total: isNaN(total) ? 0 : total });
             }
           }
         });

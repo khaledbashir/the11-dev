@@ -772,7 +772,26 @@ export default function Page() {
       try {
         // Calculate total investment from pricing table in content
         const pricingRows = extractPricingFromContent(currentDoc.content);
-        const totalInvestment = pricingRows.reduce((sum, row) => sum + row.total, 0);
+        
+        // 🔧 SAFETY: Filter out invalid rows and handle NaN values
+        const validRows = pricingRows.filter(row => {
+          // Ensure hours and rate are valid numbers
+          const hours = Number(row.hours) || 0;
+          const rate = Number(row.rate) || 0;
+          const total = Number(row.total) || (hours * rate); // Calculate if total is missing
+          return hours >= 0 && rate >= 0 && total >= 0 && !isNaN(total);
+        });
+        
+        // 🧮 Calculate total, handling NaN gracefully
+        const totalInvestment = validRows.reduce((sum, row) => {
+          const rowTotal = Number(row.total) || (Number(row.hours) * Number(row.rate)) || 0;
+          return sum + (isNaN(rowTotal) ? 0 : rowTotal);
+        }, 0);
+        
+        // Only log if we have actual pricing data
+        if (validRows.length > 0 || totalInvestment > 0) {
+          console.log('💾 Auto-saved SOW:', currentDocId, `(Total: $${totalInvestment.toFixed(2)})`);
+        }
         
         const response = await fetch(`/api/sow/${currentDocId}`, {
           method: 'PUT',
@@ -780,15 +799,13 @@ export default function Page() {
           body: JSON.stringify({
             content: currentDoc.content,
             title: currentDoc.title,
-            total_investment: totalInvestment,
+            total_investment: isNaN(totalInvestment) ? 0 : totalInvestment,
             vertical: currentDoc.vertical || null, // 📊 Social Garden BI
             serviceLine: currentDoc.serviceLine || null, // 📊 Social Garden BI
           }),
         });
 
-        if (response.ok) {
-          console.log('💾 Auto-saved SOW:', currentDocId, `(Total: $${totalInvestment.toFixed(2)})`);
-        } else {
+        if (!response.ok) {
           console.warn('⚠️ Auto-save failed for SOW:', currentDocId);
         }
       } catch (error) {
