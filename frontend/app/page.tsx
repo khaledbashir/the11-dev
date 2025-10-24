@@ -1939,8 +1939,9 @@ export default function Page() {
     toast.info('📊 Generating Excel...');
     
     try {
-      // Prefer modular Architect JSON if available
-      if (structuredSow?.scopeItems?.length) {
+      // Prefer modular Architect JSON if it includes roles per scope; otherwise fallback to legacy
+      const hasRoles = Array.isArray(structuredSow?.scopeItems) && (structuredSow?.scopeItems || []).some(si => Array.isArray((si as any).roles) && (si as any).roles.length > 0);
+      if (structuredSow?.scopeItems?.length && hasRoles) {
         const safeName = `${(currentDoc.title || structuredSow.title || 'SOW')}`
           .replace(/[^a-z0-9]/gi, '_');
         exportToExcel(structuredSow, `${safeName}_pricing.xlsx`);
@@ -2861,7 +2862,7 @@ export default function Page() {
         
         if (shouldStream) {
           // 🔒 Enforce JSON contract by appending instruction to the last user prompt (request-only)
-          const contractSuffix = "IMPORTANT: Your response MUST contain two parts in order: first, a complete SOW narrative written in Markdown, and second, a single ```json code block at the end. The JSON object must have a \"scopeItems\" array, where each item corresponds to the distinct phases of the project as described in the narrative.";
+          const contractSuffix = "IMPORTANT: Your response MUST contain two parts in order: first, a complete SOW narrative written in Markdown, and second, a single ```json code block at the end. The JSON must be a valid object with a \"scopeItems\" array. Each item MUST include: name (string), overview (string), roles (array of { role, hours }), deliverables (string[]), and assumptions (string[]). Do not include rates or totals in JSON.";
           const requestMessages = [
             { role: "system", content: effectiveAgent.systemPrompt },
             ...newMessages.slice(0, Math.max(0, newMessages.length - 1)).map(m => ({ role: m.role, content: m.content })),
@@ -3031,20 +3032,20 @@ export default function Page() {
           // ✅ ENFORCE JSON CONTRACT: If the AI didn't include a scopeItems JSON block,
           // automatically ask for it in a follow-up message and append to the assistant reply.
           const jsonMatch = accumulatedContent.match(/```json\s*([\s\S]*?)\s*```/m);
-          const hasScopeItemsJson = !!(jsonMatch && /"scopeItems"\s*:\s*\[/m.test(jsonMatch[1] || ''));
+          const hasScopeItemsJson = !!(jsonMatch && /\"scopeItems\"\s*:\s*\[/m.test(jsonMatch[1] || ''));
           if (!hasScopeItemsJson && useAnythingLLM && workspaceSlug) {
             try {
               const followUpPrompt = [
                 'FINAL MANDATORY STEP: Return ONLY a JSON code block with this exact schema (no prose).',
                 '```json',
                 '{',
-                '  "scopeItems": [',
+                '  \"scopeItems\": [',
                 '    {',
-                '      "name": "<Phase Name>",',
-                '      "overview": "<Short overview>",',
-                '      "roles": [ { "role": "<Valid role from rate card>", "hours": <number> } ],',
-                '      "deliverables": ["..."],',
-                '      "assumptions": ["..."]',
+                '      \"name\": \"<Phase Name>\",',
+                '      \"overview\": \"<Short overview>\",',
+                '      \"roles\": [ { \"role\": \"<Valid role from rate card>\", \"hours\": <number> } ],',
+                '      \"deliverables\": [\"...\"],',
+                '      \"assumptions\": [\"...\"]',
                 '    }',
                 '  ]',
                 '}',
@@ -3052,8 +3053,7 @@ export default function Page() {
                 '',
                 'Constraints:',
                 '- The phases must align with the narrative you provided earlier.',
-                '- Use valid role names from the Social Garden rate card.',
-                '- Do NOT include rates or totals.'
+                '- Each phase MUST include roles[] with role names from the Social Garden rate card and hours only (no rates or totals).'
               ].join('\n');
 
               // Stream a short follow-up request on the same thread to obtain the JSON
@@ -3123,7 +3123,7 @@ export default function Page() {
         } else {
           // 📦 NON-STREAMING MODE: Standard fetch for OpenRouter
           // 🔒 Enforce JSON contract (request-only) on the last user message
-          const contractSuffix = "IMPORTANT: Your response MUST contain two parts in order: first, a complete SOW narrative written in Markdown, and second, a single ```json code block at the end. The JSON object must have a \"scopeItems\" array, where each item corresponds to the distinct phases of the project as described in the narrative.";
+          const contractSuffix = "IMPORTANT: Your response MUST contain two parts in order: first, a complete SOW narrative written in Markdown, and second, a single ```json code block at the end. The JSON must be a valid object with a \"scopeItems\" array. Each item MUST include: name (string), overview (string), roles (array of { role, hours }), deliverables (string[]), and assumptions (string[]). Do not include rates or totals in JSON.";
           const requestMessages = [
             { role: "system", content: effectiveAgent.systemPrompt },
             ...newMessages.slice(0, Math.max(0, newMessages.length - 1)).map(m => ({ role: m.role, content: m.content })),

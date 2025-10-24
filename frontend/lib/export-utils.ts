@@ -791,7 +791,9 @@ export function extractSOWStructuredJson(text: string): ArchitectSOW | null {
       const assumptions = Array.isArray(obj.assumptions) ? obj.assumptions.filter(Boolean) : undefined;
 
       const scopeItems: ScopeItem[] = obj.scopeItems.map((s: any) => {
-        const name = typeof s?.name === 'string' ? s.name : 'Scope Item';
+        const name = typeof s?.name === 'string' && s.name
+          ? s.name
+          : (typeof s?.phaseName === 'string' && s.phaseName ? s.phaseName : 'Scope Item');
         const rolesArr: ScopeRole[] = Array.isArray(s?.roles)
           ? s.roles
               .map((r: any) => ({
@@ -802,7 +804,9 @@ export function extractSOWStructuredJson(text: string): ArchitectSOW | null {
           : [];
         const deliverables = Array.isArray(s?.deliverables) ? s.deliverables.filter(Boolean) : undefined;
         const sAssumptions = Array.isArray(s?.assumptions) ? s.assumptions.filter(Boolean) : undefined;
-        const overview = typeof s?.overview === 'string' ? s.overview : undefined;
+        const overview = typeof s?.overview === 'string' && s.overview
+          ? s.overview
+          : (typeof s?.description === 'string' ? s.description : undefined);
         return {
           name,
           overview,
