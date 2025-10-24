@@ -60,7 +60,7 @@ const TailwindAdvancedEditor = forwardRef(({
         // Defer the setContent call to avoid React flushSync issues
         setTimeout(() => {
           try {
-            editor.commands.setContent(content);
+            editor.commands.insertContent(content);
             setSaveStatus("Unsaved");
           } catch (error) {
             console.error('Error setting content:', error);
