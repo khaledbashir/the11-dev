@@ -835,7 +835,9 @@ export default function Page() {
 
   // Auto-save SOW content whenever editor content changes (debounced)
   useEffect(() => {
-    if (!currentDocId) return;
+    // Don't attempt to save until we have an active document AND
+    // we have received at least one onUpdate from the editor (fresh JSON)
+    if (!currentDocId || latestEditorJSON === null) return;
 
     const timer = setTimeout(async () => {
       try {
