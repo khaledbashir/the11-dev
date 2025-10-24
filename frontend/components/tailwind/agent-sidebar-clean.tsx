@@ -56,6 +56,10 @@ interface AgentSidebarProps {
   onDashboardWorkspaceChange?: (slug: string) => void; // NEW: Handler for workspace selection
   availableWorkspaces?: Array<{slug: string, name: string}>; // NEW: Available workspaces
   onClearChat?: () => void; // NEW: Clear chat messages
+  // Editor mode thread wiring
+  editorWorkspaceSlug?: string; // workspace slug for the currently open SOW
+  editorThreadSlug?: string | null; // current thread for the open SOW
+  onEditorThreadChange?: (slug: string | null) => void; // notify parent when user creates/selects/deletes threads in editor mode
 }
 
 export default function AgentSidebar({
@@ -73,10 +77,13 @@ export default function AgentSidebar({
   onInsertToEditor,
   streamingMessageId,
   viewMode = 'editor', // Default to editor mode
-  dashboardChatTarget = 'sow-master-dashboard-54307162', // Default to master dashboard
+  dashboardChatTarget = 'sow-master-dashboard', // Default to master dashboard
   onDashboardWorkspaceChange,
-  availableWorkspaces = [{ slug: 'sow-master-dashboard-54307162', name: '🎯 All SOWs (Master)' }],
+  availableWorkspaces = [{ slug: 'sow-master-dashboard', name: '🎯 All SOWs (Master)' }],
   onClearChat,
+  editorWorkspaceSlug,
+  editorThreadSlug,
+  onEditorThreadChange,
 }: AgentSidebarProps) {
   const [chatInput, setChatInput] = useState("");
   const [models, setModels] = useState<OpenRouterModel[]>([]);
@@ -116,15 +123,16 @@ export default function AgentSidebar({
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
 
-  const loadThreads = async () => {
-    if (!dashboardChatTarget) return;
+  const loadThreads = async (workspaceSlug?: string) => {
+    const ws = workspaceSlug || (isDashboardMode ? dashboardChatTarget : editorWorkspaceSlug);
+    if (!ws) return;
     
-    console.log('📂 Loading threads for workspace:', dashboardChatTarget);
+    console.log('📂 Loading threads for workspace:', ws);
     setLoadingThreads(true);
     
     try {
       // Get workspace data which includes threads
-      const response = await fetch(`${process.env.NEXT_PUBLIC_ANYTHINGLLM_URL}/api/v1/workspace/${dashboardChatTarget}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_ANYTHINGLLM_URL}/api/v1/workspace/${ws}`, {
         headers: {
           'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY}`,
         },
@@ -147,6 +155,10 @@ export default function AgentSidebar({
       // If we have threads, set the first one as active
       if (workspaceThreads.length > 0 && !currentThreadSlug) {
         setCurrentThreadSlug(workspaceThreads[0].slug);
+        // In editor mode, sync with parent state on first load
+        if (isEditorMode && onEditorThreadChange) {
+          onEditorThreadChange(workspaceThreads[0].slug);
+        }
       }
       
       console.log('✅ Loaded', workspaceThreads.length, 'threads');
@@ -161,17 +173,18 @@ export default function AgentSidebar({
   // 🧵 THREAD MANAGEMENT FUNCTIONS
   const handleNewThread = async () => {
     // Provide immediate feedback if no workspace is selected
-    if (!dashboardChatTarget) {
-      console.warn('No dashboard workspace selected (dashboardChatTarget is empty)');
-      alert('No workspace selected. Pick a workspace from the Chat Context dropdown before creating a new chat.');
+    const ws = isDashboardMode ? dashboardChatTarget : editorWorkspaceSlug;
+    if (!ws) {
+      console.warn('No workspace selected for thread creation');
+      alert('No workspace selected. Please select a SOW or workspace before creating a new chat.');
       return;
     }
 
-    console.log('🆕 Creating new thread in workspace:', dashboardChatTarget);
+    console.log('🆕 Creating new thread in workspace:', ws);
     setLoadingThreads(true);
 
     try {
-      const url = `${process.env.NEXT_PUBLIC_ANYTHINGLLM_URL}/api/v1/workspace/${dashboardChatTarget}/thread/new`;
+      const url = `${process.env.NEXT_PUBLIC_ANYTHINGLLM_URL}/api/v1/workspace/${ws}/thread/new`;
       console.log('POST', url);
 
       // Call AnythingLLM API to create thread
@@ -209,6 +222,11 @@ export default function AgentSidebar({
       // Ask parent to clear chat messages if provided
       if (onClearChat) onClearChat();
 
+      // In editor mode, notify parent so it persists threadSlug to SOW
+      if (isEditorMode && onEditorThreadChange) {
+        onEditorThreadChange(newThread.slug);
+      }
+
       console.log('✅ Thread created:', newThread.slug);
     } catch (error: any) {
       console.error('❌ Failed to create thread:', error?.message || error);
@@ -227,7 +245,9 @@ export default function AgentSidebar({
     
     try {
       // Load thread chat history from AnythingLLM
-      const response = await fetch(`${process.env.NEXT_PUBLIC_ANYTHINGLLM_URL}/api/v1/workspace/${dashboardChatTarget}/thread/${threadSlug}/chats`, {
+      const ws = isDashboardMode ? dashboardChatTarget : editorWorkspaceSlug;
+      if (!ws) throw new Error('No workspace available for loading threads');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_ANYTHINGLLM_URL}/api/v1/workspace/${ws}/thread/${threadSlug}/chats`, {
         headers: {
           'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY}`,
         },
@@ -242,7 +262,10 @@ export default function AgentSidebar({
       
       // TODO: Convert history to ChatMessage format and update parent state
       // This will be handled when we wire up parent component
-      
+      // In editor mode, sync thread selection up
+      if (isEditorMode && onEditorThreadChange) {
+        onEditorThreadChange(threadSlug);
+      }
     } catch (error) {
       console.error('❌ Failed to load thread history:', error);
     } finally {
@@ -279,6 +302,12 @@ export default function AgentSidebar({
         } else {
           handleNewThread();
         }
+      }
+
+      // In editor mode, notify parent if current thread was deleted
+      if (isEditorMode && onEditorThreadChange) {
+        const stillExists = threads.some(t => t.slug === threadSlug);
+        if (!stillExists) onEditorThreadChange(null);
       }
       
       console.log('✅ Thread deleted successfully');
@@ -471,14 +500,17 @@ export default function AgentSidebar({
 
   // Get current workspace name for dashboard title
   const currentWorkspaceName = availableWorkspaces.find(w => w.slug === dashboardChatTarget)?.name || '🎯 All SOWs (Master)';
-  const isMasterView = dashboardChatTarget === 'sow-master-dashboard-54307162';
+  const isMasterView = dashboardChatTarget === 'sow-master-dashboard';
 
   // 🧵 LOAD THREADS ON MOUNT (Dashboard mode only)
   useEffect(() => {
-    if (isDashboardMode && dashboardChatTarget) {
-      loadThreads();
+    const ws = isDashboardMode ? dashboardChatTarget : editorWorkspaceSlug;
+    if (ws) {
+      loadThreads(ws);
+      // Sync currentThreadSlug from prop when in editor mode
+      if (isEditorMode && editorThreadSlug) setCurrentThreadSlug(editorThreadSlug);
     }
-  }, [isDashboardMode, dashboardChatTarget]);
+  }, [isDashboardMode, dashboardChatTarget, editorWorkspaceSlug, editorThreadSlug]);
 
   return (
     <div className="h-full w-full bg-[#0e0f0f] border-l border-[#0E2E33] overflow-hidden flex flex-col">
@@ -494,7 +526,7 @@ export default function AgentSidebar({
                 <span className="text-sm font-medium text-white">{currentAgent.name}</span>
               </div>
             )}
-            {isDashboardMode && (
+            {(isDashboardMode || isEditorMode) && (
               <>
                 <Button
                   onClick={handleNewThread}
@@ -504,31 +536,19 @@ export default function AgentSidebar({
                   <Plus className="h-4 w-4 mr-1" />
                   New Chat
                 </Button>
+                <Button
+                  onClick={() => setShowThreadList(!showThreadList)}
+                  className="bg-[#1c1c1c] hover:bg-[#222] text-white text-xs h-7 px-2 border border-[#2a2a2a]"
+                  size="sm"
+                >
+                  Threads
+                </Button>
               </>
             )}
           </div>
         </div>
 
-        {!isDashboardMode && (
-          <div className="mt-3">
-            <Select
-              value={currentAgentId || ""}
-              onValueChange={onSelectAgent}
-              disabled={true}
-            >
-              <SelectTrigger className="w-full bg-[#1c1c1c] border-[#2a2a2a] text-white h-9">
-                <SelectValue placeholder="Select an AI agent..." />
-              </SelectTrigger>
-              <SelectContent className="bg-[#1c1c1c] border-[#2a2a2a] text-white">
-                {agents.map((agent) => (
-                  <SelectItem key={agent.id} value={agent.id}>
-                    {agent.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
+        {/* Agent selector removed in editor mode for simplicity; context agent is auto-selected */}
 
         {isDashboardMode && (
           <div className="mt-3">
@@ -553,7 +573,7 @@ export default function AgentSidebar({
       </div>
 
       {/* Thread List Dropdown - Outside header */}
-      {isDashboardMode && showThreadList && threads.length > 0 && (
+      {(isDashboardMode || isEditorMode) && showThreadList && threads.length > 0 && (
         <div className="bg-[#0E2E33] border-b border-[#0E2E33] max-h-48 overflow-y-auto">
           <div className="p-2 space-y-1">
             {threads.map(thread => (
@@ -590,81 +610,16 @@ export default function AgentSidebar({
         </div>
       )}
 
-      {/* Show agent selection ONLY in editor mode, HIDE Settings and Create Agent buttons (moved to admin) */}
+      {/* Editor context: show static agent label only */}
       <div className="p-3 border-b border-[#0E2E33]">
-        {isEditorMode && (
-          <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-3">
-                <Select value={currentAgentId || undefined} onValueChange={onSelectAgent}>
-                  <SelectTrigger className="h-10 text-sm bg-[#0E2E33] border-[#0E2E33] text-white">
-                    <SelectValue placeholder="Select Agent" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-80 z-50">
-                    {agents.map(agent => (
-                      <SelectItem key={agent.id} value={agent.id}>
-                        {agent.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              {/* 🤖 AUTO-SELECT CONTEXT HINT */}
-              {currentAgentId && currentAgent && (
-                <p className="text-xs text-gray-400 px-0">
-                  {viewMode === 'editor' ? '✨ Selected for SOW generation' : '✨ Agent ready'}
-                </p>
-              )}
-
-              {/* ❌ HIDDEN: Settings button moved to Admin Panel */}
-              {/* <Dialog open={showSettings} onOpenChange={setShowSettings}>
-                <DialogTrigger asChild>
-                  <Button size="sm" className="h-10 px-3 bg-[#1CBF79] hover:bg-[#15a366] text-white font-semibold border-0" title="Agent Settings">
-                    <Settings className="h-4 w-4 mr-2" />
-                    <span className="text-xs">Settings</span>
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700">
-                  <DialogHeader>
-                    <DialogTitle className="text-white">Edit Agent</DialogTitle>
-                  </DialogHeader>
-                  {currentAgent ? (
-                    <EditAgentForm 
-                      agent={currentAgent} 
-                      models={models} 
-                      onUpdateAgent={(updated) => {
-                        onUpdateAgent(updated.id, { name: updated.name, systemPrompt: updated.systemPrompt, model: updated.model });
-                        setShowSettings(false);
-                      }}
-                      onDeleteAgent={() => {
-                        onDeleteAgent(currentAgent.id);
-                        setShowSettings(false);
-                      }}
-                    />
-                  ) : (
-                    <p>No agent selected</p>
-                  )}
-                </DialogContent>
-              </Dialog> */}
-
-              {/* ❌ HIDDEN: Create Agent button - agents are admin-only */}
-              {/* <Dialog>
-                <DialogTrigger asChild>
-                  <Button size="sm" className="h-10 px-3 bg-[#1CBF79] hover:bg-[#15a366] text-white font-semibold border-0" title="Create New Agent">
-                    <Plus className="h-4 w-4 mr-2" />
-                    <span className="text-xs">New Agent</span>
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700">
-                  <DialogHeader>
-                    <DialogTitle className="text-white">Create New Agent</DialogTitle>
-                  </DialogHeader>
-                  <CreateAgentForm models={models} onCreateAgent={onCreateAgent} />
-                </DialogContent>
-              </Dialog> */}
-            </div>
-          )}
-        </div>
+        {isEditorMode && currentAgent && (
+          <div className="flex items-center gap-2 bg-[#0E2E33] px-3 py-2 rounded-md">
+            <Bot className="h-4 w-4 text-gray-400" />
+            <span className="text-sm font-medium text-white">{currentAgent.name}</span>
+            <span className="ml-2 text-xs text-gray-400">Auto-selected for SOW generation</span>
+          </div>
+        )}
+      </div>
 
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* DASHBOARD MODE: Simple dashboard chat interface */}

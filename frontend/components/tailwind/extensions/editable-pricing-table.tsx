@@ -6,6 +6,8 @@ import React, { useState, useEffect } from 'react';
 
 // Social Garden 82 roles with AUD rates
 const ROLES = [
+  // Mandatory leadership layer (explicit to support dropdown + correct rate)
+  { name: "Tech - Head Of - Senior Project Management", rate: 365 },
   { name: "Project Manager", rate: 160 },
   { name: "Project Coordination", rate: 140 },
   { name: "Account Management", rate: 150 },
@@ -108,6 +110,80 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
   useEffect(() => {
     updateAttributes({ rows, discount, showTotal });
   }, [rows, discount, showTotal]);
+
+  // Merge mandatory roles and dedupe rows by role name (case-insensitive)
+  useEffect(() => {
+    if (!rows || rows.length === 0) return;
+
+    const normalize = (s: string) => (s || '').trim().toLowerCase();
+
+    // 1) Dedupe by role: combine hours, prefer known rate from ROLES, keep first description
+    const roleMap = new Map<string, PricingRow>();
+    for (const r of rows) {
+      const key = normalize(r.role);
+      if (!key) continue;
+      const existing = roleMap.get(key);
+      if (!existing) {
+        // Prefer canonical rate from ROLES if available
+        const canon = ROLES.find(x => normalize(x.name) === key);
+        roleMap.set(key, {
+          role: r.role,
+          description: r.description || '',
+          hours: Number(r.hours) || 0,
+          rate: typeof r.rate === 'number' && r.rate > 0 ? r.rate : (canon?.rate || 0),
+        });
+      } else {
+        // Merge hours; keep first description; prefer non-zero rate or canonical
+        const canon = ROLES.find(x => normalize(x.name) === key);
+        const mergedHours = (Number(existing.hours) || 0) + (Number(r.hours) || 0);
+        const mergedRate = existing.rate > 0 ? existing.rate : (r.rate > 0 ? r.rate : (canon?.rate || 0));
+        roleMap.set(key, {
+          role: existing.role, // preserve original casing/name
+          description: existing.description || r.description || '',
+          hours: mergedHours,
+          rate: mergedRate,
+        });
+      }
+    }
+
+    let deduped = Array.from(roleMap.values());
+
+    // 2) Ensure mandatory roles exist (Head Of, Project Coordination, Account Management)
+    const ensureRole = (name: string, defaultHours: number, defaultRate?: number, desc?: string) => {
+      const key = normalize(name);
+      if (!roleMap.has(key)) {
+        const canon = ROLES.find(x => normalize(x.name) === key);
+        deduped.push({
+          role: name,
+          description: desc || '',
+          hours: defaultHours,
+          rate: defaultRate ?? canon?.rate ?? 0,
+        });
+      }
+    };
+
+    ensureRole('Tech - Head Of - Senior Project Management', 3, 365, 'Strategic oversight');
+    ensureRole('Project Coordination', 6, undefined, 'Delivery coordination');
+    ensureRole('Account Management', 8, undefined, 'Client comms & governance');
+
+    // Only update state if something actually changed to avoid loops
+    const changed = deduped.length !== rows.length || deduped.some((r, i) => {
+      const rr = rows[i];
+      return !rr || r.role !== rr.role || r.hours !== rr.hours || r.rate !== rr.rate || (r.description || '') !== (rr.description || '');
+    });
+    if (changed) {
+      // Preserve ordering by putting Account Management last
+      const amIndex = deduped.findIndex(r => normalize(r.role).includes('account management'));
+      if (amIndex !== -1 && amIndex !== deduped.length - 1) {
+        const temp = [...deduped];
+        const [amRow] = temp.splice(amIndex, 1);
+        temp.push(amRow);
+        deduped = temp;
+      }
+      setRows(deduped);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount to normalize provided rows
 
   // Auto-sort: Account Management MUST always be at the bottom
   useEffect(() => {
@@ -268,6 +344,12 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
 
   const calculateTotal = () => {
     return calculateSubtotalAfterDiscount() + calculateGST();
+  };
+
+  const calculateRoundedTotal = () => {
+    const total = calculateTotal();
+    // Commercial rounding: nearest $100
+    return Math.round(total / 100) * 100;
   };
 
   return (
@@ -449,10 +531,15 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
                       <span>GST (10%):</span>
                       <span>AUD {calculateGST().toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 italic">
-                      <span>Total incl. GST:</span>
+                    <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                      <span className="italic">Total incl. GST (unrounded):</span>
                       <span>AUD {calculateTotal().toFixed(2)}</span>
                     </div>
+                    <div className="flex justify-between text-sm text-foreground dark:text-gray-100">
+                      <span className="font-semibold">Total incl. GST (rounded):</span>
+                      <span className="font-semibold">AUD {calculateRoundedTotal().toFixed(2)}</span>
+                    </div>
+                    <div className="text-[10px] text-gray-500 dark:text-gray-400 text-right">Rounded to nearest $100</div>
                   </div>
                 </>
               )}
@@ -510,27 +597,56 @@ export const EditablePricingTable = Node.create({
     const discount = node.attrs.discount || 0;
     const showTotal: boolean = node.attrs.showTotal !== undefined ? node.attrs.showTotal : true;
     
-    // Ensure Account Management exists for render
-    const hasAM = originalRows.some(r => (r.role || '').toLowerCase().includes('account management') || (r.role || '').toLowerCase().includes('account manager'));
+    // Ensure mandatory roles exist for render (Head Of, Project Coordination, Account Management)
+    const lower = (s: string) => (s || '').toLowerCase();
+    const hasAM = originalRows.some(r => lower(r.role).includes('account management') || lower(r.role).includes('account manager'));
+    const hasHeadOf = originalRows.some(r => lower(r.role).includes('head of'));
+    const hasPC = originalRows.some(r => lower(r.role) === 'project coordination');
     const amRole = ROLES.find(r => r.name === 'Account Management');
-    const rows: PricingRow[] = hasAM
-      ? originalRows
-      : [
-          ...originalRows,
-          {
-            role: amRole?.name || 'Account Management',
-            description: 'Client comms & governance',
-            hours: 8,
-            rate: amRole?.rate || 150,
-          },
-        ];
+    const headOfRole = ROLES.find(r => r.name === 'Tech - Head Of - Senior Project Management');
+    const pcRole = ROLES.find(r => r.name === 'Project Coordination');
+
+    let rows: PricingRow[] = [...originalRows];
+    if (!hasHeadOf) {
+      rows.unshift({
+        role: headOfRole?.name || 'Tech - Head Of - Senior Project Management',
+        description: 'Strategic oversight',
+        hours: 3,
+        rate: headOfRole?.rate || 365,
+      });
+    }
+    if (!hasPC) {
+      rows.push({
+        role: pcRole?.name || 'Project Coordination',
+        description: 'Delivery coordination',
+        hours: 6,
+        rate: pcRole?.rate || 140,
+      });
+    }
+    if (!hasAM) {
+      rows.push({
+        role: amRole?.name || 'Account Management',
+        description: 'Client comms & governance',
+        hours: 8,
+        rate: amRole?.rate || 150,
+      });
+    }
+    // Ensure Account Management last
+    const amIdx = rows.findIndex(r => lower(r.role).includes('account management'));
+    if (amIdx !== -1 && amIdx !== rows.length - 1) {
+      const tmp = [...rows];
+      const [amRow] = tmp.splice(amIdx, 1);
+      tmp.push(amRow);
+      rows = tmp;
+    }
     
     // Calculate totals
-    const subtotal = rows.reduce((sum, row) => sum + (row.hours * row.rate), 0);
-    const discountAmount = (subtotal * discount) / 100;
-    const subtotalAfterDiscount = subtotal - discountAmount;
-    const gst = subtotalAfterDiscount * 0.10;
-    const total = subtotalAfterDiscount + gst;
+  const subtotal = rows.reduce((sum, row) => sum + (row.hours * row.rate), 0);
+  const discountAmount = (subtotal * discount) / 100;
+  const subtotalAfterDiscount = subtotal - discountAmount;
+  const gst = subtotalAfterDiscount * 0.10;
+  const total = subtotalAfterDiscount + gst;
+  const roundedTotal = Math.round(total / 100) * 100;
     
     // Build proper DOM structure for rendering
     const tableContent: any[] = [
@@ -597,10 +713,15 @@ export const EditablePricingTable = Node.create({
           ['span', {}, 'GST (10%):'],
           ['span', {}, `AUD ${gst.toFixed(2)}`]
         ],
-        ['div', { style: 'display:flex; justify-content:space-between; padding:0.75rem 0; border-top:2px solid #0e2e33; margin-top:0.5rem;' },
-          ['span', { style: 'font-size:1.25rem; font-weight:700; color:#0e2e33;' }, 'Total Investment:'],
-          ['span', { style: 'font-size:1.25rem; font-weight:700; color:#0e2e33;' }, `AUD ${total.toFixed(2)}`]
-        ]
+        ['div', { style: 'display:flex; justify-content:space-between; padding:0.25rem 0; border-top:2px solid #0e2e33; margin-top:0.5rem; font-style:italic; color:#6b7280;' },
+          ['span', {}, 'Total incl. GST (unrounded):'],
+          ['span', {}, `AUD ${total.toFixed(2)}`]
+        ],
+        ['div', { style: 'display:flex; justify-content:space-between; padding:0.5rem 0;' },
+          ['span', { style: 'font-size:1.10rem; font-weight:700; color:#0e2e33;' }, 'Total Investment (rounded):'],
+          ['span', { style: 'font-size:1.10rem; font-weight:700; color:#0e2e33;' }, `AUD ${roundedTotal.toFixed(2)}`]
+        ],
+        ['div', { style: 'text-align:right; font-size:10px; color:#6b7280;' }, 'Rounded to nearest $100']
       ]
     ];
     

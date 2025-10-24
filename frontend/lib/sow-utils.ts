@@ -245,8 +245,8 @@ export function enforceHeadOfRole(contentJSON: string | any): any {
 }
 
 export function formatInvestment(value: number) {
-  // Stub implementation
-  return `$${value.toLocaleString()}`;
+  const safe = Number(value) || 0;
+  return safe.toLocaleString('en-AU', { style: 'currency', currency: 'AUD' });
 }
 
 export function cleanSOWContent(content: string) {
