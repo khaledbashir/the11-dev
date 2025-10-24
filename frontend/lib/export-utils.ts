@@ -286,43 +286,54 @@ export async function exportToExcel(
   const { pricingRows, discount, title, client, deliverables, assumptions } = sowData as SOWData;
   const totals = calculateTotals(pricingRows, discount);
 
-  // Load the Excel template from public folder
-  const res = await fetch('/templates/Social_Garden_SOW_Template.xlsx');
-  if (!res.ok) throw new Error('Failed to load Excel template');
-  const arrayBuffer = await res.arrayBuffer();
+  // Load the Excel template from public folder, with robust fallback if not found (404)
+  let workbook = new ExcelJS.Workbook();
+  let overviewSheet: ExcelJS.Worksheet | undefined;
+  let pricingSheet: ExcelJS.Worksheet | undefined;
 
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(arrayBuffer);
+  try {
+    const templatePath = encodeURI('/templates/Social_Garden_SOW_Template.xlsx');
+    const res = await fetch(templatePath);
+    if (!res.ok) throw new Error(`Template fetch failed with status ${res.status}`);
+    const arrayBuffer = await res.arrayBuffer();
+    await workbook.xlsx.load(arrayBuffer);
 
-  // Try to access well-known sheets, with graceful fallbacks
-  const overviewSheet =
-    workbook.getWorksheet('Overview') || workbook.getWorksheet(1);
-  const pricingSheet =
-    workbook.getWorksheet('Pricing') ||
-    workbook.getWorksheet('Pricing Breakdown') ||
-    workbook.getWorksheet(2) ||
-    workbook.worksheets[workbook.worksheets.length - 1];
+    // Try to access well-known sheets, with graceful fallbacks
+    overviewSheet = workbook.getWorksheet('Overview') || workbook.getWorksheet(1);
+    pricingSheet =
+      workbook.getWorksheet('Pricing') ||
+      workbook.getWorksheet('Pricing Breakdown') ||
+      workbook.getWorksheet(2) ||
+      workbook.worksheets[workbook.worksheets.length - 1];
+  } catch (e) {
+    console.warn('[Excel Export] Template not available, generating workbook from scratch. Reason:', e);
+    workbook = new ExcelJS.Workbook();
+    overviewSheet = workbook.addWorksheet('Overview');
+    pricingSheet = workbook.addWorksheet('Pricing');
+  }
 
   // Populate overview data (best-effort due to unknown template positions)
-  try {
-    // Common placements
-    // A1: Title, A3: Client, A5: Date, A7: Grand Total
-    overviewSheet.getCell('A1').value = title || '[PROJECT NAME]';
-    overviewSheet.getCell('A3').value = 'Client Name';
-    overviewSheet.getCell('B3').value = client || '';
-    overviewSheet.getCell('A5').value = 'Created Date';
-    overviewSheet.getCell('B5').value = new Date().toLocaleDateString('en-AU');
-    overviewSheet.getCell('A7').value = 'Grand Total (ex. GST)';
-    overviewSheet.getCell('B7').value = totals.subtotal;
-  } catch (e) {
-    console.warn('Overview sheet population warning:', e);
+  if (overviewSheet) {
+    try {
+      // Common placements
+      // A1: Title, A3: Client, A5: Date, A7: Grand Total
+      overviewSheet.getCell('A1').value = title || '[PROJECT NAME]';
+      overviewSheet.getCell('A3').value = 'Client Name';
+      overviewSheet.getCell('B3').value = client || '';
+      overviewSheet.getCell('A5').value = 'Created Date';
+      overviewSheet.getCell('B5').value = new Date().toLocaleDateString('en-AU');
+      overviewSheet.getCell('A7').value = 'Grand Total (ex. GST)';
+      overviewSheet.getCell('B7').value = totals.subtotal;
+    } catch (e) {
+      console.warn('Overview sheet population warning:', e);
+    }
   }
 
   // Find header row in pricing sheet by scanning for expected headers
   const findHeaderRow = (): number => {
     const headers = ['ITEMS', 'ROLE', 'HOURS', 'HOURLY RATE', 'TOTAL COST'];
-    for (let r = 1; r <= Math.min(50, pricingSheet.rowCount + 5); r++) {
-      const vals: any = pricingSheet.getRow(r).values as any;
+    for (let r = 1; r <= Math.min(50, pricingSheet!.rowCount + 5); r++) {
+      const vals: any = pricingSheet!.getRow(r).values as any;
       const arr: any[] = Array.isArray(vals) ? vals : (vals == null ? [] : [vals]);
       const rowValues = arr.map((v: any) =>
         typeof v === 'string' ? v.trim().toUpperCase() : String(v ?? '').trim().toUpperCase()
@@ -333,21 +344,26 @@ export async function exportToExcel(
     return 2; // default header row
   };
 
+  // If no headers exist (scratch workbook), write headers now
+  if (!pricingSheet!.rowCount || pricingSheet!.rowCount < 1) {
+    pricingSheet!.getRow(1).values = ['Items', 'Role', 'Hours', 'Hourly Rate', 'Total Cost'];
+  }
+
   const headerRowIdx = findHeaderRow();
   let writeRow = headerRowIdx + 1;
 
   // Clear any existing data rows under header (basic cleanup up to 1000 rows)
   for (let r = writeRow; r <= writeRow + 1000; r++) {
-    const vals: any = pricingSheet.getRow(writeRow).values as any;
+    const vals: any = pricingSheet!.getRow(writeRow).values as any;
     const arr: any[] = Array.isArray(vals) ? vals : (vals == null ? [] : [vals]);
     const hasAny = arr.some((v: any) => v != null && v !== '');
     if (!hasAny) break;
-    pricingSheet.spliceRows(writeRow, 1);
+    pricingSheet!.spliceRows(writeRow, 1);
   }
 
   // Write pricing rows
   for (const row of pricingRows) {
-    const excelRow = pricingSheet.getRow(writeRow++);
+    const excelRow = pricingSheet!.getRow(writeRow++);
     // Assume columns: A: ITEMS, B: ROLE, C: HOURS, D: HOURLY RATE, E: TOTAL COST +GST
     excelRow.getCell(1).value = '';
     excelRow.getCell(2).value = row.role;
@@ -358,7 +374,7 @@ export async function exportToExcel(
   }
 
   // Totals row
-  const totalsRow = pricingSheet.getRow(writeRow++);
+  const totalsRow = pricingSheet!.getRow(writeRow++);
   totalsRow.getCell(1).value = 'TOTAL';
   totalsRow.getCell(2).value = totals.totalHours; // total hours
   totalsRow.getCell(3).value = Math.round((totals.subtotal / Math.max(1, totals.totalHours)) * 100) / 100; // avg rate
@@ -368,16 +384,16 @@ export async function exportToExcel(
   // Optional sections: deliverables and assumptions (append beneath)
   if (deliverables && deliverables.length > 0) {
     writeRow += 1;
-    pricingSheet.getCell(`A${writeRow++}`).value = 'Deliverables:';
+    pricingSheet!.getCell(`A${writeRow++}`).value = 'Deliverables:';
     for (const d of deliverables) {
-      pricingSheet.getCell(`A${writeRow++}`).value = `• ${d}`;
+      pricingSheet!.getCell(`A${writeRow++}`).value = `• ${d}`;
     }
   }
   if (assumptions && assumptions.length > 0) {
     writeRow += 1;
-    pricingSheet.getCell(`A${writeRow++}`).value = 'Assumptions:';
+    pricingSheet!.getCell(`A${writeRow++}`).value = 'Assumptions:';
     for (const a of assumptions) {
-      pricingSheet.getCell(`A${writeRow++}`).value = `• ${a}`;
+      pricingSheet!.getCell(`A${writeRow++}`).value = `• ${a}`;
     }
   }
 

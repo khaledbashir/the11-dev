@@ -2860,6 +2860,19 @@ export default function Page() {
         const streamEndpoint = endpoint.includes('/stream-chat') ? endpoint : endpoint.replace('/chat', '/stream-chat');
         
         if (shouldStream) {
+          // 🔒 Enforce JSON contract by appending instruction to the last user prompt (request-only)
+          const contractSuffix = "IMPORTANT: Your final output MUST be a valid JSON object wrapped in a single ```json fence. The JSON object must have a \"scopeItems\" array, where each item in the array is an object with \"name\", \"overview\", \"roles\", \"deliverables\", and \"assumptions\" keys, corresponding to the distinct phases of the project. Do not use the old \"suggestedRoles\" format.";
+          const requestMessages = [
+            { role: "system", content: effectiveAgent.systemPrompt },
+            ...newMessages.slice(0, Math.max(0, newMessages.length - 1)).map(m => ({ role: m.role, content: m.content })),
+            // Append enforcement only to the last user message for the AI request
+            newMessages.length > 0
+              ? {
+                  role: newMessages[newMessages.length - 1].role,
+                  content: `${newMessages[newMessages.length - 1].content.trim()}\n\n${contractSuffix}`,
+                }
+              : undefined,
+          ].filter(Boolean) as Array<{ role: string; content: string }>;
           // ✨ STREAMING MODE: Real-time response with thinking display
           const aiMessageId = `msg${Date.now() + 1}`;
           let accumulatedContent = '';
@@ -2898,10 +2911,7 @@ export default function Page() {
               workspace: workspaceSlug,
               threadSlug: threadSlugToUse,
               attachments: attachments || [], // Include file attachments from sidebar
-              messages: [
-                { role: "system", content: effectiveAgent.systemPrompt },
-                ...newMessages.map(m => ({ role: m.role, content: m.content })),
-              ],
+              messages: requestMessages,
             }),
           });
 
@@ -3105,6 +3115,18 @@ export default function Page() {
           }
         } else {
           // 📦 NON-STREAMING MODE: Standard fetch for OpenRouter
+          // 🔒 Enforce JSON contract (request-only) on the last user message
+          const contractSuffix = "IMPORTANT: Your final output MUST be a valid JSON object wrapped in a single ```json fence. The JSON object must have a \"scopeItems\" array, where each item in the array is an object with \"name\", \"overview\", \"roles\", \"deliverables\", and \"assumptions\" keys, corresponding to the distinct phases of the project. Do not use the old \"suggestedRoles\" format.";
+          const requestMessages = [
+            { role: "system", content: effectiveAgent.systemPrompt },
+            ...newMessages.slice(0, Math.max(0, newMessages.length - 1)).map(m => ({ role: m.role, content: m.content })),
+            newMessages.length > 0
+              ? {
+                  role: newMessages[newMessages.length - 1].role,
+                  content: `${newMessages[newMessages.length - 1].content.trim()}\n\n${contractSuffix}`,
+                }
+              : undefined,
+          ].filter(Boolean) as Array<{ role: string; content: string }>;
           const response = await fetch(endpoint, {
             method: "POST",
             headers: {
@@ -3115,10 +3137,7 @@ export default function Page() {
               model: effectiveAgent.model,
               workspace: workspaceSlug,
               threadSlug: !isDashboardMode && currentDocId ? (documents.find(d => d.id === currentDocId)?.threadSlug || undefined) : undefined,
-              messages: [
-                { role: "system", content: effectiveAgent.systemPrompt },
-                ...newMessages.map(m => ({ role: m.role, content: m.content })),
-              ],
+              messages: requestMessages,
             }),
           });
 
