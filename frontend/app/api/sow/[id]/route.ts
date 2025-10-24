@@ -107,7 +107,11 @@ export async function PUT(
 ) {
   try {
     const { id: sowId } = await params;
+    console.log(`🔍 [PUT /api/sow/${sowId}] Request received`);
+    
     const body = await req.json();
+    console.log(`📦 [PUT /api/sow/${sowId}] Body keys:`, Object.keys(body));
+    console.log(`📦 [PUT /api/sow/${sowId}] Has content:`, !!body.content);
 
     let {
       title,
@@ -123,9 +127,13 @@ export async function PUT(
     } = body;
     
     // 🚨 CRITICAL ENFORCEMENT: Ensure Head Of role exists in pricing table
+    console.log(`🚨 [PUT /api/sow/${sowId}] About to enforce Head Of role, content exists: ${!!content}`);
     if (content) {
+      console.log(`🚨 [PUT /api/sow/${sowId}] CALLING enforceHeadOfRole NOW`);
       content = enforceHeadOfRole(content);
       console.log('✅ [SOW UPDATE] Head Of role enforcement applied');
+    } else {
+      console.warn(`⚠️ [PUT /api/sow/${sowId}] NO CONTENT - skipping enforcement`);
     }
 
     // Build update query dynamically based on provided fields
