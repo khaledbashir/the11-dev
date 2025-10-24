@@ -2046,7 +2046,16 @@ export default function Page() {
         docTitle = `SOW - ${clientMatch[1]}`;
       }
       
-      // 5. Update the document state with new content and title
+      // 5. Update the editor directly FIRST, replacing all content BEFORE state updates
+      if (editorRef.current) {
+        console.log('📝 Setting editor content with converted JSON');
+        editorRef.current.insertContent(convertedContent);
+        console.log('✅ Editor content set successfully');
+      } else {
+        console.warn('⚠️ Editor ref not available, skipping direct update');
+      }
+      
+      // 6. Now update the document state with new content and title
       console.log('📝 Updating document:', docTitle);
       setDocuments(prev =>
         prev.map(doc =>
@@ -2056,13 +2065,6 @@ export default function Page() {
         )
       );
       console.log('✅ Document updated successfully');
-      
-      // 6. Update the editor directly, replacing all content
-      if (editorRef.current) {
-        console.log('📝 Setting editor content with converted JSON');
-        editorRef.current.insertContent(convertedContent);
-        console.log('✅ Editor content set successfully');
-      }
       
       // 7. Embed SOW in both client workspace and master dashboard
       const currentAgent = agents.find(a => a.id === currentAgentId);
