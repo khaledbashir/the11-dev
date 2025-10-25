@@ -3036,6 +3036,8 @@ export default function Page() {
               model: effectiveAgent.model,
               workspace: workspaceSlug,
               threadSlug: threadSlugToUse,
+              // Force analytics-only mode for Master Dashboard
+              mode: (isDashboardMode && dashboardChatTarget === 'sow-master-dashboard') ? 'query' : 'chat',
               attachments: attachments || [], // Include file attachments from sidebar
               messages: requestMessages,
             }),

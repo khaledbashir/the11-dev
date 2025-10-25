@@ -61,6 +61,8 @@ export class AnythingLLMService {
       
       if (existing) {
         console.log(`✅ Using existing workspace: ${slug}`);
+        // Ensure the correct Architect prompt is applied (idempotent refresh)
+        await this.setWorkspacePrompt(existing.slug, clientName, true);
         return { id: existing.id, slug: existing.slug };
       }
 
@@ -850,6 +852,8 @@ Ready to explore your project details? Ask me anything!`;
       
       if (existing) {
         console.log(`✅ Using existing master dashboard: ${masterDashboardSlug}`);
+        // Always ensure the dashboard prompt is correct (idempotent)
+        await this.setMasterDashboardPrompt(masterDashboardSlug);
         return masterDashboardSlug;
       }
 
@@ -913,7 +917,7 @@ This is a QUERY workspace - you are NOT creating new SOWs, only analyzing existi
       const response = await fetch(
         `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/update`,
         {
-          method: 'POST',
+          method: 'PATCH',
           headers: this.getHeaders(),
           body: JSON.stringify({
             openAiPrompt: systemPrompt,

@@ -6,7 +6,7 @@ const ANYTHINGLLM_API_KEY = process.env.ANYTHINGLLM_API_KEY || '0G0WTZ3-6ZX4D20-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { messages, workspaceSlug, workspace, threadSlug, mode = 'chat', model } = body;
+  let { messages, workspaceSlug, workspace, threadSlug, mode = 'chat', model } = body;
     
     // Use 'workspace' if provided, otherwise fall back to 'workspaceSlug'
     const effectiveWorkspaceSlug = workspace || workspaceSlug;
@@ -56,8 +56,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Build message to send
-    let messageToSend = lastMessage.content;
+  // Build message to send
+  let messageToSend = lastMessage.content;
 
     // Detect casual chat vs explicit SOW request to avoid forcing generation on greetings
     const isSowWorkspace = effectiveWorkspaceSlug && !effectiveWorkspaceSlug.includes('master-dashboard');
@@ -70,12 +70,34 @@ export async function POST(request: NextRequest) {
     ];
     const isExplicitSowRequest = explicitSowKeywords.some(k => lower.includes(k));
 
-    // Only prepend the Architect system prompt when explicitly asking for a SOW
-    if (isSowWorkspace && systemPrompt && isExplicitSowRequest) {
-      messageToSend = `[SYSTEM CONTEXT]\n${systemPrompt}\n\n[USER REQUEST]\n${messageToSend}`;
-      console.log(`🧠 [AnythingLLM Stream] Prepended system prompt (explicit SOW request detected)`);
-    } else if (isSowWorkspace && isCasual) {
-      console.log(`💬 [AnythingLLM Stream] Casual chat detected - not prepending system prompt`);
+    // Enforce workspace-specific behavior with lightweight system overrides
+    if (!isSowWorkspace) {
+      // Master Dashboard: force analytics/query behavior and forbid SOW generation
+      mode = 'query';
+      messageToSend = [
+        '[[DASHBOARD_SYSTEM_OVERRIDES]]',
+        'You are in the Master Dashboard analytics workspace. You ONLY analyze existing embedded SOW knowledge to answer business/analytics questions. Never draft or generate a new SOW, proposal, or template. Keep answers concise, numeric where possible, and reference specific SOW titles when applicable.',
+        '',
+        '[[USER]]',
+        messageToSend
+      ].join('\n');
+      console.log('🛡️ [AnythingLLM Stream] Dashboard guard applied (mode=query, forbid generation)');
+    } else {
+      // SOW workspaces: only load the heavy Architect context when explicitly asked
+      if (systemPrompt && isExplicitSowRequest) {
+        messageToSend = `[SYSTEM CONTEXT]\n${systemPrompt}\n\n[USER REQUEST]\n${messageToSend}`;
+        console.log('🧠 [AnythingLLM Stream] Prepended Architect system prompt (explicit SOW request)');
+      } else if (!isExplicitSowRequest) {
+        // Add a soft safety rail to avoid accidental SOW drafting on casual prompts
+        messageToSend = [
+          '[[ARCHITECT_SAFETY_RAILS]]',
+          'Only generate a SOW when the user explicitly requests it (e.g., "generate/create/draft a SOW" or provides a clear project brief). For greetings or general questions, respond briefly, explain what you can do, and ask clarifying questions. Do NOT output SOW structure unless explicitly asked.',
+          '',
+          '[[USER]]',
+          messageToSend
+        ].join('\n');
+        console.log('�️ [AnythingLLM Stream] Architect safety rails applied (non-explicit request)');
+      }
     }
     
     if (!messageToSend || typeof messageToSend !== 'string') {
@@ -89,7 +111,7 @@ export async function POST(request: NextRequest) {
 
     // Determine the endpoint based on whether this is thread-based chat
     let endpoint: string;
-    if (threadSlug) {
+  if (threadSlug) {
       // Thread-based streaming chat (saves to SOW's thread)
       endpoint = `${ANYTHINGLLM_URL}/api/v1/workspace/${effectiveWorkspaceSlug}/thread/${threadSlug}/stream-chat`;
       console.log(`🧵 [AnythingLLM Stream] Sending to THREAD: ${effectiveWorkspaceSlug}/${threadSlug}`);
