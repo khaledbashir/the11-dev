@@ -150,14 +150,7 @@ export function EnhancedDashboard({
       {/* Header */}
       <div className="mb-6 flex items-center justify-between flex-shrink-0">
         <div>
-          <div className="flex items-center gap-3">
-            <img
-              src="/images/logo-light.png"
-              alt="Social Garden"
-              className="h-8 w-auto"
-            />
-            <h1 className="text-3xl font-bold text-white">📊 SOW Dashboard</h1>
-          </div>
+          <h1 className="text-3xl font-bold text-white">📊 SOW Dashboard</h1>
           <p className="text-gray-400 mt-1">Real-time analytics powered by AI</p>
           {currentFilter?.value && (
             <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-[#1CBF79]/20 border border-[#1CBF79] rounded-full">
