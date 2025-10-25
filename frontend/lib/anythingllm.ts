@@ -121,14 +121,59 @@ export class AnythingLLMService {
    * Build markdown for the authoritative Social Garden rate card
    */
   private buildRateCardMarkdown(): string {
-    const header = `# Social Garden - Official Rate Card (AUD/hour)\n\n`;
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const version = `${yyyy}-${mm}-${dd}`;
+      const header = `# Social Garden - Official Rate Card (AUD/hour)\n\n`;
     const intro = `This document is the single source of truth for hourly rates across roles.\n\n`;
     const tableHeader = `| Role | Rate (AUD/hr) |\n|---|---:|\n`;
     const rows = ROLES
       .map(r => `| ${r.name} | ${r.rate.toFixed(2)} |`)
       .join('\n');
-    const guidance = `\n\n## Pricing Guidance\n- Rates are exclusive of GST.\n- Use these rates for project pricing and retainers unless client-approved custom rates apply.\n- "Head Of", "Project Coordination", and "Account Management" roles are required governance roles for delivery.\n\n## Retainer Notes\n- Show monthly breakdowns and annualized totals.\n- Define overflow: hours beyond monthly budget billed at these standard rates.\n- Typical options: Essential (lean), Standard (recommended), Premium (full team).\n`;
+    const guidance = `\n\n> Version: v${version}\n\n## Pricing Guidance\n- Rates are exclusive of GST.\n- Use these rates for project pricing and retainers unless client-approved custom rates apply.\n- "Head Of", "Project Coordination", and "Account Management" roles are required governance roles for delivery.\n\n## Retainer Notes\n- Show monthly breakdowns and annualized totals.\n- Define overflow: hours beyond monthly budget billed at these standard rates.\n- Typical options: Essential (lean), Standard (recommended), Premium (full team).\n`;
     return header + intro + tableHeader + rows + guidance;
+  }
+
+  /**
+   * Get full workspace details including documents & threads
+   */
+  private async getWorkspaceDetails(workspaceSlug: string): Promise<any | null> {
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/api/v1/workspace/${workspaceSlug}`,
+        {
+          method: 'GET',
+          headers: this.getHeaders(),
+        }
+      );
+
+      if (!response.ok) return null;
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) return null;
+      const data = await response.json();
+      return data.workspace || null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /**
+   * Check if the workspace already has the rate card document embedded
+   * We match by title contains 'Official Rate Card'
+   */
+  private async rateCardAlreadyEmbedded(workspaceSlug: string): Promise<boolean> {
+    const ws = await this.getWorkspaceDetails(workspaceSlug);
+    const docs = ws?.documents || [];
+    try {
+      return docs.some((d: any) => {
+        const title = (d?.title || d?.metadata?.title || '').toLowerCase();
+        return title.includes('official rate card');
+      });
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -136,7 +181,20 @@ export class AnythingLLMService {
    */
   async embedRateCardDocument(workspaceSlug: string): Promise<boolean> {
     try {
-      const title = 'Social Garden - Official Rate Card (AUD/hour)';
+      // Strict dedupe: if any existing document looks like the rate card, skip embedding
+      const alreadyHasRateCard = await this.rateCardAlreadyEmbedded(workspaceSlug);
+      if (alreadyHasRateCard) {
+        console.log(`✅ Rate card already present in workspace: ${workspaceSlug} (skipping embed)`);
+        return true;
+      }
+
+      // Versioned title to allow future updates without collision
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      const version = `${yyyy}-${mm}-${dd}`;
+      const title = `Social Garden - Official Rate Card (AUD/hour) (v${version})`;
       const textContent = this.buildRateCardMarkdown();
 
       // Process document
