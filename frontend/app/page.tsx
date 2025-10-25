@@ -553,7 +553,6 @@ export default function Page() {
   const [currentDocId, setCurrentDocId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [agentSidebarOpen, setAgentSidebarOpen] = useState(true);
-  const [aiChatExpanded, setAiChatExpanded] = useState(false); // NEW: Expand/shrink AI chat width
   const [agents, setAgents] = useState<Agent[]>([]);
   const [currentAgentId, setCurrentAgentId] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -3388,7 +3387,6 @@ export default function Page() {
         <ResizableLayout
         sidebarOpen={sidebarOpen}
         aiChatOpen={agentSidebarOpen}
-  aiChatExpanded={aiChatExpanded}
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         onToggleAiChat={() => setAgentSidebarOpen(!agentSidebarOpen)}
         viewMode={viewMode} // Pass viewMode for context awareness
@@ -3567,8 +3565,6 @@ export default function Page() {
             <AgentSidebar
               isOpen={agentSidebarOpen}
               onToggle={() => setAgentSidebarOpen(!agentSidebarOpen)}
-              isExpanded={aiChatExpanded}
-              onToggleExpand={() => setAiChatExpanded(prev => !prev)}
               agents={agents}
               currentAgentId={currentAgentId}
               onSelectAgent={handleSelectAgent}

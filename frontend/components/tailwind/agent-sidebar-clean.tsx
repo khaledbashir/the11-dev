@@ -10,7 +10,7 @@ import { ScrollArea } from "./ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Card } from "./ui/card";
 import { Label } from "./ui/label";
-import { ChevronRight, Send, Bot, Settings, Plus, Loader2, Zap, Maximize2, Minimize2 } from "lucide-react";
+import { ChevronRight, Send, Bot, Settings, Plus, Loader2, Zap } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { StreamingThoughtAccordion } from "./streaming-thought-accordion";
@@ -42,8 +42,6 @@ interface OpenRouterModel {
 interface AgentSidebarProps {
   isOpen: boolean;
   onToggle: () => void;
-  isExpanded?: boolean; // NEW: Whether the panel is expanded
-  onToggleExpand?: () => void; // NEW: Toggle expand/shrink
   agents: Agent[];
   currentAgentId: string | null;
   onSelectAgent: (id: string) => void;
@@ -69,8 +67,6 @@ interface AgentSidebarProps {
 export default function AgentSidebar({
   isOpen,
   onToggle,
-  isExpanded = false,
-  onToggleExpand,
   agents,
   currentAgentId,
   onSelectAgent,
@@ -649,19 +645,6 @@ export default function AgentSidebar({
                 >
                   Threads
                 </Button>
-                {/* Expand/Shrink AI chat panel width */}
-                {onToggleExpand && (
-                  <Button
-                    onClick={onToggleExpand}
-                    className="bg-[#1c1c1c] hover:bg-[#222] text-white text-xs h-7 px-2 border border-[#2a2a2a]"
-                    size="sm"
-                    title={isExpanded ? 'Shrink chat' : 'Expand chat'}
-                    aria-label={isExpanded ? 'Shrink chat' : 'Expand chat'}
-                  >
-                    {isExpanded ? <Minimize2 className="h-4 w-4 mr-1" /> : <Maximize2 className="h-4 w-4 mr-1" />}
-                    {isExpanded ? 'Shrink' : 'Expand'}
-                  </Button>
-                )}
                 {/* Collapse/Hide AI chat panel */}
                 <Button
                   onClick={onToggle}
