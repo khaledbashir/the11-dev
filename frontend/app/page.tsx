@@ -2530,8 +2530,18 @@ export default function Page() {
         if (!structured) {
           structured = extractSOWStructuredJson(markdownPart);
         }
-        const derived = buildSuggestedRolesFromArchitectSOW(structured);
-        if (derived.length > 0) {
+        let derived = buildSuggestedRolesFromArchitectSOW(structured);
+
+        // Final fallback: use structuredSow captured from the streamed response (if available)
+        if ((!derived || derived.length === 0) && structuredSow) {
+          const fromState = buildSuggestedRolesFromArchitectSOW(structuredSow);
+          if (fromState.length > 0) {
+            console.log(`✅ Using ${fromState.length} roles derived from captured structured JSON state.`);
+            derived = fromState;
+          }
+        }
+
+        if (derived && derived.length > 0) {
           console.log(`✅ Using ${derived.length} roles derived from Architect structured JSON.`);
           convertedContent = convertMarkdownToNovelJSON(cleanedContent, derived, { strictRoles: false });
         } else {
