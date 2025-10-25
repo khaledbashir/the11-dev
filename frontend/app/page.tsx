@@ -423,13 +423,13 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
     i++;
   }
 
-  // CRITICAL: If we reach the end and pricing table hasn't been inserted, ALWAYS insert it
+  // CRITICAL: If we reach the end and pricing table hasn't been inserted, ALWAYS insert it when roles exist OR strict fallback is enabled
   if (!pricingTableInserted) {
-    if (suggestedRoles.length > 0) {
-      console.log('⚠️ Pricing table not auto-inserted earlier, inserting NOW at end of content (with JSON roles).');
-      content.push({
-        type: 'horizontalRule'
+    if (suggestedRoles.length > 0 || strictRoles) {
+      console.log('⚠️ Pricing table not auto-inserted earlier, inserting NOW at end of content.', {
+        via: suggestedRoles.length > 0 ? 'suggestedRoles' : 'strictFallback'
       });
+      content.push({ type: 'horizontalRule' });
       content.push({
         type: 'heading',
         attrs: { level: 2 },
@@ -3236,10 +3236,12 @@ Ask me questions to get business insights, such as:
                   
                   // Handle different message types from AnythingLLM stream
                   if (data.type === 'textResponseChunk' && data.textResponse) {
-                    // 🧠 Strip <thinking> tags before accumulating content
-                    // The AI may wrap internal monologue in <thinking></thinking> tags
-                    // We extract and discard these, only keeping the actual response
-                    const cleanedText = data.textResponse.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '');
+                    // 🧠 Strip internal-only tags (<thinking>, <think>, <AI_THINK>, <tool_call>) before accumulating
+                    const cleanedText = data.textResponse
+                      .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
+                      .replace(/<think>[\s\S]*?<\/think>/gi, '')
+                      .replace(/<AI_THINK>[\s\S]*?<\/AI_THINK>/gi, '')
+                      .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '');
                     accumulatedContent += cleanedText;
                     
                     // Update the message content in real-time
@@ -3252,9 +3254,13 @@ Ask me questions to get business insights, such as:
                     );
                   } else if (data.type === 'textResponse') {
                     // Final response (fallback for non-chunked)
-                    // 🧠 Also strip <thinking> tags from final responses
+                    // 🧠 Also strip internal-only tags from final responses
                     let content = data.content || data.textResponse || '';
-                    content = content.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '');
+                    content = content
+                      .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
+                      .replace(/<think>[\s\S]*?<\/think>/gi, '')
+                      .replace(/<AI_THINK>[\s\S]*?<\/AI_THINK>/gi, '')
+                      .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '');
                     accumulatedContent = content;
                     setChatMessages(prev =>
                       prev.map(msg =>

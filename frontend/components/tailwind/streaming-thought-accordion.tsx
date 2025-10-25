@@ -28,16 +28,36 @@ export function StreamingThoughtAccordion({
   // ⚠️ CRITICAL FIX: Extract thinking ONCE per actual content change
   // useMemo ensures this only runs when content actually changes, not on every render/re-stream chunk
   const { thinking, actualContent, jsonBlock } = useMemo(() => {
-    // Extract thinking (must be wrapped in <thinking> tags)
-    const thinkingMatch = content.match(/<thinking>([\s\S]*?)<\/thinking>/i);
-    const extractedThinking = thinkingMatch ? thinkingMatch[1].trim() : "";
-    
-    // Remove thinking tags from content
-    let cleanedContent = content.replace(/<thinking>[\s\S]*?<\/thinking>/gi, "").trim();
-    
+    // Support multiple internal thinking tag variants
+    const variants = [
+      { open: /<thinking>/gi, close: /<\/thinking>/gi, name: 'thinking' },
+      { open: /<think>/gi, close: /<\/think>/gi, name: 'think' },
+      { open: /<AI_THINK>/gi, close: /<\/AI_THINK>/gi, name: 'ai_think' },
+    ];
+
+    // Collect all thinking contents in order
+    let extractedThinkingParts: string[] = [];
+    let cleanedContent = content;
+
+    for (const v of variants) {
+      const regex = new RegExp(`${v.open.source}([\n\s\S]*?)${v.close.source}`, 'gi');
+      let match: RegExpExecArray | null;
+      while ((match = regex.exec(content)) !== null) {
+        const inner = (match[1] || '').trim();
+        if (inner) extractedThinkingParts.push(inner);
+      }
+      // Remove this variant from visible content
+      cleanedContent = cleanedContent.replace(regex, '').trim();
+    }
+
+    // Also strip tool_call blocks from visible content
+    cleanedContent = cleanedContent.replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '').trim();
+
+    const extractedThinking = extractedThinkingParts.join('\n\n');
+
     // Extract JSON code block (must be ```json ... ```)
     const jsonMatch = cleanedContent.match(/```json\s*([\s\S]*?)\s*```/);
-    let extractedJsonBlock = null;
+    let extractedJsonBlock = null as any;
     if (jsonMatch && jsonMatch[1]) {
       try {
         extractedJsonBlock = JSON.parse(jsonMatch[1]);
@@ -50,7 +70,6 @@ export function StreamingThoughtAccordion({
       }
     }
 
-    // DEBUG: Log extraction ONCE per actual content change
     if (extractedThinking) {
       console.log('🎯 [Accordion] THINKING EXTRACTED (messageId: ' + messageId + '):', {
         thinkingLength: extractedThinking.length,
@@ -60,7 +79,7 @@ export function StreamingThoughtAccordion({
     }
 
     return { thinking: extractedThinking, actualContent: cleanedContent, jsonBlock: extractedJsonBlock };
-  }, [content, messageId]); // Only re-extract if actual content changes or messageId changes
+  }, [content, messageId]);
 
   // Handle thinking extraction callback (memoized to prevent infinite loops)
   const handleThinkingExtracted = useCallback(() => {

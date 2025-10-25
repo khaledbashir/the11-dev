@@ -15,6 +15,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { StreamingThoughtAccordion } from "./streaming-thought-accordion";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { cleanSOWContent } from "@/lib/export-utils";
 
 interface Agent {
   id: string;
@@ -773,7 +774,8 @@ export default function AgentSidebar({
                     </div>
                   ) : (
                     chatMessages.map((msg) => {
-                      const cleaned = msg.content.replace(/<think>[\s\S]*?<\/think>/gi, '');
+                      // Remove internal-only tags from visible content; preserve JSON blocks
+                      const cleaned = cleanSOWContent(msg.content);
                       const segments = msg.role === 'assistant' ? splitMarkdownJsonBlocks(cleaned) : [{ type: 'text' as const, content: msg.content }];
                       return (
                         <div key={msg.id} className={`flex min-w-0 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -868,7 +870,8 @@ export default function AgentSidebar({
                   ) : (
                     chatMessages.map(msg => {
                       const shouldShowButton = msg.role === 'assistant' && onInsertToEditor;
-                      const cleaned = msg.content.replace(/<think>[\s\S]*?<\/think>/gi, '');
+                      // Remove internal-only tags from visible content; preserve JSON blocks
+                      const cleaned = cleanSOWContent(msg.content);
                       const segments = msg.role === 'assistant' ? splitMarkdownJsonBlocks(cleaned) : [{ type: 'text' as const, content: msg.content }];
                       
                       // Debug logging disabled for performance
