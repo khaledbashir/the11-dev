@@ -59,8 +59,8 @@ interface Workspace {
 }
 
 interface SidebarNavProps {
-  currentView: "dashboard" | "editor" | "gardner-studio" | "ai-management";
-  onViewChange: (view: "dashboard" | "editor" | "gardner-studio" | "ai-management") => void;
+  currentView: "dashboard" | "editor" | "ai-management";
+  onViewChange: (view: "dashboard" | "editor" | "ai-management") => void;
   
   workspaces: Workspace[];
   currentWorkspaceId: string;
@@ -144,7 +144,7 @@ export default function SidebarNav({
   const isProtectedWorkspace = (workspace: any) => {
     // Protect system workspaces
     if (isSystemWorkspace(workspace)) return true;
-    // Protect Gardner workspaces (agent workspaces)
+    // Protect agent workspaces
     if (isAgentWorkspace(workspace)) return true;
     return false;
   };

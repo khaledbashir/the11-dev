@@ -23,7 +23,6 @@ import { InteractiveOnboarding } from "@/components/tailwind/interactive-onboard
 import { GuidedClientSetup } from "@/components/tailwind/guided-client-setup";
 import { EnhancedDashboard } from "@/components/tailwind/enhanced-dashboard";
 import { StatefulDashboardChat } from "@/components/tailwind/stateful-dashboard-chat";
-import GardnerStudio from "@/components/gardners/GardnerStudio";
 import { KnowledgeBase } from "@/components/tailwind/knowledge-base";
 import { FloatingDocumentActions } from "@/components/tailwind/document-toolbar";
 import { calculateTotalInvestment } from "@/lib/sow-utils";
@@ -992,41 +991,6 @@ Ask me questions to get business insights, such as:
     const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
     window.history.replaceState({}, '', newUrl);
   }, [currentDocId, mounted]);
-
-  useEffect(() => {
-    // 🌱 Load GARDNERS from AnythingLLM (not old agents table!)
-    // This ONLY loads the list of available agents, does NOT set currentAgentId yet
-    const loadGardnersAsAgents = async () => {
-      try {
-        console.log('🌱 Loading Gardners from AnythingLLM...');
-        const response = await fetch('/api/gardners/list');
-        if (!response.ok) throw new Error('Failed to load Gardners');
-        
-        const { gardners } = await response.json();
-        console.log(`✅ Loaded ${gardners.length} Gardners:`, gardners.map((g: any) => g.name));
-        
-        // Convert Gardners to Agent format for compatibility
-        const gardnerAgents: Agent[] = gardners.map((gardner: any) => ({
-          id: gardner.slug,
-          name: gardner.name,
-          systemPrompt: gardner.systemPrompt || '',
-          model: 'anythingllm', // All Gardners use AnythingLLM
-        }));
-        
-        setAgents(gardnerAgents);
-        // ⚠️ CRITICAL FIX: Do NOT set currentAgentId here!
-        // It will be set in the next useEffect after we know the context (view mode, workspace, etc.)
-        
-      } catch (error) {
-        console.error('❌ Failed to load Gardners:', error);
-        // Fallback: show empty state
-        setAgents([]);
-        setCurrentAgentId(null);
-      }
-    };
-    
-    loadGardnersAsAgents();
-  }, []);
 
   // ⚠️ CRITICAL FIX: Separate useEffect for agent selection that depends on context
   // This ensures we don't set the agent until we know where we are (dashboard vs editor)
@@ -3612,7 +3576,7 @@ Ask me questions to get business insights, such as:
           )
         }
         rightPanel={
-          // ✨ HIDE AI Chat panel completely in Gardner Studio and AI Management modes
+          // ✨ HIDE AI Chat panel completely in AI Management mode
           // Only show in editor and dashboard modes for a cleaner, context-appropriate UX
           viewMode === 'editor' || viewMode === 'dashboard' ? (
             <AgentSidebar

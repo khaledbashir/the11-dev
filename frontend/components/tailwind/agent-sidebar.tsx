@@ -63,7 +63,7 @@ interface AgentSidebarProps {
   onSendMessage: (message: string) => void;
   isLoading?: boolean;
   streamingMessageId?: string | null;
-  viewMode?: 'editor' | 'dashboard' | 'gardner-studio' | 'ai-management';
+  viewMode?: 'editor' | 'dashboard' | 'ai-management';
   dashboardChatTarget?: string;
   onDashboardWorkspaceChange?: (workspace: string) => void;
   availableWorkspaces?: Array<{ slug: string; name: string }>;

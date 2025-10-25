@@ -72,14 +72,6 @@ export default function LandingPage() {
       icon: Sparkles,
       category: 'AI Intelligence'
     },
-    {
-      id: 'gardner-studio',
-      name: 'Gardner AI Studio',
-      description: '8 specialized AI agents for different marketing tasks: Property Marketing Pro, Ad Copy Machine, SEO Content Strategist, Case Study Crafter, Landing Page Persuader, Proposal & Audit Specialist, CRM Communication Specialist',
-      price: 400,
-      icon: Bot,
-      category: 'AI Intelligence'
-    },
     
     // WORKSPACE & ORGANIZATION
     {

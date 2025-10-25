@@ -72,5 +72,5 @@ async function runMigration(migrationFile) {
 }
 
 // Get migration file from command line or use default
-const migrationFile = process.argv[2] || '002_create_gardners_table.sql';
+const migrationFile = process.argv[2] || '003_create_sows_table.sql';
 runMigration(migrationFile);

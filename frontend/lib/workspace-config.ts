@@ -41,23 +41,6 @@ export const WORKSPACE_CONFIG = {
  * @returns The workspace slug
  */
 export function getWorkspaceForAgent(agentId: string): string {
-  // List of all Gardner workspace slugs
-  const gardnerSlugs = [
-    'gen-the-architect',
-    'property-marketing-pro',
-    'ad-copy-machine',
-    'crm-communication-specialist',
-    'case-study-crafter',
-    'landing-page-persuader',
-    'seo-content-strategist',
-    'proposal-and-audit-specialist'
-  ];
-  
-  // For Gardner agents (from AnythingLLM), the agentId IS the workspace slug
-  if (gardnerSlugs.includes(agentId)) {
-    return agentId; // Gardner workspace slugs are their IDs
-  }
-  
   switch (agentId) {
     case 'architect':
     case 'strategist':

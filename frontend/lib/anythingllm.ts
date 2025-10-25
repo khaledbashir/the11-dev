@@ -611,6 +611,45 @@ Metadata:
     }
   }
 
+  /**
+   * Configure LLM provider for a workspace (for testing/automation)
+   * Note: This requires the provider to be available in AnythingLLM instance
+   */
+  async setWorkspaceLLMProvider(
+    workspaceSlug: string, 
+    provider: string = 'claude', 
+    model: string = 'claude-3-5-sonnet-20241022'
+  ): Promise<boolean> {
+    try {
+      console.log(`⚙️ Configuring LLM provider for workspace: ${workspaceSlug}`);
+      console.log(`   Provider: ${provider}, Model: ${model}`);
+      
+      const response = await fetch(
+        `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/update`,
+        {
+          method: 'PATCH',
+          headers: this.getHeaders(),
+          body: JSON.stringify({
+            llmProvider: provider,
+            llmModel: model,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        console.error(`❌ Failed to set LLM provider (${response.status}):`, error);
+        return false;
+      }
+
+      console.log(`✅ LLM provider configured for workspace: ${workspaceSlug}`);
+      return true;
+    } catch (error) {
+      console.error('❌ Error configuring LLM provider:', error);
+      return false;
+    }
+  }
+
   private getClientFacingPrompt(clientName?: string): string {
     const greeting = clientName ? `Hi! I'm the Social Garden AI assistant for ${clientName}.` : `Hi! I'm your Social Garden AI assistant.`;
     

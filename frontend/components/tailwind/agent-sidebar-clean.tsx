@@ -54,7 +54,7 @@ interface AgentSidebarProps {
   isLoading?: boolean;
   onInsertToEditor?: (content: string) => void;
   streamingMessageId?: string | null; // Track which message is streaming
-  viewMode?: 'dashboard' | 'editor' | 'gardner-studio'; // NEW: Context awareness
+  viewMode?: 'dashboard' | 'editor'; // NEW: Context awareness
   dashboardChatTarget?: string; // NEW: Workspace slug for dashboard mode
   onDashboardWorkspaceChange?: (slug: string) => void; // NEW: Handler for workspace selection
   availableWorkspaces?: Array<{slug: string, name: string}>; // NEW: Available workspaces
