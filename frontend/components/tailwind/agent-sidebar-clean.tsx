@@ -790,21 +790,7 @@ export default function AgentSidebar({
                             </div>
                             <div className="flex items-center gap-2 mt-2 sticky bottom-0 z-10 bg-[#1b1b1e]/80 backdrop-blur-sm px-2 py-1 rounded-md border-t border-[#0E2E33]">
                               <span className="text-xs opacity-60 flex-1">{formatTimestamp(msg.timestamp)}</span>
-                              {msg.role === 'assistant' && onInsertToEditor && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-7 px-2 text-xs border-[#0E2E33] text-gray-300 hover:text-white hover:bg-[#0E2E33]"
-                                  onClick={() => {
-                                    const textOnly = extractNonJsonText(cleaned);
-                                    if (!textOnly) return;
-                                    onInsertToEditor(textOnly);
-                                  }}
-                                  title="Insert this reply into the editor"
-                                >
-                                  📝 Insert
-                                </Button>
-                              )}
+                              {/* NO INSERT BUTTON IN DASHBOARD MODE - Query only */}
                             </div>
                           </div>
                         </div>

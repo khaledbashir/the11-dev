@@ -3619,10 +3619,11 @@ export default function Page() {
                   setChatMessages([]);
                 }
               }}
-                onInsertToEditor={(content) => {
+              // Only pass onInsertToEditor in EDITOR mode, not in DASHBOARD mode
+              onInsertToEditor={viewMode === 'editor' ? (content) => {
                 console.log('📝 Insert to Editor button clicked from AI chat');
                 handleInsertContent(content);
-              }}
+              } : undefined}
             />
           ) : null // Return null to completely remove the panel from the component tree
         }
