@@ -1456,7 +1456,7 @@ ${sow.htmlContent}
         <div className="p-6 border-b border-[#2A2A2D]">
           <div className="flex items-center gap-3">
             <img 
-              src="/images/logo-light.png" 
+              src="/social-garden-logo.png" 
               alt="Social Garden" 
               className="h-10 w-auto"
             />

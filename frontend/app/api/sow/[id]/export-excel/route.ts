@@ -8,6 +8,7 @@ import ExcelJS from 'exceljs';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { queryOne } from '@/lib/db';
+import { validatePricing, type ScopeBlock } from '@/lib/pricing-validation';
 
 type TipTapNode = {
   type?: string;
@@ -195,6 +196,33 @@ export async function GET(
     if (!scopes.length) {
       // Provide an empty but valid workbook rather than erroring
       // to keep UX consistent; the sheet will explain missing structure.
+    }
+
+    // Policy validation before export (block hard errors, surface warnings)
+    try {
+      const shaped: ScopeBlock[] = scopes.map((s) => ({
+        title: s.title,
+        roles: (s.roles || []).map((r) => ({ role: r.role, hours: r.hours, rate: r.rate })),
+      }));
+      const result = validatePricing(shaped);
+      const hardErrors = result.violations.filter((v) => v.severity !== 'warning');
+      if (hardErrors.length) {
+        return NextResponse.json(
+          {
+            error: 'Pricing validation failed',
+            violations: result.violations,
+            message:
+              'Your SOW is missing mandatory roles or contains invalid pricing rows. Please address the issues and try exporting again.',
+          },
+          { status: 400 }
+        );
+      }
+      // Non-blocking warnings will be carried in logs; continue export
+      if (result.violations.some((v) => v.severity === 'warning')) {
+        console.warn('[Export Excel] Pricing validation warnings:', result.violations);
+      }
+    } catch (e) {
+      console.warn('[Export Excel] Validation step failed, proceeding without blocking:', e);
     }
 
     // Build workbook (attempt to load branded template if available)
