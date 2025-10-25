@@ -3147,6 +3147,13 @@ Ask me questions to get business insights, such as:
             threadSlugToUse = documents.find(d => d.id === currentDocId)?.threadSlug || undefined;
           }
 
+          // Smart mode selection for Master Dashboard: use 'chat' for greetings/non-analytic prompts
+          const greetingRegex = /^(hi|hello|hey|yo|sup|how are you|good (morning|afternoon|evening))\b/i;
+          const isGreeting = greetingRegex.test(lastUserMessage.trim());
+          const resolvedMode = (isDashboardMode && dashboardChatTarget === 'sow-master-dashboard')
+            ? (isGreeting ? 'chat' : 'query')
+            : 'chat';
+
           const response = await fetch(streamEndpoint, {
             method: "POST",
             headers: {
@@ -3157,8 +3164,8 @@ Ask me questions to get business insights, such as:
               model: effectiveAgent.model,
               workspace: workspaceSlug,
               threadSlug: threadSlugToUse,
-              // Force analytics-only mode for Master Dashboard
-              mode: (isDashboardMode && dashboardChatTarget === 'sow-master-dashboard') ? 'query' : 'chat',
+              // Prefer query for dashboard analytics; fallback to chat for casual greetings
+              mode: resolvedMode,
               attachments: attachments || [], // Include file attachments from sidebar
               messages: requestMessages,
             }),
@@ -3628,6 +3635,10 @@ Ask me questions to get business insights, such as:
               onClearChat={() => {
                 console.log('🧹 Clearing chat messages for new thread');
                 setChatMessages([]);
+              }}
+              onReplaceChatMessages={(msgs) => {
+                console.log('🔁 Replacing chat messages from thread history:', msgs.length);
+                setChatMessages(msgs);
               }}
               // Editor thread management wiring
               editorWorkspaceSlug={currentDoc?.workspaceSlug}

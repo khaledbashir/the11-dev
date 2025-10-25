@@ -59,6 +59,7 @@ interface AgentSidebarProps {
   onDashboardWorkspaceChange?: (slug: string) => void; // NEW: Handler for workspace selection
   availableWorkspaces?: Array<{slug: string, name: string}>; // NEW: Available workspaces
   onClearChat?: () => void; // NEW: Clear chat messages
+  onReplaceChatMessages?: (messages: Array<{ id: string; role: 'user' | 'assistant'; content: string; timestamp: number }>) => void; // NEW: Replace chat messages (e.g., when loading a thread)
   // Editor mode thread wiring
   editorWorkspaceSlug?: string; // workspace slug for the currently open SOW
   editorThreadSlug?: string | null; // current thread for the open SOW
@@ -84,6 +85,7 @@ export default function AgentSidebar({
   onDashboardWorkspaceChange,
   availableWorkspaces = [{ slug: 'sow-master-dashboard', name: '🎯 All SOWs (Master)' }],
   onClearChat,
+  onReplaceChatMessages,
   editorWorkspaceSlug,
   editorThreadSlug,
   onEditorThreadChange,
@@ -379,8 +381,17 @@ export default function AgentSidebar({
       const data = await response.json();
       console.log('✅ Loaded thread history:', data.history?.length || 0, 'messages');
       
-      // TODO: Convert history to ChatMessage format and update parent state
-      // This will be handled when we wire up parent component
+      // Convert and replace parent chat messages when available
+      const mapped = (data.history || []).map((msg: any) => ({
+        id: `msg-${msg.id || Date.now()}-${Math.random()}`,
+        role: msg.role === 'user' ? 'user' : 'assistant',
+        content: msg.content || '',
+        timestamp: new Date(msg.createdAt || Date.now()).getTime(),
+      }));
+      if (onReplaceChatMessages) {
+        onReplaceChatMessages(mapped);
+      }
+
       // In editor mode, sync thread selection up
       if (isEditorMode && onEditorThreadChange) {
         onEditorThreadChange(threadSlug);
