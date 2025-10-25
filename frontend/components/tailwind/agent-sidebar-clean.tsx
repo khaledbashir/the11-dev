@@ -201,49 +201,54 @@ export default function AgentSidebar({
     setLoadingThreads(true);
     
     try {
-      // Get workspace data which should include threads
-      const response = await fetch(`${process.env.NEXT_PUBLIC_ANYTHINGLLM_URL}/api/v1/workspace/${ws}`, {
+      // Use the dedicated AnythingLLM endpoint for listing threads
+      const response = await fetch(`${process.env.NEXT_PUBLIC_ANYTHINGLLM_URL}/api/v1/workspace/${ws}/threads`, {
         headers: {
           'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY}`,
         },
       });
 
       if (!response.ok) {
-        console.warn('Failed to load workspace, trying alternative method');
+        console.warn('⚠️ Failed to list threads (non-OK response). Returning empty list.');
+        setThreads([]);
+        return;
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.warn('⚠️ Threads endpoint did not return JSON. Returning empty list.');
         setThreads([]);
         return;
       }
 
       const data = await response.json();
-      
-      // AnythingLLM returns workspace data - threads might be in different places depending on version
-      // Try multiple possible locations
-      let workspaceThreads = data.workspace?.threads || data.threads || [];
-      
-      // If still empty, the workspace exists but has no threads yet
+      const workspaceThreads: any[] = data?.threads || [];
+
       if (workspaceThreads.length === 0) {
         console.log('✅ Loaded 0 threads (workspace has no threads yet)');
         setThreads([]);
         return;
       }
-      
-      setThreads(workspaceThreads.map((t: any) => ({
+
+      const normalized = workspaceThreads.map((t: any) => ({
         slug: t.slug,
         name: t.name,
         id: t.id,
         createdAt: t.createdAt || new Date().toISOString(),
-      })));
-      
+      }));
+
+      setThreads(normalized);
+
       // If we have threads, set the first one as active
-      if (workspaceThreads.length > 0 && !currentThreadSlug) {
-        setCurrentThreadSlug(workspaceThreads[0].slug);
+      if (normalized.length > 0 && !currentThreadSlug) {
+        setCurrentThreadSlug(normalized[0].slug);
         // In editor mode, sync with parent state on first load
         if (isEditorMode && onEditorThreadChange) {
-          onEditorThreadChange(workspaceThreads[0].slug);
+          onEditorThreadChange(normalized[0].slug);
         }
       }
       
-      console.log('✅ Loaded', workspaceThreads.length, 'threads');
+      console.log('✅ Loaded', normalized.length, 'threads');
     } catch (error) {
       console.error('❌ Failed to load threads:', error);
       setThreads([]);
@@ -313,9 +318,10 @@ export default function AgentSidebar({
       }
 
       console.log('✅ Thread created:', newThread.slug);
-      
-      // Reload threads to ensure UI is synced with AnythingLLM
+
+      // Small delay to allow AnythingLLM to index the new thread, then reload
       if (ws) {
+        await new Promise(resolve => setTimeout(resolve, 300));
         await loadThreads(ws);
       }
     } catch (error: any) {
