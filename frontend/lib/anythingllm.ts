@@ -3,6 +3,7 @@
 
 import SOCIAL_GARDEN_KNOWLEDGE_BASE from './social-garden-knowledge-base';
 import { THE_ARCHITECT_SYSTEM_PROMPT, getArchitectPromptWithRateCard } from './knowledge-base';
+import { ROLES } from './rateCard';
 
 // Get AnythingLLM URL from environment (NEXT_PUBLIC_ANYTHINGLLM_URL must be set in .env)
 // Falls back to Ahmad's instance for local development
@@ -63,6 +64,12 @@ export class AnythingLLMService {
         console.log(`✅ Using existing workspace: ${slug}`);
         // Ensure the correct Architect prompt is applied (idempotent refresh)
         await this.setWorkspacePrompt(existing.slug, clientName, true);
+        // Best-effort ensure rate card is present for RAG
+        try {
+          await this.embedRateCardDocument(existing.slug);
+        } catch (e) {
+          console.warn('⚠️ Rate card embedding skipped/failed for existing workspace (non-fatal):', e);
+        }
         return { id: existing.id, slug: existing.slug };
       }
 
@@ -87,6 +94,13 @@ export class AnythingLLMService {
       // � STEP 1: Set client-facing prompt for new workspace
       await this.setWorkspacePrompt(data.workspace.slug, clientName);
       
+      // 📚 STEP 1b: Auto-embed the official Social Garden rate card as knowledge base (idempotent best-effort)
+      try {
+        await this.embedRateCardDocument(data.workspace.slug);
+      } catch (e) {
+        console.warn('⚠️ Rate card embedding skipped/failed (non-fatal):', e);
+      }
+      
       // 🧵 STEP 2: Create a default thread (no user naming required)
       // Thread will auto-name based on first message (AnythingLLM behavior)
       console.log(`🧵 Creating default thread for workspace...`);
@@ -100,6 +114,77 @@ export class AnythingLLMService {
     } catch (error) {
       console.error('❌ Error creating workspace:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Build markdown for the authoritative Social Garden rate card
+   */
+  private buildRateCardMarkdown(): string {
+    const header = `# Social Garden - Official Rate Card (AUD/hour)\n\n`;
+    const intro = `This document is the single source of truth for hourly rates across roles.\n\n`;
+    const tableHeader = `| Role | Rate (AUD/hr) |\n|---|---:|\n`;
+    const rows = ROLES
+      .map(r => `| ${r.name} | ${r.rate.toFixed(2)} |`)
+      .join('\n');
+    const guidance = `\n\n## Pricing Guidance\n- Rates are exclusive of GST.\n- Use these rates for project pricing and retainers unless client-approved custom rates apply.\n- "Head Of", "Project Coordination", and "Account Management" roles are required governance roles for delivery.\n\n## Retainer Notes\n- Show monthly breakdowns and annualized totals.\n- Define overflow: hours beyond monthly budget billed at these standard rates.\n- Typical options: Essential (lean), Standard (recommended), Premium (full team).\n`;
+    return header + intro + tableHeader + rows + guidance;
+  }
+
+  /**
+   * Embed the Social Garden rate card into a workspace knowledge base (RAG)
+   */
+  async embedRateCardDocument(workspaceSlug: string): Promise<boolean> {
+    try {
+      const title = 'Social Garden - Official Rate Card (AUD/hour)';
+      const textContent = this.buildRateCardMarkdown();
+
+      // Process document
+      const rawTextResponse = await fetch(`${this.baseUrl}/api/v1/document/raw-text`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({
+          textContent,
+          metadata: {
+            title,
+            docAuthor: 'Social Garden',
+            description: 'Authoritative 82-role rate card in AUD per hour',
+            docSource: 'Rate Card',
+          },
+        }),
+      });
+
+      if (!rawTextResponse.ok) {
+        const errorText = await rawTextResponse.text();
+        throw new Error(`Failed to process rate card: ${rawTextResponse.status} ${errorText}`);
+      }
+
+      const rawTextData = await rawTextResponse.json();
+      const location = rawTextData?.documents?.[0]?.location;
+      if (!rawTextData.success || !location) {
+        throw new Error(rawTextData.error || 'Rate card processing failed - no location');
+      }
+
+      // Embed in workspace (update-embeddings ensures vectorization)
+      const embedResponse = await fetch(
+        `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/update-embeddings`,
+        {
+          method: 'POST',
+          headers: this.getHeaders(),
+          body: JSON.stringify({ adds: [location] }),
+        }
+      );
+
+      if (!embedResponse.ok) {
+        const errorText = await embedResponse.text();
+        throw new Error(`Failed to embed rate card in workspace: ${embedResponse.status} ${errorText}`);
+      }
+
+      console.log(`✅ Rate card embedded in workspace: ${workspaceSlug}`);
+      return true;
+    } catch (error) {
+      console.error('❌ Error embedding rate card:', error);
+      return false;
     }
   }
 

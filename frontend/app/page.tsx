@@ -3110,18 +3110,18 @@ Ask me questions to get business insights, such as:
         const streamEndpoint = endpoint.includes('/stream-chat') ? endpoint : endpoint.replace('/chat', '/stream-chat');
         
         if (shouldStream) {
-          // 🔒 CRITICAL FIX: Only enforce JSON contract for substantial SOW generation messages
-          // NOT for casual greetings like "yo", "hi", "hello" or short queries
-          // Contract should only apply to messages > 50 characters (likely project briefs) in non-dashboard mode
+          // Decide when to enforce SOW narrative+JSON contract
           const lastUserMessage = newMessages[newMessages.length - 1]?.content || '';
           const messageLength = lastUserMessage.trim().length;
-          const isSowGenerationMode = !isDashboardMode && messageLength > 50; // ✅ FIXED: Added message length check
+          const sowKeywords = /(\bstatement of work\b|\bsow\b|\bscope\b|\bdeliverables\b|\bpricing\b|\bbudget\b|\bestimate\b|\bhours\b|\broles\b)/i;
+          const shouldEnforceContract = !isDashboardMode && (messageLength >= 20 || sowKeywords.test(lastUserMessage));
+          const isSowGenerationMode = shouldEnforceContract;
           
           const contractSuffix = isSowGenerationMode 
             ? "IMPORTANT: Your response MUST contain two parts in order: first, a complete SOW narrative written in Markdown, and second, a single ```json code block at the end. The JSON must be a valid object with a \"scopeItems\" array. Each item MUST include: name (string), overview (string), roles (array of { role, hours }), deliverables (string[]), and assumptions (string[]). Do not include rates or totals in JSON."
             : "";
           
-          console.log(`📊 [Contract Check] Message length: ${messageLength}, isSowGenerationMode: ${isSowGenerationMode}, isDashboard: ${isDashboardMode}`);
+          console.log(`📊 [Contract Check] Message length: ${messageLength}, keywordMatch: ${sowKeywords.test(lastUserMessage)}, isSowGenerationMode: ${isSowGenerationMode}, isDashboard: ${isDashboardMode}`);
           
           const requestMessages = [
             { role: "system", content: effectiveAgent.systemPrompt },
@@ -3130,7 +3130,7 @@ Ask me questions to get business insights, such as:
             newMessages.length > 0
               ? {
                   role: newMessages[newMessages.length - 1].role,
-                  content: isSowGenerationMode
+                    content: isSowGenerationMode
                     ? `${newMessages[newMessages.length - 1].content.trim()}\n\n${contractSuffix}`
                     : newMessages[newMessages.length - 1].content,
                 }
@@ -3312,17 +3312,17 @@ Ask me questions to get business insights, such as:
           console.log('✅ Single-step AI generation complete - no follow-up needed');
         } else {
           // 📦 NON-STREAMING MODE: Standard fetch for OpenRouter
-          // 🔒 CRITICAL FIX: Only enforce JSON contract for substantial SOW generation messages
-          // NOT for casual greetings like "yo", "hi", "hello" or short queries
           const lastUserMessage = newMessages[newMessages.length - 1]?.content || '';
           const messageLength = lastUserMessage.trim().length;
-          const isSowGenerationMode = !isDashboardMode && messageLength > 50; // ✅ FIXED: Added message length check
+          const sowKeywords = /(\bstatement of work\b|\bsow\b|\bscope\b|\bdeliverables\b|\bpricing\b|\bbudget\b|\bestimate\b|\bhours\b|\broles\b)/i;
+          const shouldEnforceContract = !isDashboardMode && (messageLength >= 20 || sowKeywords.test(lastUserMessage));
+          const isSowGenerationMode = shouldEnforceContract;
           
           const contractSuffix = isSowGenerationMode 
             ? "IMPORTANT: Your response MUST contain two parts in order: first, a complete SOW narrative written in Markdown, and second, a single ```json code block at the end. The JSON must be a valid object with a \"scopeItems\" array. Each item MUST include: name (string), overview (string), roles (array of { role, hours }), deliverables (string[]), and assumptions (string[]). Do not include rates or totals in JSON."
             : "";
           
-          console.log(`📊 [Contract Check] Message length: ${messageLength}, isSowGenerationMode: ${isSowGenerationMode}, isDashboard: ${isDashboardMode}`);
+          console.log(`📊 [Contract Check] Message length: ${messageLength}, keywordMatch: ${sowKeywords.test(lastUserMessage)}, isSowGenerationMode: ${isSowGenerationMode}, isDashboard: ${isDashboardMode}`);
           
           const requestMessages = [
             { role: "system", content: effectiveAgent.systemPrompt },
