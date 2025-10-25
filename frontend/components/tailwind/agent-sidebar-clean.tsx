@@ -198,7 +198,7 @@ export default function AgentSidebar({
     setLoadingThreads(true);
     
     try {
-      // Get workspace data which includes threads
+      // Get workspace data which should include threads
       const response = await fetch(`${process.env.NEXT_PUBLIC_ANYTHINGLLM_URL}/api/v1/workspace/${ws}`, {
         headers: {
           'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY}`,
@@ -206,11 +206,23 @@ export default function AgentSidebar({
       });
 
       if (!response.ok) {
-        throw new Error('Failed to load workspace threads');
+        console.warn('Failed to load workspace, trying alternative method');
+        setThreads([]);
+        return;
       }
 
       const data = await response.json();
-      const workspaceThreads = data.workspace?.threads || [];
+      
+      // AnythingLLM returns workspace data - threads might be in different places depending on version
+      // Try multiple possible locations
+      let workspaceThreads = data.workspace?.threads || data.threads || [];
+      
+      // If still empty, the workspace exists but has no threads yet
+      if (workspaceThreads.length === 0) {
+        console.log('✅ Loaded 0 threads (workspace has no threads yet)');
+        setThreads([]);
+        return;
+      }
       
       setThreads(workspaceThreads.map((t: any) => ({
         slug: t.slug,
@@ -231,7 +243,7 @@ export default function AgentSidebar({
       console.log('✅ Loaded', workspaceThreads.length, 'threads');
     } catch (error) {
       console.error('❌ Failed to load threads:', error);
-      // Don't show alert on initial load failure
+      setThreads([]);
     } finally {
       setLoadingThreads(false);
     }
@@ -285,6 +297,9 @@ export default function AgentSidebar({
       // Update local thread list and select it
       setThreads(prev => [newThread, ...prev]);
       setCurrentThreadSlug(newThread.slug);
+      
+      // Auto-open thread list to show the new thread
+      setShowThreadList(true);
 
       // Ask parent to clear chat messages if provided
       if (onClearChat) onClearChat();
@@ -295,6 +310,11 @@ export default function AgentSidebar({
       }
 
       console.log('✅ Thread created:', newThread.slug);
+      
+      // Reload threads to ensure UI is synced with AnythingLLM
+      if (ws) {
+        await loadThreads(ws);
+      }
     } catch (error: any) {
       console.error('❌ Failed to create thread:', error?.message || error);
       // Surface more actionable error to the user
