@@ -2229,6 +2229,56 @@ export default function Page() {
     idx++;
   }
 
+  // --- Structural enforcement pass (rubric alignment) ---
+  // Ensure "Detailed Deliverables" precedes "Project Phases" when both exist.
+  const findSectionRange = (arr: any[], matchFn: (title: string) => boolean) => {
+    let start = -1;
+    let end = -1;
+    for (let i = 0; i < arr.length; i++) {
+      const n = arr[i];
+      if (n.type === 'heading') {
+        const title = getPlainText(n).trim().toLowerCase();
+        if (start === -1 && matchFn(title)) {
+          start = i;
+          // find end: next heading or array end
+          for (let j = i + 1; j < arr.length; j++) {
+            if (arr[j].type === 'heading') {
+              end = j; break;
+            }
+          }
+          if (end === -1) end = arr.length;
+          break;
+        }
+      }
+    }
+    return { start, end };
+  };
+
+  const matchesDeliverables = (t: string) => t === 'detailed deliverables' || t === 'deliverables';
+  const matchesPhases = (t: string) => t === 'project phases' || t === 'phases';
+
+  const deliv = findSectionRange(normalized, matchesDeliverables);
+  const phases = findSectionRange(normalized, matchesPhases);
+  if (deliv.start !== -1 && phases.start !== -1 && deliv.start > phases.start) {
+    // Move deliverables block to immediately before phases block
+    const block = normalized.splice(deliv.start, deliv.end - deliv.start);
+    // Recompute phases.start if needed (it may have shifted after splice)
+    const newPhases = findSectionRange(normalized, matchesPhases);
+    normalized.splice(newPhases.start, 0, ...block);
+  }
+
+  // Ensure an Assumptions section exists (non-empty placeholder if missing)
+  const hasAssumptions = normalized.some(n => n.type === 'heading' && getPlainText(n).trim().toLowerCase() === 'assumptions');
+  if (!hasAssumptions) {
+    normalized.push(
+      { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Assumptions' }] },
+      { type: 'bulletList', content: [
+        { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Client will provide access to required systems and stakeholders in a timely manner.' }] }] },
+        { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Any scope changes will be managed via a documented change request and may impact timeline and budget.' }] }] },
+      ]}
+    );
+  }
+
   normalized.forEach((node: any) => {
       switch (node.type) {
         case 'heading':
@@ -2313,7 +2363,7 @@ export default function Page() {
           
           html += '<h3>Project Pricing</h3>';
           html += '<table>';
-          html += '<tr><th>Role</th><th>Description</th><th>Hours</th><th>Rate (AUD)</th><th class="num">Cost (AUD)</th></tr>';
+          html += '<tr><th>Role</th><th>Description</th><th>Hours</th><th>Rate (AUD)</th><th class="num">Cost (AUD, ex GST)</th></tr>';
           
           let subtotal = 0;
           rows.forEach((row: any) => {
@@ -2324,7 +2374,7 @@ export default function Page() {
             html += `<td>${row.description}</td>`;
             html += `<td class="num">${Number(row.hours) || 0}</td>`;
             html += `<td class="num">${formatCurrency(row.rate)}</td>`;
-            html += `<td class="num">${formatCurrency(cost)}</td>`;
+            html += `<td class="num">${formatCurrency(cost)} <span style="color:#6b7280; font-size: 0.85em;">+GST</span></td>`;
             html += `</tr>`;
           });
           
@@ -2333,13 +2383,13 @@ export default function Page() {
           // Summary section
           html += '<h4 style="margin-top: 20px;">Summary</h4>';
           html += '<table class="summary-table">';
-          html += `<tr><td style="text-align: right; padding-right: 12px;"><strong>Subtotal:</strong></td><td class="num">${formatCurrency(subtotal)}</td></tr>`;
+          html += `<tr><td style="text-align: right; padding-right: 12px;"><strong>Subtotal (ex GST):</strong></td><td class="num">${formatCurrency(subtotal)} <span style="color:#6b7280; font-size: 0.85em;">+GST</span></td></tr>`;
           
           if (discount > 0) {
             const discountAmount = subtotal * (discount / 100);
             const afterDiscount = subtotal - discountAmount;
             html += `<tr><td style="text-align: right; padding-right: 12px; color: #dc2626;"><strong>Discount (${discount}%):</strong></td><td class="num" style="color: #dc2626;">-${formatCurrency(discountAmount)}</td></tr>`;
-            html += `<tr><td style="text-align: right; padding-right: 12px;"><strong>After Discount:</strong></td><td class="num">${formatCurrency(afterDiscount)}</td></tr>`;
+            html += `<tr><td style="text-align: right; padding-right: 12px;"><strong>After Discount (ex GST):</strong></td><td class="num">${formatCurrency(afterDiscount)} <span style=\"color:#6b7280; font-size: 0.85em;\">+GST</span></td></tr>`;
             subtotal = afterDiscount;
           }
           
@@ -2347,8 +2397,9 @@ export default function Page() {
           const total = subtotal + gst;
           
           html += `<tr><td style="text-align: right; padding-right: 12px;"><strong>GST (10%):</strong></td><td class="num">${formatCurrency(gst)}</td></tr>`;
-          html += `<tr style="border-top: 2px solid #2C823D;"><td style="text-align: right; padding-right: 12px; padding-top: 8px;"><strong>Total Project Value:</strong></td><td class="num" style="padding-top: 8px; color: #2C823D; font-size: 18px;"><strong>${formatCurrency(total)}</strong></td></tr>`;
+          html += `<tr style="border-top: 2px solid #2C823D;"><td style="text-align: right; padding-right: 12px; padding-top: 8px;"><strong>Total Project Value (incl GST):</strong></td><td class="num" style="padding-top: 8px; color: #2C823D; font-size: 18px;"><strong>${formatCurrency(total)}</strong></td></tr>`;
           html += '</table>';
+          html += '<p style="color:#6b7280; font-size: 0.85em; margin-top: 4px;">All amounts shown in the pricing table are exclusive of GST unless otherwise stated. The Total Project Value includes GST.</p>';
           break;
         default:
           if (node.content) {
@@ -2356,6 +2407,9 @@ export default function Page() {
           }
       }
     });
+
+    // Append concluding marker required by rubric
+    html += '<p><em>*** This concludes the Scope of Work document. ***</em></p>';
 
     return html;
   };
