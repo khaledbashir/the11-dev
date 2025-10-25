@@ -776,7 +776,7 @@ export default function AgentSidebar({
                     chatMessages.map((msg) => {
                       // Remove internal-only tags from visible content; preserve JSON blocks
                       const cleaned = cleanSOWContent(msg.content);
-                      const segments = msg.role === 'assistant' ? splitMarkdownJsonBlocks(cleaned) : [{ type: 'text' as const, content: msg.content }];
+                      const segments = msg.role === 'assistant' ? [] : [{ type: 'text' as const, content: msg.content }];
                       return (
                         <div key={msg.id} className={`flex min-w-0 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                           <div className={`relative w-full max-w-[85%] min-w-0 rounded-xl px-4 py-3 break-words whitespace-pre-wrap overflow-hidden ${
@@ -796,18 +796,14 @@ export default function AgentSidebar({
                             )}
                             <div className="space-y-3">
                               {segments.map((seg, i) => (
-                                seg.type === 'text' ? (
-                                  <div
-                                    key={i}
-                                    className="prose prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-1 break-words whitespace-pre-wrap prose-pre:whitespace-pre-wrap prose-pre:overflow-x-auto"
-                                  >
-                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                      {seg.content}
-                                    </ReactMarkdown>
-                                  </div>
-                                ) : (
-                                  <JsonCollapsible key={i} json={seg.content} />
-                                )
+                                <div
+                                  key={i}
+                                  className="prose prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-1 break-words whitespace-pre-wrap prose-pre:whitespace-pre-wrap prose-pre:overflow-x-auto"
+                                >
+                                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                    {seg.content}
+                                  </ReactMarkdown>
+                                </div>
                               ))}
                             </div>
                             <div className="flex items-center gap-2 mt-2 sticky bottom-0 z-10 bg-[#1b1b1e]/80 backdrop-blur-sm px-2 py-1 rounded-md border-t border-[#0E2E33]">
@@ -872,7 +868,7 @@ export default function AgentSidebar({
                       const shouldShowButton = msg.role === 'assistant' && onInsertToEditor;
                       // Remove internal-only tags from visible content; preserve JSON blocks
                       const cleaned = cleanSOWContent(msg.content);
-                      const segments = msg.role === 'assistant' ? splitMarkdownJsonBlocks(cleaned) : [{ type: 'text' as const, content: msg.content }];
+                      const segments = msg.role === 'assistant' ? [] : [{ type: 'text' as const, content: msg.content }];
                       
                       // Debug logging disabled for performance
                       // if (msg.role === 'assistant') {
@@ -905,20 +901,16 @@ export default function AgentSidebar({
                               </div>
                             )}
                             
-                            {/* Content rendering with JSON collapsible for assistant */}
+                            {/* Content rendering for user messages only (assistant content handled by StreamingThoughtAccordion) */}
                             <div className="space-y-3">
                               {segments.map((seg, i) => (
-                                seg.type === 'text' ? (
-                                  <ReactMarkdown
-                                    key={i}
-                                    remarkPlugins={[remarkGfm]}
-                                    className="prose prose-invert max-w-none text-sm break-words whitespace-pre-wrap prose-pre:whitespace-pre-wrap prose-pre:overflow-x-auto"
-                                  >
-                                    {seg.content}
-                                  </ReactMarkdown>
-                                ) : (
-                                  <JsonCollapsible key={i} json={seg.content} />
-                                )
+                                <ReactMarkdown
+                                  key={i}
+                                  remarkPlugins={[remarkGfm]}
+                                  className="prose prose-invert max-w-none text-sm break-words whitespace-pre-wrap prose-pre:whitespace-pre-wrap prose-pre:overflow-x-auto"
+                                >
+                                  {seg.content}
+                                </ReactMarkdown>
                               ))}
                             </div>
                             

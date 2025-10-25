@@ -3114,28 +3114,12 @@ Ask me questions to get business insights, such as:
           const lastUserMessage = newMessages[newMessages.length - 1]?.content || '';
           const messageLength = lastUserMessage.trim().length;
           const sowKeywords = /(\bstatement of work\b|\bsow\b|\bscope\b|\bdeliverables\b|\bpricing\b|\bbudget\b|\bestimate\b|\bhours\b|\broles\b)/i;
-          const shouldEnforceContract = !isDashboardMode && (messageLength >= 20 || sowKeywords.test(lastUserMessage));
-          const isSowGenerationMode = shouldEnforceContract;
-          
-          const contractSuffix = isSowGenerationMode 
-            ? "IMPORTANT: Your response MUST contain two parts in order: first, a complete SOW narrative written in Markdown, and second, a single ```json code block at the end. The JSON must be a valid object with a \"scopeItems\" array. Each item MUST include: name (string), overview (string), roles (array of { role, hours }), deliverables (string[]), and assumptions (string[]). Do not include rates or totals in JSON."
-            : "";
-          
-          console.log(`📊 [Contract Check] Message length: ${messageLength}, keywordMatch: ${sowKeywords.test(lastUserMessage)}, isSowGenerationMode: ${isSowGenerationMode}, isDashboard: ${isDashboardMode}`);
-          
+          // Do not append per-message contracts; rely on workspace/system prompt
+          console.log(`📊 [Contract Check] Message length: ${messageLength}, keywordMatch: ${sowKeywords.test(lastUserMessage)}, isDashboard: ${isDashboardMode}`);
           const requestMessages = [
-            { role: "system", content: effectiveAgent.systemPrompt },
-            ...newMessages.slice(0, Math.max(0, newMessages.length - 1)).map(m => ({ role: m.role, content: m.content })),
-            // Append enforcement only to the last user message for the AI request (SOW generation only)
-            newMessages.length > 0
-              ? {
-                  role: newMessages[newMessages.length - 1].role,
-                    content: isSowGenerationMode
-                    ? `${newMessages[newMessages.length - 1].content.trim()}\n\n${contractSuffix}`
-                    : newMessages[newMessages.length - 1].content,
-                }
-              : undefined,
-          ].filter(Boolean) as Array<{ role: string; content: string }>;
+            // Do not include a system message; AnythingLLM workspace prompt governs behavior
+            ...newMessages.map(m => ({ role: m.role, content: m.content })),
+          ];
           // ✨ STREAMING MODE: Real-time response with thinking display
           const aiMessageId = `msg${Date.now() + 1}`;
           let accumulatedContent = '';
@@ -3315,27 +3299,12 @@ Ask me questions to get business insights, such as:
           const lastUserMessage = newMessages[newMessages.length - 1]?.content || '';
           const messageLength = lastUserMessage.trim().length;
           const sowKeywords = /(\bstatement of work\b|\bsow\b|\bscope\b|\bdeliverables\b|\bpricing\b|\bbudget\b|\bestimate\b|\bhours\b|\broles\b)/i;
-          const shouldEnforceContract = !isDashboardMode && (messageLength >= 20 || sowKeywords.test(lastUserMessage));
-          const isSowGenerationMode = shouldEnforceContract;
-          
-          const contractSuffix = isSowGenerationMode 
-            ? "IMPORTANT: Your response MUST contain two parts in order: first, a complete SOW narrative written in Markdown, and second, a single ```json code block at the end. The JSON must be a valid object with a \"scopeItems\" array. Each item MUST include: name (string), overview (string), roles (array of { role, hours }), deliverables (string[]), and assumptions (string[]). Do not include rates or totals in JSON."
-            : "";
-          
-          console.log(`📊 [Contract Check] Message length: ${messageLength}, keywordMatch: ${sowKeywords.test(lastUserMessage)}, isSowGenerationMode: ${isSowGenerationMode}, isDashboard: ${isDashboardMode}`);
-          
+          // Do not append per-message contracts; rely on workspace/system prompt
+          console.log(`📊 [Contract Check] Message length: ${messageLength}, keywordMatch: ${sowKeywords.test(lastUserMessage)}, isDashboard: ${isDashboardMode}`);
           const requestMessages = [
-            { role: "system", content: effectiveAgent.systemPrompt },
-            ...newMessages.slice(0, Math.max(0, newMessages.length - 1)).map(m => ({ role: m.role, content: m.content })),
-            newMessages.length > 0
-              ? {
-                  role: newMessages[newMessages.length - 1].role,
-                  content: isSowGenerationMode
-                    ? `${newMessages[newMessages.length - 1].content.trim()}\n\n${contractSuffix}`
-                    : newMessages[newMessages.length - 1].content,
-                }
-              : undefined,
-          ].filter(Boolean) as Array<{ role: string; content: string }>;
+            // Do not include a system message; AnythingLLM workspace prompt governs behavior
+            ...newMessages.map(m => ({ role: m.role, content: m.content })),
+          ];
           const response = await fetch(endpoint, {
             method: "POST",
             headers: {

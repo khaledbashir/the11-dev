@@ -32,8 +32,8 @@ export async function POST(request: NextRequest) {
     console.log('//////////////////////////////////////////////////');
     // ============================================================================
     
-    const body = requestBody;
-    let { messages, workspaceSlug, workspace, threadSlug, mode = 'chat', model } = body;
+  const body = requestBody;
+  let { messages, workspaceSlug, workspace, threadSlug, mode = 'chat', model } = body;
     
     // Use 'workspace' if provided, otherwise fall back to 'workspaceSlug'
     const effectiveWorkspaceSlug = workspace || workspaceSlug;
@@ -61,12 +61,8 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Get the system prompt (if provided)
-    const systemMessage = messages.find((m: any) => m.role === 'system');
-    const systemPrompt = systemMessage?.content || '';
-    
-    // Get the last user message
-    const lastMessage = messages[messages.length - 1];
+  // Get the last user message
+  const lastMessage = messages[messages.length - 1];
     if (!lastMessage || lastMessage.role !== 'user') {
       const errorMsg = 'No user message provided. Last message must be from user.';
       return new Response(
@@ -75,46 +71,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-  // Build message to send
-  let messageToSend = lastMessage.content;
-
-    // Detect casual chat vs explicit SOW request to avoid forcing generation on greetings
-    const isSowWorkspace = effectiveWorkspaceSlug && !effectiveWorkspaceSlug.includes('master-dashboard');
-    const lower = (messageToSend || '').toLowerCase().trim();
-    const isCasual = [
-      'hi', 'hello', 'hey', 'yo', 'sup', 'wassup', 'how are you', 'who are you', 'help', 'what can you do', 'test'
-    ].some(ph => lower === ph || lower.startsWith(ph + ' '));
-    const explicitSowKeywords = [
-      'generate sow', 'create sow', 'write sow', 'draft sow', 'scope of work', 'statement of work'
-    ];
-    const isExplicitSowRequest = explicitSowKeywords.some(k => lower.includes(k));
-
-    // Enforce workspace-specific behavior with lightweight system overrides
-    if (!isSowWorkspace) {
-      // Master Dashboard: force analytics/query behavior and forbid SOW generation
-      mode = 'query';
-      messageToSend = [
-        '[[DASHBOARD_SYSTEM_OVERRIDES]]',
-        'You are in the Master Dashboard analytics workspace. You ONLY analyze existing embedded SOW knowledge to answer business/analytics questions. Never draft or generate a new SOW, proposal, or template. Keep answers concise, numeric where possible, and reference specific SOW titles when applicable.',
-        '',
-        '[[USER]]',
-        messageToSend
-      ].join('\n');
-      } else {
-      // SOW workspaces: only load the heavy Architect context when explicitly asked
-      if (systemPrompt && isExplicitSowRequest) {
-        messageToSend = `[SYSTEM CONTEXT]\n${systemPrompt}\n\n[USER REQUEST]\n${messageToSend}`;
-      } else if (!isExplicitSowRequest) {
-        // Add a soft safety rail to avoid accidental SOW drafting on casual prompts
-        messageToSend = [
-          '[[ARCHITECT_SAFETY_RAILS]]',
-          'Only generate a SOW when the user explicitly requests it (e.g., "generate/create/draft a SOW" or provides a clear project brief). For greetings or general questions, respond briefly, explain what you can do, and ask clarifying questions. Do NOT output SOW structure unless explicitly asked.',
-          '',
-          '[[USER]]',
-          messageToSend
-        ].join('\n');
-      }
-    }
+    // Pass the user's message through without adding or appending extra instructions.
+    // The workspace's system prompt governs behavior; do not inject per-message rails here.
+    const messageToSend: string = typeof lastMessage.content === 'string' ? lastMessage.content : '';
     
     if (!messageToSend || typeof messageToSend !== 'string') {
       const errorMsg = 'Message content must be a non-empty string.';
@@ -153,7 +112,7 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         message: messageToSend,
-        mode, // 'chat' or 'query'
+        mode, // 'chat' or 'query' (provided by caller)
       }),
     });
 

@@ -2,7 +2,7 @@
 // Handles workspace creation, document embedding, and chat integration
 
 import SOCIAL_GARDEN_KNOWLEDGE_BASE from './social-garden-knowledge-base';
-import { THE_ARCHITECT_SYSTEM_PROMPT, getArchitectPromptWithRateCard } from './knowledge-base';
+import { THE_ARCHITECT_V2_PROMPT } from './knowledge-base';
 import { ROLES } from './rateCard';
 
 // Get AnythingLLM URL from environment (NEXT_PUBLIC_ANYTHINGLLM_URL must be set in .env)
@@ -580,7 +580,7 @@ Metadata:
     // For SOW workspaces: Use The Architect prompt with dynamically injected rate card
     // For other workspaces: Use client-facing prompt for Q&A
     const prompt = isSOWWorkspace 
-      ? getArchitectPromptWithRateCard()  // ✅ NOW USING THE NEW INJECTION FUNCTION
+      ? THE_ARCHITECT_V2_PROMPT
       : this.getClientFacingPrompt(clientName);
 
     try {
