@@ -359,11 +359,6 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
       continue;
     }
 
-    // Auto-insert pricing table BEFORE "Project Phases" section if not already inserted
-    if ((line.trim() === '## Project Phases' || line.trim() === '### Project Phases') && !pricingTableInserted && suggestedRoles.length > 0) {
-      insertPricingTable();
-    }
-
     if (line.startsWith('# ')) {
       const textContent = parseTextWithFormatting(line.substring(2));
       if (textContent.length > 0) {
