@@ -628,6 +628,27 @@ export default function Page() {
     initDashboard();
   }, []);
 
+  // Initialize dashboard with welcome message on app load
+  useEffect(() => {
+    if (viewMode === 'dashboard' && chatMessages.length === 0) {
+      const welcomeMessage: ChatMessage = {
+        id: `welcome-${Date.now()}`,
+        role: 'assistant',
+        content: `Welcome to the Master SOW Analytics assistant. I have access to all embedded SOWs. 
+
+Ask me questions to get business insights, such as:
+• "What is our total revenue from HubSpot projects?"
+• "Which services were included in the RealEstateTT SOW?"
+• "How many SOWs did we create this month?"
+• "What's the breakdown of services across all clients?"
+
+**Important:** I can only analyze and query existing SOWs. I cannot create new SOWs. For SOW generation, use the Editor mode with The Architect agent.`,
+        timestamp: Date.now(),
+      };
+      setChatMessages([welcomeMessage]);
+    }
+  }, [viewMode]);
+
   // Check for OAuth callback on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);

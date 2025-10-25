@@ -2,7 +2,7 @@
 // Handles workspace creation, document embedding, and chat integration
 
 import SOCIAL_GARDEN_KNOWLEDGE_BASE from './social-garden-knowledge-base';
-import { THE_ARCHITECT_SYSTEM_PROMPT } from './knowledge-base';
+import { THE_ARCHITECT_SYSTEM_PROMPT, getArchitectPromptWithRateCard } from './knowledge-base';
 
 // Get AnythingLLM URL from environment (NEXT_PUBLIC_ANYTHINGLLM_URL must be set in .env)
 // Falls back to Ahmad's instance for local development
@@ -434,10 +434,10 @@ Metadata:
    * This prompt is used in the embed widget on the client portal
    */
   async setWorkspacePrompt(workspaceSlug: string, clientName?: string, isSOWWorkspace: boolean = true): Promise<boolean> {
-    // For SOW workspaces: Use The Architect prompt for generation
+    // For SOW workspaces: Use The Architect prompt with dynamically injected rate card
     // For other workspaces: Use client-facing prompt for Q&A
     const prompt = isSOWWorkspace 
-      ? THE_ARCHITECT_SYSTEM_PROMPT
+      ? getArchitectPromptWithRateCard()  // ✅ NOW USING THE NEW INJECTION FUNCTION
       : this.getClientFacingPrompt(clientName);
 
     try {

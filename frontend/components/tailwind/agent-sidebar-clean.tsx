@@ -766,9 +766,9 @@ export default function AgentSidebar({
                   {chatMessages.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full py-8">
                       <Bot className="h-16 w-16 text-gray-600 mb-3" />
-                      <h3 className="text-xl font-semibold text-white mb-2">Ask About Your Dashboard</h3>
+                      <h3 className="text-xl font-semibold text-white mb-2">Master SOW Analytics</h3>
                       <p className="text-sm text-gray-400 text-center max-w-xs">
-                        Ask questions about your SOWs, metrics, clients, or get insights from your dashboard data.
+                        Query your embedded SOWs and get business insights. I cannot create new SOWs.
                       </p>
                     </div>
                   ) : (
@@ -835,7 +835,7 @@ export default function AgentSidebar({
                         }
                       }
                     }}
-                    placeholder="Ask about your dashboard..."
+                    placeholder="Ask a question about an existing SOW..."
                     className="min-h-[80px] resize-none bg-[#1b1b1e] border-[#0E2E33] text-white placeholder:text-gray-500"
                     disabled={isLoading}
                   />
