@@ -5,11 +5,45 @@ const ANYTHINGLLM_API_KEY = process.env.ANYTHINGLLM_API_KEY || '0G0WTZ3-6ZX4D20-
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-  let { messages, workspaceSlug, workspace, threadSlug, mode = 'chat', model } = body;
+    // ============================================================================
+    // CRITICAL DEBUG: INCOMING /stream-chat PAYLOAD
+    // ============================================================================
+    const requestBody = await request.json();
+    
+    console.log('//////////////////////////////////////////////////');
+    console.log('// CRITICAL DEBUG: INCOMING /stream-chat PAYLOAD //');
+    console.log('//////////////////////////////////////////////////');
+    console.log('FULL REQUEST BODY:');
+    console.log(JSON.stringify(requestBody, null, 2));
+    console.log('');
+    console.log('KEY FIELDS:');
+    console.log('  workspace:', requestBody.workspace);
+    console.log('  workspaceSlug:', requestBody.workspaceSlug);
+    console.log('  threadSlug:', requestBody.threadSlug);
+    console.log('  mode:', requestBody.mode);
+    console.log('  model:', requestBody.model);
+    console.log('  messages.length:', requestBody.messages?.length);
+    if (requestBody.messages && requestBody.messages.length > 0) {
+      console.log('  messages[0].role:', requestBody.messages[0].role);
+      console.log('  messages[0].content (first 200 chars):', requestBody.messages[0].content?.substring(0, 200));
+      console.log('  messages[messages.length-1].role:', requestBody.messages[requestBody.messages.length - 1].role);
+      console.log('  messages[messages.length-1].content (first 200 chars):', requestBody.messages[requestBody.messages.length - 1].content?.substring(0, 200));
+    }
+    console.log('//////////////////////////////////////////////////');
+    // ============================================================================
+    
+    const body = requestBody;
+    let { messages, workspaceSlug, workspace, threadSlug, mode = 'chat', model } = body;
     
     // Use 'workspace' if provided, otherwise fall back to 'workspaceSlug'
     const effectiveWorkspaceSlug = workspace || workspaceSlug;
+    
+    console.log('');
+    console.log('=== WORKSPACE RESOLUTION ===');
+    console.log('workspace param:', workspace);
+    console.log('workspaceSlug param:', workspaceSlug);
+    console.log('effectiveWorkspaceSlug:', effectiveWorkspaceSlug);
+    console.log('');
     
     if (!effectiveWorkspaceSlug) {
       const errorMsg = 'No workspace specified. Must provide workspace or workspaceSlug parameter.';
@@ -99,6 +133,17 @@ export async function POST(request: NextRequest) {
       // Workspace-level streaming chat (legacy behavior)
       endpoint = `${ANYTHINGLLM_URL}/api/v1/workspace/${effectiveWorkspaceSlug}/stream-chat`;
     }
+    
+    console.log('');
+    console.log('=== ABOUT TO SEND TO ANYTHINGLLM ===');
+    console.log('Endpoint:', endpoint);
+    console.log('Mode:', mode);
+    console.log('ThreadSlug:', threadSlug);
+    console.log('Message to send (first 500 chars):');
+    console.log(messageToSend.substring(0, 500));
+    console.log('...');
+    console.log('=== END DEBUG ===');
+    console.log('');
     
     const response = await fetch(endpoint, {
       method: 'POST',
