@@ -979,6 +979,7 @@ Ask me questions to get business insights, such as:
 
   useEffect(() => {
     // 🌱 Load GARDNERS from AnythingLLM (not old agents table!)
+    // This ONLY loads the list of available agents, does NOT set currentAgentId yet
     const loadGardnersAsAgents = async () => {
       try {
         console.log('🌱 Loading Gardners from AnythingLLM...');
@@ -997,24 +998,8 @@ Ask me questions to get business insights, such as:
         }));
         
         setAgents(gardnerAgents);
-        
-        // Set default to "GEN - The Architect" (priority), then any gardner with "gen", then first available
-        const genArchitect = gardnerAgents.find(a => 
-          a.name === 'GEN - The Architect' || a.id === 'gen-the-architect'
-        );
-        const anyGenGardner = gardnerAgents.find(a => a.id.includes('gen'));
-        const defaultAgentId = genArchitect?.id || anyGenGardner?.id || gardnerAgents[0]?.id || 'gen-the-architect';
-        
-        console.log(`🎯 [Agent Selection] Default agent set to: ${defaultAgentId}`);
-        
-        // Load current agent preference from database
-        const prefResponse = await fetch('/api/preferences/current_agent_id');
-        if (prefResponse.ok) {
-          const { value } = await prefResponse.json();
-          setCurrentAgentId(value || defaultAgentId);
-        } else {
-          setCurrentAgentId(defaultAgentId);
-        }
+        // ⚠️ CRITICAL FIX: Do NOT set currentAgentId here!
+        // It will be set in the next useEffect after we know the context (view mode, workspace, etc.)
         
       } catch (error) {
         console.error('❌ Failed to load Gardners:', error);
@@ -1026,6 +1011,55 @@ Ask me questions to get business insights, such as:
     
     loadGardnersAsAgents();
   }, []);
+
+  // ⚠️ CRITICAL FIX: Separate useEffect for agent selection that depends on context
+  // This ensures we don't set the agent until we know where we are (dashboard vs editor)
+  useEffect(() => {
+    if (agents.length === 0 || !mounted) return; // Wait for agents to load and app to be ready
+    
+    // Determine which agent to use based on current context
+    const determineAndSetAgent = async () => {
+      let agentIdToUse: string | null = null;
+      
+      if (viewMode === 'dashboard') {
+        // In dashboard mode, we should NOT use the default (gen-the-architect)
+        // The dashboard will handle its own agent selection based on dashboardChatTarget
+        console.log('🎯 [Agent Selection] In DASHBOARD mode - agent managed by dashboard component');
+        setCurrentAgentId(null); // Let dashboard manage its own agent
+      } else if (viewMode === 'editor' && currentDocId) {
+        // In editor mode, check if there's a saved preference
+        try {
+          const prefResponse = await fetch('/api/preferences/current_agent_id');
+          if (prefResponse.ok) {
+            const { value } = await prefResponse.json();
+            if (value && agents.find(a => a.id === value)) {
+              agentIdToUse = value;
+              console.log(`🎯 [Agent Selection] Using saved agent preference: ${value}`);
+            }
+          }
+        } catch (err) {
+          console.error('Failed to load agent preference:', err);
+        }
+        
+        // If no saved preference, use default only if in editor mode with a document
+        if (!agentIdToUse) {
+          const genArchitect = agents.find(a => 
+            a.name === 'GEN - The Architect' || a.id === 'gen-the-architect'
+          );
+          agentIdToUse = genArchitect?.id || agents[0]?.id || null;
+          console.log(`🎯 [Agent Selection] In EDITOR mode - using default agent: ${agentIdToUse}`);
+        }
+        
+        setCurrentAgentId(agentIdToUse);
+      } else {
+        // No specific context yet, don't set an agent
+        console.log('🎯 [Agent Selection] No context yet - deferring agent selection');
+        setCurrentAgentId(null);
+      }
+    };
+    
+    determineAndSetAgent();
+  }, [agents, viewMode, currentDocId, mounted]);
 
   // Save current agent preference to database
   useEffect(() => {
