@@ -3060,16 +3060,24 @@ Ask me questions to get business insights, such as:
         const streamEndpoint = endpoint.includes('/stream-chat') ? endpoint : endpoint.replace('/chat', '/stream-chat');
         
         if (shouldStream) {
-          // 🔒 Enforce JSON contract by appending instruction to the last user prompt (request-only)
-          const contractSuffix = "IMPORTANT: Your response MUST contain two parts in order: first, a complete SOW narrative written in Markdown, and second, a single ```json code block at the end. The JSON must be a valid object with a \"scopeItems\" array. Each item MUST include: name (string), overview (string), roles (array of { role, hours }), deliverables (string[]), and assumptions (string[]). Do not include rates or totals in JSON.";
+          // 🔒 CONDITIONAL: Only enforce JSON contract in SOW generation mode (not dashboard queries)
+          // The contract suffix should ONLY be appended when the user is submitting a project brief,
+          // not for casual greetings or questions
+          const isSowGenerationMode = !isDashboardMode;
+          const contractSuffix = isSowGenerationMode 
+            ? "IMPORTANT: Your response MUST contain two parts in order: first, a complete SOW narrative written in Markdown, and second, a single ```json code block at the end. The JSON must be a valid object with a \"scopeItems\" array. Each item MUST include: name (string), overview (string), roles (array of { role, hours }), deliverables (string[]), and assumptions (string[]). Do not include rates or totals in JSON."
+            : "";
+          
           const requestMessages = [
             { role: "system", content: effectiveAgent.systemPrompt },
             ...newMessages.slice(0, Math.max(0, newMessages.length - 1)).map(m => ({ role: m.role, content: m.content })),
-            // Append enforcement only to the last user message for the AI request
+            // Append enforcement only to the last user message for the AI request (SOW generation only)
             newMessages.length > 0
               ? {
                   role: newMessages[newMessages.length - 1].role,
-                  content: `${newMessages[newMessages.length - 1].content.trim()}\n\n${contractSuffix}`,
+                  content: isSowGenerationMode
+                    ? `${newMessages[newMessages.length - 1].content.trim()}\n\n${contractSuffix}`
+                    : newMessages[newMessages.length - 1].content,
                 }
               : undefined,
           ].filter(Boolean) as Array<{ role: string; content: string }>;
@@ -3173,7 +3181,11 @@ Ask me questions to get business insights, such as:
                   
                   // Handle different message types from AnythingLLM stream
                   if (data.type === 'textResponseChunk' && data.textResponse) {
-                    accumulatedContent += data.textResponse;
+                    // 🧠 Strip <thinking> tags before accumulating content
+                    // The AI may wrap internal monologue in <thinking></thinking> tags
+                    // We extract and discard these, only keeping the actual response
+                    const cleanedText = data.textResponse.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '');
+                    accumulatedContent += cleanedText;
                     
                     // Update the message content in real-time
                     setChatMessages(prev =>
@@ -3185,7 +3197,10 @@ Ask me questions to get business insights, such as:
                     );
                   } else if (data.type === 'textResponse') {
                     // Final response (fallback for non-chunked)
-                    accumulatedContent = data.content || data.textResponse || '';
+                    // 🧠 Also strip <thinking> tags from final responses
+                    let content = data.content || data.textResponse || '';
+                    content = content.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '');
+                    accumulatedContent = content;
                     setChatMessages(prev =>
                       prev.map(msg =>
                         msg.id === aiMessageId
@@ -3293,9 +3308,14 @@ Ask me questions to get business insights, such as:
                           const jsonStr2 = line2.substring(6);
                           const data2 = JSON.parse(jsonStr2);
                           if (data2.type === 'textResponseChunk' && data2.textResponse) {
-                            accumulatedJson += data2.textResponse;
+                            // 🧠 Strip <thinking> tags from follow-up chunks too
+                            const cleanedText2 = data2.textResponse.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '');
+                            accumulatedJson += cleanedText2;
                           } else if (data2.type === 'textResponse' && (data2.content || data2.textResponse)) {
-                            accumulatedJson += (data2.content || data2.textResponse || '');
+                            // 🧠 Strip <thinking> tags from follow-up final response
+                            let content2 = data2.content || data2.textResponse || '';
+                            content2 = content2.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '');
+                            accumulatedJson += content2;
                           }
                         } catch {}
                       }
@@ -3323,15 +3343,21 @@ Ask me questions to get business insights, such as:
           }
         } else {
           // 📦 NON-STREAMING MODE: Standard fetch for OpenRouter
-          // 🔒 Enforce JSON contract (request-only) on the last user message
-          const contractSuffix = "IMPORTANT: Your response MUST contain two parts in order: first, a complete SOW narrative written in Markdown, and second, a single ```json code block at the end. The JSON must be a valid object with a \"scopeItems\" array. Each item MUST include: name (string), overview (string), roles (array of { role, hours }), deliverables (string[]), and assumptions (string[]). Do not include rates or totals in JSON.";
+          // 🔒 CONDITIONAL: Only enforce JSON contract in SOW generation mode (not dashboard queries)
+          const isSowGenerationMode = !isDashboardMode;
+          const contractSuffix = isSowGenerationMode 
+            ? "IMPORTANT: Your response MUST contain two parts in order: first, a complete SOW narrative written in Markdown, and second, a single ```json code block at the end. The JSON must be a valid object with a \"scopeItems\" array. Each item MUST include: name (string), overview (string), roles (array of { role, hours }), deliverables (string[]), and assumptions (string[]). Do not include rates or totals in JSON."
+            : "";
+          
           const requestMessages = [
             { role: "system", content: effectiveAgent.systemPrompt },
             ...newMessages.slice(0, Math.max(0, newMessages.length - 1)).map(m => ({ role: m.role, content: m.content })),
             newMessages.length > 0
               ? {
                   role: newMessages[newMessages.length - 1].role,
-                  content: `${newMessages[newMessages.length - 1].content.trim()}\n\n${contractSuffix}`,
+                  content: isSowGenerationMode
+                    ? `${newMessages[newMessages.length - 1].content.trim()}\n\n${contractSuffix}`
+                    : newMessages[newMessages.length - 1].content,
                 }
               : undefined,
           ].filter(Boolean) as Array<{ role: string; content: string }>;
