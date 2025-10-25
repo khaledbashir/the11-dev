@@ -788,6 +788,7 @@ export default function AgentSidebar({
                                   content={msg.content}
                                   messageId={msg.id}
                                   isStreaming={streamingMessageId === msg.id}
+                                  onInsertClick={onInsertToEditor ? (content) => onInsertToEditor(content) : undefined}
                                 />
                               </div>
                             )}
@@ -896,6 +897,7 @@ export default function AgentSidebar({
                                   content={msg.content}
                                   messageId={msg.id}
                                   isStreaming={streamingMessageId === msg.id}
+                                  onInsertClick={onInsertToEditor ? (content) => onInsertToEditor(content) : undefined}
                                 />
                               </div>
                             )}

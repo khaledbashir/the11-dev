@@ -707,8 +707,13 @@ Ask me questions to get business insights, such as:
     console.log('Loading workspace data, mounted:', mounted);
     if (!mounted) return;
     
+    // ⚠️ CRITICAL FIX: Use AbortController to prevent race conditions from double render
+    // In development with React.StrictMode, components mount twice. This controller
+    // ensures only the latest request completes, preventing duplicate data loads.
+    const abortController = new AbortController();
+    
     const loadData = async () => {
-      console.log('Loading folders and SOWs from database...');
+      console.log('📂 Loading folders and SOWs from database...');
       // No localStorage: read initial doc from URL query
       const urlParams = new URLSearchParams(window.location.search);
       const initialDocId = urlParams.get('docId');
@@ -716,14 +721,14 @@ Ask me questions to get business insights, such as:
       
       try {
         // LOAD FOLDERS FROM DATABASE
-        const foldersResponse = await fetch('/api/folders');
+        const foldersResponse = await fetch('/api/folders', { signal: abortController.signal });
         const foldersData = await foldersResponse.json();
-        console.log('Loaded folders from database:', foldersData.length);
+        console.log('✅ Loaded folders from database:', foldersData.length);
         
         // LOAD SOWS FROM DATABASE
-        const sowsResponse = await fetch('/api/sow/list');
+        const sowsResponse = await fetch('/api/sow/list', { signal: abortController.signal });
         const { sows: dbSOWs } = await sowsResponse.json();
-        console.log('Loaded SOWs from database:', dbSOWs.length);
+        console.log('✅ Loaded SOWs from database:', dbSOWs.length);
         
         const workspacesWithSOWs: Workspace[] = [];
         const documentsFromDB: Document[] = [];
@@ -731,7 +736,7 @@ Ask me questions to get business insights, such as:
         
         // Create workspace objects with SOWs from database
         for (const folder of foldersData) {
-          console.log(`Processing folder: ${folder.name} (ID: ${folder.id})`);
+          console.log(`📁 Processing folder: ${folder.name} (ID: ${folder.id})`);
           
           // Find SOWs that belong to this folder
           const folderSOWs = dbSOWs.filter((sow: any) => sow.folder_id === folder.id);
@@ -744,7 +749,7 @@ Ask me questions to get business insights, such as:
             service_line: sow.service_line || null,
           }));
           
-          console.log(`   Found ${sows.length} SOWs in this folder`);
+          console.log(`   ✓ Found ${sows.length} SOWs in this folder`);
           
           // Add to workspaces array
           workspacesWithSOWs.push({
@@ -791,8 +796,8 @@ Ask me questions to get business insights, such as:
           }
         }
         
-        console.log('Total workspaces loaded:', workspacesWithSOWs.length);
-        console.log('Total SOWs loaded:', documentsFromDB.length);
+        console.log('✅ Total workspaces loaded:', workspacesWithSOWs.length);
+        console.log('✅ Total SOWs loaded:', documentsFromDB.length);
         
         // Update state
         setWorkspaces(workspacesWithSOWs);
@@ -820,7 +825,12 @@ Ask me questions to get business insights, such as:
         }
         
       } catch (error) {
-        console.error('Error loading data:', error);
+        // Don't log abort errors - they're expected cleanup
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.log('📂 Data loading cancelled (previous request superseded)');
+          return;
+        }
+        console.error('❌ Error loading data:', error);
         toast.error('Failed to load workspaces and SOWs');
       }
       // Apply initial selection from URL if provided
@@ -831,6 +841,12 @@ Ask me questions to get business insights, such as:
     };
     
     loadData();
+    
+    // Cleanup: abort any pending requests if component unmounts or mounted changes
+    return () => {
+      console.log('🧹 Cleaning up workspace data loading');
+      abortController.abort();
+    };
   }, [mounted]);
 
   // Note: SOWs are now saved to database via API calls, not localStorage
@@ -3284,102 +3300,10 @@ Ask me questions to get business insights, such as:
             }
           } catch {}
 
-          // ✅ ENFORCE JSON CONTRACT: If the AI didn't include a scopeItems JSON block,
-          // automatically ask for it in a follow-up message and append to the assistant reply.
-          const jsonMatch = accumulatedContent.match(/```json\s*([\s\S]*?)\s*```/m);
-          const hasScopeItemsJson = !!(jsonMatch && /\"scopeItems\"\s*:\s*\[/m.test(jsonMatch[1] || ''));
-          if (!hasScopeItemsJson && useAnythingLLM && workspaceSlug) {
-            try {
-              const followUpPrompt = [
-                'FINAL MANDATORY STEP: Return ONLY a JSON code block with this exact schema (no prose).',
-                '```json',
-                '{',
-                '  \"scopeItems\": [',
-                '    {',
-                '      \"name\": \"<Phase Name>\",',
-                '      \"overview\": \"<Short overview>\",',
-                '      \"roles\": [ { \"role\": \"<Valid role from rate card>\", \"hours\": <number> } ],',
-                '      \"deliverables\": [\"...\"],',
-                '      \"assumptions\": [\"...\"]',
-                '    }',
-                '  ]',
-                '}',
-                '```',
-                '',
-                'Constraints:',
-                '- The phases must align with the narrative you provided earlier.',
-                '- Each phase MUST include roles[] with role names from the Social Garden rate card and hours only (no rates or totals).'
-              ].join('\n');
-
-              // Stream a short follow-up request on the same thread to obtain the JSON
-              const followUpResponse = await fetch(streamEndpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                signal: controller.signal,
-                body: JSON.stringify({
-                  model: effectiveAgent.model,
-                  workspace: workspaceSlug,
-                  threadSlug: threadSlugToUse,
-                  attachments: [],
-                  messages: [
-                    { role: 'user', content: followUpPrompt }
-                  ],
-                }),
-              });
-
-              if (followUpResponse.ok) {
-                const reader2 = followUpResponse.body?.getReader();
-                const decoder2 = new TextDecoder();
-                let buffer2 = '';
-                let accumulatedJson = '';
-                if (reader2) {
-                  let done2 = false;
-                  while (!done2) {
-                    const { done, value } = await reader2.read();
-                    done2 = done;
-                    if (value) {
-                      buffer2 += decoder2.decode(value, { stream: true });
-                      const lines2 = buffer2.split('\n');
-                      buffer2 = lines2.pop() || '';
-                      for (const line2 of lines2) {
-                        if (!line2.trim() || !line2.startsWith('data: ')) continue;
-                        try {
-                          const jsonStr2 = line2.substring(6);
-                          const data2 = JSON.parse(jsonStr2);
-                          if (data2.type === 'textResponseChunk' && data2.textResponse) {
-                            // 🧠 Strip <thinking> tags from follow-up chunks too
-                            const cleanedText2 = data2.textResponse.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '');
-                            accumulatedJson += cleanedText2;
-                          } else if (data2.type === 'textResponse' && (data2.content || data2.textResponse)) {
-                            // 🧠 Strip <thinking> tags from follow-up final response
-                            let content2 = data2.content || data2.textResponse || '';
-                            content2 = content2.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '');
-                            accumulatedJson += content2;
-                          }
-                        } catch {}
-                      }
-                    }
-                  }
-                }
-
-                // Extract JSON code block and append to assistant message
-                const jsonBlockMatch = accumulatedJson.match(/```json\s*([\s\S]*?)\s*```/m);
-                if (jsonBlockMatch && jsonBlockMatch[0]) {
-                  const appendBlock = `\n\n${jsonBlockMatch[0]}\n`;
-                  accumulatedContent += appendBlock;
-                  // Update the last assistant message to include the JSON block
-                  setChatMessages(prev => prev.map(msg => msg.id === aiMessageId ? { ...msg, content: accumulatedContent } : msg));
-                  console.log('✅ Appended suggestedRoles JSON block obtained via follow-up prompt.');
-                } else {
-                  console.warn('⚠️ Follow-up request did not return a valid JSON code block for suggestedRoles.');
-                }
-              } else {
-                console.warn('⚠️ Follow-up stream request failed while attempting to obtain suggestedRoles JSON.');
-              }
-            } catch (e) {
-              console.warn('⚠️ Error while attempting follow-up JSON extraction:', e);
-            }
-          }
+          // ⚠️ REMOVED TWO-STEP AUTO-CORRECT LOGIC
+          // The AI should now return complete SOW narrative + JSON in a single response
+          // No follow-up prompt is needed if the initial prompt is clear enough
+          console.log('✅ Single-step AI generation complete - no follow-up needed');
         } else {
           // 📦 NON-STREAMING MODE: Standard fetch for OpenRouter
           // 🔒 CRITICAL FIX: Only enforce JSON contract for substantial SOW generation messages
