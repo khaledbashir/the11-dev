@@ -2,7 +2,7 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import ExcelJS from 'exceljs';
-import { ROLES } from '@/components/tailwind/extensions/editable-pricing-table';
+import { ROLES } from '@/lib/rateCard';
 
 export interface PricingRow {
   role: string;

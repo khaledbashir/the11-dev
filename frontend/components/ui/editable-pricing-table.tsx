@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useCallback } from "react";
-import { socialGardenRateCard } from "@/lib/rateCard";
+import { RATE_CARD_MAP } from "@/lib/rateCard";
 import {
   DndContext,
   closestCenter,
@@ -57,23 +57,23 @@ const initialRoles = [
     id: `role-${Date.now()}-1`,
     role: "Tech - Head Of - Senior Project Management",
     hours: 0,
-    rate: socialGardenRateCard["Tech - Head Of - Senior Project Management"],
+    rate: RATE_CARD_MAP["Tech - Head Of - Senior Project Management"] ?? 0,
   },
   {
     id: `role-${Date.now()}-2`,
-    role: "Project Coordination",
+    role: "Tech - Delivery - Project Coordination",
     hours: 0,
-    rate: socialGardenRateCard["Project Coordination"],
+    rate: RATE_CARD_MAP["Tech - Delivery - Project Coordination"] ?? 0,
   },
   {
     id: `role-${Date.now()}-3`,
-    role: "Account Management",
+    role: "Account Management - (Account Manager)",
     hours: 0,
-    rate: socialGardenRateCard["Account Management"],
+    rate: RATE_CARD_MAP["Account Management - (Account Manager)"] ?? 0,
   },
 ];
 
-const roleOptions = Object.keys(socialGardenRateCard);
+const roleOptions = Object.keys(RATE_CARD_MAP);
 
 const formatCurrency = (value: number) => `AUD ${value.toFixed(2)}`;
 
@@ -141,10 +141,10 @@ export const EditablePricingTable = () => {
         const newIndex = items.findIndex((item) => item.id === over.id);
         let newItems = arrayMove(items, oldIndex, newIndex);
 
-        // Auto-sort "Account Management" to the bottom
-        const accountManagementRow = newItems.find(item => item.role === "Account Management");
+        // Auto-sort mandatory Account Management role to the bottom
+        const accountManagementRow = newItems.find(item => item.role === "Account Management - (Account Manager)");
         if (accountManagementRow) {
-            newItems = newItems.filter(item => item.role !== "Account Management");
+            newItems = newItems.filter(item => item.role !== "Account Management - (Account Manager)");
             newItems.push(accountManagementRow);
         }
         
@@ -197,7 +197,7 @@ export const EditablePricingTable = () => {
                                 onSelect={() => {
                                   handleUpdateRow(row.id, {
                                     role,
-                                    rate: socialGardenRateCard[role as keyof typeof socialGardenRateCard],
+                                    rate: RATE_CARD_MAP[role] ?? 0,
                                   });
                                   setOpenPopover(null);
                                 }}
