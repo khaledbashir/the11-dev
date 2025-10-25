@@ -37,7 +37,7 @@ import {
 import type { ArchitectSOW } from "@/lib/export-utils";
 import { extractSOWStructuredJson } from "@/lib/export-utils";
 import { anythingLLM } from "@/lib/anythingllm";
-import { ROLES } from "@/components/tailwind/extensions/editable-pricing-table";
+import { ROLES } from "@/lib/rateCard";
 import { getWorkspaceForAgent } from "@/lib/workspace-config";
 
 // API key is now handled server-side in /api/chat route
@@ -233,12 +233,12 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
     // Minimal safe default rows using core roles with hours=0 and known rates
     const find = (name: string) => ROLES.find(r => r.name === name);
     const head = find('Tech - Head Of - Senior Project Management');
-    const pc = find('Project Coordination');
-    const am = find('Account Management');
+    const pc = find('Tech - Delivery - Project Coordination');
+    const am = find('Account Management - (Account Manager)');
     return [
       { role: head?.name || 'Tech - Head Of - Senior Project Management', description: 'Strategic oversight', hours: 0, rate: head?.rate || 365 },
-      { role: pc?.name || 'Project Coordination', description: 'Delivery coordination', hours: 0, rate: pc?.rate || 140 },
-      { role: am?.name || 'Account Management', description: 'Client comms & governance', hours: 0, rate: am?.rate || 150 },
+      { role: pc?.name || 'Tech - Delivery - Project Coordination', description: 'Delivery coordination', hours: 0, rate: pc?.rate || 110 },
+      { role: am?.name || 'Account Management - (Account Manager)', description: 'Client comms & governance', hours: 0, rate: am?.rate || 180 },
     ];
   };
 
@@ -288,24 +288,24 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
     // ENFORCEMENT 2: Ensure Project Coordination exists
     const hasProjectCoord = pricingRows.some(r => normalize(r.role).includes('project coordination'));
     if (!hasProjectCoord) {
-      const pc = ROLES.find(r => r.name === 'Project Coordination');
+      const pc = ROLES.find(r => r.name === 'Tech - Delivery - Project Coordination');
       pricingRows.splice(1, 0, {
-        role: pc?.name || 'Project Coordination',
+        role: pc?.name || 'Tech - Delivery - Project Coordination',
         description: 'Delivery coordination',
         hours: 6,
-        rate: pc?.rate || 140,
+        rate: pc?.rate || 110,
       });
     }
 
     // ENFORCEMENT 3: Ensure Account Management role exists and is LAST
     const hasAccountManagement = pricingRows.some(r => normalize(r.role).includes('account management'));
     if (!hasAccountManagement) {
-      const am = ROLES.find(r => r.name === 'Account Management');
+      const am = ROLES.find(r => r.name === 'Account Management - (Account Manager)');
       pricingRows.push({
-        role: am?.name || 'Account Management',
+        role: am?.name || 'Account Management - (Account Manager)',
         description: 'Client comms & governance',
         hours: 8,
-        rate: am?.rate || 150,
+        rate: am?.rate || 180,
       });
     } else {
       // Move Account Management to the end
