@@ -616,45 +616,44 @@ export default function AgentSidebar({
 
   return (
     <div className="h-full w-full min-w-0 bg-[#0e0f0f] border-l border-[#0E2E33] overflow-hidden flex flex-col">
-      <div className="p-3 border-b border-[#0E2E33] bg-[#0e0f0f]">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold text-white">
-            {isDashboardMode ? "Chat" : "AI Agent Chat"}
+      <div className="p-4 border-b border-[#0E2E33] bg-[#0e0f0f] flex-shrink-0">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-sm font-bold text-white truncate">
+            {isDashboardMode ? "Chat" : "AI Agent"}
           </h2>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             {isEditorMode && currentAgent && (
-              <div className="flex items-center gap-2 bg-gray-800 px-3 py-1 rounded-md">
-                <Bot className="h-4 w-4 text-gray-400" />
-                <span className="text-sm font-medium text-white">{currentAgent.name}</span>
-              </div>
+              <span className="text-xs bg-[#0E2E33] text-[#1CBF79] px-2 py-1 rounded truncate max-w-[120px]">
+                {currentAgent.name}
+              </span>
             )}
             {(isDashboardMode || isEditorMode) && (
               <>
                 <Button
                   onClick={handleNewThread}
-                  className="bg-[#15a366] hover:bg-[#10a35a] text-white text-xs h-7 px-2"
+                  className="bg-[#15a366] hover:bg-[#10a35a] text-white text-xs h-6 px-2 flex-shrink-0"
                   size="sm"
+                  title="New chat thread"
                 >
-                  <Plus className="h-4 w-4 mr-1" />
-                  New Chat
+                  <Plus className="h-3 w-3" />
                 </Button>
                 <Button
                   onClick={handleToggleThreads}
-                  className="bg-[#1c1c1c] hover:bg-[#222] text-white text-xs h-7 px-2 border border-[#2a2a2a]"
+                  className="bg-[#1c1c1c] hover:bg-[#222] text-white text-xs h-6 px-2 border border-[#2a2a2a] flex-shrink-0"
                   size="sm"
+                  title="View threads"
                 >
-                  Threads
+                  📋
                 </Button>
-                {/* Collapse/Hide AI chat panel */}
+                {/* Hide Chat Button - Always Visible */}
                 <Button
                   onClick={onToggle}
-                  className="bg-[#1c1c1c] hover:bg-[#222] text-white text-xs h-7 px-2 border border-[#2a2a2a]"
+                  className="bg-[#1c1c1c] hover:bg-[#222] text-white text-xs h-6 px-2 border border-[#2a2a2a] flex-shrink-0"
                   size="sm"
-                  title="Hide chat"
+                  title="Hide chat panel"
                   aria-label="Hide chat"
                 >
-                  <ChevronRight className="h-4 w-4 mr-1" />
-                  Hide
+                  <ChevronRight className="h-3 w-3" />
                 </Button>
               </>
             )}
@@ -670,8 +669,8 @@ export default function AgentSidebar({
               onValueChange={onDashboardWorkspaceChange}
               disabled={loadingThreads}
             >
-              <SelectTrigger className="w-full bg-[#1c1c1c] border-[#2a2a2a] text-white h-9">
-                <SelectValue placeholder="Select a workspace..." />
+              <SelectTrigger className="w-full bg-[#1c1c1c] border-[#2a2a2a] text-white h-8 text-xs">
+                <SelectValue placeholder="Select workspace..." />
               </SelectTrigger>
               <SelectContent className="bg-[#1c1c1c] border-[#2a2a2a] text-white">
                 {availableWorkspaces.map((workspace) => (

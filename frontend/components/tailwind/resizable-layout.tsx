@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { ChevronLeft, ChevronRight, Menu, Sparkles } from "lucide-react";
 
 interface ResizableLayoutProps {
@@ -37,10 +37,43 @@ export function ResizableLayout({
   viewMode = 'editor', // Default to editor mode
 }: ResizableLayoutProps) {
   const [mounted, setMounted] = useState(false);
+  const [chatWidth, setChatWidth] = useState(384); // w-96 = 384px
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeStartXRef = useRef(0);
+  const resizeStartWidthRef = useRef(0);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    resizeStartXRef.current = e.clientX;
+    resizeStartWidthRef.current = chatWidth;
+  };
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const delta = resizeStartXRef.current - e.clientX; // Negative = wider
+      const newWidth = Math.max(320, resizeStartWidthRef.current + delta); // Min 320px
+      setChatWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
 
   if (!mounted) return null;
 
@@ -88,16 +121,30 @@ export function ResizableLayout({
           {mainPanel}
         </div>
 
-        {/* RIGHT CHAT PANEL - FIXED WIDTH OR 0 (HIDDEN COMPLETELY IN AI MANAGEMENT) */}
+        {/* RESIZABLE RIGHT CHAT PANEL */}
         {rightPanel && (
-          <div 
-            className={`h-full overflow-hidden flex-shrink-0 border-l border-gray-700 transition-all duration-300 bg-gray-950 ${
-              aiChatOpen
-                ? 'w-96'
-                : 'w-0 border-l-0'
-            }`}
-          >
-            {aiChatOpen && rightPanel}
+          <div className="relative flex">
+            {/* Drag Handle */}
+            {aiChatOpen && (
+              <div
+                onMouseDown={handleResizeStart}
+                className={`w-1 bg-[#1CBF79] hover:bg-[#10a35a] cursor-col-resize transition-colors ${
+                  isResizing ? 'bg-[#10a35a]' : ''
+                }`}
+                title="Drag to resize chat panel"
+              />
+            )}
+            {/* Chat Panel */}
+            <div 
+              className={`h-full overflow-hidden flex-shrink-0 border-l border-gray-700 transition-all duration-300 bg-gray-950 ${
+                aiChatOpen ? 'border-l' : 'w-0 border-l-0'
+              }`}
+              style={{
+                width: aiChatOpen ? `${chatWidth}px` : '0px',
+              }}
+            >
+              {aiChatOpen && rightPanel}
+            </div>
           </div>
         )}
       </div>
