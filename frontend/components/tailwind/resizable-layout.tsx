@@ -93,7 +93,7 @@ export function ResizableLayout({
           <div 
             className={`h-full overflow-hidden flex-shrink-0 border-l border-gray-700 transition-all duration-300 bg-gray-950 ${
               aiChatOpen
-                ? 'w-[35%] min-w-96'
+                ? 'w-96'
                 : 'w-0 border-l-0'
             }`}
           >

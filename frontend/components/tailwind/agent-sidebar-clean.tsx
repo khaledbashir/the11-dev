@@ -615,7 +615,7 @@ export default function AgentSidebar({
   }, [isDashboardMode, dashboardChatTarget, editorWorkspaceSlug, editorThreadSlug]);
 
   return (
-    <div className="h-full w-full bg-[#0e0f0f] border-l border-[#0E2E33] overflow-hidden flex flex-col">
+    <div className="h-full w-full min-w-0 bg-[#0e0f0f] border-l border-[#0E2E33] overflow-hidden flex flex-col">
       <div className="p-3 border-b border-[#0E2E33] bg-[#0e0f0f]">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold text-white">
