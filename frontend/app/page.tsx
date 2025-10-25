@@ -694,8 +694,10 @@ export default function Page() {
     
     const loadData = async () => {
       console.log('Loading folders and SOWs from database...');
-      const savedCurrent = localStorage.getItem("currentDocId");
-      const hasCompletedSetup = localStorage.getItem("sow-guided-setup-completed");
+      // No localStorage: read initial doc from URL query
+      const urlParams = new URLSearchParams(window.location.search);
+      const initialDocId = urlParams.get('docId');
+      const hasCompletedSetup = undefined;
       
       try {
         // LOAD FOLDERS FROM DATABASE
@@ -790,12 +792,10 @@ export default function Page() {
           // This provides a better UX where dashboard is the entry point
         }
         
-        // 🎓 Show onboarding if no workspaces (and not seen before)
-        const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding') === 'true';
-        if (workspacesWithSOWs.length === 0 && !hasSeenOnboarding) {
+        // 🎓 Show onboarding if no workspaces (no localStorage gating)
+        if (workspacesWithSOWs.length === 0) {
           setTimeout(() => {
             setShowOnboarding(true);
-            localStorage.setItem('hasSeenOnboarding', 'true');
           }, 500);
         }
 
@@ -808,9 +808,10 @@ export default function Page() {
         console.error('Error loading data:', error);
         toast.error('Failed to load workspaces and SOWs');
       }
-      
-      if (savedCurrent) {
-        setCurrentDocId(savedCurrent);
+      // Apply initial selection from URL if provided
+      if (initialDocId) {
+        setCurrentDocId(initialDocId);
+        setCurrentSOWId(initialDocId);
       }
     };
     
@@ -948,11 +949,18 @@ export default function Page() {
     return () => clearTimeout(timer);
   }, [latestEditorJSON, currentDocId]);
 
+  // Persist current document selection in the URL (no localStorage)
   useEffect(() => {
+    if (!mounted) return;
+    const params = new URLSearchParams(window.location.search);
     if (currentDocId) {
-      localStorage.setItem("currentDocId", currentDocId);
+      params.set('docId', currentDocId);
+    } else {
+      params.delete('docId');
     }
-  }, [currentDocId]);
+    const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
+    window.history.replaceState({}, '', newUrl);
+  }, [currentDocId, mounted]);
 
   useEffect(() => {
     // 🌱 Load GARDNERS from AnythingLLM (not old agents table!)
@@ -1106,6 +1114,12 @@ export default function Page() {
       // Proceed with navigation
       setCurrentSOWId(id); // Triggers chat history load
       setCurrentDocId(id);
+
+  // Update URL with selected docId (no localStorage)
+  const params = new URLSearchParams(window.location.search);
+  params.set('docId', id);
+  const newUrl = `${window.location.pathname}?${params.toString()}`;
+  window.history.replaceState({}, '', newUrl);
 
       // Proactively load editor content for the new document
       const nextDoc = documents.find(d => d.id === id);
@@ -1792,16 +1806,14 @@ export default function Page() {
 
   const handleReorderWorkspaces = (reorderedWorkspaces: Workspace[]) => {
     setWorkspaces(reorderedWorkspaces);
-    // Optionally save order to localStorage or database
-    localStorage.setItem('workspace-order', JSON.stringify(reorderedWorkspaces.map(w => w.id)));
+    // Persist ordering to database (no localStorage). TODO: implement server persistence.
   };
 
   const handleReorderSOWs = (workspaceId: string, reorderedSOWs: SOW[]) => {
     setWorkspaces(prev => prev.map(ws =>
       ws.id === workspaceId ? { ...ws, sows: reorderedSOWs } : ws
     ));
-    // Optionally save order to localStorage or database
-    localStorage.setItem(`sow-order-${workspaceId}`, JSON.stringify(reorderedSOWs.map(s => s.id)));
+    // Persist ordering to database (no localStorage). TODO: implement server persistence.
   };
 
   // ==================== END WORKSPACE & SOW HANDLERS ====================
@@ -1884,10 +1896,9 @@ export default function Page() {
       return;
     }
 
-    // Get workspace slug from localStorage
+    // Use workspaceSlug from document or derive from title (no localStorage)
     const clientName = currentDoc.title.split(':')[1]?.split('-')[0]?.trim() || 'default-client';
-    const workspaceSlug = localStorage.getItem(`workspace_${currentDoc.id}`) || 
-      clientName.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
+    const workspaceSlug = currentDoc.workspaceSlug || clientName.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
 
     // Open AnythingLLM in new tab
     const url = anythingLLM.getWorkspaceChatUrl(workspaceSlug);

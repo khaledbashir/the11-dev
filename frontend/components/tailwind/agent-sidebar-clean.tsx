@@ -775,7 +775,7 @@ export default function AgentSidebar({
                       const segments = msg.role === 'assistant' ? splitMarkdownJsonBlocks(cleaned) : [{ type: 'text' as const, content: msg.content }];
                       return (
                         <div key={msg.id} className={`flex min-w-0 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`w-full max-w-[85%] min-w-0 rounded-xl px-4 py-3 break-words whitespace-pre-wrap ${
+                          <div className={`relative w-full max-w-[85%] min-w-0 rounded-xl px-4 py-3 break-words whitespace-pre-wrap overflow-x-hidden ${
                             msg.role === 'user' 
                               ? 'bg-[#15a366] text-white' 
                               : 'bg-[#1b1b1e] text-white border border-[#0E2E33]'
@@ -805,7 +805,7 @@ export default function AgentSidebar({
                                 )
                               ))}
                             </div>
-                            <div className="flex items-center gap-2 mt-2">
+                            <div className="flex items-center gap-2 mt-2 sticky bottom-0 z-10 bg-[#1b1b1e]/80 backdrop-blur-sm px-2 py-1 rounded-md border-t border-[#0E2E33]">
                               <span className="text-xs opacity-60 flex-1">{formatTimestamp(msg.timestamp)}</span>
                               {msg.role === 'assistant' && onInsertToEditor && (
                                 <Button
@@ -895,7 +895,7 @@ export default function AgentSidebar({
                       
                       return (
                         <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`w-full rounded-lg p-4 break-words whitespace-pre-wrap ${
+                          <div className={`relative w-full max-w-[85%] min-w-0 rounded-lg p-4 break-words whitespace-pre-wrap overflow-x-hidden ${
                             msg.role === 'user' 
                               ? 'bg-[#0E2E33]/30 text-white border border-[#1CBF79]' 
                               : 'bg-[#0E2E33] text-white border border-[#1b5e5e]'
@@ -929,7 +929,7 @@ export default function AgentSidebar({
                               ))}
                             </div>
                             
-                            <div className="flex gap-2 mt-4 items-center">
+                            <div className="flex gap-2 mt-4 items-center sticky bottom-0 z-10 bg-[#0E2E33]/85 backdrop-blur-sm px-2 py-1 rounded-md border-t border-[#1b5e5e]">
                               <p className="text-xs mt-1 opacity-70 flex-1">{formatTimestamp(msg.timestamp)}</p>
                               {shouldShowButton && (
                                 <Button 

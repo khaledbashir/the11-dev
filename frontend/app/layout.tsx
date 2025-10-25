@@ -25,20 +25,21 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: '/favicon.png', type: 'image/png' },
-      { url: '/social-garden-logo.png', type: 'image/png' }
+      // Use external hosted logo to avoid stale public asset issues
+      { url: 'https://i.ibb.co/v47zTJ5P/lightlogo.png', type: 'image/png' }
     ],
-    apple: '/social-garden-logo.png',
+    apple: 'https://i.ibb.co/v47zTJ5P/lightlogo.png',
   },
   openGraph: {
     title,
     description,
-    images: ['/social-garden-logo.png'],
+    images: ['https://i.ibb.co/v47zTJ5P/lightlogo.png'],
   },
   twitter: {
     title,
     description,
     card: "summary_large_image",
-    images: ['/social-garden-logo.png'],
+    images: ['https://i.ibb.co/v47zTJ5P/lightlogo.png'],
   },
   metadataBase: new URL("https://socialgarden.com.au"),
 };
