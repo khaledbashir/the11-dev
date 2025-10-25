@@ -9,6 +9,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
 import { Send, Loader2 } from 'lucide-react';
+import { StreamingThoughtAccordion } from './streaming-thought-accordion';
 
 interface Message {
   id: string;
@@ -101,9 +102,16 @@ export function MessageDisplayPanel({
                       : 'bg-slate-800 border border-slate-700 text-gray-100'
                   }`}
                 >
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                    {message.content}
-                  </p>
+                  {message.role === 'assistant' ? (
+                    // Hide <think>/<thinking> content and show accordion with reasoning
+                    <div className="space-y-2">
+                      <StreamingThoughtAccordion content={message.content} />
+                    </div>
+                  ) : (
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                      {message.content}
+                    </p>
+                  )}
                   <p className="text-xs opacity-60 mt-2">
                     {new Date(message.created_at).toLocaleTimeString([], {
                       hour: '2-digit',

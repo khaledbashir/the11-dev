@@ -625,6 +625,14 @@ export default function AgentSidebar({
   const currentWorkspaceName = availableWorkspaces.find(w => w.slug === dashboardChatTarget)?.name || '🎯 All SOWs (Master)';
   const isMasterView = dashboardChatTarget === 'sow-master-dashboard';
 
+  // Persona label logic
+  const personaName = viewMode === 'dashboard'
+    ? (isMasterView ? 'Analytics Assistant' : 'The Architect')
+    : 'The Architect';
+  const personaSubtitle = viewMode === 'dashboard'
+    ? (isMasterView ? 'Master Dashboard' : 'Client Workspace')
+    : 'SOW generation';
+
   // 🧵 LOAD THREADS ON MOUNT (Dashboard mode only)
   useEffect(() => {
     const ws = isDashboardMode ? dashboardChatTarget : editorWorkspaceSlug;
@@ -747,13 +755,13 @@ export default function AgentSidebar({
         </div>
       )}
 
-      {/* Editor context: show static agent label only */}
+      {/* Context persona label (dashboard + editor) */}
       <div className="p-3 border-b border-[#0E2E33]">
-        {isEditorMode && currentAgent && (
+        {(isDashboardMode || isEditorMode) && (
           <div className="flex items-center gap-2 bg-[#0E2E33] px-3 py-2 rounded-md">
             <Bot className="h-4 w-4 text-gray-400" />
-            <span className="text-sm font-medium text-white">{currentAgent.name}</span>
-            <span className="ml-2 text-xs text-gray-400">Auto-selected for SOW generation</span>
+            <span className="text-sm font-medium text-white">{personaName}</span>
+            <span className="ml-2 text-xs text-gray-400">{personaSubtitle}</span>
           </div>
         )}
       </div>

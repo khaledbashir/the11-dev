@@ -9,31 +9,48 @@ export async function POST(request: NextRequest) {
     // CRITICAL DEBUG: INCOMING /stream-chat PAYLOAD
     // ============================================================================
     const requestBody = await request.json();
+    // Sanitize messages by removing any injected system prompts
+    const sanitizedForLog = {
+      ...requestBody,
+      messages: Array.isArray(requestBody.messages)
+        ? requestBody.messages.filter((m: any) => m && m.role !== 'system')
+        : requestBody.messages,
+    };
+    const removedSystems = Array.isArray(requestBody.messages)
+      ? requestBody.messages.filter((m: any) => m && m.role === 'system').length
+      : 0;
     
     console.log('//////////////////////////////////////////////////');
     console.log('// CRITICAL DEBUG: INCOMING /stream-chat PAYLOAD //');
     console.log('//////////////////////////////////////////////////');
-    console.log('FULL REQUEST BODY:');
-    console.log(JSON.stringify(requestBody, null, 2));
+    console.log('FULL REQUEST BODY (sanitized: system messages removed from log):');
+    console.log(JSON.stringify(sanitizedForLog, null, 2));
     console.log('');
+    if (removedSystems > 0) {
+      console.log(`WARN: Detected and ignored ${removedSystems} system message(s) in incoming payload.`);
+    }
     console.log('KEY FIELDS:');
-    console.log('  workspace:', requestBody.workspace);
-    console.log('  workspaceSlug:', requestBody.workspaceSlug);
-    console.log('  threadSlug:', requestBody.threadSlug);
-    console.log('  mode:', requestBody.mode);
-    console.log('  model:', requestBody.model);
-    console.log('  messages.length:', requestBody.messages?.length);
-    if (requestBody.messages && requestBody.messages.length > 0) {
-      console.log('  messages[0].role:', requestBody.messages[0].role);
-      console.log('  messages[0].content (first 200 chars):', requestBody.messages[0].content?.substring(0, 200));
-      console.log('  messages[messages.length-1].role:', requestBody.messages[requestBody.messages.length - 1].role);
-      console.log('  messages[messages.length-1].content (first 200 chars):', requestBody.messages[requestBody.messages.length - 1].content?.substring(0, 200));
+    console.log('  workspace:', sanitizedForLog.workspace);
+    console.log('  workspaceSlug:', sanitizedForLog.workspaceSlug);
+    console.log('  threadSlug:', sanitizedForLog.threadSlug);
+    console.log('  mode:', sanitizedForLog.mode);
+    console.log('  model:', sanitizedForLog.model);
+    console.log('  messages.length:', sanitizedForLog.messages?.length);
+    if (sanitizedForLog.messages && sanitizedForLog.messages.length > 0) {
+      console.log('  messages[0].role:', sanitizedForLog.messages[0].role);
+      console.log('  messages[0].content (first 200 chars):', sanitizedForLog.messages[0].content?.substring(0, 200));
+      console.log('  messages[messages.length-1].role:', sanitizedForLog.messages[sanitizedForLog.messages.length - 1].role);
+      console.log('  messages[messages.length-1].content (first 200 chars):', sanitizedForLog.messages[sanitizedForLog.messages.length - 1].content?.substring(0, 200));
     }
     console.log('//////////////////////////////////////////////////');
     // ============================================================================
     
   const body = requestBody;
   let { messages, workspaceSlug, workspace, threadSlug, mode = 'chat', model } = body;
+    // Guard: strip any system messages from actual processing
+    if (Array.isArray(messages)) {
+      messages = messages.filter((m: any) => m && m.role !== 'system');
+    }
     
     // Use 'workspace' if provided, otherwise fall back to 'workspaceSlug'
     const effectiveWorkspaceSlug = workspace || workspaceSlug;
