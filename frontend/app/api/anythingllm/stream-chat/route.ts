@@ -56,17 +56,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // For SOW workspaces, prepend The Architect system prompt to ensure proper generation
+    // Build message to send
     let messageToSend = lastMessage.content;
-    
-    // Check if this is a SOW workspace (contains the client workspace slug pattern)
+
+    // Detect casual chat vs explicit SOW request to avoid forcing generation on greetings
     const isSowWorkspace = effectiveWorkspaceSlug && !effectiveWorkspaceSlug.includes('master-dashboard');
-    
-    if (isSowWorkspace && systemPrompt) {
-      // Prepend system prompt for SOW generation
-      // This ensures The Architect behavior even if workspace config doesn't have it
+    const lower = (messageToSend || '').toLowerCase().trim();
+    const isCasual = [
+      'hi', 'hello', 'hey', 'yo', 'sup', 'wassup', 'how are you', 'who are you', 'help', 'what can you do', 'test'
+    ].some(ph => lower === ph || lower.startsWith(ph + ' '));
+    const explicitSowKeywords = [
+      'generate sow', 'create sow', 'write sow', 'draft sow', 'scope of work', 'statement of work'
+    ];
+    const isExplicitSowRequest = explicitSowKeywords.some(k => lower.includes(k));
+
+    // Only prepend the Architect system prompt when explicitly asking for a SOW
+    if (isSowWorkspace && systemPrompt && isExplicitSowRequest) {
       messageToSend = `[SYSTEM CONTEXT]\n${systemPrompt}\n\n[USER REQUEST]\n${messageToSend}`;
-      console.log(`🧠 [AnythingLLM Stream] Prepended system prompt for SOW workspace`);
+      console.log(`🧠 [AnythingLLM Stream] Prepended system prompt (explicit SOW request detected)`);
+    } else if (isSowWorkspace && isCasual) {
+      console.log(`💬 [AnythingLLM Stream] Casual chat detected - not prepending system prompt`);
     }
     
     if (!messageToSend || typeof messageToSend !== 'string') {
