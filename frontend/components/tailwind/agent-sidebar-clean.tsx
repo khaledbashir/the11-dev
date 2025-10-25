@@ -758,7 +758,7 @@ export default function AgentSidebar({
                       const segments = msg.role === 'assistant' ? splitMarkdownJsonBlocks(cleaned) : [{ type: 'text' as const, content: msg.content }];
                       return (
                         <div key={msg.id} className={`flex min-w-0 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`relative w-full max-w-[85%] min-w-0 rounded-xl px-4 py-3 break-words whitespace-pre-wrap overflow-x-hidden ${
+                          <div className={`relative w-full max-w-[85%] min-w-0 rounded-xl px-4 py-3 break-words whitespace-pre-wrap overflow-hidden ${
                             msg.role === 'user' 
                               ? 'bg-[#15a366] text-white' 
                               : 'bg-[#1b1b1e] text-white border border-[#0E2E33]'
@@ -777,7 +777,7 @@ export default function AgentSidebar({
                                 seg.type === 'text' ? (
                                   <div
                                     key={i}
-                                    className="prose prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-1 break-words whitespace-pre-wrap prose-pre:whitespace-pre-wrap prose-pre:overflow-x-auto overflow-x-auto"
+                                    className="prose prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-1 break-words whitespace-pre-wrap prose-pre:whitespace-pre-wrap prose-pre:overflow-x-auto"
                                   >
                                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                       {seg.content}
@@ -902,7 +902,7 @@ export default function AgentSidebar({
                                   <ReactMarkdown
                                     key={i}
                                     remarkPlugins={[remarkGfm]}
-                                    className="prose prose-invert max-w-none text-sm break-words whitespace-pre-wrap prose-pre:whitespace-pre-wrap prose-pre:overflow-x-auto overflow-x-auto"
+                                    className="prose prose-invert max-w-none text-sm break-words whitespace-pre-wrap prose-pre:whitespace-pre-wrap prose-pre:overflow-x-auto"
                                   >
                                     {seg.content}
                                   </ReactMarkdown>
