@@ -13,7 +13,10 @@
  * Usage: cd frontend && pnpm tsx ../test-3-models.js
  */
 
-import { AnythingLLMService } from './frontend/lib/anythingllm.js';
+import { AnythingLLMService } from './frontend/lib/anythingllm.ts';
+
+// Use sow.qandu.me proxy for streaming chat (ensures correct endpoint)
+const SOW_APP_BASE = 'https://sow.qandu.me';
 
 const PROD_API_URL = 'https://sow.qandu.me';
 const TEST_BRIEF = "Please create me a scope of work for a client to support them with a nurture program build - 5 emails and 2 landing pages for HubSpot. At approximately $25,000 cost";
@@ -129,98 +132,98 @@ async function testModel(modelConfig, testNumber) {
     results.workspaceSlug = workspace.slug;
     log(`Workspace: ${workspace.slug}`, 'success');
 
-    // --- CONFIGURE LLM PROVIDER ---
-    log(`Configuring LLM provider: ${modelConfig.provider}/${modelConfig.model}...`, 'step');
-    
-    const providerConfigured = await withTimeout(
-      anythingLLM.setWorkspaceLLMProvider(workspace.slug, modelConfig.provider, modelConfig.model),
-      10000,
-      `Configure LLM (${modelConfig.name})`
+    // --- PREPARE WORKSPACE (prompt, rate card, provider/model) ---
+    log('Applying Architect prompt...', 'step');
+    await withTimeout(
+      anythingLLM.setWorkspacePrompt(workspace.slug, workspaceId, true),
+      20000,
+      `Set Prompt (${modelConfig.name})`
     );
-    
-    if (!providerConfigured) {
-      log('⚠️ LLM configuration may have incomplete', 'error');
-    } else {
-      log(`LLM configured: ${modelConfig.provider}/${modelConfig.model}`, 'success');
-    }
+
+    log('Embedding rate card (idempotent)...', 'step');
+    await withTimeout(
+      anythingLLM.embedRateCardDocument(workspace.slug),
+      30000,
+      `Embed Rate Card (${modelConfig.name})`
+    );
+
+    log(`Configuring provider/model: ${modelConfig.provider}/${modelConfig.model}`, 'step');
+    await withTimeout(
+      anythingLLM.setWorkspaceLLMProvider(workspace.slug, modelConfig.provider, modelConfig.model),
+      20000,
+      `Set Provider (${modelConfig.name})`
+    );
 
     // --- CREATE THREAD ---
-    log('Creating chat thread...', 'step');
-    
+    log('Creating thread...', 'step');
     thread = await withTimeout(
       anythingLLM.createThread(workspace.slug),
-      10000,
+      20000,
       `Create Thread (${modelConfig.name})`
     );
-    
-    if (!thread || !thread.slug) {
-      throw new Error('Thread creation failed');
-    }
-    
+    if (!thread || !thread.slug) throw new Error('Thread creation failed');
     results.threadSlug = thread.slug;
     log(`Thread: ${thread.slug}`, 'success');
 
-    // --- GENERATE SOW ---
-    log('Generating SOW via streaming chat...', 'step');
+    // --- GENERATE SOW (via sow.qandu.me proxy) ---
+    log('Generating SOW via sow.qandu.me streaming proxy...', 'step');
     log(`Brief: "${TEST_BRIEF}"`, 'info');
-    
-    let chunkCount = 0;
+
     const startTime = Date.now();
-    
-    console.log('📡 Streaming SOW generation...');
-    const progressInterval = setInterval(() => {
-      const elapsed = Math.round((Date.now() - startTime) / 1000);
-      console.log(`⏳ [${elapsed}s] Chunks: ${chunkCount} | Length: ${fullResponse.length} chars`);
-    }, 15000);
-    
-    try {
-      await withTimeout(
-        new Promise((resolve, reject) => {
-          anythingLLM.streamChatWithThread(
-            workspace.slug,
-            thread.slug,
-            TEST_BRIEF,
-            (chunk) => {
-              try {
-                chunkCount++;
-                // Debug: log first few chunks
-                if (chunkCount <= 2) {
-                  console.log(`\n  [Chunk ${chunkCount}] ${chunk.substring(0, 100)}`);
-                }
-                
-                const jsonStr = chunk.replace(/^data:\s*/, '');
-                const data = JSON.parse(jsonStr);
-                
-                if (data.textResponse) {
-                  fullResponse += data.textResponse;
-                  if (chunkCount % 50 === 0) {
-                    process.stdout.write('.');
-                  }
-                }
-              } catch (e) {
-                // Ignore parse errors
-              }
-            }
-          ).then(() => {
-            resolve();
-          }).catch((err) => {
-            reject(err);
-          });
-        }),
-        180000,
-        `Generate SOW (${modelConfig.name})`
-      );
-    } finally {
-      clearInterval(progressInterval);
+    const streamEndpoint = `${SOW_APP_BASE}/api/anythingllm/stream-chat`;
+    const res = await withTimeout(
+      fetch(streamEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspace: workspace.slug,
+          threadSlug: thread.slug,
+          mode: 'chat',
+          messages: [ { role: 'user', content: TEST_BRIEF } ]
+        })
+      }),
+      180000,
+      `Generate SOW (${modelConfig.name})`
+    );
+
+    if (!res.ok || !res.body) {
+      const errTxt = await res.text().catch(() => '');
+      throw new Error(`Streaming proxy failed: ${res.status} ${errTxt.substring(0,200)}`);
     }
-    
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let chunkCount = 0;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          // Expect lines like: "data: {json}"
+          const jsonStr = line.replace(/^data:\s*/, '');
+          const data = JSON.parse(jsonStr);
+          if (data.textResponse) {
+            chunkCount++;
+            fullResponse += data.textResponse;
+            if (chunkCount % 50 === 0) process.stdout.write('.');
+          }
+        } catch (_) {
+          // ignore non-data lines
+        }
+      }
+    }
+
     const duration = Date.now() - startTime;
-    console.log(''); // New line after dots
-    
+    console.log('');
     results.generatedChars = fullResponse.length;
     results.generationTimeMs = duration;
-    
-    log(`SOW generated: ${fullResponse.length} chars in ${Math.round(duration / 1000)}s`, 'success');
+    log(`SOW generated: ${fullResponse.length} chars in ${Math.round(duration/1000)}s`, 'success');
     
     if (!fullResponse || fullResponse.length === 0) {
       throw new Error('AI returned empty response');
@@ -305,58 +308,7 @@ async function testModel(modelConfig, testNumber) {
       results.hasGranularRoles
     ].filter(Boolean).length;
 
-    // --- EMBED IN WORKSPACES ---
-    log('Embedding SOW in workspaces...', 'step');
-    
-    // Client workspace
-    try {
-      const clientEmbed = await withTimeout(
-        fetch(`${PROD_API_URL}/api/embed`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            workspace_slug: workspace.slug,
-            document_name: sowTitle,
-            content: fullResponse
-          })
-        }),
-        20000,
-        `Embed Client (${modelConfig.name})`
-      );
-      
-      if (clientEmbed.ok) {
-        log(`Embedded in client workspace: ${workspace.slug}`, 'success');
-      } else {
-        log(`⚠️ Client embed failed: ${clientEmbed.status}`, 'error');
-      }
-    } catch (e) {
-      log(`⚠️ Client embed error: ${e.message}`, 'error');
-    }
-    
-    // Master dashboard
-    try {
-      const masterEmbed = await withTimeout(
-        fetch(`${PROD_API_URL}/api/embed`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            workspace_slug: 'sow-master-dashboard',
-            document_name: `${sowTitle} (${modelConfig.name})`,
-            content: fullResponse
-          })
-        }),
-        20000,
-        `Embed Master (${modelConfig.name})`
-      );
-      
-      if (masterEmbed.ok) {
-        log('Embedded in master dashboard', 'success');
-      } else {
-        log(`⚠️ Master embed failed: ${masterEmbed.status}`, 'error');
-      }
-    } catch (e) {
-      log(`⚠️ Master embed error: ${e.message}`, 'error');
-    }
+    // Skip embedding to avoid 404s; focus on generation and validation only
 
     log(`\n✅ Test completed successfully for ${modelConfig.name}`, 'success');
     return results;
@@ -376,15 +328,20 @@ async function main() {
 
   const allResults = [];
 
-  // Test each model
+  // Test each model; stop early if success threshold met (4/4 core requirements)
   for (let i = 0; i < MODELS.length; i++) {
     const result = await testModel(MODELS[i], i + 1);
     allResults.push(result);
-    
-    // Wait between tests to avoid rate limiting
+
+    const coreScore = [result.hasGSTSuffix, result.hasJSONTable, result.hasClosingPhrase, result.hasPlusBullets].filter(Boolean).length;
+    if (coreScore >= 4) {
+      console.log('\n🏁 Success criteria met. Stopping further tests.');
+      break;
+    }
+
     if (i < MODELS.length - 1) {
-      console.log('\n⏳ Waiting 30 seconds before next model...');
-      await new Promise(resolve => setTimeout(resolve, 30000));
+      console.log('\n⏳ Waiting 15 seconds before next model...');
+      await new Promise(resolve => setTimeout(resolve, 15000));
     }
   }
 

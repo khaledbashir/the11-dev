@@ -1,269 +1,129 @@
 #!/usr/bin/env node
 
 /**
- * AnyTHINGLLM Complete Workflow Test Script
- *
- * This script demonstrates the end-to-end flow of:
- * 1. Creating a new workspace.
- * 2. Modifying the workspace with the FULL "The Architect" system prompt.
- * 3. Embedding the COMPLETE 91-role rate card as a knowledge document.
- * 4. Running a chat query to validate the AI's advanced behavior.
- * 5. Cleaning up the created resources.
- *
- * Usage: node run-llm-workflow-complete.js
+ * AnythingLLM Complete Workflow Test Script (chat via sow.qandu.me proxy)
+ * Clean rebuild after file corruption
  */
 
-import { AnythingLLMService } from './lib/anythingllm.js';
+import { AnythingLLMService } from './frontend/lib/anythingllm.ts';
 
-// --- CONFIGURATION ---
+const SOW_APP_BASE = 'https://sow.qandu.me';
+const MODEL_PROVIDER = 'openrouter';
+const MODEL_ID = 'minimax/minimax-m2:free';
 
-// 1. The COMPLETE "Architect" system prompt.
-const ARCHITECT_PROMPT = `
-You are 'The Architect,' the most senior and highest-paid proposal specialist at Social Garden. Your reputation for FLAWLESS, logically sound, and client-centric Scopes of Work is legendary. Your performance is valued at over a million dollars a year because you NEVER make foolish mistakes, you NEVER default to generic templates, and you ALWAYS follow instructions with absolute precision.
-
-YOUR CORE DIRECTIVES
-
-FIRST - ANALYZE THE WORK TYPE: Before writing, SILENTLY classify the user's brief into one of three categories:
-*   Standard Project: A defined build/delivery with a start and end.
-*   Audit/Strategy: An analysis and recommendation engagement.
-*   Retainer Agreement: An ongoing service over a set period.
-You WILL use the specific SOW structure for that work type. Failure is not an option.
-
-SECOND - BESPOKE DELIVERABLES GENERATION:
-- Generate UNIQUE deliverables based on the specific brief and context
-- NEVER use static template lists or generic deliverables
-- Platform-specific deliverables: 
-  * Salesforce implementations require custom objects, workflows, and integrations
-  * HubSpot implementations focus on marketing automation, lead scoring, and CRM workflows
-  * Marketo implementations emphasize campaign orchestration and lead nurturing
-
-THIRD - ROLE ALLOCATION HIERARCHY (CRITICAL):
-- **MANDATORY ROLE ALLOCATION RULES:**
-  * Head Of Senior Project Management: MINIMAL hours (5-15 hours only)
-  * Project Coordination: MINIMAL hours (3-10 hours only)
-  * Account Management: MAXIMUM hours (minimum 6-12 hours)
-  * Split hours across granular roles: email production, dev, design, copy, deployment, testing
-- **PRICING TABLE ORDER:** Account Management roles MUST appear at the BOTTOM of the pricing table
-
-FOURTH - COMMERCIAL PRESENTATION:
-- Currency: AUD only (never USD)
-- All pricing must show "+GST" suffix
-- Aim for ROUND NUMBERS: Target 200, 250, 300 hours total OR $50k, $45k, $60k final amounts
-- After calculating ideal hours/cost, intelligently adjust to cleaner commercial numbers
-
-FIFTH - BUDGET ADHERENCE:
-- Respect specified target budgets (e.g., $10k, $50k)
-- When budget is provided, adjust scope, roles, or hours to meet the target
-- Show: "Original Price: $X + GST", "Discount: Y%", "Final Price: $Z + GST"
-
-SIXTH - DELIVERABLE FORMAT (MANDATORY):
-- ALL deliverables as bullet points with "+" prefix
-- NO paragraph format for deliverables
-
-SEVENTH - GENERATE THE SOW: Your entire response MUST be structured into two distinct parts:
-1. PART 1: INTERNAL STRATEGY MONOLOGUE: This first section MUST be wrapped in <thinking> tags.
-2. PART 2: THE FINAL SCOPE OF WORK: Immediately following the closing </thinking> tag, you WILL generate the complete and final Scope of Work document.
-
-**CRITICAL JSON REQUIREMENT:**
-After completing the Scope of Work, you MUST include a valid JSON code block with the pricing table data. This is REQUIRED for the pricing table to render.
-
-\`\`\`json
-{
-  "suggestedRoles": [
-    { "role": "Role Name From Knowledge Base", "hours": 40 },
-    { "role": "Another Role From Knowledge Base", "hours": 60 }
-  ]
-}
-\`\`\`
-
-FINAL INSTRUCTION: Your response MUST end with the exact phrase on its own line: *** This concludes the Scope of Work document. ***
-`;
-
-// 2. The COMPLETE 91-role rate card, formatted for clarity.
-const RATE_CARD_CONTENT = `
-# Social Garden Official Rate Card (91 Roles)
-
-### Account Management (5 roles)
-- Senior Account Director ($365)
-- Account Director ($295) 
-- Senior Account Manager ($210)
-- Account Manager ($180)
-- Account Management (Off) ($120)
-
-### Project Management (3 roles)
-- Project Management - Account Director ($295)
-- Project Management - Senior Account Manager ($210)
-- Project Management - Account Manager ($180)
-
-### Tech - Delivery (2 roles)
-- Project Management ($150)
-- Project Coordination ($110)
-
-### Tech - Head Of (4 roles)
-- Customer Experience Strategy ($365)
-- Program Strategy ($365)
-- Senior Project Management ($365)
-- System Setup ($365)
-
-### Tech - Integrations (2 roles)
-- Integrations (Senior) ($295)
-- Integration Specialist ($170)
-
-### Tech - Producer (21 roles)
-- Admin Configuration ($120)
-- Campaign Build ($120)
-- Chat Bot / Live Chat ($120)
-- Copywriting ($120)
-- Deployment ($120)
-- Design ($120)
-- Development ($120)
-- Documentation Setup ($120)
-- Email Production ($120)
-- Field / Property Setup ($120)
-- Integration Assistance ($120)
-- Landing Page Production ($120)
-- Lead Scoring Setup ($120)
-- Reporting ($120)
-- Services ($120)
-- SMS Setup ($120)
-- Support & Monitoring ($120)
-- Testing ($120)
-- Training ($120)
-- Web Development ($120)
-- Workflows ($120)
-
-### Tech - SEO (2 roles)
-- SEO Strategy ($180)
-- SEO Producer ($120)
-
-### Tech - Specialist (14 roles)
-- Integration Services ($190)
-- Admin Configuration ($180)
-- Campaign Optimisation ($180)
-- Campaign Orchestration ($180)
-- Database Management ($180)
-- Email Production ($180)
-- Integration Configuration ($180)
-- Lead Scoring Setup ($180)
-- Program Management ($180)
-- Reporting ($180)
-- Services ($180)
-- Testing ($180)
-- Training ($180)
-- Workflows ($180)
-
-### Tech - Sr. Architect (4 roles)
-- Approval & Testing ($365)
-- Consultancy Services ($365)
-- Data Strategy ($365)
-- Integration Strategy ($365)
-
-### Tech - Sr. Consultant (10 roles)
-- Admin Configuration ($295)
-- Advisory & Consultation ($295)
-- Approval & Testing ($295)
-- Campaign Optimisation ($295)
-- Campaign Strategy ($295)
-- Database Management ($295)
-- Reporting ($295)
-- Services ($295)
-- Strategy ($295)
-- Training ($295)
-
-### Content (9 roles)
-- SEO Strategy (Onshore) ($210)
-- Campaign Strategy (Onshore) ($180)
-- Keyword Research (Onshore) ($150)
-- Optimisation (Onshore) ($150)
-- Reporting (Onshore) ($150)
-- SEO Copywriting (Onshore) ($150)
-- Keyword Research (Offshore) ($120)
-- Reporting (Offshore) ($120)
-- Website Optimisations (Offshore) ($120)
-
-### Design (6 roles)
-- Email (Onshore) ($295)
-- Digital Asset (Onshore) ($190)
-- Landing Page (Onshore) ($190)
-- Digital Asset (Offshore) ($140)
-- Email (Offshore) ($120)
-- Landing Page (Offshore) ($120)
-
-### Development (2 roles)
-- Dev (orTech) - Landing Page (Onshore) ($210)
-- Dev (orTech) - Landing Page (Offshore) ($120)
-`;
-
-// 3. The name for the temporary workspace.
-const WORKSPACE_NAME = `Architect SOW Test - ${Date.now()}`;
-
-// --- HELPER & MAIN EXECUTION ---
+const TEST_BRIEF = 'Please create me a scope of work for a client to support them with a nurture program build - 5 emails and 2 landing pages for HubSpot. At approximately $25,000 cost';
 
 const service = new AnythingLLMService();
 
 function log(message, type = 'info') {
-  const emojiMap = { info: '📋', success: '✅', error: '❌', test: '🧪', cleanup: '🧹' };
-  console.log(`${emojiMap[type] || '➡️'} ${message}`);
+  const emoji = { info: '📋', success: '✅', error: '❌', step: '▶️' };
+  console.log(`${emoji[type] || '➡️'} ${message}`);
+}
+
+async function streamViaSOWProxy({ workspaceSlug, threadSlug, message }) {
+  const endpoint = `${SOW_APP_BASE}/api/anythingllm/stream-chat`;
+  const body = {
+    workspace: workspaceSlug,
+    threadSlug,
+    mode: 'chat',
+    messages: [ { role: 'user', content: message } ]
+  };
+
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  if (!res.ok || !res.body) {
+    const txt = await res.text().catch(() => '');
+    throw new Error(`Proxy stream failed: ${res.status} ${txt.substring(0, 200)}`);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let full = '';
+  let chunks = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      try {
+        const jsonStr = line.replace(/^data:\s*/, '');
+        const data = JSON.parse(jsonStr);
+        if (data.textResponse) {
+          chunks++;
+          full += data.textResponse;
+          if (chunks % 50 === 0) process.stdout.write('.');
+        }
+      } catch (_) {}
+    }
+  }
+
+  return { text: full, chunks };
 }
 
 async function main() {
-  let workspace = null;
+  console.log('\n╔══════════════════════════════════════════════════════════════╗');
+  console.log('║   AnythingLLM WORKFLOW (chat via sow.qandu.me proxy)         ║');
+  console.log('╚══════════════════════════════════════════════════════════════╝\n');
 
-  try {
-    // --- STEP 1: CREATE WORKSPACE ---
-    log(`Creating new workspace: "${WORKSPACE_NAME}"...`);
-    workspace = await service.createWorkspace(WORKSPACE_NAME);
-    if (!workspace || !workspace.slug) throw new Error('Workspace creation failed.');
-    log(`Workspace "${workspace.name}" created with slug: ${workspace.slug}`, 'success');
+  const workspaceName = `Architect SOW Test - ${Date.now()}`;
+  log(`Creating/Getting workspace: "${workspaceName}"`, 'step');
+  const workspace = await service.createOrGetClientWorkspace(workspaceName);
+  if (!workspace?.slug) throw new Error('Workspace creation/get failed');
+  log(`Workspace: ${workspace.slug}`, 'success');
 
-    // --- STEP 2: MODIFY WORKSPACE WITH PROMPT ---
-    log(`Injecting "The Architect" prompt into workspace...`);
-    const updateResult = await service.updateWorkspace(workspace.slug, { systemPrompt: ARCHITECT_PROMPT });
-    if (!updateResult) throw new Error('Failed to update workspace with prompt.');
-    log('Workspace prompt updated successfully.', 'success');
+  log('Applying The Architect prompt to workspace', 'step');
+  await service.setWorkspacePrompt(workspace.slug, workspaceName, true);
+  log('Architect prompt applied', 'success');
 
-    // --- STEP 3: EMBED DOCUMENT ---
-    log('Embedding 91-role Rate Card document...');
-    const embedResult = await service.embedText(workspace.slug, RATE_CARD_CONTENT, "Official Rate Card");
-    if (!embedResult) throw new Error('Document embedding failed.');
-    log('Rate Card embedded successfully.', 'success');
+  log('Embedding 91-role rate card (idempotent)', 'step');
+  await service.embedRateCardDocument(workspace.slug);
+  log('Rate card embedded', 'success');
 
-    // --- STEP 4: TEST CHAT FUNCTIONALITY ---
-    log('Running an advanced test chat query...', 'test');
-    const testQuery = "Generate a SOW for a HubSpot CRM implementation with a strict budget of $45,000 AUD, focusing on marketing automation and lead scoring. The client is new.";
-    const response = await service.chat(workspace.slug, testQuery);
+  log(`Configuring LLM provider/model: ${MODEL_PROVIDER}/${MODEL_ID}`, 'step');
+  await service.setWorkspaceLLMProvider(workspace.slug, MODEL_PROVIDER, MODEL_ID);
+  log('LLM configured on workspace', 'success');
 
-    if (!response || !response.textResponse) throw new Error('Chat API did not return a valid response.');
+  log('Creating chat thread', 'step');
+  const thread = await service.createThread(workspace.slug);
+  if (!thread?.slug) throw new Error('Thread creation failed');
+  log(`Thread: ${thread.slug}`, 'success');
 
-    log('Received chat response:', 'success');
-    console.log('\n--- AI Response ---');
-    console.log(response.textResponse);
-    console.log('-------------------\n');
+  log('Streaming SOW generation via sow.qandu.me/api/anythingllm/stream-chat ...', 'step');
+  const t0 = Date.now();
+  const { text, chunks } = await streamViaSOWProxy({
+    workspaceSlug: workspace.slug,
+    threadSlug: thread.slug,
+    message: TEST_BRIEF
+  });
+  const secs = ((Date.now() - t0) / 1000).toFixed(1);
+  console.log('');
+  log(`Generated ${text.length} chars in ${secs}s (${chunks} chunks)`, 'success');
 
-    // Validation
-    if (response.textResponse.includes('+GST') && response.textResponse.includes('"suggestedRoles"')) {
-        log('Validation PASSED: Response includes GST suffix and the required JSON block.', 'success');
-    } else {
-        log('Validation FAILED: Response is missing GST suffix or the JSON block.', 'error');
-    }
+  const checks = {
+    gst: /\+\s*GST/i.test(text),
+    json: /```json|"suggestedRoles"/i.test(text),
+    closing: /This concludes the Scope of Work/i.test(text),
+    bullets: /\n\s*\+\s+/m.test(text)
+  };
+  log(`GST: ${checks.gst ? '✅' : '❌'} | JSON: ${checks.json ? '✅' : '❌'} | Closing: ${checks.closing ? '✅' : '❌'} | Bullets: ${checks.bullets ? '✅' : '❌'}`);
 
-  } catch (error) {
-    log(`An error occurred: ${error.message}`, 'error');
-    console.error(error);
-    process.exit(1);
-
-  } finally {
-    // --- STEP 5: CLEANUP ---
-    if (workspace && workspace.slug) {
-      log(`Cleaning up workspace "${workspace.slug}"...`, 'cleanup');
-      try {
-        await service.deleteWorkspace(workspace.slug);
-        log('Cleanup successful.', 'success');
-      } catch (cleanupError) {
-        log(`Failed to delete workspace: ${cleanupError.message}`, 'error');
-      }
-    }
-  }
+  console.log('\n─── Preview (first 600 chars) ───');
+  console.log(text.substring(0, 600));
+  console.log('────────────────────────────────');
 }
 
-main();
+main().catch(err => {
+  log(`Fatal: ${err.message}`, 'error');
+  process.exit(1);
+});

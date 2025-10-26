@@ -192,42 +192,55 @@ async function main() {
     // Get or create master dashboard
     const masterDashboardSlug = await getOrCreateMasterDashboard();
 
-    // Embed all SOWs
+    // Embed all SOWs in batches
     let successful = 0;
     let failed = 0;
+    const batchSize = 5;
+    const batchDelay = 2000; // 2 seconds between batches
 
-    for (let i = 0; i < sows.length; i++) {
-      const sow = sows[i];
-      const documentTitle = `[${sow.workspace_slug.toUpperCase()}] ${sow.title}`;
-      
-      console.log(`\n[${i + 1}/${sows.length}] Embedding SOW...`);
-      console.log(`  Title: ${sow.title}`);
-      console.log(`  Workspace: ${sow.workspace_slug}`);
+    for (let batchStart = 0; batchStart < sows.length; batchStart += batchSize) {
+      const batchEnd = Math.min(batchStart + batchSize, sows.length);
+      const batch = sows.slice(batchStart, batchEnd);
 
-      // Parse content if JSON
-      let content = sow.content;
-      try {
-        if (typeof content === 'string') {
-          content = JSON.parse(content);
+      console.log(`\n🔄 Processing batch ${Math.floor(batchStart / batchSize) + 1} (${batchStart + 1}-${batchEnd}/${sows.length})`);
+
+      // Process batch concurrently
+      const promises = batch.map(async (sow, index) => {
+        const i = batchStart + index;
+        const documentTitle = `[${sow.workspace_slug.toUpperCase()}] ${sow.title}`;
+        
+        console.log(`  [${i + 1}/${sows.length}] Embedding SOW: ${sow.title}`);
+
+        // Parse content if JSON
+        let content = sow.content;
+        try {
+          if (typeof content === 'string') {
+            content = JSON.parse(content);
+          }
+          // Convert to readable text
+          if (typeof content === 'object' && content.content) {
+            content = JSON.stringify(content, null, 2);
+          }
+        } catch (e) {
+          // Keep as-is if not valid JSON
         }
-        // Convert to readable text
-        if (typeof content === 'object' && content.content) {
-          content = JSON.stringify(content, null, 2);
+
+        const embedded = await embedDocument(masterDashboardSlug, documentTitle, content);
+        
+        if (embedded) {
+          successful++;
+        } else {
+          failed++;
         }
-      } catch (e) {
-        // Keep as-is if not valid JSON
-      }
+      });
 
-      const embedded = await embedDocument(masterDashboardSlug, documentTitle, content);
-      
-      if (embedded) {
-        successful++;
-      } else {
-        failed++;
-      }
+      await Promise.all(promises);
 
-      // Rate limit: wait 500ms between requests
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Wait between batches
+      if (batchEnd < sows.length) {
+        console.log(`⏳ Waiting ${batchDelay}ms before next batch...`);
+        await new Promise(resolve => setTimeout(resolve, batchDelay));
+      }
     }
 
     console.log('\n╔════════════════════════════════════════════════════════╗');
@@ -255,7 +268,7 @@ echo ""
 
 # Install dependencies if needed
 echo "📦 Checking dependencies..."
-npm list mysql2 > /dev/null 2>&1 || npm install mysql2
+pnpm list mysql2 > /dev/null 2>&1 || pnpm add mysql2
 
 # Run the script with environment variables
 echo "🚀 Starting bulk embedding process..."
@@ -267,6 +280,7 @@ export DB_HOST="${DB_HOST:-ahmad_mysql-database}"
 export DB_USER="${DB_USER:-sg_sow_user}"
 export DB_PASSWORD="${DB_PASSWORD:-SG_sow_2025_SecurePass!}"
 export DB_NAME="${DB_NAME:-socialgarden_sow}"
+export NODE_PATH="/root/the11-dev/frontend/node_modules"
 
 node /tmp/bulk-embed-sows.js
 

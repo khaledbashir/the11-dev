@@ -2,5 +2,23 @@
     "Codegeex.Chat.LanguagePreference": "English",
     "Codegeex.Comment.LanguagePreference": "English",
     "Codegeex.CommitMessage.LanguagePreference": "English",
-    "Codegeex.RepoIndex": true
+    "Codegeex.RepoIndex": true,
+    "files.watcherExclude": {
+        "**/node_modules/**": true,
+        "**/archive/**": true,
+        "**/.git/**": true,
+        "**/__pycache__/**": true,
+        "**/.next/**": true
+    },
+    "python.analysis.exclude": [
+        "**/node_modules/**",
+        "**/archive/**",
+        "**/*.md",
+        "**/docs/**"
+    ],
+    "search.exclude": {
+        "**/node_modules/**": true,
+        "**/archive/**": true,
+        "**/__pycache__/**": true
+    }
 }
