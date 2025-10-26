@@ -1034,11 +1034,7 @@ Ready to explore your project details? Ask me anything!`;
         console.log(`✅ Using existing master dashboard: ${masterDashboardSlug}`);
         // Always ensure the dashboard prompt is correct (idempotent)
         await this.setMasterDashboardPrompt(masterDashboardSlug);
-        // Strictly require official rate card in the dashboard for analytics/search
-        const rateOk = await this.embedRateCardDocument(masterDashboardSlug);
-        if (!rateOk) {
-          throw new Error('Rate card embedding failed on master dashboard');
-        }
+        // Per latest guidance: master dashboard aggregates SOWs; rate card is not required here.
         return masterDashboardSlug;
       }
 
@@ -1066,11 +1062,7 @@ Ready to explore your project details? Ask me anything!`;
       // Set analytics-focused prompt
       await this.setMasterDashboardPrompt(data.workspace.slug);
 
-      // Ensure rate card is also embedded for consistent analytics and search (required)
-      const rateOk = await this.embedRateCardDocument(data.workspace.slug);
-      if (!rateOk) {
-        throw new Error('Rate card embedding failed on newly created master dashboard');
-      }
+      // Per latest guidance: rate card is not required in the master dashboard.
       
       return data.workspace.slug;
     } catch (error) {

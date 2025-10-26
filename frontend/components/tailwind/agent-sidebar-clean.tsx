@@ -204,12 +204,8 @@ export default function AgentSidebar({
     setLoadingThreads(true);
     
     try {
-      // Use the dedicated AnythingLLM endpoint for listing threads
-      const response = await fetch(`${process.env.NEXT_PUBLIC_ANYTHINGLLM_URL}/api/v1/workspace/${ws}/threads`, {
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY}`,
-        },
-      });
+      // Use server-side proxy for listing threads to ensure proper JSON and auth
+      const response = await fetch(`/api/anythingllm/threads?workspace=${encodeURIComponent(ws)}`);
 
       if (!response.ok) {
         console.warn('⚠️ Failed to list threads (non-OK response). Returning empty list.');
@@ -967,21 +963,7 @@ export default function AgentSidebar({
                             
                             <div className="flex gap-2 mt-4 items-center sticky bottom-0 z-10 bg-[#0E2E33]/85 backdrop-blur-sm px-2 py-1 rounded-md border-t border-[#1b5e5e]">
                               <p className="text-xs mt-1 opacity-70 flex-1">{formatTimestamp(msg.timestamp)}</p>
-                              {shouldShowButton && (
-                                <Button 
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-xs h-8 px-2 border-[#0E2E33] text-gray-300 hover:text-white hover:bg-[#0E2E33]"
-                                  onClick={() => {
-                                    const textOnly = extractNonJsonText(cleaned);
-                                    if (!textOnly) return;
-                                    onInsertToEditor(textOnly);
-                                  }}
-                                  title="Insert this reply into the editor"
-                                >
-                                  📝 Insert
-                                </Button>
-                              )}
+                              {/* Removed per-message Insert button to avoid duplicate insert controls; use accordion Insert only */}
                             </div>
                           </div>
                         </div>
@@ -1106,25 +1088,7 @@ export default function AgentSidebar({
                       </Button>
                     </div>
                   </div>
-                  {/* Compact 'Insert last reply' (editor mode only) */}
-                  {isEditorMode && onInsertToEditor && chatMessages.some(m => m.role === 'assistant') && (
-                    <Button
-                      onClick={() => {
-                        const lastAssistant = [...chatMessages].reverse().find(m => m.role === 'assistant');
-                        if (!lastAssistant) return;
-                        const cleaned = lastAssistant.content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-                        const textOnly = extractNonJsonText(cleaned || lastAssistant.content);
-                        if (!textOnly) return;
-                        onInsertToEditor(textOnly);
-                      }}
-                      size="sm"
-                      variant="outline"
-                      className="self-end h-8 px-2 text-xs border-[#0E2E33] text-gray-300 hover:text-white hover:bg-[#0E2E33]"
-                      title="Insert the latest AI reply into the editor"
-                    >
-                      📝 Insert
-                    </Button>
-                  )}
+                  {/* Removed compact 'Insert last reply' button to avoid duplicate insert controls */}
 
                   <Button 
                     onClick={handleSendMessage} 

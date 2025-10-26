@@ -628,10 +628,21 @@ export default function SidebarNav({
 
       {/* LOGO HEADER */}
       <div className="flex-shrink-0 p-6 border-b border-gray-800">
-        <img 
-          src="/images/logo-light.png" 
-          alt="Social Garden" 
+        <img
+          src="/images/logo-light.png"
+          alt="Social Garden"
           className="h-10 w-auto"
+          onError={(e) => {
+            const img = e.currentTarget as HTMLImageElement;
+            // Fallbacks: try dark logo then root-level variant
+            if (!img.dataset.fallbackTried) {
+              img.dataset.fallbackTried = 'dark';
+              img.src = '/images/logo-dark.png';
+            } else if (img.dataset.fallbackTried === 'dark') {
+              img.dataset.fallbackTried = 'root';
+              img.src = '/logo-light.png';
+            }
+          }}
         />
       </div>
 

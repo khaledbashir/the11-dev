@@ -228,25 +228,14 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
   };
 
   // Helper function to insert pricing table
-  const buildDefaultCoreZeroHours = () => {
-    // Minimal safe default rows using core roles with hours=0 and known rates
-    const find = (name: string) => ROLES.find(r => r.name === name);
-    const head = find('Tech - Head Of - Senior Project Management');
-    const pc = find('Tech - Delivery - Project Coordination');
-    const am = find('Account Management - (Account Manager)');
-    return [
-      { role: head?.name || 'Tech - Head Of - Senior Project Management', description: 'Strategic oversight', hours: 0, rate: head?.rate || 365 },
-      { role: pc?.name || 'Tech - Delivery - Project Coordination', description: 'Delivery coordination', hours: 0, rate: pc?.rate || 110 },
-      { role: am?.name || 'Account Management - (Account Manager)', description: 'Client comms & governance', hours: 0, rate: am?.rate || 180 },
-    ];
-  };
+  // Removed default zero-hours fallback: enterprise policy prohibits pricing fallbacks
 
   const insertPricingTable = (rolesFromMarkdown: any[] = []) => {
     if (pricingTableInserted) return;
     
     let pricingRows: any[] = [];
     
-    // Use provided suggestedRoles first, else choose strategy based on strictRoles
+    // Use provided suggestedRoles first; otherwise use roles parsed from markdown only
     if (suggestedRoles.length > 0) {
       console.log('✅ Using suggestedRoles from JSON.');
       pricingRows = suggestedRoles.map(role => {
@@ -258,9 +247,6 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
           rate: matchedRole?.rate || role.rate || 0,
         };
       });
-    } else if (strictRoles) {
-      console.log('✅ SAFE FALLBACK ACTIVATED: Inserting default pricing table with zero hours.');
-      pricingRows = buildDefaultCoreZeroHours();
     } else if (rolesFromMarkdown.length > 0) {
       console.log('✅ Using roles parsed from markdown table.');
       pricingRows = rolesFromMarkdown;
@@ -422,12 +408,10 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
     i++;
   }
 
-  // CRITICAL: If we reach the end and pricing table hasn't been inserted, ALWAYS insert it when roles exist OR strict fallback is enabled
+  // If we reach the end and pricing table hasn't been inserted, only insert when roles exist
   if (!pricingTableInserted) {
-    if (suggestedRoles.length > 0 || strictRoles) {
-      console.log('⚠️ Pricing table not auto-inserted earlier, inserting NOW at end of content.', {
-        via: suggestedRoles.length > 0 ? 'suggestedRoles' : 'strictFallback'
-      });
+    if (suggestedRoles.length > 0) {
+      console.log('⚠️ Pricing table not auto-inserted earlier, inserting NOW at end of content (from suggestedRoles).');
       content.push({ type: 'horizontalRule' });
       content.push({
         type: 'heading',
@@ -2712,7 +2696,7 @@ Ask me questions to get business insights, such as:
       
       // CRITICAL: If no suggestedRoles provided from JSON, try extracting Architect structured JSON from the message body
       let convertedContent;
-      if (!hasValidSuggestedRoles) {
+  if (!hasValidSuggestedRoles) {
         // Try to extract structured JSON from cleaned markdown (if not already parsed above)
         let structured = parsedStructured;
         if (!structured) {
@@ -2734,9 +2718,15 @@ Ask me questions to get business insights, such as:
           convertedContent = convertMarkdownToNovelJSON(cleanedContent, derived, { strictRoles: false });
         } else {
           console.error('❌ CRITICAL ERROR: AI did not provide suggestedRoles JSON or scopeItems. The application requires one of these.');
-          console.log('✅ SAFE FALLBACK ACTIVATED: Inserting SOW narrative with a default, empty pricing table.');
-          toast.warning('Warning: AI failed to generate a valid price table. A default table has been inserted. Please review and update manually.');
-          convertedContent = convertMarkdownToNovelJSON(cleanedContent, [], { strictRoles: true });
+          toast.error('Pricing data missing. Ask the AI to regenerate with structured pricing JSON (suggestedRoles or scopeItems). Insertion aborted.');
+          const blockedMessage: ChatMessage = {
+            id: `msg${Date.now()}`,
+            role: 'assistant',
+            content: "❌ Insertion blocked: Missing structured pricing data. Please regenerate with a JSON block that includes either `suggestedRoles` or `scopeItems` (with role names and estimated hours).",
+            timestamp: Date.now(),
+          };
+          setChatMessages(prev => [...prev, blockedMessage]);
+          return; // Strictly abort insertion when no pricing data is available
         }
       } else {
         convertedContent = convertMarkdownToNovelJSON(cleanedContent, suggestedRoles, { strictRoles: false });
