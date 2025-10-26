@@ -1,7 +1,8 @@
 "use client";
 
 // 🔧 Chat sidebar with thread management, attachments, and streaming support
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from 'sonner';
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
@@ -607,6 +608,47 @@ export default function AgentSidebar({
     setAttachments([]); // Clear attachments after sending
   };
 
+  // Enhance & Send: calls server to rewrite prompt, then sends
+  const [enhancing, setEnhancing] = useState(false);
+  const handleEnhanceAndSend = async () => {
+    if (!chatInput.trim() || isLoading || enhancing) return;
+
+    try {
+      setEnhancing(true);
+
+      const resp = await fetch('/api/ai/enhance-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: chatInput })
+      });
+
+      if (!resp.ok) {
+        const msg = await resp.text().catch(() => '');
+        throw new Error(msg || `Enhancer error ${resp.status}`);
+      }
+      const data = await resp.json();
+      const enhanced: string = (data?.enhancedPrompt || '').toString();
+      const finalMessage = enhanced.trim() || chatInput.trim();
+
+      // Ensure a thread exists in dashboard mode before sending (for persistence)
+      let threadToUse = currentThreadSlug;
+      if (isDashboardMode && !threadToUse) {
+        const created = await handleNewThread();
+        if (!created) return; // Abort send if thread creation failed
+        threadToUse = created;
+      }
+
+      onSendMessage(finalMessage, threadToUse, attachments);
+      setChatInput('');
+      setAttachments([]);
+    } catch (e) {
+      console.error('Enhance & Send failed:', e);
+      toast.error('Failed to enhance your prompt. Please try again or send directly.');
+    } finally {
+      setEnhancing(false);
+    }
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -1088,11 +1130,34 @@ export default function AgentSidebar({
                   </div>
                   {/* Removed compact 'Insert last reply' button to avoid duplicate insert controls */}
 
+                  {/* Enhance & Send button */}
+                  <Button
+                    onClick={handleEnhanceAndSend}
+                    disabled={!chatInput.trim() || isLoading || enhancing}
+                    size="sm"
+                    className="self-end bg-[#0E2E33] hover:bg-[#143e45] text-white h-[50px] font-semibold border border-[#1CBF79]"
+                    title="Enhance & Send"
+                  >
+                    {enhancing ? (
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-5 w-5 animate-spin text-[#1CBF79]" />
+                        <span className="text-sm">Enhancing…</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">✨</span>
+                        <span className="text-sm">Enhance & Send</span>
+                      </div>
+                    )}
+                  </Button>
+
+                  {/* Original Send button */}
                   <Button 
                     onClick={handleSendMessage} 
                     disabled={!chatInput.trim() || isLoading} 
                     size="sm" 
                     className="self-end bg-[#15a366] hover:bg-[#10a35a] text-white h-[50px] font-semibold border-0"
+                    title="Send"
                   >
                     {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                   </Button>
