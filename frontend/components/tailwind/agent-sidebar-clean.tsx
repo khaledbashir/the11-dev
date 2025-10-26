@@ -98,6 +98,9 @@ export default function AgentSidebar({
   const [showSettings, setShowSettings] = useState(false);
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [selectedModelForAgent, setSelectedModelForAgent] = useState("");
+  const [showSystemPrompt, setShowSystemPrompt] = useState(false);
+  const [workspacePrompt, setWorkspacePrompt] = useState<string>("");
+  const [loadingPrompt, setLoadingPrompt] = useState(false);
   
   // 🧵 THREAD MANAGEMENT STATE
   const [threads, setThreads] = useState<Array<{ slug: string; name: string; id: number; createdAt: string }>>([]);
@@ -545,6 +548,33 @@ export default function AgentSidebar({
     fetchModels();
   }, []);
 
+  // Load and display the active workspace system prompt (Architect v2) in editor mode
+  useEffect(() => {
+    const loadPrompt = async () => {
+      if (!(viewMode === 'editor') || !editorWorkspaceSlug) return;
+      setLoadingPrompt(true);
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_ANYTHINGLLM_URL}/api/v1/workspace/${editorWorkspaceSlug}`, {
+          headers: {
+            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY}`,
+          },
+        });
+        if (!res.ok) {
+          setWorkspacePrompt("");
+          return;
+        }
+        const data = await res.json();
+        const prompt = data?.workspace?.openAiPrompt || data?.workspace?.prompt || "";
+        setWorkspacePrompt(prompt || "");
+      } catch (e) {
+        setWorkspacePrompt("");
+      } finally {
+        setLoadingPrompt(false);
+      }
+    };
+    loadPrompt();
+  }, [viewMode, editorWorkspaceSlug]);
+
   const fetchModels = async () => {
     setLoadingModels(true);
     try {
@@ -680,6 +710,27 @@ export default function AgentSidebar({
             )}
           </div>
         </div>
+
+        {/* Editor mode: show Architect system prompt (v2) as a collapsible details */}
+        {isEditorMode && (
+          <div className="mt-3">
+            <details className="group border border-[#0E2E33] rounded-md overflow-hidden">
+              <summary className="cursor-pointer px-3 py-2 bg-[#0E2E33]/40 hover:bg-[#0E2E33]/60 transition-colors text-xs flex items-center gap-2 list-none">
+                <span>🧩 Workspace System Prompt</span>
+                <span className="ml-auto text-gray-400">The Architect v2</span>
+              </summary>
+              <div className="px-3 py-3 bg-[#0b0d0d] border-t border-[#0E2E33]">
+                {loadingPrompt ? (
+                  <div className="text-xs text-gray-400">Loading prompt…</div>
+                ) : workspacePrompt ? (
+                  <pre className="text-[11px] text-gray-300 whitespace-pre-wrap font-mono max-h-56 overflow-y-auto">{workspacePrompt}</pre>
+                ) : (
+                  <div className="text-xs text-gray-500">No prompt found for this workspace.</div>
+                )}
+              </div>
+            </details>
+          </div>
+        )}
 
   {/* No agent selection — workspace context only */}
 

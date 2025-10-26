@@ -3179,13 +3179,8 @@ Ask me questions to get business insights, such as:
                   
                   // Handle different message types from AnythingLLM stream
                   if (data.type === 'textResponseChunk' && data.textResponse) {
-                    // 🧠 Strip internal-only tags (<thinking>, <think>, <AI_THINK>, <tool_call>) before accumulating
-                    const cleanedText = data.textResponse
-                      .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
-                      .replace(/<think>[\s\S]*?<\/think>/gi, '')
-                      .replace(/<AI_THINK>[\s\S]*?<\/AI_THINK>/gi, '')
-                      .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '');
-                    accumulatedContent += cleanedText;
+                    // Preserve internal thinking tags; UI will collapse them via StreamingThoughtAccordion
+                    accumulatedContent += data.textResponse;
                     
                     // Update the message content in real-time
                     setChatMessages(prev =>
@@ -3197,13 +3192,8 @@ Ask me questions to get business insights, such as:
                     );
                   } else if (data.type === 'textResponse') {
                     // Final response (fallback for non-chunked)
-                    // 🧠 Also strip internal-only tags from final responses
+                    // Preserve internal thinking tags for UI accordion
                     let content = data.content || data.textResponse || '';
-                    content = content
-                      .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
-                      .replace(/<think>[\s\S]*?<\/think>/gi, '')
-                      .replace(/<AI_THINK>[\s\S]*?<\/AI_THINK>/gi, '')
-                      .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '');
                     accumulatedContent = content;
                     setChatMessages(prev =>
                       prev.map(msg =>
