@@ -101,10 +101,15 @@ export function FloatingAIBar({ onGenerate, editor: editorProp }: FloatingAIBarP
     if (!editor) return;
 
     // Listen for custom event from slash command
-    const handleOpenAIBar = () => {
-      // Disable separate floating bar when triggered via slash command.
-      // We keep the selection toolbar experience only.
-      return;
+    const handleOpenAIBar = (evt: Event) => {
+      // Open the full floating bar in slash mode
+      setTriggerSource('slash');
+      setShowToolbar(false);
+      setIsVisible(true);
+      setShowActions(true);
+      setPrompt("");
+      // Clear any previous completion
+      setCompletion("");
     };
 
     window.addEventListener('open-ai-bar', handleOpenAIBar as EventListener);
