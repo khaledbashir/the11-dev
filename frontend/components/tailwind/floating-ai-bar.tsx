@@ -40,6 +40,7 @@ export function FloatingAIBar({ onGenerate, editor: editorProp }: FloatingAIBarP
   const [hasSelection, setHasSelection] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isEnhancing, setIsEnhancing] = useState(false);
   const [completion, setCompletion] = useState("");
   const [showActions, setShowActions] = useState(false);
   const [showActionsDropdown, setShowActionsDropdown] = useState(false);
@@ -342,6 +343,69 @@ export function FloatingAIBar({ onGenerate, editor: editorProp }: FloatingAIBarP
     handleGenerate(actionPrompt);
   };
 
+  // Enhance via Clarifier endpoint
+  const handleEnhance = async () => {
+    try {
+      // Slash mode: enhance the command input itself
+      if (triggerSource === 'slash' && !hasSelection) {
+        const raw = prompt.trim();
+        if (!raw) {
+          toast.error('Type something to enhance');
+          return;
+        }
+        setIsEnhancing(true);
+        const resp = await fetch('/api/ai/enhance-prompt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: raw })
+        });
+        if (!resp.ok) {
+          const msg = await resp.text().catch(() => '');
+          throw new Error(msg || `Enhancer error ${resp.status}`);
+        }
+        const data = await resp.json();
+        const enhanced = (data?.enhancedPrompt || '').toString().trim();
+        if (!enhanced) {
+          toast.error('Enhancer returned empty text');
+        } else {
+          setPrompt(enhanced);
+          toast.success('Prompt enhanced');
+        }
+      } else {
+        // Selection mode: enhance the selected text and show it as completion to allow Replace/Insert
+        if (!hasSelection) {
+          toast.error('Please select some text first');
+          return;
+        }
+        setIsEnhancing(true);
+        const selectedText = getSelectedText();
+        const resp = await fetch('/api/ai/enhance-prompt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: selectedText })
+        });
+        if (!resp.ok) {
+          const msg = await resp.text().catch(() => '');
+          throw new Error(msg || `Enhancer error ${resp.status}`);
+        }
+        const data = await resp.json();
+        const enhanced = (data?.enhancedPrompt || '').toString().trim();
+        if (!enhanced) {
+          toast.error('Enhancer returned empty text');
+        } else {
+          setCompletion(enhanced);
+          setShowActions(false);
+          toast.success('Enhanced text ready');
+        }
+      }
+    } catch (e) {
+      console.error('Enhance failed:', e);
+      toast.error('Failed to enhance');
+    } finally {
+      setIsEnhancing(false);
+    }
+  };
+
   if (!editor) {
     return null;
   }
@@ -442,7 +506,7 @@ export function FloatingAIBar({ onGenerate, editor: editorProp }: FloatingAIBarP
                   className="w-full px-4 py-3 text-sm bg-white/60 text-[#0e2e33] placeholder-[#0e2e33]/40 border border-[#1FE18E]/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1FE18E] focus:border-transparent disabled:opacity-50 pr-24 backdrop-blur-sm"
                 />
                 
-                {/* Generate Button */}
+                {/* Generate + Enhance Buttons */}
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
                   <button
                     onClick={() => handleGenerate()}
@@ -455,6 +519,14 @@ export function FloatingAIBar({ onGenerate, editor: editorProp }: FloatingAIBarP
                     ) : (
                       <Sparkles className="h-4 w-4" />
                     )}
+                  </button>
+                  <button
+                    onClick={handleEnhance}
+                    disabled={isEnhancing}
+                    className="px-2 py-2 bg-white/70 hover:bg-white/90 text-[#0e2e33] rounded-lg transition-colors disabled:opacity-50 border border-[#1FE18E]/50 text-xs font-medium"
+                    title="Enhance prompt"
+                  >
+                    {isEnhancing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Enhance'}
                   </button>
                 </div>
               </div>

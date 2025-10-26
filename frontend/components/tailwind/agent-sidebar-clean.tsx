@@ -608,42 +608,32 @@ export default function AgentSidebar({
     setAttachments([]); // Clear attachments after sending
   };
 
-  // Enhance & Send: calls server to rewrite prompt, then sends
+  // Enhance Only: calls server to rewrite prompt, then updates input (no send)
   const [enhancing, setEnhancing] = useState(false);
-  const handleEnhanceAndSend = async () => {
+  const handleEnhanceOnly = async () => {
     if (!chatInput.trim() || isLoading || enhancing) return;
-
     try {
       setEnhancing(true);
-
       const resp = await fetch('/api/ai/enhance-prompt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: chatInput })
       });
-
       if (!resp.ok) {
         const msg = await resp.text().catch(() => '');
         throw new Error(msg || `Enhancer error ${resp.status}`);
       }
       const data = await resp.json();
-      const enhanced: string = (data?.enhancedPrompt || '').toString();
-      const finalMessage = enhanced.trim() || chatInput.trim();
-
-      // Ensure a thread exists in dashboard mode before sending (for persistence)
-      let threadToUse = currentThreadSlug;
-      if (isDashboardMode && !threadToUse) {
-        const created = await handleNewThread();
-        if (!created) return; // Abort send if thread creation failed
-        threadToUse = created;
+      const enhanced: string = (data?.enhancedPrompt || '').toString().trim();
+      if (!enhanced) {
+        toast.error('Enhancer returned empty text');
+        return;
       }
-
-      onSendMessage(finalMessage, threadToUse, attachments);
-      setChatInput('');
-      setAttachments([]);
+      setChatInput(enhanced);
+      toast.success('Prompt enhanced');
     } catch (e) {
-      console.error('Enhance & Send failed:', e);
-      toast.error('Failed to enhance your prompt. Please try again or send directly.');
+      console.error('Enhance failed:', e);
+      toast.error('Failed to enhance your prompt.');
     } finally {
       setEnhancing(false);
     }
@@ -1130,13 +1120,13 @@ export default function AgentSidebar({
                   </div>
                   {/* Removed compact 'Insert last reply' button to avoid duplicate insert controls */}
 
-                  {/* Enhance & Send button */}
+                  {/* Enhance button (no send) */}
                   <Button
-                    onClick={handleEnhanceAndSend}
+                    onClick={handleEnhanceOnly}
                     disabled={!chatInput.trim() || isLoading || enhancing}
                     size="sm"
                     className="self-end bg-[#0E2E33] hover:bg-[#143e45] text-white h-[50px] font-semibold border border-[#1CBF79]"
-                    title="Enhance & Send"
+                    title="Enhance"
                   >
                     {enhancing ? (
                       <div className="flex items-center gap-2">
@@ -1146,7 +1136,7 @@ export default function AgentSidebar({
                     ) : (
                       <div className="flex items-center gap-2">
                         <span className="text-lg">✨</span>
-                        <span className="text-sm">Enhance & Send</span>
+                        <span className="text-sm">Enhance</span>
                       </div>
                     )}
                   </Button>
