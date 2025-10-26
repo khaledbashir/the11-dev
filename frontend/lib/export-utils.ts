@@ -758,6 +758,8 @@ export function cleanSOWContent(content: string): string {
   let out = content
     // Remove <AI_THINK> tags
     .replace(/<AI_THINK>[\s\S]*?<\/AI_THINK>/gi, '')
+    // Remove <thinking> tags (additional variant)
+    .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
     // Remove <think> tags
     .replace(/<think>[\s\S]*?<\/think>/gi, '')
     // Remove <tool_call> tags

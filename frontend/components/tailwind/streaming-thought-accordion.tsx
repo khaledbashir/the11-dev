@@ -25,6 +25,27 @@ export function StreamingThoughtAccordion({
   const [displayedThinking, setDisplayedThinking] = useState<string>("");
   const streamTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
+  // Build the full insert payload: original content with internal-only sections removed,
+  // preserving the original order of the visible narrative and any JSON blocks.
+  const buildInsertPayload = useMemo(() => {
+    if (!content) return '';
+    let cleaned = content;
+    // Remove internal-only blocks but leave JSON in place to preserve order
+    const variants = [
+      { open: /<thinking>/gi, close: /<\/thinking>/gi },
+      { open: /<think>/gi, close: /<\/think>/gi },
+      { open: /<AI_THINK>/gi, close: /<\/AI_THINK>/gi },
+    ];
+    for (const v of variants) {
+      const regex = new RegExp(`${v.open.source}([\n\s\S]*?)${v.close.source}`, 'gi');
+      cleaned = cleaned.replace(regex, '').trim();
+    }
+    // Remove tool_call wrappers entirely
+    cleaned = cleaned.replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '').trim();
+    // Keep any ```json code fences as-is so the editor can parse pricing
+    return cleaned;
+  }, [content]);
+  
   // ⚠️ CRITICAL FIX: Extract thinking ONCE per actual content change
   // useMemo ensures this only runs when content actually changes, not on every render/re-stream chunk
   const { thinking, actualContent, jsonBlock } = useMemo(() => {
@@ -56,7 +77,7 @@ export function StreamingThoughtAccordion({
     const extractedThinking = extractedThinkingParts.join('\n\n');
 
     // Extract JSON code block (must be ```json ... ```)
-    const jsonMatch = cleanedContent.match(/```json\s*([\s\S]*?)\s*```/);
+  const jsonMatch = cleanedContent.match(/```json\s*([\s\S]*?)\s*```/);
     let extractedJsonBlock = null as any;
     if (jsonMatch && jsonMatch[1]) {
       try {
@@ -164,9 +185,8 @@ export function StreamingThoughtAccordion({
             </pre>
             <Button
               onClick={() => {
-                // Re-construct the JSON block for insertion
-                const jsonStr = `\`\`\`json\n${JSON.stringify(jsonBlock, null, 2)}\n\`\`\``;
-                onInsertClick?.(jsonStr);
+                // Insert the full visible payload (which, in this case, is just the JSON block)
+                onInsertClick?.(buildInsertPayload);
               }}
               className="w-full bg-[#20e28f] hover:bg-[#1db876] text-black font-semibold py-2 px-3 rounded"
             >
@@ -328,9 +348,8 @@ export function StreamingThoughtAccordion({
                 </pre>
                 <Button
                   onClick={() => {
-                    // Re-construct the JSON block for insertion
-                    const jsonStr = `\`\`\`json\n${JSON.stringify(jsonBlock, null, 2)}\n\`\`\``;
-                    onInsertClick?.(jsonStr);
+                    // Insert the entire AI response payload (narrative + JSON), minus hidden thinking
+                    onInsertClick?.(buildInsertPayload);
                   }}
                   className="w-full bg-[#20e28f] hover:bg-[#1db876] text-black font-semibold py-2 px-3 rounded"
                 >

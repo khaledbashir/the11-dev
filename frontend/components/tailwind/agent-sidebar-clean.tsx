@@ -270,17 +270,12 @@ export default function AgentSidebar({
     setLoadingThreads(true);
 
     try {
-      const url = `${process.env.NEXT_PUBLIC_ANYTHINGLLM_URL}/api/v1/workspace/${ws}/thread/new`;
-      console.log('POST', url);
-
-      // Call AnythingLLM API to create thread
-      const response = await fetch(url, {
+      // Create via server-side proxy to protect credentials and ensure JSON
+      const response = await fetch('/api/anythingllm/thread', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          workspace: ws,
           name: `New Chat - ${new Date().toLocaleTimeString()}`,
         }),
       });
@@ -373,14 +368,10 @@ export default function AgentSidebar({
     setLoadingThreads(true);
     
     try {
-      // Load thread chat history from AnythingLLM
+      // Load thread chat history via server proxy
       const ws = isDashboardMode ? dashboardChatTarget : editorWorkspaceSlug;
       if (!ws) throw new Error('No workspace available for loading threads');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_ANYTHINGLLM_URL}/api/v1/workspace/${ws}/thread/${threadSlug}/chats`, {
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY}`,
-        },
-      });
+      const response = await fetch(`/api/anythingllm/thread?workspace=${encodeURIComponent(ws)}&thread=${encodeURIComponent(threadSlug)}`);
 
       if (!response.ok) {
         throw new Error('Failed to load thread history');
@@ -421,12 +412,9 @@ export default function AgentSidebar({
       const ws = isDashboardMode ? dashboardChatTarget : editorWorkspaceSlug;
       if (!ws) throw new Error('No workspace selected for thread deletion');
 
-      // Call AnythingLLM API to delete thread in the right workspace
-      const response = await fetch(`${process.env.NEXT_PUBLIC_ANYTHINGLLM_URL}/api/v1/workspace/${ws}/thread/${threadSlug}`, {
+      // Delete via server proxy
+      const response = await fetch(`/api/anythingllm/thread?workspace=${encodeURIComponent(ws)}&thread=${encodeURIComponent(threadSlug)}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY}`,
-        },
       });
 
       if (!response.ok) {
@@ -550,11 +538,7 @@ export default function AgentSidebar({
       if (!(viewMode === 'editor') || !editorWorkspaceSlug) return;
       setLoadingPrompt(true);
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_ANYTHINGLLM_URL}/api/v1/workspace/${editorWorkspaceSlug}`, {
-          headers: {
-            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY}`,
-          },
-        });
+        const res = await fetch(`/api/anythingllm/workspace?slug=${encodeURIComponent(editorWorkspaceSlug)}`);
         if (!res.ok) {
           setWorkspacePrompt("");
           return;
