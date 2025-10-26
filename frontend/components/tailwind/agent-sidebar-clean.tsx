@@ -530,40 +530,13 @@ export default function AgentSidebar({
     }
   }, [currentAgentId]);
 
-  // 🤖 AUTO-SELECT AGENT BASED ON VIEW MODE
+  // ✨ No agent auto-selection — workspaces act as Generation AI; focus input instead
   useEffect(() => {
-    if (!agents || agents.length === 0) return;
-
-    let targetAgentId: string | null = null;
-
-    if (viewMode === 'dashboard') {
-      // Dashboard mode: Look for "Business Analyst"
-      const businessAnalyst = agents.find(a => 
-        a.name.toLowerCase().includes('business') || 
-        a.name.toLowerCase().includes('analyst') ||
-        a.id.toLowerCase().includes('business') ||
-        a.id.toLowerCase().includes('analyst')
-      );
-      targetAgentId = businessAnalyst?.id || null;
-      
-      if (targetAgentId && targetAgentId !== currentAgentId) {
-        console.log(`🤖 [Auto-Select] Dashboard mode → Auto-selecting ${businessAnalyst?.name} (Business Analyst)`);
-        onSelectAgent(targetAgentId);
-      }
-    } else if (viewMode === 'editor') {
-      // Editor mode: Look for "The Architect" or "gen-the-architect"
-      const architect = agents.find(a => 
-        a.name.toLowerCase().includes('architect') || 
-        a.id.includes('architect')
-      );
-      targetAgentId = architect?.id || null;
-      
-      if (targetAgentId && targetAgentId !== currentAgentId) {
-        console.log(`🤖 [Auto-Select] Editor mode → Auto-selecting ${architect?.name} (The Architect)`);
-        onSelectAgent(targetAgentId);
-      }
+    if (viewMode === 'editor') {
+      // Focus input when editor chat becomes available or thread changes
+      setTimeout(() => chatInputRef.current?.focus(), 50);
     }
-  }, [viewMode, agents, currentAgentId, onSelectAgent]);
+  }, [viewMode, editorThreadSlug]);
 
   useEffect(() => {
     fetchModels();
@@ -587,7 +560,8 @@ export default function AgentSidebar({
     }
   };
 
-  const currentAgent = agents.find(a => a.id === currentAgentId);
+  // Agents are deprecated for chat routing; workspace context drives behavior
+  // Keeping props for compatibility, but not using currentAgent for gating
   
   const filteredModels = models.filter(model => {
     const matchesSearch = model.name.toLowerCase().includes(modelSearch.toLowerCase());
@@ -597,9 +571,6 @@ export default function AgentSidebar({
 
   const handleSendMessage = () => {
     if (!chatInput.trim() || isLoading) return;
-    
-    // Dashboard mode doesn't require agent selection
-    if (!isDashboardMode && !currentAgentId) return;
     
     // Send message with thread context and attachments
     console.log('📤 Sending message:', {
@@ -665,14 +636,9 @@ export default function AgentSidebar({
       <div className="p-4 border-b border-[#0E2E33] bg-[#0e0f0f] flex-shrink-0">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-sm font-bold text-white truncate">
-            {isDashboardMode ? "Chat" : "AI Agent"}
+            {isDashboardMode ? "Chat" : "Workspace Chat"}
           </h2>
           <div className="flex items-center gap-2 flex-shrink-0">
-            {isEditorMode && currentAgent && (
-              <span className="text-xs bg-[#0E2E33] text-[#1CBF79] px-2 py-1 rounded truncate max-w-[120px]">
-                {currentAgent.name}
-              </span>
-            )}
             {(isDashboardMode || isEditorMode) && (
               <>
                 <Button
@@ -706,7 +672,7 @@ export default function AgentSidebar({
           </div>
         </div>
 
-        {/* Agent selector removed in editor mode for simplicity; context agent is auto-selected */}
+  {/* No agent selection — workspace context only */}
 
         {isDashboardMode && (
           <div className="mt-3">
@@ -878,7 +844,7 @@ export default function AgentSidebar({
                 </div>
               </div>
             </>
-          ) : isEditorMode && currentAgent ? (
+          ) : isEditorMode ? (
             /* EDITOR MODE: Full agent chat with all controls */
             <>
               <ScrollArea className="flex-1">
@@ -1111,13 +1077,6 @@ export default function AgentSidebar({
                 </div>
               </div>
             </>
-          ) : isEditorMode ? (
-            /* EDITOR MODE - NO AGENT SELECTED */
-            <div className="flex items-center justify-center h-full">
-              <Card className="p-8 text-center bg-[#0E2E33] border-[#0E2E33]">
-                <p className="text-base text-white font-medium">Select an agent to start</p>
-              </Card>
-            </div>
           ) : null}
       </div>
     </div>

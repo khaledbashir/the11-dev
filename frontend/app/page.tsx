@@ -2760,8 +2760,8 @@ Ask me questions to get business insights, such as:
     // In dashboard mode, we don't need an agent selected - use dashboard workspace directly
     const isDashboardMode = viewMode === 'dashboard';
     
-    if (!message.trim()) return;
-    if (!isDashboardMode && !currentAgentId) return; // Only require agent in editor mode
+  if (!message.trim()) return;
+  // Do not require an agent in editor mode — workspace context is sufficient
 
     // Rate limiting: prevent sending messages too quickly
     const now = Date.now();
@@ -3004,45 +3004,35 @@ Ask me questions to get business insights, such as:
     
     // ⚠️ REMOVED DATABASE SAVE - AnythingLLM handles all message storage
 
-    const currentAgent = agents.find(a => a.id === currentAgentId);
-    
-    // In dashboard mode, we use a simulated agent configuration with OpenRouter
-    // 🔧 Changed from 'anythingllm' to use OpenRouter directly (no RAG needed)
-    const effectiveAgent = isDashboardMode ? {
-      id: 'dashboard',
-      name: 'Dashboard AI',
-      systemPrompt: 'You are a helpful AI assistant for the Social Garden SOW Generator platform. You help users with creating SOWs, understanding features, and general questions. Be helpful, friendly, and concise.',
-      model: 'anythingllm' // ✅ Use AnythingLLM for dashboard (routes to master-dashboard workspace)
-    } : currentAgent;
+    // Always route via AnythingLLM using workspace context (no agents required)
+    const effectiveAgent = {
+      id: 'workspace',
+      name: 'Workspace AI',
+      systemPrompt: '',
+      model: 'anythingllm'
+    };
     
     if (effectiveAgent) {
       try {
         const useAnythingLLM = effectiveAgent.model === 'anythingllm';
         
-        // 🎯 WORKSPACE SELECTOR ROUTING:
-        // Master View → /api/dashboard/chat (hardcoded to sow-master-dashboard-54307162)
-        // Client Workspace → /api/anythingllm/chat (with selected workspace slug)
-        // Editor Mode → existing logic
+        // 🎯 WORKSPACE ROUTING (AnythingLLM streaming):
         let endpoint: string;
         let workspaceSlug: string | undefined;
 
         if (isDashboardMode && useAnythingLLM) {
           // Dashboard mode routing
           if (dashboardChatTarget === 'sow-master-dashboard') {
-            // Master view: use dedicated dashboard route
             endpoint = '/api/anythingllm/stream-chat';
             workspaceSlug = 'sow-master-dashboard';
           } else {
-            // Client-specific view: use general AnythingLLM route with workspace slug
-            endpoint = '/api/anythingllm/chat';
+            endpoint = '/api/anythingllm/stream-chat';
             workspaceSlug = dashboardChatTarget;
           }
         } else {
-          // Editor mode routing (existing logic)
-          endpoint = useAnythingLLM ? '/api/anythingllm/chat' : '/api/chat';
-          workspaceSlug = useAnythingLLM && !isDashboardMode 
-            ? getWorkspaceForAgent(currentAgentId || '') 
-            : undefined;
+          // Editor mode routing — always AnythingLLM via the SOW's workspace
+          endpoint = '/api/anythingllm/stream-chat';
+          workspaceSlug = documents.find(d => d.id === currentDocId)?.workspaceSlug;
         }
 
         // 🎯 USE THE SOW'S ACTUAL WORKSPACE (NOT FORCED GEN-THE-ARCHITECT)
@@ -3062,8 +3052,6 @@ Ask me questions to get business insights, such as:
           dashboardChatTarget,
           endpoint,
           workspaceSlug,
-          agentModel: effectiveAgent.model,
-          agentName: effectiveAgent.name,
           routeType: isDashboardMode 
             ? (dashboardChatTarget === 'sow-master-dashboard' ? 'MASTER_DASHBOARD' : 'CLIENT_WORKSPACE')
             : 'SOW_GENERATION'
