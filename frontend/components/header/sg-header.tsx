@@ -9,6 +9,18 @@ export function SocialGardenHeader() {
             src="/images/logo-light.png" 
             alt="Social Garden Logo" 
             className="h-10 w-auto"
+            onError={(e) => {
+              const img = e.currentTarget as HTMLImageElement;
+              if (!img.dataset.fallbackTried) {
+                img.dataset.fallbackTried = 'dark';
+                img.src = '/images/logo-dark.png';
+              } else if (img.dataset.fallbackTried === 'dark') {
+                img.dataset.fallbackTried = 'root';
+                img.src = '/logo-light.png';
+              } else {
+                img.style.display = 'none';
+              }
+            }}
           />
           <div className="flex flex-col">
             <span className="text-lg font-bold text-white">Social Garden</span>

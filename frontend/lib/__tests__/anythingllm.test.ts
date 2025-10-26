@@ -10,6 +10,8 @@
  */
 
 import { AnythingLLMService } from '../anythingllm';
+import { THE_ARCHITECT_V2_PROMPT } from '../knowledge-base';
+import { ROLES } from '../rateCard';
 
 // Utility function for validation tests
 function validate(condition: boolean, message: string) {
@@ -20,13 +22,12 @@ function validate(condition: boolean, message: string) {
 }
 
 // Test Suite
-export async function runAnythingLLMValidation() {
-  let service: AnythingLLMService;
+let service: AnythingLLMService;
 
-  beforeEach(() => {
-    // Create a service instance (will use default config)
-    service = new AnythingLLMService();
-  });
+beforeEach(() => {
+  // Create a service instance (will use default config)
+  service = new AnythingLLMService();
+});
 
   describe('Workspace Management', () => {
     test('should generate valid workspace slug from client name', () => {
@@ -259,7 +260,7 @@ Your role is to:
       expect(typeof service.embedRateCardDocument).toBe('function');
     });
   });
-});
+ 
 
 describe('Integration Flow Validation', () => {
   let service: AnythingLLMService;

@@ -8,8 +8,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'workspace query param is required' }, { status: 400 });
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_ANYTHINGLLM_URL || process.env.ANYTHINGLLM_URL;
-  const apiKey = process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY || process.env.ANYTHINGLLM_API_KEY;
+  // Prefer secure server-side env vars; avoid relying on NEXT_PUBLIC values here
+  const baseUrl = process.env.ANYTHINGLLM_URL || process.env.NEXT_PUBLIC_ANYTHINGLLM_URL;
+  const apiKey = process.env.ANYTHINGLLM_API_KEY || process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY;
 
   if (!baseUrl || !apiKey) {
     return NextResponse.json({ error: 'AnythingLLM configuration missing on server' }, { status: 500 });
@@ -18,15 +19,28 @@ export async function GET(req: NextRequest) {
   try {
     const url = `${baseUrl.replace(/\/$/, '')}/api/v1/workspace/${encodeURIComponent(workspace)}/threads`;
     const response = await fetch(url, {
+      method: 'GET',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
+        'Accept': 'application/json',
       },
-      // Next.js fetch options can include next: { revalidate: 0 } if needed
+      // Ensure no caching and full SSR execution
+      cache: 'no-store',
+      next: { revalidate: 0 },
     });
 
     if (!response.ok) {
-      const text = await response.text();
-      return NextResponse.json({ error: 'Failed to fetch threads', status: response.status, body: text }, { status: response.status });
+      const text = await response.text().catch(() => '');
+      return NextResponse.json(
+        { 
+          error: 'Failed to fetch threads from AnythingLLM', 
+          upstreamStatus: response.status, 
+          workspace,
+          upstreamUrl: url,
+          bodyPreview: text?.slice(0, 500) || ''
+        }, 
+        { status: 502 }
+      );
     }
 
     const contentType = response.headers.get('content-type') || '';
@@ -37,13 +51,23 @@ export async function GET(req: NextRequest) {
         const parsed = JSON.parse(text);
         return NextResponse.json(parsed);
       } catch {
-        return NextResponse.json({ error: 'Invalid content-type from AnythingLLM threads endpoint' }, { status: 502 });
+        return NextResponse.json({ 
+          error: 'Invalid content-type from AnythingLLM threads endpoint',
+          receivedContentType: contentType,
+          workspace,
+          upstreamUrl: url,
+          bodyPreview: text?.slice(0, 500) || ''
+        }, { status: 502 });
       }
     }
 
     const data = await response.json();
     return NextResponse.json(data);
   } catch (err: any) {
-    return NextResponse.json({ error: 'Failed to proxy threads request', details: err?.message || String(err) }, { status: 502 });
+    return NextResponse.json({ 
+      error: 'Failed to proxy threads request', 
+      details: err?.message || String(err),
+      workspace
+    }, { status: 502 });
   }
 }

@@ -52,8 +52,16 @@ export default function WorkspaceCreationProgress({
             alt="Social Garden"
             className="h-10 w-auto"
             onError={(e) => {
-              // Fallback if image fails to load
-              (e.target as any).style.display = 'none';
+              const img = e.currentTarget as HTMLImageElement;
+              if (!img.dataset.fallbackTried) {
+                img.dataset.fallbackTried = 'dark';
+                img.src = '/images/logo-dark.png';
+              } else if (img.dataset.fallbackTried === 'dark') {
+                img.dataset.fallbackTried = 'root';
+                img.src = '/logo-light.png';
+              } else {
+                img.style.display = 'none';
+              }
             }}
           />
         </div>
