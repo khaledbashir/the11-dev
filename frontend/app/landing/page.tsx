@@ -227,7 +227,7 @@ export default function LandingPage() {
                   img.src = '/images/logo-dark.png';
                 } else if (img.dataset.fallbackTried === 'dark') {
                   img.dataset.fallbackTried = 'root';
-                  img.src = '/logo-light.png';
+                  img.src = '/images/logo-light.png';
                 } else {
                   img.style.display = 'none';
                 }
@@ -765,7 +765,7 @@ export default function LandingPage() {
                     img.src = '/images/logo-dark.png';
                   } else if (img.dataset.fallbackTried === 'dark') {
                     img.dataset.fallbackTried = 'root';
-                    img.src = '/logo-light.png';
+                    img.src = '/images/logo-light.png';
                   } else {
                     img.style.display = 'none';
                   }
