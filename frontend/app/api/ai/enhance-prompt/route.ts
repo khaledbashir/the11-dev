@@ -137,3 +137,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unexpected server error' }, { status: 500 });
   }
 }
+
+// Lightweight health check to verify route reachability and provider config
+export async function GET() {
+  const openrouterKey = !!process.env.OPENROUTER_API_KEY;
+  const groqKey = !!process.env.GROQ_API_KEY;
+  return NextResponse.json({ ok: true, providers: { openrouter: openrouterKey, groq: groqKey } });
+}

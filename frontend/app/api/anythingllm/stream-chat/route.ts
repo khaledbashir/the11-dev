@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server';
 
-const ANYTHINGLLM_URL = process.env.ANYTHINGLLM_URL;
-const ANYTHINGLLM_API_KEY = process.env.ANYTHINGLLM_API_KEY;
+// Prefer secure server-side env vars; fallback to NEXT_PUBLIC for flexibility in current deployments
+const ANYTHINGLLM_URL = process.env.ANYTHINGLLM_URL || process.env.NEXT_PUBLIC_ANYTHINGLLM_URL;
+const ANYTHINGLLM_API_KEY = process.env.ANYTHINGLLM_API_KEY || process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY;
 
 export async function POST(request: NextRequest) {
   try {
