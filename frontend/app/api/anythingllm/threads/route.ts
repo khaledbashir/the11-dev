@@ -1,5 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Small helper: fetch with timeout and limited retries (idempotent GET)
+async function fetchWithTimeoutRetry(
+  url: string,
+  options: RequestInit & { timeoutMs?: number } = {},
+  retries = 2,
+  backoffMs = 400
+) {
+  const { timeoutMs = 5000, ...opts } = options;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { ...opts, signal: controller.signal });
+      // Retry on typical transient upstream failures
+      if ([502, 503, 504, 429].includes(res.status) && attempt < retries) {
+        clearTimeout(t);
+        await new Promise(r => setTimeout(r, backoffMs * (attempt + 1)));
+        continue;
+      }
+      clearTimeout(t);
+      return res;
+    } catch (err: any) {
+      clearTimeout(t);
+      // Retry on network/abort errors
+      if (attempt < retries) {
+        await new Promise(r => setTimeout(r, backoffMs * (attempt + 1)));
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const workspace = searchParams.get('workspace');
@@ -18,7 +51,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const url = `${baseUrl.replace(/\/$/, '')}/api/v1/workspace/${encodeURIComponent(workspace)}/threads`;
-    const response = await fetch(url, {
+    const response = await fetchWithTimeoutRetry(url, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -27,7 +60,8 @@ export async function GET(req: NextRequest) {
       // Ensure no caching and full SSR execution
       cache: 'no-store',
       next: { revalidate: 0 },
-    });
+      timeoutMs: 7000,
+    }, 2, 500);
 
     if (!response.ok) {
       const text = await response.text().catch(() => '');

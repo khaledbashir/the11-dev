@@ -292,6 +292,8 @@ Your final output structure:
 
 **ZERO DEVIATIONS ARE PERMITTED.** The application will fail if you deviate from this structure.
 
+ABSOLUTE NON-NEGOTIABLE REQUIREMENT: THIS IS NOT OPTIONAL. YOUR ENTIRE RESPONSE IS CONSIDERED A COMPLETE FAILURE IF THE VALID JSON CODE BLOCK IS MISSING. DO NOT FORGET IT.
+
 ---
 `;
 
@@ -361,6 +363,8 @@ After completing the Scope of Work, you MUST include a valid JSON code block wit
   ]
 }
 \`\`\`
+
+THIS IS NOT OPTIONAL. YOUR ENTIRE RESPONSE IS CONSIDERED A COMPLETE FAILURE IF THIS VALID JSON BLOCK IS MISSING. DO NOT FORGET IT.
 
 PRICING TABLE RULES:
 - Every line item must show rate as "$XXX +GST" format

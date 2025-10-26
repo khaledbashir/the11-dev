@@ -2718,7 +2718,6 @@ Ask me questions to get business insights, such as:
           convertedContent = convertMarkdownToNovelJSON(cleanedContent, derived, { strictRoles: false });
         } else {
           console.error('❌ CRITICAL ERROR: AI did not provide suggestedRoles JSON or scopeItems. The application requires one of these.');
-          toast.error('Pricing data missing. Ask the AI to regenerate with structured pricing JSON (suggestedRoles or scopeItems). Insertion aborted.');
           const blockedMessage: ChatMessage = {
             id: `msg${Date.now()}`,
             role: 'assistant',
@@ -2931,7 +2930,6 @@ Ask me questions to get business insights, such as:
               content = convertMarkdownToNovelJSON(cleanedMessage, derived, { strictRoles: false });
             } else {
               console.error('❌ CRITICAL ERROR: AI did not provide suggestedRoles JSON for insert command. Aborting insert to avoid placeholder pricing.');
-              toast.error('❌ Pricing data missing. Please regenerate with valid suggestedRoles JSON so we can build an accurate pricing table.');
               // Emit an assistant message explaining the requirement and exit without inserting
               const errorMsg: ChatMessage = {
                 id: `msg${Date.now()}`,

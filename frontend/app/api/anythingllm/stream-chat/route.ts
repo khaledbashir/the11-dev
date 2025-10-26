@@ -1,10 +1,17 @@
 import { NextRequest } from 'next/server';
 
-const ANYTHINGLLM_URL = process.env.ANYTHINGLLM_URL || 'https://ahmad-anything-llm.840tjq.easypanel.host';
-const ANYTHINGLLM_API_KEY = process.env.ANYTHINGLLM_API_KEY || '0G0WTZ3-6ZX4D20-H35VBRG-9059WPA';
+const ANYTHINGLLM_URL = process.env.ANYTHINGLLM_URL;
+const ANYTHINGLLM_API_KEY = process.env.ANYTHINGLLM_API_KEY;
 
 export async function POST(request: NextRequest) {
   try {
+    // Require server-side configuration only
+    if (!ANYTHINGLLM_URL || !ANYTHINGLLM_API_KEY) {
+      return new Response(
+        JSON.stringify({ error: 'AnythingLLM is not configured on the server. Set ANYTHINGLLM_URL and ANYTHINGLLM_API_KEY.' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
     // ============================================================================
     // CRITICAL DEBUG: INCOMING /stream-chat PAYLOAD
     // ============================================================================

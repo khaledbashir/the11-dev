@@ -16,6 +16,37 @@ function authHeaders(apiKey: string) {
   return { Authorization: `Bearer ${apiKey}` };
 }
 
+// Helper for idempotent GETs: timeout and limited retries
+async function fetchWithTimeoutRetry(
+  url: string,
+  options: RequestInit & { timeoutMs?: number } = {},
+  retries = 2,
+  backoffMs = 400
+) {
+  const { timeoutMs = 5000, ...opts } = options;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { ...opts, signal: controller.signal });
+      if ([502, 503, 504, 429].includes(res.status) && attempt < retries) {
+        clearTimeout(t);
+        await new Promise(r => setTimeout(r, backoffMs * (attempt + 1)));
+        continue;
+      }
+      clearTimeout(t);
+      return res;
+    } catch (err) {
+      clearTimeout(t);
+      if (attempt < retries) {
+        await new Promise(r => setTimeout(r, backoffMs * (attempt + 1)));
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { baseUrl, apiKey } = getEnv();
@@ -67,12 +98,18 @@ export async function GET(req: NextRequest) {
     }
 
     const url = `${baseUrl}/api/v1/workspace/${encodeURIComponent(workspace)}/thread/${encodeURIComponent(thread)}/chats`;
-    const upstream = await fetch(url, {
-      method: 'GET',
-      headers: authHeaders(apiKey),
-      // No cache to ensure live history
-      cache: 'no-store',
-    });
+    const upstream = await fetchWithTimeoutRetry(
+      url,
+      {
+        method: 'GET',
+        headers: authHeaders(apiKey),
+        // No cache to ensure live history
+        cache: 'no-store',
+        timeoutMs: 7000,
+      },
+      2,
+      500
+    );
 
     const contentType = upstream.headers.get('content-type') || '';
     const responseBody = contentType.includes('application/json') ? await upstream.json() : await upstream.text();
