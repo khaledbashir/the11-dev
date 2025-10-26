@@ -258,7 +258,7 @@ export default function AgentSidebar({
   };
 
   // 🧵 THREAD MANAGEMENT FUNCTIONS
-  const handleNewThread = async () => {
+  const handleNewThread = async (): Promise<string | null> => {
     // Provide immediate feedback if no workspace is selected
     const ws = isDashboardMode ? dashboardChatTarget : editorWorkspaceSlug;
     if (!ws) {
@@ -324,10 +324,13 @@ export default function AgentSidebar({
         await new Promise(resolve => setTimeout(resolve, 300));
         await loadThreads(ws);
       }
+
+      return newThread.slug;
     } catch (error: any) {
       console.error('❌ Failed to create thread:', error?.message || error);
       // Surface more actionable error to the user
       alert(`Failed to create new thread: ${error?.message || 'unknown error'}`);
+      return null;
     } finally {
       setLoadingThreads(false);
     }
@@ -569,21 +572,27 @@ export default function AgentSidebar({
     return matchesSearch && matchesFree;
   });
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!chatInput.trim() || isLoading) return;
-    
+
+    // Ensure a thread exists in dashboard mode before sending (for persistence)
+    let threadToUse = currentThreadSlug;
+    if (isDashboardMode && !threadToUse) {
+      const created = await handleNewThread();
+      if (!created) return; // Abort send if thread creation failed
+      threadToUse = created;
+    }
+
     // Send message with thread context and attachments
     console.log('📤 Sending message:', {
       message: chatInput,
-      threadSlug: currentThreadSlug,
+      threadSlug: threadToUse,
       attachments: attachments.length,
-      workspaceSlug: dashboardChatTarget,
+      workspaceSlug: isDashboardMode ? dashboardChatTarget : editorWorkspaceSlug,
       isDashboardMode,
     });
-    
-    // Pass message with thread context to parent
-    // Parent will use currentThreadSlug for dashboard mode routing
-    onSendMessage(chatInput, currentThreadSlug, attachments);
+
+    onSendMessage(chatInput, threadToUse, attachments);
     setChatInput("");
     setAttachments([]); // Clear attachments after sending
   };
