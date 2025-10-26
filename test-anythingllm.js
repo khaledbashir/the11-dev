@@ -121,6 +121,13 @@ async function main() {
   console.log('\n─── Preview (first 600 chars) ───');
   console.log(text.substring(0, 600));
   console.log('────────────────────────────────');
+
+  // Embed the generated SOW in BOTH the client workspace and master dashboard
+  const sowTitle = `${workspaceName} — SOW ${new Date().toISOString().slice(0,10)}`;
+  log('Embedding SOW in both client and master dashboard workspaces', 'step');
+  const embedded = await service.embedSOWInBothWorkspaces(workspace.slug, sowTitle, text);
+  if (!embedded) throw new Error('Failed to embed SOW in both workspaces');
+  log('SOW embedded in BOTH workspaces ✅', 'success');
 }
 
 main().catch(err => {

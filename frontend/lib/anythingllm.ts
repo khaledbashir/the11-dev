@@ -126,13 +126,13 @@ export class AnythingLLMService {
     const mm = String(today.getMonth() + 1).padStart(2, '0');
     const dd = String(today.getDate()).padStart(2, '0');
     const version = `${yyyy}-${mm}-${dd}`;
-      const header = `# Social Garden - Official Rate Card (AUD/hour)\n\n`;
+  const header = `# Social Garden - Official Rate Card (AUD/hour)\n\n`;
     const intro = `This document is the single source of truth for hourly rates across roles.\n\n`;
     const tableHeader = `| Role | Rate (AUD/hr) |\n|---|---:|\n`;
     const rows = ROLES
       .map(r => `| ${r.name} | ${r.rate.toFixed(2)} |`)
       .join('\n');
-    const guidance = `\n\n> Version: v${version}\n\n## Pricing Guidance\n- Rates are exclusive of GST.\n- Use these rates for project pricing and retainers unless client-approved custom rates apply.\n- "Head Of", "Project Coordination", and "Account Management" roles are required governance roles for delivery.\n\n## Retainer Notes\n- Show monthly breakdowns and annualized totals.\n- Define overflow: hours beyond monthly budget billed at these standard rates.\n- Typical options: Essential (lean), Standard (recommended), Premium (full team).\n`;
+  const guidance = `\n\n> Version: v${version}\n\n## Pricing Guidance\n- Rates are exclusive of GST.\n- Use these rates for project pricing and retainers unless client-approved custom rates apply.\n- "Head Of", "Project Coordination", and "Account Management" roles are required governance roles for delivery.\n\n## Retainer Notes\n- Show monthly breakdowns and annualized totals.\n- Define overflow: hours beyond monthly budget billed at these standard rates.\n- Typical options: Essential (lean), Standard (recommended), Premium (full team).\n`;
     return header + intro + tableHeader + rows + guidance;
   }
 
@@ -206,7 +206,7 @@ export class AnythingLLMService {
           metadata: {
             title,
             docAuthor: 'Social Garden',
-            description: 'Authoritative 82-role rate card in AUD per hour',
+            description: 'Authoritative Social Garden rate card in AUD per hour',
             docSource: 'Rate Card',
           },
         }),
@@ -1036,6 +1036,12 @@ Ready to explore your project details? Ask me anything!`;
         console.log(`✅ Using existing master dashboard: ${masterDashboardSlug}`);
         // Always ensure the dashboard prompt is correct (idempotent)
         await this.setMasterDashboardPrompt(masterDashboardSlug);
+        // Ensure the official rate card is available in the dashboard for analytics/search
+        try {
+          await this.embedRateCardDocument(masterDashboardSlug);
+        } catch (e) {
+          console.warn('⚠️ Rate card embedding on master dashboard skipped/failed (non-fatal):', e);
+        }
         return masterDashboardSlug;
       }
 
@@ -1062,6 +1068,13 @@ Ready to explore your project details? Ask me anything!`;
       
       // Set analytics-focused prompt
       await this.setMasterDashboardPrompt(data.workspace.slug);
+
+      // Ensure rate card is also embedded for consistent analytics and search
+      try {
+        await this.embedRateCardDocument(data.workspace.slug);
+      } catch (e) {
+        console.warn('⚠️ Rate card embedding on master dashboard skipped/failed (non-fatal):', e);
+      }
       
       return data.workspace.slug;
     } catch (error) {
@@ -1164,6 +1177,49 @@ When asked for analytics, provide clear, actionable insights with specific numbe
       return true;
     } catch (error) {
       console.error('❌ Error embedding SOW in both workspaces:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Sync an UPDATED SOW to BOTH client workspace and master dashboard.
+   * This will re-embed the provided content with versioned metadata to ensure
+   * analytics and search remain consistent across locations.
+   */
+  async syncUpdatedSOWInBothWorkspaces(
+    clientWorkspaceSlug: string,
+    sowTitle: string,
+    sowContent: string,
+    metadata: Record<string, any> = {}
+  ): Promise<boolean> {
+    try {
+      const versionedMeta = {
+        ...metadata,
+        clientWorkspace: clientWorkspaceSlug,
+        version: metadata.version || new Date().toISOString(),
+        status: 'current',
+      };
+
+      // Client workspace
+      const clientOk = await this.embedSOWDocument(
+        clientWorkspaceSlug,
+        sowTitle,
+        sowContent,
+        versionedMeta
+      );
+      if (!clientOk) return false;
+
+      const masterDashboardSlug = await this.getOrCreateMasterDashboard();
+      const masterOk = await this.embedSOWDocument(
+        masterDashboardSlug,
+        `[${clientWorkspaceSlug.toUpperCase()}] ${sowTitle}`,
+        sowContent,
+        versionedMeta
+      );
+
+      return !!masterOk;
+    } catch (e) {
+      console.error('❌ Error syncing updated SOW in both workspaces:', e);
       return false;
     }
   }

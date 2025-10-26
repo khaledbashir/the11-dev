@@ -347,8 +347,8 @@ SIXTH - DELIVERABLE FORMAT (MANDATORY):
 - Use standard phases: Discovery & Planning → Technical Assessment → Quality Assurance → Final Delivery → Training & Handover
 
 SEVENTH - GENERATE THE SOW: Your entire response MUST be structured into two distinct parts:
-1. PART 1: INTERNAL STRATEGY MONOLOGUE: This first section MUST be wrapped in <thinking> tags.
-2. PART 2: THE FINAL SCOPE OF WORK: Immediately following the closing </thinking> tag, you WILL generate the complete and final Scope of Work document.
+1. PART 1: REASONING SUMMARY: Provide a concise, high-level analysis wrapped in <think> tags. Keep it to short bullet points: classification, key assumptions, major risks, and the chosen approach. Do NOT reveal step-by-step chain-of-thought or internal deliberations.
+2. PART 2: THE FINAL SCOPE OF WORK: Immediately following the closing </think> tag, generate the complete and final Scope of Work document.
 
 **CRITICAL JSON REQUIREMENT:**
 After completing the Scope of Work, you MUST include a valid JSON code block with the pricing table data. This is REQUIRED for the pricing table to render.
@@ -376,7 +376,7 @@ FINAL INSTRUCTION: Your response MUST end with the exact phrase on its own line:
 `;
 
 /**
- * CRITICAL: Programmatically injects the official 90-role rate card from rateCard.ts
+ * CRITICAL: Programmatically injects the official Social Garden rate card from rateCard.ts
  * into THE_ARCHITECT_SYSTEM_PROMPT before sending to AI.
  * 
  * This ensures the AI always works from the SINGLE SOURCE OF TRUTH (rateCard.ts)
@@ -386,7 +386,7 @@ FINAL INSTRUCTION: Your response MUST end with the exact phrase on its own line:
  * Example: const promptWithRates = getArchitectPromptWithRateCard();
  */
 export function getArchitectPromptWithRateCard(): string {
-  // Import ROLES from rateCard to get the 90-role authoritative list
+  // Import ROLES from rateCard to get the authoritative list of roles
   // This function will be called by the API route that sends prompts to the AI
   const rateCardFormatted = `
 Management & Coordination:
