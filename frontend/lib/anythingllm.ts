@@ -64,11 +64,10 @@ export class AnythingLLMService {
         console.log(`✅ Using existing workspace: ${slug}`);
         // Ensure the correct Architect prompt is applied (idempotent refresh)
         await this.setWorkspacePrompt(existing.slug, clientName, true);
-        // Best-effort ensure rate card is present for RAG
-        try {
-          await this.embedRateCardDocument(existing.slug);
-        } catch (e) {
-          console.warn('⚠️ Rate card embedding skipped/failed for existing workspace (non-fatal):', e);
+        // Strict requirement: rate card must be present for RAG
+        const rateOk = await this.embedRateCardDocument(existing.slug);
+        if (!rateOk) {
+          throw new Error('Rate card embedding failed for existing workspace');
         }
         return { id: existing.id, slug: existing.slug };
       }
@@ -94,11 +93,10 @@ export class AnythingLLMService {
       // � STEP 1: Set client-facing prompt for new workspace
       await this.setWorkspacePrompt(data.workspace.slug, clientName);
       
-      // 📚 STEP 1b: Auto-embed the official Social Garden rate card as knowledge base (idempotent best-effort)
-      try {
-        await this.embedRateCardDocument(data.workspace.slug);
-      } catch (e) {
-        console.warn('⚠️ Rate card embedding skipped/failed (non-fatal):', e);
+      // 📚 STEP 1b: Strictly embed the official Social Garden rate card as knowledge base (required)
+      const rateOk = await this.embedRateCardDocument(data.workspace.slug);
+      if (!rateOk) {
+        throw new Error('Rate card embedding failed for new workspace');
       }
       
       // 🧵 STEP 2: Create a default thread (no user naming required)
@@ -587,7 +585,7 @@ Metadata:
       const response = await fetch(
         `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/update`,
         {
-          method: 'PATCH',
+          method: 'POST',
           headers: this.getHeaders(),
           body: JSON.stringify({
             openAiPrompt: prompt,
@@ -627,7 +625,7 @@ Metadata:
       const response = await fetch(
         `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/update`,
         {
-          method: 'PATCH',
+          method: 'POST',
           headers: this.getHeaders(),
           body: JSON.stringify({
             llmProvider: provider,
@@ -1036,11 +1034,10 @@ Ready to explore your project details? Ask me anything!`;
         console.log(`✅ Using existing master dashboard: ${masterDashboardSlug}`);
         // Always ensure the dashboard prompt is correct (idempotent)
         await this.setMasterDashboardPrompt(masterDashboardSlug);
-        // Ensure the official rate card is available in the dashboard for analytics/search
-        try {
-          await this.embedRateCardDocument(masterDashboardSlug);
-        } catch (e) {
-          console.warn('⚠️ Rate card embedding on master dashboard skipped/failed (non-fatal):', e);
+        // Strictly require official rate card in the dashboard for analytics/search
+        const rateOk = await this.embedRateCardDocument(masterDashboardSlug);
+        if (!rateOk) {
+          throw new Error('Rate card embedding failed on master dashboard');
         }
         return masterDashboardSlug;
       }
@@ -1069,11 +1066,10 @@ Ready to explore your project details? Ask me anything!`;
       // Set analytics-focused prompt
       await this.setMasterDashboardPrompt(data.workspace.slug);
 
-      // Ensure rate card is also embedded for consistent analytics and search
-      try {
-        await this.embedRateCardDocument(data.workspace.slug);
-      } catch (e) {
-        console.warn('⚠️ Rate card embedding on master dashboard skipped/failed (non-fatal):', e);
+      // Ensure rate card is also embedded for consistent analytics and search (required)
+      const rateOk = await this.embedRateCardDocument(data.workspace.slug);
+      if (!rateOk) {
+        throw new Error('Rate card embedding failed on newly created master dashboard');
       }
       
       return data.workspace.slug;
@@ -1105,7 +1101,7 @@ When asked for analytics, provide clear, actionable insights with specific numbe
       const response = await fetch(
         `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/update`,
         {
-          method: 'PATCH',
+          method: 'POST',
           headers: this.getHeaders(),
           body: JSON.stringify({
             openAiPrompt: systemPrompt,
@@ -1166,9 +1162,8 @@ When asked for analytics, provide clear, actionable insights with specific numbe
       );
       
       if (!masterEmbed) {
-        console.warn(`⚠️ Failed to embed SOW in master dashboard`);
-        // Don't fail completely - client workspace embed succeeded
-        return true;
+        console.warn(`❌ Failed to embed SOW in master dashboard`);
+        return false;
       }
       
       console.log(`✅ SOW embedded in master dashboard for analytics`);

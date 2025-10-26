@@ -682,11 +682,33 @@ Ask me questions to get business insights, such as:
 
   // Fetch available workspaces for dashboard chat selector from loaded workspaces
   useEffect(() => {
-    // Build workspace list: Master dashboard + client workspaces
+    // Build workspace list: Master dashboard + client workspaces (exclude generation/agent/system)
+    const GENERATION_SLUGS = new Set([
+      'gen-the-architect',
+      'property-marketing-pro',
+      'ad-copy-machine',
+      'crm-communication-specialist',
+      'case-study-crafter',
+      'landing-page-persuader',
+      'seo-content-strategist',
+      'proposal-audit-specialist',
+      'proposal-and-audit-specialist',
+      'default-client',
+      'gen',
+      'sql',
+      'sow-master-dashboard',
+      'sow-master-dashboard-63003769',
+      'pop'
+    ]);
+    const isGenerationOrSystem = (slug?: string) => {
+      if (!slug) return true;
+      const lower = slug.toLowerCase();
+      return GENERATION_SLUGS.has(lower) || lower.startsWith('gen-');
+    };
     const workspaceList = [
       { slug: 'sow-master-dashboard', name: '🎯 All SOWs (Master)' },
       ...workspaces
-        .filter(ws => ws.workspace_slug) // Only include workspaces with workspace_slug
+        .filter(ws => ws.workspace_slug && !isGenerationOrSystem(ws.workspace_slug)) // Exclude gen/agent/system
         .map(ws => ({
           slug: ws.workspace_slug || '', // Use workspace_slug
           name: `📁 ${ws.name}` // Prefix with folder icon
@@ -1695,6 +1717,74 @@ Ask me questions to get business insights, such as:
       }
 
       toast.success(`✅ Workspace "${workspace.name}" deleted`);
+
+      // 🔄 Safety: Refresh from server to ensure UI counts are perfectly in sync
+      // with DB and AnythingLLM after deletion
+      try {
+        const [foldersRes, sowsRes] = await Promise.all([
+          fetch('/api/folders', { cache: 'no-store' }),
+          fetch('/api/sow/list', { cache: 'no-store' })
+        ]);
+        if (foldersRes.ok && sowsRes.ok) {
+          const foldersData = await foldersRes.json();
+          const { sows: dbSOWs } = await sowsRes.json();
+
+          const workspacesWithSOWs: Workspace[] = [];
+          const foldersFromDB: Folder[] = [];
+          const documentsFromDB: Document[] = [];
+
+          for (const folder of foldersData) {
+            const folderSOWs = dbSOWs.filter((sow: any) => sow.folder_id === folder.id);
+            workspacesWithSOWs.push({
+              id: folder.id,
+              name: folder.name,
+              sows: folderSOWs.map((sow: any) => ({
+                id: sow.id,
+                name: sow.title || 'Untitled SOW',
+                workspaceId: folder.id,
+                vertical: sow.vertical || null,
+                service_line: sow.service_line || null,
+              })),
+              workspace_slug: folder.workspace_slug,
+            });
+
+            foldersFromDB.push({
+              id: folder.id,
+              name: folder.name,
+              workspaceSlug: folder.workspace_slug,
+              workspaceId: folder.workspace_id,
+              embedId: folder.embed_id,
+              syncedAt: folder.updated_at || folder.created_at,
+            });
+
+            for (const sow of folderSOWs) {
+              let parsedContent = defaultEditorContent;
+              if (sow.content) {
+                try {
+                  parsedContent = typeof sow.content === 'string' ? JSON.parse(sow.content) : sow.content;
+                } catch (e) {
+                  parsedContent = defaultEditorContent;
+                }
+              }
+              documentsFromDB.push({
+                id: sow.id,
+                title: sow.title || 'Untitled SOW',
+                content: parsedContent,
+                folderId: folder.id,
+                workspaceSlug: folder.workspace_slug,
+                threadSlug: sow.thread_slug || undefined,
+                syncedAt: sow.updated_at,
+              });
+            }
+          }
+
+          setWorkspaces(workspacesWithSOWs);
+          setFolders(foldersFromDB);
+          setDocuments(documentsFromDB);
+        }
+      } catch (e) {
+        console.warn('⚠️ Post-delete refresh failed; UI may still be accurate due to optimistic update.', e);
+      }
     } catch (error) {
       console.error('Error deleting workspace:', error);
       toast.error(`Failed to delete workspace: ${error instanceof Error ? error.message : String(error)}`);
@@ -2850,10 +2940,18 @@ Ask me questions to get business insights, such as:
               console.log(`✅ Using ${derived.length} roles derived from Architect structured JSON (insert command).`);
               content = convertMarkdownToNovelJSON(cleanedMessage, derived, { strictRoles: false });
             } else {
-              console.error('❌ CRITICAL ERROR: AI did not provide suggestedRoles JSON for insert command.');
-              console.log('✅ SAFE FALLBACK ACTIVATED: Inserting SOW narrative with a default, empty pricing table.');
-              toast.warning('Warning: AI failed to generate a valid price table. A default table has been inserted. Please review and update manually.');
-              content = convertMarkdownToNovelJSON(cleanedMessage, [], { strictRoles: true });
+              console.error('❌ CRITICAL ERROR: AI did not provide suggestedRoles JSON for insert command. Aborting insert to avoid placeholder pricing.');
+              toast.error('❌ Pricing data missing. Please regenerate with valid suggestedRoles JSON so we can build an accurate pricing table.');
+              // Emit an assistant message explaining the requirement and exit without inserting
+              const errorMsg: ChatMessage = {
+                id: `msg${Date.now()}`,
+                role: 'assistant',
+                content: 'Pricing data (suggestedRoles) was not provided. Please ask The Architect to regenerate with a valid JSON code block containing suggestedRoles, then try "insert into editor" again. No placeholder tables were inserted.',
+                timestamp: Date.now(),
+              };
+              setChatMessages(prev => [...prev, errorMsg]);
+              setIsChatLoading(false);
+              return;
             }
           } else {
             content = convertMarkdownToNovelJSON(cleanedMessage, suggestedRoles, { strictRoles: false });
@@ -3100,11 +3198,8 @@ Ask me questions to get business insights, such as:
           }
 
           // Smart mode selection for Master Dashboard: use 'chat' for greetings/non-analytic prompts
-          const greetingRegex = /^(hi|hello|hey|yo|sup|how are you|good (morning|afternoon|evening))\b/i;
-          const isGreeting = greetingRegex.test(lastUserMessage.trim());
-          const resolvedMode = (isDashboardMode && dashboardChatTarget === 'sow-master-dashboard')
-            ? (isGreeting ? 'chat' : 'query')
-            : 'chat';
+          // Always use 'chat' mode to ensure messages persist to thread history
+          const resolvedMode = 'chat';
 
           const response = await fetch(streamEndpoint, {
             method: "POST",

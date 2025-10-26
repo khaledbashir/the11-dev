@@ -187,7 +187,8 @@ export default function SidebarNav({
   
   // Category expansion states
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    new Set(['clients', 'agents', 'system'])
+    // Default: show Clients only to avoid confusion about protected counts
+    new Set(['clients'])
   );
 
   // Update local workspaces when prop changes
@@ -229,6 +230,9 @@ export default function SidebarNav({
       title: `Delete ${selectedWorkspacesList.length} Workspace(s)?`,
       message: `This will delete all SOWs inside, remove from AnythingLLM, and clear all chat history. This cannot be undone.`,
       onConfirm: async () => {
+        // Optimistically update local UI to reflect deletions immediately
+        setLocalWorkspaces(prev => prev.filter(w => !selectedWorkspacesList.includes(w.id)));
+
         for (const workspaceId of selectedWorkspacesList) {
           try {
             onDeleteWorkspace(workspaceId);
@@ -461,6 +465,8 @@ export default function SidebarNav({
                     title: `Delete Workspace?`,
                     message: `Delete "${workspace.name}" and all SOWs inside? This cannot be undone.`,
                     onConfirm: () => {
+                      // Optimistic UI update to keep counts accurate immediately
+                      setLocalWorkspaces(prev => prev.filter(ws => ws.id !== workspace.id));
                       onDeleteWorkspace(workspace.id);
                       toast.success('Workspace deleted');
                     }
