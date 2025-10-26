@@ -42,6 +42,7 @@ import {
   HelpCircle
 } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
+import { StreamingThoughtAccordion } from "./streaming-thought-accordion";
 
 interface Agent {
   id: string;
@@ -398,9 +399,21 @@ export default function AgentSidebar({
                                   : 'bg-muted'
                               }`}
                             >
-                              <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
-                                <ReactMarkdown>{msg.content}</ReactMarkdown>
-                              </div>
+                              {msg.role === 'assistant' ? (
+                                /* Use accordion for assistant messages to properly handle <think> tags */
+                                <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
+                                  <StreamingThoughtAccordion 
+                                    content={msg.content}
+                                    messageId={msg.id}
+                                    isStreaming={false}
+                                  />
+                                </div>
+                              ) : (
+                                /* User messages render directly */
+                                <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
+                                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                </div>
+                              )}
                             </div>
                             <span className="text-xs text-muted-foreground mt-1 px-1">
                               {formatTimestamp(msg.timestamp)}

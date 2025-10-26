@@ -17,20 +17,18 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
   const [discount, setDiscount] = useState(node.attrs.discount || 0);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [showTotal, setShowTotal] = useState(node.attrs.showTotal !== undefined ? node.attrs.showTotal : true);
+  const [isInitialized, setIsInitialized] = useState(false);
 
+  // ⚠️ CRITICAL FIX: Initialize and normalize rows ONCE on mount
   useEffect(() => {
-    updateAttributes({ rows, discount, showTotal });
-  }, [rows, discount, showTotal]);
-
-  // Merge mandatory roles and dedupe rows by role name (case-insensitive)
-  useEffect(() => {
-    if (!rows || rows.length === 0) return;
+    if (isInitialized || !node.attrs.rows) return;
 
     const normalize = (s: string) => (s || '').trim().toLowerCase();
+    const initialRows = node.attrs.rows || [];
 
     // 1) Dedupe by role: combine hours, prefer known rate from ROLES, keep first description
     const roleMap = new Map<string, PricingRow>();
-    for (const r of rows) {
+    for (const r of initialRows) {
       const key = normalize(r.role);
       if (!key) continue;
       const existing = roleMap.get(key);
@@ -49,7 +47,7 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
         const mergedHours = (Number(existing.hours) || 0) + (Number(r.hours) || 0);
         const mergedRate = existing.rate > 0 ? existing.rate : (r.rate > 0 ? r.rate : (canon?.rate || 0));
         roleMap.set(key, {
-          role: existing.role, // preserve original casing/name
+          role: existing.role,
           description: existing.description || r.description || '',
           hours: mergedHours,
           rate: mergedRate,
@@ -59,7 +57,7 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
 
     let deduped = Array.from(roleMap.values());
 
-    // 2) Ensure mandatory roles exist (Head Of, Project Coordination, Account Management)
+    // 2) Ensure mandatory roles exist
     const ensureRole = (name: string, defaultHours: number, defaultRate?: number, desc?: string) => {
       const key = normalize(name);
       if (!roleMap.has(key)) {
@@ -73,69 +71,33 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
       }
     };
 
-  ensureRole('Tech - Head Of - Senior Project Management', 3, 365, 'Strategic oversight');
-  ensureRole('Tech - Delivery - Project Coordination', 6, 110, 'Delivery coordination');
-  ensureRole('Account Management - (Account Manager)', 8, 180, 'Client comms & governance');
+    ensureRole('Tech - Head Of - Senior Project Management', 3, 365, 'Strategic oversight');
+    ensureRole('Tech - Delivery - Project Coordination', 6, 110, 'Delivery coordination');
+    ensureRole('Account Management - (Account Manager)', 8, 180, 'Client comms & governance');
 
-    // Only update state if something actually changed to avoid loops
-    const changed = deduped.length !== rows.length || deduped.some((r, i) => {
-      const rr = rows[i];
-      return !rr || r.role !== rr.role || r.hours !== rr.hours || r.rate !== rr.rate || (r.description || '') !== (rr.description || '');
+    // 3) Ensure Account Management is at the bottom
+    const amIndex = deduped.findIndex(r => normalize(r.role).includes('account management'));
+    if (amIndex !== -1 && amIndex !== deduped.length - 1) {
+      const temp = [...deduped];
+      const [amRow] = temp.splice(amIndex, 1);
+      temp.push(amRow);
+      deduped = temp;
+    }
+
+    setRows(deduped);
+    setIsInitialized(true);
+  }, [isInitialized, node.attrs.rows]);
+
+  // ⚠️ CRITICAL FIX: Update attributes ONLY when state actually changes
+  // This runs AFTER state updates, preventing render cycle violations
+  useEffect(() => {
+    if (!isInitialized) return; // Don't sync until initial setup is done
+    
+    // Use queueMicrotask to defer the updateAttributes call outside the render cycle
+    queueMicrotask(() => {
+      updateAttributes({ rows, discount, showTotal });
     });
-    if (changed) {
-      // Preserve ordering by putting Account Management last
-      const amIndex = deduped.findIndex(r => normalize(r.role).includes('account management'));
-      if (amIndex !== -1 && amIndex !== deduped.length - 1) {
-        const temp = [...deduped];
-        const [amRow] = temp.splice(amIndex, 1);
-        temp.push(amRow);
-        deduped = temp;
-      }
-      setRows(deduped);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run once on mount to normalize provided rows
-
-  // Auto-sort: Account Management MUST always be at the bottom
-  useEffect(() => {
-    if (rows.length === 0) return;
-
-    const accountManagementIndex = rows.findIndex(row => 
-      row.role.toLowerCase().includes('account management') || 
-      row.role.toLowerCase().includes('account manager')
-    );
-
-    // If Account Management exists and is NOT at the bottom, move it
-    if (accountManagementIndex !== -1 && accountManagementIndex !== rows.length - 1) {
-      const newRows = [...rows];
-      const [accountManagementRow] = newRows.splice(accountManagementIndex, 1);
-      newRows.push(accountManagementRow);
-      setRows(newRows);
-      
-      // Optional: Show toast notification
-      console.log('✅ Account Management auto-sorted to bottom (required position)');
-    }
-  }, [rows]);
-
-  // Enforce presence of Account Management row (auto-add if missing)
-  useEffect(() => {
-    if (!rows || rows.length === 0) return;
-    const hasAM = rows.some(r => r.role.toLowerCase().includes('account management'));
-    if (!hasAM) {
-      const am = ROLES.find(r => r.name === 'Account Management - (Account Manager)');
-      const newRows = [
-        ...rows,
-        {
-          role: am?.name || 'Account Management',
-          description: 'Client comms & governance',
-          hours: 8,
-          rate: am?.rate || 180,
-        },
-      ];
-      setRows(newRows);
-      console.log('✅ Account Management auto-added (mandatory role)');
-    }
-  }, [rows]);
+  }, [rows, discount, showTotal, isInitialized]);
 
   const updateRow = (index: number, field: keyof PricingRow, value: string | number) => {
     const newRows = [...rows];

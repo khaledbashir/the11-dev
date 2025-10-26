@@ -26,6 +26,7 @@ import {
   Loader2
 } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
+import { StreamingThoughtAccordion } from "./streaming-thought-accordion";
 
 interface Agent {
   id: string;
@@ -337,27 +338,11 @@ export default function AgentSidebar({
                           }`}>
                             {message.role === 'assistant' ? (
                               <div className="prose prose-sm max-w-none">
-                                <ReactMarkdown
-                                  components={{
-                                    table: ({ children }) => (
-                                      <div className="overflow-x-auto">
-                                        <table className="sow-table">{children}</table>
-                                      </div>
-                                    ),
-                                    th: ({ children }) => (
-                                      <th className="bg-primary text-primary-foreground">{children}</th>
-                                    ),
-                                    td: ({ children }) => <td>{children}</td>,
-                                    code: ({ children }) => (
-                                      <code className="bg-accent px-1 py-0.5 rounded text-sm">{children}</code>
-                                    ),
-                                    pre: ({ children }) => (
-                                      <pre className="bg-accent p-2 rounded text-sm overflow-x-auto">{children}</pre>
-                                    ),
-                                  }}
-                                >
-                                  {message.content}
-                                </ReactMarkdown>
+                                <StreamingThoughtAccordion 
+                                  content={message.content}
+                                  messageId={message.id}
+                                  isStreaming={false}
+                                />
                               </div>
                             ) : (
                               <p className="text-sm">{message.content}</p>
@@ -502,27 +487,11 @@ export default function AgentSidebar({
                             }`}>
                               {message.role === 'assistant' ? (
                                 <div className="prose prose-sm max-w-none">
-                                  <ReactMarkdown
-                                    components={{
-                                      table: ({ children }) => (
-                                        <div className="overflow-x-auto">
-                                          <table className="sow-table">{children}</table>
-                                        </div>
-                                      ),
-                                      th: ({ children }) => (
-                                        <th className="bg-primary text-primary-foreground">{children}</th>
-                                      ),
-                                      td: ({ children }) => <td>{children}</td>,
-                                      code: ({ children }) => (
-                                        <code className="bg-accent px-1 py-0.5 rounded text-sm">{children}</code>
-                                      ),
-                                      pre: ({ children }) => (
-                                        <pre className="bg-accent p-2 rounded text-sm overflow-x-auto">{children}</pre>
-                                      ),
-                                    }}
-                                  >
-                                    {message.content}
-                                  </ReactMarkdown>
+                                  <StreamingThoughtAccordion 
+                                    content={message.content}
+                                    messageId={message.id}
+                                    isStreaming={false}
+                                  />
                                 </div>
                               ) : (
                                 <p className="text-sm">{message.content}</p>

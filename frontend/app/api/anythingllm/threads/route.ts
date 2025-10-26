@@ -45,12 +45,28 @@ export async function GET(req: NextRequest) {
   const baseUrl = process.env.ANYTHINGLLM_URL || process.env.NEXT_PUBLIC_ANYTHINGLLM_URL;
   const apiKey = process.env.ANYTHINGLLM_API_KEY || process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY;
 
+  console.log('[/api/anythingllm/threads] Configuration check:', {
+    hasBaseUrl: !!baseUrl,
+    baseUrl: baseUrl?.substring(0, 30) + '...',
+    hasApiKey: !!apiKey,
+    workspace,
+  });
+
   if (!baseUrl || !apiKey) {
-    return NextResponse.json({ error: 'AnythingLLM configuration missing on server' }, { status: 500 });
+    console.error('[/api/anythingllm/threads] Missing configuration');
+    return NextResponse.json({ 
+      error: 'AnythingLLM configuration missing on server',
+      details: {
+        hasBaseUrl: !!baseUrl,
+        hasApiKey: !!apiKey,
+      }
+    }, { status: 500 });
   }
 
   try {
     const url = `${baseUrl.replace(/\/$/, '')}/api/v1/workspace/${encodeURIComponent(workspace)}/threads`;
+    console.log('[/api/anythingllm/threads] Fetching:', url);
+    
     const response = await fetchWithTimeoutRetry(url, {
       method: 'GET',
       headers: {
@@ -65,6 +81,12 @@ export async function GET(req: NextRequest) {
 
     if (!response.ok) {
       const text = await response.text().catch(() => '');
+      console.error('[/api/anythingllm/threads] Upstream error:', {
+        status: response.status,
+        workspace,
+        url,
+        bodyPreview: text?.slice(0, 200)
+      });
       return NextResponse.json(
         { 
           error: 'Failed to fetch threads from AnythingLLM', 
@@ -96,12 +118,15 @@ export async function GET(req: NextRequest) {
     }
 
     const data = await response.json();
+    console.log('[/api/anythingllm/threads] Success:', { workspace, threadsCount: data?.threads?.length || 0 });
     return NextResponse.json(data);
   } catch (err: any) {
+    console.error('[/api/anythingllm/threads] Exception:', err?.message || err);
     return NextResponse.json({ 
-      error: 'Failed to proxy threads request', 
+      error: 'Request to AnythingLLM failed', 
       details: err?.message || String(err),
       workspace
     }, { status: 502 });
   }
 }
+

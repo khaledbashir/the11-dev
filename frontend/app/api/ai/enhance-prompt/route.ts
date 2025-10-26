@@ -109,31 +109,41 @@ export async function POST(req: NextRequest) {
     const openrouterKey = process.env.OPENROUTER_API_KEY;
     const groqKey = process.env.GROQ_API_KEY;
 
+    console.log('[/api/ai/enhance-prompt] Configuration check:', {
+      hasOpenRouterKey: !!openrouterKey,
+      hasGroqKey: !!groqKey,
+    });
+
     if (!openrouterKey && !groqKey) {
+      console.error('[/api/ai/enhance-prompt] No AI keys configured');
       return NextResponse.json({ error: 'AI keys are not configured on the server' }, { status: 500 });
     }
 
     // Primary: OpenRouter minimax/minimax-m2:free
     try {
       if (!openrouterKey) throw new Error('OpenRouter key missing');
+      console.log('[/api/ai/enhance-prompt] Attempting primary (OpenRouter)...');
       const enhanced = await callOpenRouterEnhance(prompt, openrouterKey);
+      console.log('[/api/ai/enhance-prompt] Primary success');
       return NextResponse.json({ enhancedPrompt: enhanced });
     } catch (primaryErr) {
-      console.warn('[Enhance Prompt] Primary failed, attempting fallback:', (primaryErr as Error)?.message);
+      console.warn('[/api/ai/enhance-prompt] Primary failed, attempting fallback:', (primaryErr as Error)?.message);
       // Fallback: Groq (OpenAI-compatible) if available
       if (groqKey) {
         try {
+          console.log('[/api/ai/enhance-prompt] Attempting fallback (Groq)...');
           const enhanced = await callGroqEnhance(prompt, groqKey);
+          console.log('[/api/ai/enhance-prompt] Fallback success');
           return NextResponse.json({ enhancedPrompt: enhanced, fallback: 'groq' });
         } catch (fallbackErr) {
-          console.error('[Enhance Prompt] Fallback failed:', fallbackErr);
+          console.error('[/api/ai/enhance-prompt] Fallback failed:', fallbackErr);
           return NextResponse.json({ error: 'Enhancement failed on all providers' }, { status: 502 });
         }
       }
       return NextResponse.json({ error: 'Enhancement failed and no fallback available' }, { status: 502 });
     }
   } catch (err) {
-    console.error('[Enhance Prompt] Unexpected error:', err);
+    console.error('[/api/ai/enhance-prompt] Unexpected error:', err);
     return NextResponse.json({ error: 'Unexpected server error' }, { status: 500 });
   }
 }

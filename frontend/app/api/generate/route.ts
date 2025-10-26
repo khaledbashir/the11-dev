@@ -7,11 +7,18 @@ import { match } from "ts-pattern";
 export const runtime = "edge";
 
 export async function POST(req: NextRequest): Promise<Response> {
-  // Check if OpenRouter API key is set
-  if (!process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY === "") {
-    return new Response("Missing OPENROUTER_API_KEY - make sure to add it to your .env file.", {
-      status: 400,
-    });
+  // Check if OpenRouter API key is set - use consistent variable name
+  const openRouterApiKey = process.env.OPENROUTER_API_KEY;
+  
+  if (!openRouterApiKey || openRouterApiKey === "") {
+    console.error('[/api/generate] OPENROUTER_API_KEY is missing or empty');
+    return new Response(
+      JSON.stringify({ error: "Missing OPENROUTER_API_KEY - make sure to add it to your .env file." }),
+      {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
   }
 
   // Rate limiting disabled - KV client type incompatibility with Ratelimit
@@ -118,13 +125,20 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   try {
     // Use OpenRouter for direct LLM completion (no RAG/document search needed)
-    const openRouterApiKey = process.env.OPENROUTER_API_KEY;
+    // Use the key we already validated at the top of the function
     
     if (!openRouterApiKey) {
-      return new Response("Missing OPENROUTER_API_KEY in .env", {
-        status: 400,
-      });
+      console.error('[/api/generate] OPENROUTER_API_KEY validation failed in try block');
+      return new Response(
+        JSON.stringify({ error: "Missing OPENROUTER_API_KEY in .env" }),
+        {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
     }
+
+    console.log('[/api/generate] Calling OpenRouter with model:', selectedModel);
 
     // Call OpenRouter streaming API directly
     const response = await fetch(
@@ -134,6 +148,8 @@ export async function POST(req: NextRequest): Promise<Response> {
         headers: {
           'Authorization': `Bearer ${openRouterApiKey}`,
           'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://socialgarden.com.au',
+          'X-Title': 'The11 SOW Assistant',
         },
         body: JSON.stringify({
           model: selectedModel,
