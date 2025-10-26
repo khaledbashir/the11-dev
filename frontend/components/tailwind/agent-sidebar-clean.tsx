@@ -947,7 +947,21 @@ export default function AgentSidebar({
                             
                             <div className="flex gap-2 mt-4 items-center sticky bottom-0 z-10 bg-[#0E2E33]/85 backdrop-blur-sm px-2 py-1 rounded-md border-t border-[#1b5e5e]">
                               <p className="text-xs mt-1 opacity-70 flex-1">{formatTimestamp(msg.timestamp)}</p>
-                              {/* Removed per-message Insert button to avoid duplicate insert controls; use accordion Insert only */}
+                              {/* Single unified insert button per assistant message (full SOW: narrative + JSON) */}
+                              {shouldShowButton && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 px-2 text-xs border-[#1b5e5e] text-gray-200 hover:text-white hover:bg-[#124847]"
+                                  title="Insert full SOW (narrative + pricing)"
+                                  onClick={() => {
+                                    // Pass the entire assistant message content; downstream handler cleans and merges
+                                    onInsertToEditor?.(msg.content);
+                                  }}
+                                >
+                                  ✅ Insert SOW
+                                </Button>
+                              )}
                             </div>
                           </div>
                         </div>
