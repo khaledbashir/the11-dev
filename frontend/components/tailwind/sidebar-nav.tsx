@@ -971,9 +971,13 @@ export default function SidebarNav({
       <NewSOWModal
         isOpen={showNewSOWModal}
         onOpenChange={setShowNewSOWModal}
-        onCreateSOW={(name) => {
+        onCreateSOW={(name, instructions) => {
           if (newSOWWorkspaceId) {
             onCreateSOW(newSOWWorkspaceId, name);
+            // If instructions provided, store them for the Generation AI to use
+            if (instructions && typeof window !== 'undefined') {
+              sessionStorage.setItem(`sow-generation-instructions-${newSOWWorkspaceId}`, instructions);
+            }
             setShowNewSOWModal(false);
             setNewSOWWorkspaceId(null);
           }

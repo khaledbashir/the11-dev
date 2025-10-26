@@ -53,17 +53,34 @@ export function StatefulDashboardChat({
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Initial load: fetch conversations
+  // Initial load: fetch conversations and restore last active conversation
   useEffect(() => {
-    fetchConversations();
-  }, []);
+    const restoreLastConversation = async () => {
+      await fetchConversations();
+      // After fetching conversations, restore the last active conversation from localStorage
+      const lastConversationId = typeof window !== 'undefined' 
+        ? localStorage.getItem(`dashboard-last-conversation-${userId}`)
+        : null;
+      
+      if (lastConversationId) {
+        setActiveConversationId(lastConversationId);
+      }
+    };
+    restoreLastConversation();
+  }, [userId]);
 
-  // When active conversation changes, fetch its messages
+  // When active conversation changes, fetch its messages and persist selection
   useEffect(() => {
     if (activeConversationId) {
+      // Persist the active conversation to localStorage for recovery after page reload
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`dashboard-last-conversation-${userId}`, activeConversationId);
+      }
       fetchMessages(activeConversationId);
+    } else {
+      setMessages([]);
     }
-  }, [activeConversationId]);
+  }, [activeConversationId, userId]);
 
   /**
    * Fetch all conversations for the user

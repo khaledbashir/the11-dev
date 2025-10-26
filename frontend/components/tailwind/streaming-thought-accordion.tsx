@@ -148,12 +148,12 @@ export function StreamingThoughtAccordion({
     return (
       <div className="w-full space-y-2">
         <details
-          className="border border-[#20e28f] rounded-lg overflow-hidden bg-[#0a0a0a] group"
+          className="border border-[#20e28f] rounded-lg overflow-hidden bg-[#0a0a0a] group cursor-pointer"
           open={isOpen}
           onToggle={(e) => setIsOpen((e.target as HTMLDetailsElement).open)}
         >
-          <summary className="cursor-pointer px-4 py-3 bg-[#20e28f]/10 hover:bg-[#20e28f]/20 transition-colors text-sm font-semibold flex items-center gap-2 select-none">
-            <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+          <summary className="cursor-pointer px-4 py-3 bg-[#20e28f]/10 hover:bg-[#20e28f]/20 transition-colors text-sm font-semibold flex items-center gap-2 select-none list-none">
+            <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180 flex-shrink-0" />
             <span className="text-[#20e28f]">📊</span>
             <span>Structured JSON</span>
             <span className="text-xs text-gray-400 ml-auto">Pricing Data</span>
@@ -183,12 +183,12 @@ export function StreamingThoughtAccordion({
     return (
       <div className="w-full space-y-3">
         <details
-          className="border border-[#1b5e5e] rounded-lg overflow-hidden bg-[#0a0a0a] group"
+          className="border border-[#1b5e5e] rounded-lg overflow-hidden bg-[#0a0a0a] group cursor-pointer"
           open={isOpen}
           onToggle={(e) => setIsOpen((e.target as HTMLDetailsElement).open)}
         >
-          <summary className="cursor-pointer px-4 py-3 bg-[#1b5e5e]/20 hover:bg-[#1b5e5e]/30 transition-colors text-sm font-semibold flex items-center gap-2 select-none">
-            <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+          <summary className="cursor-pointer px-4 py-3 bg-[#1b5e5e]/20 hover:bg-[#1b5e5e]/30 transition-colors text-sm font-semibold flex items-center gap-2 select-none list-none">
+            <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180 flex-shrink-0" />
             <span className="text-yellow-400">🧠</span>
             <span>
               {isStreaming ? "AI Thinking..." : "AI Reasoning"}
@@ -219,12 +219,12 @@ export function StreamingThoughtAccordion({
       {/* Thinking Accordion */}
       {thinking && (
         <details
-          className="border border-[#1b5e5e] rounded-lg overflow-hidden bg-[#0a0a0a] group"
+          className="border border-[#1b5e5e] rounded-lg overflow-hidden bg-[#0a0a0a] group cursor-pointer"
           open={isOpen}
           onToggle={(e) => setIsOpen((e.target as HTMLDetailsElement).open)}
         >
-          <summary className="cursor-pointer px-4 py-3 bg-[#1b5e5e]/20 hover:bg-[#1b5e5e]/30 transition-colors text-sm font-semibold flex items-center gap-2 select-none">
-            <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+          <summary className="cursor-pointer px-4 py-3 bg-[#1b5e5e]/20 hover:bg-[#1b5e5e]/30 transition-colors text-sm font-semibold flex items-center gap-2 select-none list-none">
+            <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180 flex-shrink-0" />
             <span className="text-yellow-400">🧠</span>
             <span>
               {isStreaming ? "AI Thinking..." : "AI Reasoning"}
@@ -312,12 +312,12 @@ export function StreamingThoughtAccordion({
           {/* JSON Accordion at the bottom if present */}
           {jsonBlock && (
             <details
-              className="border border-[#20e28f] rounded-lg overflow-hidden bg-[#0a0a0a] group mt-4"
+              className="border border-[#20e28f] rounded-lg overflow-hidden bg-[#0a0a0a] group mt-4 cursor-pointer"
               open={false}
               onToggle={(e) => setIsOpen((e.target as HTMLDetailsElement).open)}
             >
-              <summary className="cursor-pointer px-4 py-3 bg-[#20e28f]/10 hover:bg-[#20e28f]/20 transition-colors text-sm font-semibold flex items-center gap-2 select-none">
-                <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+              <summary className="cursor-pointer px-4 py-3 bg-[#20e28f]/10 hover:bg-[#20e28f]/20 transition-colors text-sm font-semibold flex items-center gap-2 select-none list-none">
+                <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180 flex-shrink-0" />
                 <span className="text-[#20e28f]">📊</span>
                 <span>Structured JSON - Pricing Data</span>
                 <span className="text-xs text-gray-400 ml-auto">Click to expand</span>

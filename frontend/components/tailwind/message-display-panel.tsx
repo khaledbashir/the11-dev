@@ -104,8 +104,12 @@ export function MessageDisplayPanel({
                 >
                   {message.role === 'assistant' ? (
                     // Hide <think>/<thinking> content and show accordion with reasoning
-                    <div className="space-y-2">
-                      <StreamingThoughtAccordion content={message.content} />
+                    <div className="space-y-2 w-full">
+                      <StreamingThoughtAccordion 
+                        content={message.content} 
+                        messageId={message.id}
+                        isStreaming={false}
+                      />
                     </div>
                   ) : (
                     <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
