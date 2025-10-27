@@ -117,15 +117,39 @@ export default function WorkspaceSidebar({
 
   const loadThreads = async (workspaceSlug: string) => {
     console.log('📂 Loading threads for workspace:', workspaceSlug);
-    console.log('⚠️ Thread listing temporarily disabled (API endpoint returns 502). Using local state only.');
     setLoadingThreads(true);
-    setThreads([]);
-    setLoadingThreads(false);
     
-    // NOTE: Threads ARE being created successfully on the AnythingLLM server
-    // The issue is the LIST endpoint returns 502 (likely Traefik proxy routing issue)
-    // Threads created during this session will appear in local state
-    // Once the proxy issue is resolved, uncomment the code below to restore full thread listing
+    try {
+      const response = await fetch(`/api/anythingllm/threads?workspace=${encodeURIComponent(workspaceSlug)}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Failed to load threads:', {
+          status: response.status,
+          workspace: workspaceSlug,
+          error: errorData,
+        });
+        
+        // Don't throw - just set empty threads and let the user continue
+        setThreads([]);
+        return;
+      }
+
+      const data = await response.json();
+      const threadList = data?.threads || [];
+      
+      console.log('✅ Threads loaded:', {
+        workspace: workspaceSlug,
+        count: threadList.length,
+      });
+      
+      setThreads(threadList);
+    } catch (error: any) {
+      console.error('❌ Exception loading threads:', error);
+      setThreads([]);
+    } finally {
+      setLoadingThreads(false);
+    }
   };
 
   const handleNewThread = async (): Promise<string | null> => {

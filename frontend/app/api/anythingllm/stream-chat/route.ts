@@ -121,8 +121,14 @@ export async function POST(request: NextRequest) {
     console.log('');
     console.log('=== ABOUT TO SEND TO ANYTHINGLLM ===');
     console.log('Endpoint:', endpoint);
+    console.log('Workspace:', effectiveWorkspaceSlug);
     console.log('Mode:', mode);
     console.log('ThreadSlug:', threadSlug);
+    console.log('');
+    console.log('⚠️  CRITICAL: The system prompt for this workspace is configured in AnythingLLM.');
+    console.log('⚠️  This route does NOT inject prompts - it relies on workspace configuration.');
+    console.log('⚠️  If responses are generic, check the workspace settings in AnythingLLM admin.');
+    console.log('');
     console.log('Message to send (first 500 chars):');
     console.log(messageToSend.substring(0, 500));
     console.log('...');

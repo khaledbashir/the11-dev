@@ -56,10 +56,11 @@ export function StreamingThoughtAccordion({
     });
     
     // Support multiple internal thinking tag variants
+    // CRITICAL: Build regex patterns correctly to match thinking tags
     const variants = [
-      { open: /<thinking>/gi, close: /<\/thinking>/gi, name: 'thinking' },
-      { open: /<think>/gi, close: /<\/think>/gi, name: 'think' },
-      { open: /<AI_THINK>/gi, close: /<\/AI_THINK>/gi, name: 'ai_think' },
+      { pattern: /<thinking>([\s\S]*?)<\/thinking>/gi, name: 'thinking' },
+      { pattern: /<think>([\s\S]*?)<\/think>/gi, name: 'think' },
+      { pattern: /<AI_THINK>([\s\S]*?)<\/AI_THINK>/gi, name: 'ai_think' },
     ];
 
     // Collect all thinking contents in order
@@ -67,14 +68,17 @@ export function StreamingThoughtAccordion({
     let cleanedContent = content;
 
     for (const v of variants) {
-      const regex = new RegExp(`${v.open.source}([\n\s\S]*?)${v.close.source}`, 'gi');
-      let match: RegExpExecArray | null;
-      while ((match = regex.exec(content)) !== null) {
+      // Use matchAll to get all matches at once (more reliable than regex.exec loop)
+      const matches = Array.from(content.matchAll(v.pattern));
+      for (const match of matches) {
         const inner = (match[1] || '').trim();
-        if (inner) extractedThinkingParts.push(inner);
+        if (inner) {
+          extractedThinkingParts.push(inner);
+          console.log(`✅ [Accordion] Found ${v.name} tag:`, inner.substring(0, 50) + '...');
+        }
       }
       // Remove this variant from visible content
-      cleanedContent = cleanedContent.replace(regex, '').trim();
+      cleanedContent = cleanedContent.replace(v.pattern, '').trim();
     }
 
     // Also strip tool_call blocks from visible content

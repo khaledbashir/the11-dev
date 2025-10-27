@@ -4,13 +4,27 @@ import { match } from "ts-pattern";
 export const runtime = "edge";
 
 export async function POST(req: NextRequest): Promise<Response> {
+  // Edge runtime needs explicit env var access
   const anythingLLMURL = process.env.ANYTHINGLLM_URL || process.env.NEXT_PUBLIC_ANYTHINGLLM_URL || '';
   const anythingLLMKey = process.env.ANYTHINGLLM_API_KEY || process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY || '';
   
+  console.log('[/api/generate] Configuration check:', {
+    hasURL: !!anythingLLMURL,
+    hasKey: !!anythingLLMKey,
+    urlPreview: anythingLLMURL?.substring(0, 30) + '...',
+  });
+  
   if (!anythingLLMURL || !anythingLLMKey) {
+    console.error('[/api/generate] Missing AnythingLLM configuration');
     return new Response(
-      JSON.stringify({ error: "AnythingLLM not configured" }),
-      { status: 401, headers: { 'Content-Type': 'application/json' } }
+      JSON.stringify({ 
+        error: "AnythingLLM not configured on server",
+        details: {
+          hasURL: !!anythingLLMURL,
+          hasKey: !!anythingLLMKey,
+        }
+      }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 
@@ -27,8 +41,16 @@ export async function POST(req: NextRequest): Promise<Response> {
     .otherwise(() => prompt);
 
   try {
+    const endpoint = `${anythingLLMURL.replace(/\/$/, '')}/api/v1/workspace/utility-inline-editor/stream-chat`;
+    
+    console.log('[/api/generate] Sending to AnythingLLM:', {
+      endpoint,
+      option,
+      messageLength: userMessage.length,
+    });
+    
     const response = await fetch(
-      `${anythingLLMURL.replace(/\/$/, '')}/api/v1/workspace/utility-inline-editor/stream-chat`,
+      endpoint,
       {
         method: 'POST',
         headers: {
@@ -43,8 +65,19 @@ export async function POST(req: NextRequest): Promise<Response> {
     );
 
     if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      console.error('[/api/generate] AnythingLLM error:', {
+        status: response.status,
+        statusText: response.statusText,
+        errorPreview: errorText.substring(0, 200),
+      });
+      
       return new Response(
-        JSON.stringify({ error: `AnythingLLM error: ${response.status}` }),
+        JSON.stringify({ 
+          error: `AnythingLLM error: ${response.statusText}`,
+          status: response.status,
+          details: errorText.substring(0, 200),
+        }),
         { status: response.status, headers: { 'Content-Type': 'application/json' } }
       );
     }
@@ -100,9 +133,13 @@ export async function POST(req: NextRequest): Promise<Response> {
         "Connection": "keep-alive",
       },
     });
-  } catch (error) {
+  } catch (error: any) {
+    console.error('[/api/generate] Exception:', error);
     return new Response(
-      JSON.stringify({ error: 'AnythingLLM request failed' }),
+      JSON.stringify({ 
+        error: 'AnythingLLM request failed',
+        details: error?.message || String(error),
+      }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
