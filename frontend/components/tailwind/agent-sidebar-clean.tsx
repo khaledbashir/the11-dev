@@ -892,8 +892,7 @@ export default function AgentSidebar({
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
                         if (chatInput.trim() && !isLoading) {
-                          onSendMessage(chatInput.trim(), currentThreadSlug || null);
-                          setChatInput("");
+                          handleSendMessage();
                         }
                       }
                     }}
@@ -904,8 +903,7 @@ export default function AgentSidebar({
                   <Button 
                     onClick={() => {
                       if (chatInput.trim() && !isLoading) {
-                        onSendMessage(chatInput.trim(), currentThreadSlug || null);
-                        setChatInput("");
+                        handleSendMessage();
                       }
                     }}
                     disabled={!chatInput.trim() || isLoading}

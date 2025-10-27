@@ -49,6 +49,12 @@ export function StreamingThoughtAccordion({
   // ⚠️ CRITICAL FIX: Extract thinking ONCE per actual content change
   // useMemo ensures this only runs when content actually changes, not on every render/re-stream chunk
   const { thinking, actualContent, jsonBlock } = useMemo(() => {
+    console.log('🔍 [Accordion] Processing content:', {
+      contentLength: content?.length || 0,
+      contentPreview: content?.substring(0, 100) || '',
+      hasThinkTag: content?.includes('<think>') || false,
+    });
+    
     // Support multiple internal thinking tag variants
     const variants = [
       { open: /<thinking>/gi, close: /<\/thinking>/gi, name: 'thinking' },
@@ -97,7 +103,14 @@ export function StreamingThoughtAccordion({
         thinkingPreview: extractedThinking.substring(0, 100),
         hasThinkingContent: extractedThinking.length > 0
       });
+    } else {
+      console.log('⚠️ [Accordion] NO THINKING EXTRACTED (messageId: ' + messageId + ')');
     }
+
+    console.log('📄 [Accordion] Cleaned content:', {
+      cleanedLength: cleanedContent?.length || 0,
+      cleanedPreview: cleanedContent?.substring(0, 100) || '',
+    });
 
     return { thinking: extractedThinking, actualContent: cleanedContent, jsonBlock: extractedJsonBlock };
   }, [content, messageId]);
