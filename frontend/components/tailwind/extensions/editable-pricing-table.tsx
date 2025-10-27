@@ -2,8 +2,24 @@
 
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
-import React, { useState, useEffect, useRef } from 'react';
-import { createSwapy } from 'swapy';
+import React, { useState, useEffect } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 // Social Garden 82 roles with AUD rates
 const ROLES = [
@@ -109,91 +125,36 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
     }))
   );
   const [discount, setDiscount] = useState(node.attrs.discount || 0);
-  const containerRef = useRef<HTMLTableSectionElement>(null);
-  const swapyRef = useRef<any>(null);
 
-  // Initialize Swapy
-  useEffect(() => {
-    if (!containerRef.current || rows.length === 0) return;
+  // dnd-kit sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
-    // Destroy existing instance if any
-    if (swapyRef.current) {
-      swapyRef.current.destroy();
-      swapyRef.current = null;
-    }
-
-    // Use a small delay to ensure DOM is fully rendered
-    const timeoutId = setTimeout(() => {
-      if (!containerRef.current) return;
-
-      try {
-        // Verify all required DOM elements exist before initializing
-        const slots = containerRef.current.querySelectorAll('[data-swapy-slot]');
-        const items = containerRef.current.querySelectorAll('[data-swapy-item]');
-        
-        if (slots.length === 0 || items.length === 0 || slots.length !== items.length) {
-          console.warn(`Swapy initialization skipped: slots=${slots.length}, items=${items.length}`);
-          return;
-        }
-
-        // Create new Swapy instance
-        swapyRef.current = createSwapy(containerRef.current, {
-          animation: 'dynamic'
-        });
-
-        // Listen to swap events
-        swapyRef.current.onSwap((event: any) => {
-          console.log('Swapy swap event:', event);
-          
-          // Get the new order from the event
-          const newOrder = event.data.array;
-          
-          // Create a map of current rows by ID
-          const rowMap = new Map(rows.map(row => [row.id, row]));
-          
-          // Reorder rows based on the new slot order
-          const reorderedRows = newOrder.map((item: any) => rowMap.get(item.item)).filter(Boolean);
-          
-          setRows(reorderedRows);
-        });
-      } catch (error) {
-        console.error('Failed to initialize Swapy:', error);
-      }
-    }, 100); // 100ms delay to ensure DOM is ready
-
-    return () => {
-      clearTimeout(timeoutId);
-      if (swapyRef.current) {
-        try {
-          swapyRef.current.destroy();
-        } catch (error) {
-          console.warn('Error destroying Swapy instance:', error);
-        }
-        swapyRef.current = null;
-      }
-    };
-  }, [rows.length]); // Re-initialize when row count changes
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setRows((items) => {
+      const oldIndex = items.findIndex((i) => i.id === active.id);
+      const newIndex = items.findIndex((i) => i.id === over.id);
+      return arrayMove(items, oldIndex, newIndex);
+    });
+  };
 
   useEffect(() => {
     updateAttributes({ rows, discount });
   }, [rows, discount]);
 
   const updateRow = (id: string, field: keyof PricingRow, value: string | number) => {
-    const newRows = rows.map(row => {
+    setRows((prev) => prev.map((row) => {
       if (row.id !== id) return row;
-      
       if (field === 'role') {
         const selectedRole = ROLES.find(r => r.name === value);
-        return {
-          ...row,
-          role: value as string,
-          rate: selectedRole?.rate || row.rate,
-        };
+        return { ...row, role: value as string, rate: selectedRole?.rate || row.rate };
       }
-      
       return { ...row, [field]: value };
-    });
-    setRows(newRows);
+    }));
   };
 
   const addRow = () => {
@@ -245,8 +206,6 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
           .pricing-row:hover .drag-handle {
             opacity: 1;
           }
-          [data-swapy-highlighted] {
-          }
         `}
       </style>
       <div className="border border-border rounded-lg p-4 bg-background dark:bg-gray-900/50">
@@ -262,104 +221,102 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
             + Add Role
           </button>
         </div>
-
-        <div className="overflow-x-auto mb-4">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-[#0e2e33] text-white">
-                <th className="border border-border px-3 py-2 text-left text-sm">Role</th>
-                <th className="border border-border px-3 py-2 text-left text-sm">Description</th>
-                <th className="border border-border px-3 py-2 text-left text-sm w-24">Hours</th>
-                <th className="border border-border px-3 py-2 text-left text-sm w-24">Rate</th>
-                <th className="border border-border px-3 py-2 text-right text-sm w-32">Cost</th>
-                <th className="border border-border px-3 py-2 text-center text-sm w-16">Actions</th>
-              </tr>
-            </thead>
-            <tbody ref={containerRef}>
-              {rows.map((row) => (
-                <tr 
-                  key={row.id} 
-                  data-swapy-slot={row.id}
-                  className="pricing-row hover:bg-muted dark:bg-gray-800"
-                >
-                  <td className="border border-border p-0" colSpan={6}>
-                    <div data-swapy-item={row.id} className="w-full">
-                      <table className="w-full">
-                        <tbody>
-                          <tr>
-                            <td className="border-r border-border p-2" style={{ width: '20%' }}>
-                              <div className="flex items-center gap-2">
-                                <span data-swapy-handle className="drag-handle text-gray-400 select-none text-lg cursor-grab active:cursor-grabbing" title="Drag to reorder">⋮⋮</span>
-                                <select
-                                  value={row.role}
-                                  onChange={(e) => updateRow(row.id, 'role', e.target.value)}
-                                  className="w-full text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#1CBF79] focus:border-[#1CBF79] hover:border-gray-400 dark:hover:border-gray-600"
-                                >
-                                  <option className="bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200" value="">Select role...</option>
-                                  {ROLES.map((role) => (
-                                    <option
-                                      key={role.name}
-                                      value={role.name}
-                                      className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
-                                    >
-                                      {role.name} - ${role.rate}/hr
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                            </td>
-                            <td className="border-r border-border p-2" style={{ width: '30%' }}>
-                              <input
-                                type="text"
-                                value={row.description}
-                                onChange={(e) => updateRow(row.id, 'description', e.target.value)}
-                                placeholder="Description..."
-                                className="w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-[#1CBF79] text-sm"
-                              />
-                            </td>
-                            <td className="border-r border-border p-2" style={{ width: '15%' }}>
-                              <input
-                                type="number"
-                                value={row.hours || ''}
-                                onChange={(e) => updateRow(row.id, 'hours', parseFloat(e.target.value) || 0)}
-                                placeholder="0"
-                                min="0"
-                                step="0.5"
-                                className="w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-[#1CBF79] text-sm text-right"
-                              />
-                            </td>
-                            <td className="border-r border-border p-2" style={{ width: '15%' }}>
-                              <input
-                                type="number"
-                                value={row.rate || ''}
-                                onChange={(e) => updateRow(row.id, 'rate', parseFloat(e.target.value) || 0)}
-                                placeholder="$0"
-                                min="0"
-                                className="w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-[#1CBF79] text-sm text-right"
-                              />
-                            </td>
-                            <td className="border-r border-border px-3 py-2 text-right text-sm font-semibold" style={{ width: '15%' }}>
-                              ${(row.hours * row.rate).toFixed(2)}
-                            </td>
-                            <td className="p-2 text-center" style={{ width: '5%' }}>
-                              <button
-                                onClick={() => removeRow(row.id)}
-                                disabled={rows.length === 1}
-                                className="text-red-600 hover:text-red-800 disabled:text-gray-400 disabled:cursor-not-allowed text-lg"
-                              >
-                                ✕
-                              </button>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </td>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <div className="overflow-x-auto mb-4">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-[#0e2e33] text-white">
+                  <th className="border border-border px-3 py-2 text-left text-sm">Role</th>
+                  <th className="border border-border px-3 py-2 text-left text-sm">Description</th>
+                  <th className="border border-border px-3 py-2 text-left text-sm w-24">Hours</th>
+                  <th className="border border-border px-3 py-2 text-left text-sm w-24">Rate</th>
+                  <th className="border border-border px-3 py-2 text-right text-sm w-32">Cost</th>
+                  <th className="border border-border px-3 py-2 text-center text-sm w-16">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <SortableContext items={rows.map(r => r.id)} strategy={verticalListSortingStrategy}>
+                <tbody>
+                  {rows.map((row) => {
+                    const {
+                      attributes,
+                      listeners,
+                      setNodeRef,
+                      transform,
+                      transition,
+                    } = useSortable({ id: row.id });
+                    const style: React.CSSProperties = {
+                      transform: CSS.Transform.toString(transform),
+                      transition,
+                    };
+                    return (
+                      <tr key={row.id} ref={setNodeRef} style={style} className="pricing-row hover:bg-muted dark:bg-gray-800" {...attributes}>
+                        <td className="border border-border p-2" style={{ width: '20%' }}>
+                          <div className="flex items-center gap-2">
+                            <span {...listeners} className="drag-handle text-gray-400 select-none text-lg cursor-grab active:cursor-grabbing" title="Drag to reorder">⋮⋮</span>
+                            <select
+                              value={row.role}
+                              onChange={(e) => updateRow(row.id, 'role', e.target.value)}
+                              className="w-full text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#1CBF79] focus:border-[#1CBF79] hover:border-gray-400 dark:hover:border-gray-600"
+                            >
+                              <option className="bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200" value="">Select role...</option>
+                              {ROLES.map((role) => (
+                                <option key={role.name} value={role.name} className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+                                  {role.name} - ${role.rate}/hr
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </td>
+                        <td className="border border-border p-2" style={{ width: '30%' }}>
+                          <input
+                            type="text"
+                            value={row.description}
+                            onChange={(e) => updateRow(row.id, 'description', e.target.value)}
+                            placeholder="Description..."
+                            className="w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-[#1CBF79] text-sm"
+                          />
+                        </td>
+                        <td className="border border-border p-2" style={{ width: '15%' }}>
+                          <input
+                            type="number"
+                            value={row.hours || ''}
+                            onChange={(e) => updateRow(row.id, 'hours', parseFloat(e.target.value) || 0)}
+                            placeholder="0"
+                            min="0"
+                            step="0.5"
+                            className="w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-[#1CBF79] text-sm text-right"
+                          />
+                        </td>
+                        <td className="border border-border p-2" style={{ width: '15%' }}>
+                          <input
+                            type="number"
+                            value={row.rate || ''}
+                            onChange={(e) => updateRow(row.id, 'rate', parseFloat(e.target.value) || 0)}
+                            placeholder="$0"
+                            min="0"
+                            className="w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-[#1CBF79] text-sm text-right"
+                          />
+                        </td>
+                        <td className="border border-border px-3 py-2 text-right text-sm font-semibold" style={{ width: '15%' }}>
+                          ${(row.hours * row.rate).toFixed(2)}
+                        </td>
+                        <td className="border border-border p-2 text-center" style={{ width: '5%' }}>
+                          <button
+                            onClick={() => removeRow(row.id)}
+                            disabled={rows.length === 1}
+                            className="text-red-600 hover:text-red-800 disabled:text-gray-400 disabled:cursor-not-allowed text-lg"
+                          >
+                            ✕
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </SortableContext>
+            </table>
+          </div>
+        </DndContext>
 
         <div className="flex justify-end">
           <div className="w-full max-w-md">
