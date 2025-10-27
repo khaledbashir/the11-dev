@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { query, generateSOWId, formatDateForMySQL } from '@/lib/db';
-import { enforceHeadOfRole } from '@/lib/sow-utils';
+// import removed: enforceHeadOfRole is now a no-op
 
 export async function POST(req: NextRequest) {
   
@@ -19,42 +19,7 @@ export async function POST(req: NextRequest) {
     const clientEmail = body.clientEmail || body.client_email || null;
     let content = body.content || body.body || body.sowContent || null;
     
-    // 🚨 CRITICAL ENFORCEMENT: Ensure Head Of role exists in pricing table
-    if (content) {
-      const enforcedContent = enforceHeadOfRole(content);
-      const serializedContent = typeof enforcedContent === 'string'
-        ? enforcedContent
-        : JSON.stringify(enforcedContent);
-
-      try {
-        const parsed = typeof enforcedContent === 'string'
-          ? JSON.parse(enforcedContent)
-          : enforcedContent;
-        const pricingNode = Array.isArray(parsed?.content)
-          ? parsed.content.find((node: any) => node?.type === 'editablePricingTable')
-          : null;
-        const rows = pricingNode?.attrs?.rows || [];
-        const hasHeadOf = rows.some((row: any) =>
-          String(row?.role || '').toLowerCase().includes('head of')
-        );
-        const firstRow = rows[0] || null;
-        console.log('✅ [SOW CREATE] Head Of enforcement report:', {
-          tableFound: !!pricingNode,
-          rowCount: rows.length,
-          headOfPresent: hasHeadOf,
-          firstRow,
-        });
-      } catch (logError) {
-        console.warn('⚠️ [SOW CREATE] Failed to log enforcement details:', logError);
-      }
-
-      console.log('✅ [SOW CREATE] Head Of role enforcement applied', {
-        originalType: typeof content,
-        enforcedType: typeof enforcedContent,
-        serializedLength: serializedContent.length,
-      });
-      content = serializedContent;
-    }
+    // No legacy enforcement: pricing table is now deterministic and single-source from frontend
     const totalInvestment = body.totalInvestment ?? body.total_investment ?? 0;
     const folderId = body.folderId || body.folder_id || null;
     const creatorEmail = body.creatorEmail || body.creator_email || null;

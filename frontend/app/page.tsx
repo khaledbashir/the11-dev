@@ -247,16 +247,25 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
   // Best-effort budget parsing from markdown for deterministic allocation
   const parseBudgetFromMarkdown = (text: string): { value: number; inclGST: boolean } | null => {
     if (!text) return null;
-    // Examples matched: "Budget: $25,000 +GST", "Target $30k ex gst", "Total Investment = 18000 incl gst"
-    const re = /(budget|target|total|investment)\s*[:=]?\s*\$?\s*([\d,.]+)\s*(k)?\s*(\+\s*gst|incl\s*gst|ex\s*gst)?/i;
-    const m = text.match(re);
-    if (!m) return null;
-    let raw = (m[2] || '').replace(/,/g, '');
-    let v = parseFloat(raw || '0');
-    if (m[3]) v = v * 1000; // support shorthand like 50k
-    const gstStr = (m[4] || '').toLowerCase();
-    const inclGST = /incl\s*gst/.test(gstStr);
-    return { value: isNaN(v) ? 0 : v, inclGST };
+    // Try multiple patterns for robustness
+    const patterns = [
+      /(budget|target|total|investment)\s*[:=]?\s*(aud\s*)?\$?\s*([\d,.]+)\s*(k)?\s*(aud)?\s*(\+\s*gst|incl\s*gst|ex\s*gst)?/i,
+      /(aud)?\s*\$?\s*([\d,.]+)\s*(k)?\s*(aud)?\s*(firm)?/i,
+    ];
+    for (const re of patterns) {
+      const m = text.match(re);
+      if (m) {
+        const numGroup = m[3] || m[2] || '';
+        let raw = String(numGroup).replace(/[,\s]/g, '');
+        let v = parseFloat(raw || '0');
+        const kGroup = m[4] || m[3] || '';
+        if (kGroup && /k/i.test(kGroup)) v = v * 1000; // support 50k
+        const gstStr = (m[6] || '').toLowerCase();
+        const inclGST = /incl\s*gst/.test(gstStr);
+        if (!isNaN(v) && v > 0) return { value: v, inclGST };
+      }
+    }
+    return null;
   };
 
   // Helper function to insert pricing table

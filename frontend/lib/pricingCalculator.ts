@@ -1,4 +1,4 @@
-import { ROLES, RATE_CARD_MAP } from '@/lib/rateCard';
+import { ROLES, RATE_CARD_MAP } from './rateCard';
 
 export type PricingRow = {
   role: string;
@@ -88,11 +88,12 @@ export function calculatePricingTable(
     { role: amCanon, description: 'Client comms & governance', hours: amHours, rate: amRate },
   ];
 
-  // Remove any other PM/Head Of variants from the pool
+  // Remove governance roles from the pool (PM and AM only)
   const filtered = canonicalNames.filter(name => {
     const n = norm(name);
     if (n.includes('head-of') || n.includes('head of')) return false;
-    if (n.includes('project-management')) return false;
+    if (n.includes('project-management')) return false; // PM
+    if (n.includes('account management')) return false; // AM
     return true;
   });
 
@@ -103,15 +104,24 @@ export function calculatePricingTable(
   const baseCost = pmHours * pmRate + amHours * amRate;
   const remaining = Math.max(0, budget - baseCost);
 
-  if (remaining <= 0 || rolePool.length === 0) {
-    // Nothing to distribute; return mandatory rows only
-    return rows;
+  // Fallback: if no roles to distribute to, pick a sensible default basket
+  let pool = rolePool;
+  if (pool.length === 0) {
+    const defaults = [
+      'Tech - Producer - Development',
+      'Tech - Specialist - Workflows',
+      'Tech - Integrations',
+    ];
+    pool = defaults.filter(n => !!RATE_CARD_MAP[findCanon(n)?.name || n]);
+  }
+  if (remaining <= 0 || pool.length === 0) {
+    return rows; // Nothing to distribute
   }
 
   // Evenly distribute budget across remaining roles
-  const perRoleBudget = remaining / rolePool.length;
+  const perRoleBudget = remaining / pool.length;
 
-  for (const name of rolePool) {
+  for (const name of pool) {
     const canon = findCanon(name)?.name || name;
     const rate = RATE_CARD_MAP[canon] || 0;
     if (rate <= 0) continue; // skip invalid
@@ -124,42 +134,52 @@ export function calculatePricingTable(
     rows.push({ role: canon, description: '', hours, rate });
   }
 
-  // Tighten to budget target: scale non-governance hours to meet remaining budget closely without exceeding
-  const isGov = (r: PricingRow) => norm(r.role).includes('head-of') || norm(r.role).includes('head of') || norm(r.role).includes('account management');
+  // Tighten to budget target: adjust non-governance hours to stay within budget and approach target
+  const isGov = (r: PricingRow) => {
+    const n = norm(r.role);
+    return n.includes('head-of') || n.includes('head of') || n.includes('project-management') || n.includes('account management');
+  };
   const g = cfg.hourGranularity;
   const totalCost = (list: PricingRow[]) => list.reduce((s, r) => s + (r.hours * r.rate), 0);
 
   // Current costs
   let current = totalCost(rows);
-  if (current < budget) {
+  const trimToBudget = () => {
+    const nonGov = rows.filter(r => !isGov(r));
+    if (nonGov.length === 0) return;
+    const sorted = nonGov.sort((a, b) => b.rate - a.rate);
+    let idx = 0;
+    let safety = 0;
+    while (current > budget && safety < 10000) {
+      const r = sorted[idx % sorted.length];
+      if (r.hours > 0) {
+        r.hours = Math.max(0, r.hours - g);
+        current = totalCost(rows);
+      }
+      idx++;
+      safety++;
+    }
+  };
+
+  // If we are already over budget due to initial rounding, trim first
+  if (current > budget) {
+    trimToBudget();
+  } else if (current < budget) {
+    // Scale up non-governance to hit target
     const nonGov = rows.filter(r => !isGov(r));
     const nonGovCost = totalCost(nonGov);
     const targetNonGov = Math.max(0, budget - (pmHours * pmRate + amHours * amRate));
 
     if (nonGov.length > 0 && nonGovCost > 0 && targetNonGov > 0) {
       const scale = targetNonGov / nonGovCost;
-      // Scale and re-round
       for (const r of nonGov) {
         r.hours = Math.max(0, Math.round((r.hours * scale) / g) * g);
       }
-      // Re-evaluate and trim if slightly over due to rounding
       current = totalCost(rows);
       if (current > budget) {
-        // Reduce hours by small steps on the highest-rate roles first until within budget
-        const sorted = nonGov.sort((a, b) => b.rate - a.rate);
-        let idx = 0;
-        let safety = 0;
-        while (current > budget && safety < 10000) {
-          const r = sorted[idx % sorted.length];
-          if (r.hours > 0) {
-            r.hours = Math.max(0, r.hours - g);
-            current = totalCost(rows);
-          }
-          idx++;
-          safety++;
-        }
+        trimToBudget();
       } else {
-        // If still significantly under, top-up incrementally to approach target without exceeding
+        // Top-up toward budget within tolerance without exceeding
         const tolerance = 0.03; // 3%
         const minAcceptable = budget * (1 - tolerance);
         const sorted = nonGov.sort((a, b) => b.rate - a.rate);

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { enforceHeadOfRole } from '@/lib/sow-utils';
+import { tiptapToHTML } from '@/lib/export-utils';
 
 // Support both GET and POST methods
 // PDF generation endpoint for SOW documents
@@ -36,17 +36,19 @@ export async function POST(req: NextRequest) {
 async function handlePDFGeneration(body: any) {
   try {
     console.log('📋 [PDF Export] Body keys:', Object.keys(body));
-    console.log('📋 [PDF Export] Has content:', !!body.content);
-    console.log('📋 [PDF Export] Has html_content:', !!body.html_content);
+  console.log('📋 [PDF Export] Has content:', !!body.content);
+  console.log('📋 [PDF Export] Has html_content (incoming):', !!body.html_content);
     console.log('📋 [PDF Export] Has sowId:', !!body.sowId);
     
-    // 🚨 CRITICAL ENFORCEMENT: Ensure Head Of role exists in pricing table BEFORE PDF generation
-    if (body.content) {
-      console.log('🚨 [PDF Export] Enforcing Head Of role on TipTap JSON content');
-      body.content = enforceHeadOfRole(body.content);
-      console.log('✅ [PDF Export] Head Of role enforcement applied');
-    } else {
-      console.warn('⚠️ [PDF Export] NO TIPTAP CONTENT - enforcement cannot run on HTML!');
+    // Always (re)generate HTML from TipTap JSON when available to ensure latest filtering (e.g., zero-cost rows removed)
+    if (body?.content) {
+      try {
+        const contentObj = typeof body.content === 'string' ? JSON.parse(body.content) : body.content;
+        body.html_content = tiptapToHTML(contentObj);
+        console.log('🧩 [PDF Export] Re-generated html_content from TipTap JSON');
+      } catch (e) {
+        console.warn('⚠️ [PDF Export] Failed to parse TipTap JSON, falling back to provided html_content');
+      }
     }
     
     // PDF generation handler - converts SOW documents to PDF via backend service

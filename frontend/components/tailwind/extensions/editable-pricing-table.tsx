@@ -67,23 +67,7 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
 
     let deduped = Array.from(roleMap.values());
 
-    // 2) Ensure mandatory roles exist
-    const ensureRole = (name: string, defaultHours: number, defaultRate?: number, desc?: string) => {
-      const key = normalize(name);
-      if (!roleMap.has(key)) {
-        const canon = ROLES.find(x => normalize(x.name) === key);
-        deduped.push({
-          role: name,
-          description: desc || '',
-          hours: defaultHours,
-          rate: defaultRate ?? canon?.rate ?? 0,
-        });
-      }
-    };
-
-    ensureRole('Tech - Head Of - Senior Project Management', 3, 365, 'Strategic oversight');
-    ensureRole('Tech - Delivery - Project Coordination', 6, 110, 'Delivery coordination');
-    ensureRole('Account Management - (Account Manager)', 8, 180, 'Client comms & governance');
+    // 2) Do not auto-insert mandatory roles here; pricing calculator provides governance rows deterministically
 
     // 3) Ensure Account Management is at the bottom
     const amIndex = deduped.findIndex(r => normalize(r.role).includes('account management'));
@@ -492,55 +476,26 @@ export const EditablePricingTable = Node.create({
     const originalRows: PricingRow[] = node.attrs.rows || [];
     const discount = node.attrs.discount || 0;
     const showTotal: boolean = node.attrs.showTotal !== undefined ? node.attrs.showTotal : true;
-    
-    // Ensure mandatory roles exist for render (Head Of, Project Coordination, Account Management)
+
     const norm = (s: string) => (s || '')
       .toLowerCase()
       .replace(/\s*-/g, '-')
       .replace(/-\s*/g, '-')
       .replace(/\s+/g, ' ')
       .trim();
-    const hasAM = originalRows.some(r => norm(r.role).includes('account management') || norm(r.role).includes('account manager'));
-    const hasHeadOf = originalRows.some(r => norm(r.role).includes('head of'));
-    const hasPC = originalRows.some(r => norm(r.role) === norm('Tech - Delivery - Project Coordination'));
-    const amRole = ROLES.find(r => r.name === 'Account Management');
-    const headOfRole = ROLES.find(r => r.name === 'Tech - Head Of - Senior Project Management');
-  const pcRole = ROLES.find(r => r.name === 'Tech - Delivery - Project Coordination');
 
-  let rows: PricingRow[] = [...originalRows];
-    if (!hasHeadOf) {
-      rows.unshift({
-        role: headOfRole?.name || 'Tech - Head Of - Senior Project Management',
-        description: 'Strategic oversight',
-        hours: 3,
-        rate: headOfRole?.rate || 365,
-      });
-    }
-    if (!hasPC) {
-      rows.push({
-        role: pcRole?.name || 'Tech - Delivery - Project Coordination',
-        description: 'Delivery coordination',
-        hours: 6,
-        rate: pcRole?.rate || 110,
-      });
-    }
-    if (!hasAM) {
-      rows.push({
-        role: amRole?.name || 'Account Management - (Account Manager)',
-        description: 'Client comms & governance',
-        hours: 8,
-        rate: amRole?.rate || 180,
-      });
-    }
-    // Ensure Account Management last
-  const amIdx = rows.findIndex(r => norm(r.role).includes('account management'));
+    // Start with provided rows; do not inject governance rows here
+    let rows: PricingRow[] = [...originalRows];
+
+    // Ensure Account Management last if present
+    const amIdx = rows.findIndex(r => norm(r.role).includes('account management'));
     if (amIdx !== -1 && amIdx !== rows.length - 1) {
       const tmp = [...rows];
       const [amRow] = tmp.splice(amIdx, 1);
       tmp.push(amRow);
       rows = tmp;
     }
-    
+
     // Exclude any zero-cost rows for PDF/HTML rendering (clarity for clients)
     const exportRows = rows.filter(r => (Number(r.hours) || 0) * (Number(r.rate) || 0) > 0);
 

@@ -198,6 +198,11 @@ FIFTH - GENERATE THE SOW: Your entire response MUST be structured into two disti
 MANDATORY DOCUMENT ORDERING:
 - The "Deliverables" section must ALWAYS appear immediately after the "Project Overview" and "Project Objectives" sections, and BEFORE the detailed phase-by-phase breakdown and the "Investment Breakdown" pricing table. This ordering is critical and non-negotiable.
 
+DATA CONSISTENCY FOR INVESTMENT:
+- Never invent or write a specific "Final Investment" amount in prose. Do NOT include numbers in the narrative for totals.
+- Introduce the pricing table and state that totals are calculated and presented below. The application computes and displays the official numbers.
+- You may describe that the scope is designed to meet the client's stated firm budget (target), but the exact figure must come from the table rendered by the application.
+
 CRITICAL JSON OUTPUT (AT THE END):
 After the SOW, include a VALID JSON code block with ONLY a list of role names you recommend for delivery. No hours. No budget. No prices. Use EXACT role names from the embedded Social Garden Rate Card.
 
