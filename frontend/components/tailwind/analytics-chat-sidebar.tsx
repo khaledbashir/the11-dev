@@ -20,21 +20,21 @@ interface ChatMessage {
   timestamp: number;
 }
 
-interface DashboardSidebarProps {
+interface AnalyticsChatSidebarProps {
   isOpen: boolean;
   onToggle: () => void;
-  chatMessages: ChatMessage[];
-  onSendMessage: (message: string, threadSlug?: string | null) => void;
+  dashboardChatTarget: string;
+  onDashboardWorkspaceChange: (workspace: string) => void;
+  availableWorkspaces: Array<{ slug: string; name: string }>;
+  chatMessages: Array<{ id: string; role: 'user' | 'assistant'; content: string; timestamp: number }>;
+  onSendMessage: (message: string, threadSlug?: string | null, attachments?: Array<{name: string; mime: string; contentString: string}>) => void;
   isLoading?: boolean;
   streamingMessageId?: string | null;
-  dashboardChatTarget: string; // Workspace slug for dashboard mode
-  onDashboardWorkspaceChange: (slug: string) => void;
-  availableWorkspaces: Array<{slug: string, name: string}>;
   onClearChat: () => void;
   onReplaceChatMessages: (messages: Array<{ id: string; role: 'user' | 'assistant'; content: string; timestamp: number }>) => void;
 }
 
-export default function DashboardSidebar({
+export default function AnalyticsChatSidebar({
   isOpen,
   onToggle,
   chatMessages,
@@ -46,7 +46,7 @@ export default function DashboardSidebar({
   availableWorkspaces,
   onClearChat,
   onReplaceChatMessages,
-}: DashboardSidebarProps) {
+}: AnalyticsChatSidebarProps) {
   const [chatInput, setChatInput] = useState("");
   
   // 🧵 THREAD MANAGEMENT STATE
@@ -482,20 +482,7 @@ export default function DashboardSidebar({
             className="min-h-[80px] resize-none bg-[#1b1b1e] border-[#0E2E33] text-white placeholder:text-gray-500"
             disabled={isLoading}
           />
-          {/* Enhance button */}
-          <Button
-            onClick={handleEnhanceOnly}
-            disabled={!chatInput.trim() || isLoading || enhancing}
-            size="sm"
-            className="self-end bg-[#0E2E33] hover:bg-[#143e45] text-white h-[50px] font-semibold border border-[#1CBF79]"
-            title="Enhance"
-          >
-            {enhancing ? (
-              <Loader2 className="h-5 w-5 animate-spin text-[#1CBF79]" />
-            ) : (
-              <span className="text-lg">✨</span>
-            )}
-          </Button>
+          {/* Dashboard Analytics: Only Send button, NO enhance */}
           <Button 
             onClick={() => {
               if (chatInput.trim() && !isLoading) {

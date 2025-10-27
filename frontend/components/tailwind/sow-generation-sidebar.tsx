@@ -21,7 +21,7 @@ interface ChatMessage {
   timestamp: number;
 }
 
-interface WorkspaceSidebarProps {
+interface SOWGenerationSidebarProps {
   isOpen: boolean;
   onToggle: () => void;
   chatMessages: ChatMessage[];
@@ -36,7 +36,7 @@ interface WorkspaceSidebarProps {
   onReplaceChatMessages: (messages: Array<{ id: string; role: 'user' | 'assistant'; content: string; timestamp: number }>) => void;
 }
 
-export default function WorkspaceSidebar({
+export default function SOWGenerationSidebar({
   isOpen,
   onToggle,
   chatMessages,

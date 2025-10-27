@@ -2,6 +2,7 @@ import "@/styles/globals.css";
 import "@/styles/prosemirror.css";
 import 'katex/dist/katex.min.css';
 import { Plus_Jakarta_Sans } from 'next/font/google';
+import Script from 'next/script';
 
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
@@ -52,6 +53,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning className={jakartaSans.variable}>
       <head>
+        {/* Material Symbols font for enhance button icons */}
+        <link 
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" 
+          rel="stylesheet" 
+        />
         <script defer data-domain="sow.qandu.me" src="https://ahmad-plausible.840tjq.easypanel.host/js/script.js"></script>
       </head>
       <body className={jakartaSans.className} suppressHydrationWarning>
