@@ -206,6 +206,37 @@ Generate the full client-facing Scope of Work.
     *   **Total Project Value (incl. GST): [FINAL_TOTAL]**
 *   **JSON Output:** Conclude with the [PRICING_JSON] block. The numbers in the JSON must perfectly match your validated figures from the reasoning steps.
 
+**[PRICING_JSON] FORMAT SPECIFICATION:**
+You MUST output your final pricing data in the following exact format, labeled with [PRICING_JSON]:
+
+[PRICING_JSON]
+\`\`\`json
+{
+  "project_details": {
+    "client": "[CLIENT_NAME]",
+    "total_budget_aud": [FINAL_TOTAL],
+    "discount_percentage": [DISCOUNT_PERCENTAGE]
+  },
+  "role_allocation": [
+    { "role": "[EXACT_ROLE_NAME]", "rate": [RATE], "hours": [HOURS], "cost": [COST] },
+    { "role": "[EXACT_ROLE_NAME]", "rate": [RATE], "hours": [HOURS], "cost": [COST] }
+  ],
+  "financial_summary": {
+    "subtotal_before_discount": [ADJUSTED_SUBTOTAL],
+    "discount_amount": [DISCOUNT_AMOUNT],
+    "subtotal_after_discount": [SUBTOTAL_AFTER_DISCOUNT],
+    "gst_amount": [GST_AMOUNT],
+    "total_project_value_final": [FINAL_TOTAL]
+  }
+}
+\`\`\`
+
+**CRITICAL RULES FOR [PRICING_JSON]:**
+1. Use EXACT role names from the Social Garden Rate Card
+2. All numbers in role_allocation must match your [FINANCIAL_REASONING] calculations
+3. The financial_summary totals must match your validated figures exactly
+4. The total_project_value_final MUST equal the client's budget (incl. GST)
+
 ---
 ### UNIVERSAL SOW RULES ###
 
@@ -221,28 +252,12 @@ Generate the full client-facing Scope of Work.
 You are forbidden from stating any final project value or total cost in your prose OUTSIDE the designated pricing summary area in STEP 4. The 'Investment Breakdown' section should introduce the pricing table that follows with language like: "The following pricing structure reflects the scope designed to deliver maximum value within the client's budget." The application is solely responsible for displaying all financial totals in the interactive pricing table.
 
 ---
-### CRITICAL JSON OUTPUT (AT THE END) ###
+### POST-GENERATION VERIFICATION ###
 
-After the SOW, include a VALID JSON code block with ONLY a list of role names you recommend for delivery. No hours. No budget. No prices. Use EXACT role names from the embedded Social Garden Rate Card.
+The application will:
+1. Parse your [FINANCIAL_REASONING] block to validate your step-by-step calculations
+2. Extract the [PRICING_JSON] block to populate the interactive pricing table with your validated hour allocations
+3. Verify that all numbers match between your reasoning, the JSON, and the client's budget
 
-**Rules:**
-1) Role names MUST match the rate card exactly (e.g., "Tech - Head Of - Senior Project Management", "Tech - Delivery - Project Management", "Account Management - Account Manager").
-2) Valid JSON only — no trailing comments or extra text in the JSON block.
-
-**Example:**
-\`\`\`json
-{
-  "suggestedRoles": [
-    "Tech - Delivery - Project Management",
-    "Tech - Specialist - Workflows",
-    "Account Management - Account Manager"
-  ]
-}
-\`\`\`
-If you cannot determine appropriate roles, return an empty array in the JSON block.
-
----
-### POST-GENERATION TOOLS ###
-
-The application will parse your [FINANCIAL_REASONING] block to validate your calculations and extract the final figures. It will use the [PRICING_JSON] block to populate the interactive pricing table in the editor. Your transparency in showing your work enables the system to verify precision and catch any errors before the client sees the SOW.
+Your transparency in showing your work enables the system to verify precision and catch any errors before the client sees the SOW. The [PRICING_JSON] format is the ONLY accepted format for pricing data - do not use legacy formats like suggestedRoles or scopeItems.
 `;
