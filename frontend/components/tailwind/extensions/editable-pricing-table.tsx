@@ -249,9 +249,20 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
           .pricing-row {
             transition: background-color 0.15s ease;
           }
+          /* Fix for table layout when sidebar toggles */
+          .editable-pricing-table {
+            width: 100%;
+            max-width: 100%;
+          }
+          .pricing-table-container {
+            position: relative;
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: visible;
+          }
         `}
       </style>
-      <div className="border border-border rounded-lg p-4 bg-background dark:bg-gray-900/50">
+      <div className="border border-border rounded-lg p-4 bg-background dark:bg-gray-900/50 w-full max-w-full">
         <div className="flex justify-between items-center mb-4">
           <div>
             <h3 className="text-lg font-bold text-foreground dark:text-gray-100">Project Pricing</h3>
@@ -275,14 +286,14 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
         </div>
 
         {/* Pricing Table */}
-        <div className="overflow-x-auto mb-4">
-          <table className="w-full border-collapse">
+        <div className="pricing-table-container overflow-x-auto mb-4">
+          <table className="w-full border-collapse min-w-[800px]">
             <thead>
               <tr className="bg-[#0e2e33] text-white">
-                <th className="border border-border px-3 py-2 text-left text-sm">ROLE</th>
-                <th className="border border-border px-3 py-2 text-left text-sm w-24">HOURS</th>
-                {showTotal && <th className="border border-border px-3 py-2 text-right text-sm w-32">TOTAL COST + GST</th>}
-                <th className="border border-border px-3 py-2 text-center text-sm w-16">Actions</th>
+                <th className="border border-border px-3 py-2 text-left text-sm min-w-[300px]">ROLE</th>
+                <th className="border border-border px-3 py-2 text-left text-sm w-24 min-w-[100px]">HOURS</th>
+                {showTotal && <th className="border border-border px-3 py-2 text-right text-sm w-32 min-w-[150px]">TOTAL COST + GST</th>}
+                <th className="border border-border px-3 py-2 text-center text-sm w-16 min-w-[80px]">ACTIONS</th>
               </tr>
             </thead>
             <tbody>
