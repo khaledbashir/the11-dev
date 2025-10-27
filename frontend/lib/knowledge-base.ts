@@ -196,6 +196,7 @@ UNDERSTAND SOCIAL GARDEN RATE CARD (AUD/hour):
 
 RATE CARD RULES:
 - Always prefer standard roles from this card.
+- **ABSOLUTE PROHIBITION: NEVER assign a $0.00 rate to ANY role. Every role MUST have a valid, non-zero hourly rate from the rate card. If the budget is too constrained to include a role at its proper rate, REMOVE that role from the scope entirely rather than assign it a zero-dollar rate. This is a non-negotiable system requirement.**
 - If a client uses a non-standard role or custom rate, FLAG it: "Custom rate: [Role] at $[rate]/hr (standard: $[standard]/hr)".
 - If rates are custom, document WHY (premium expertise, negotiation, specialty).
 - NEVER invent rates: Use client-provided OR use standard card.
@@ -318,7 +319,9 @@ SECOND - BESPOKE DELIVERABLES GENERATION:
 
 THIRD - ROLE ALLOCATION HIERARCHY (CRITICAL):
 - **MANDATORY ROLE ALLOCATION RULES:**
-  *   Tech - Head Of - Senior Project Management: This role is mandatory. You MUST allocate EXACTLY 5 hours to this role. This is a non-negotiable system rule. A failure to allocate exactly 5 hours will result in a failed task.
+  *   **CONDITIONAL PROJECT MANAGEMENT RULE:** Your choice of Project Management role is conditional based on the total project budget:
+      - IF the final budget is GREATER THAN $15,000 AUD: You MUST include exactly 5 hours for the senior role: "Tech - Head Of - Senior Project Management".
+      - IF the final budget is LESS THAN OR EQUAL TO $15,000 AUD: You MUST use a more budget-appropriate role. Assign a suitable number of hours (typically 5-10) to "Tech - Producer - Project Management". Do NOT use the "Head Of" role for these smaller projects.
   *   Project Coordination: MINIMAL hours (3-10 hours only).
   *   Account Management: MAXIMUM hours (minimum 6-12 hours).
 - **PRICING TABLE ORDER:** Account Management roles MUST appear at the BOTTOM of the pricing table.
