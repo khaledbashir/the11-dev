@@ -174,6 +174,28 @@ export function InlineEditor({ onGenerate, editor: editorProp }: InlineEditorPro
     }
   };
 
+  // Get full document context for slash commands
+  const getDocumentContext = () => {
+    if (!editor) return { content: "", cursorPosition: 0, totalLength: 0 };
+    
+    try {
+      const { from } = editor.state.selection;
+      const fullText = editor.state.doc.textContent;
+      const beforeCursor = editor.state.doc.textBetween(0, from, "\n");
+      const afterCursor = editor.state.doc.textBetween(from, editor.state.doc.content.size, "\n");
+      
+      return {
+        content: fullText,
+        beforeCursor,
+        afterCursor,
+        cursorPosition: from,
+        totalLength: fullText.length,
+      };
+    } catch {
+      return { content: "", cursorPosition: 0, totalLength: 0 };
+    }
+  };
+
   const handleGenerate = async (commandPrompt?: string) => {
     const finalPrompt = commandPrompt || prompt;
     if (!finalPrompt.trim()) {
@@ -181,18 +203,81 @@ export function InlineEditor({ onGenerate, editor: editorProp }: InlineEditorPro
       return;
     }
 
-    // For slash commands without selection, just generate
-    if (triggerSource === 'slash' && !hasSelection) {
-      // Generate new content
-      setIsLoading(true);
-      setCompletion("");
+    setIsLoading(true);
+    setCompletion("");
 
-      try {
+    try {
+      // SELECTION MODE: Only work with the highlighted text
+      if (triggerSource === 'selection' && hasSelection) {
+        const selectedText = getSelectedText();
+        
+        if (!selectedText.trim()) {
+          toast.error("Selected text is empty");
+          setIsLoading(false);
+          return;
+        }
+        
         const response = await fetch("/api/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            prompt: "",
+            prompt: selectedText,
+            option: "zap",
+            command: finalPrompt,
+            model: settings.aiModel,
+          }),
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            toast.error("AI is not configured (401). Set OPENROUTER_API_KEY on the server.");
+          } else if (response.status === 400) {
+            toast.error("AI is not configured (400). Check OPENROUTER_API_KEY.");
+          }
+          throw new Error(`API error: ${response.status}`);
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error("No response body");
+
+        const decoder = new TextDecoder();
+        let accumulatedText = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          accumulatedText += chunk;
+          setCompletion(accumulatedText);
+        }
+
+        setShowActions(false);
+        
+      } else {
+        // SLASH COMMAND MODE: Context-aware of entire document + cursor position
+        const { content, beforeCursor, afterCursor, cursorPosition, totalLength } = getDocumentContext();
+        
+        // Build context-aware prompt
+        const contextPrompt = `DOCUMENT CONTEXT:
+Total length: ${totalLength} characters
+Cursor position: ${cursorPosition} (${Math.round((cursorPosition / totalLength) * 100)}% through document)
+
+Content before cursor:
+${beforeCursor.slice(-500)}
+[CURSOR IS HERE]
+Content after cursor:
+${afterCursor.slice(0, 500)}
+
+USER COMMAND: ${finalPrompt}
+
+Please generate content that fits naturally at the cursor position, considering the surrounding context.`;
+
+        const response = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prompt: contextPrompt,
             option: "generate",
             command: finalPrompt,
             model: settings.aiModel,
@@ -224,69 +309,7 @@ export function InlineEditor({ onGenerate, editor: editorProp }: InlineEditorPro
         }
 
         setShowActions(false);
-      } catch (error) {
-        console.error("Generation error:", error);
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        if (errorMsg.includes('402')) {
-          toast.error("API credit limit reached. Please check your OpenRouter account.");
-        } else {
-          toast.error("Failed to generate");
-        }
-        setCompletion("");
-      } finally {
-        setIsLoading(false);
       }
-      return;
-    }
-
-    // For selections, transform the text
-    if (!hasSelection) {
-      toast.error("Please select some text first");
-      return;
-    }
-
-    setIsLoading(true);
-    setCompletion("");
-
-    try {
-      const selectedText = getSelectedText();
-      
-      const response = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: selectedText,
-          option: "zap",
-          command: finalPrompt,
-          model: settings.aiModel,
-        }),
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          toast.error("AI is not configured (401). Set OPENROUTER_API_KEY on the server.");
-        } else if (response.status === 400) {
-          toast.error("AI is not configured (400). Check OPENROUTER_API_KEY.");
-        }
-        throw new Error(`API error: ${response.status}`);
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error("No response body");
-
-      const decoder = new TextDecoder();
-      let accumulatedText = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value);
-        accumulatedText += chunk;
-        setCompletion(accumulatedText);
-      }
-
-      setShowActions(false);
     } catch (error) {
       console.error("Generation error:", error);
       const errorMsg = error instanceof Error ? error.message : String(error);
@@ -408,15 +431,21 @@ export function InlineEditor({ onGenerate, editor: editorProp }: InlineEditorPro
           {/* Main Input Area */}
           {!completion && (
             <div className="p-5 overflow-y-auto max-h-[90vh]">
-              {/* Header with suggestions label */}
+              {/* Header with mode indicator */}
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Wand2 className="h-4 w-4 text-[#0e2e33]" />
                   <span className="text-sm font-medium text-[#0e2e33]">
-                    Inline Editor Chat
+                    Inline Editor
                   </span>
-                  {hasSelection && (
-                    <span className="text-xs text-gray-600">• Text improvement</span>
+                  {triggerSource === 'selection' && hasSelection ? (
+                    <span className="text-xs px-2 py-0.5 bg-[#1FE18E]/20 text-[#0e2e33] rounded-full font-medium">
+                      Selection Mode
+                    </span>
+                  ) : (
+                    <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-900 rounded-full font-medium">
+                      Context Mode
+                    </span>
                   )}
                 </div>
                 <button
@@ -483,7 +512,11 @@ export function InlineEditor({ onGenerate, editor: editorProp }: InlineEditorPro
                       setIsVisible(false);
                     }
                   }}
-                  placeholder='What do you want to do? (e.g., "make it sound professional")'
+                  placeholder={
+                    triggerSource === 'selection' 
+                      ? 'Transform selected text (e.g., "make it italic", "shorten", "turn into table")'
+                      : 'Generate content at cursor (e.g., "write 3 bullet points", "add a conclusion")'
+                  }
                   disabled={isLoading}
                   className="w-full px-4 py-3 text-sm bg-white/60 text-[#0e2e33] placeholder-[#0e2e33]/40 border border-[#1FE18E]/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1FE18E] focus:border-transparent disabled:opacity-50 pr-24 backdrop-blur-sm"
                 />
