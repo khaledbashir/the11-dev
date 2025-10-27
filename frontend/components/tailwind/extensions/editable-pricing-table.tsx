@@ -33,6 +33,8 @@ interface PricingRow {
 }
 
 // Memoized sortable row component for optimal performance
+const DND_ENABLED = true; // quick kill-switch for demo stability
+
 const SortableRow = memo(({ 
   row, 
   index, 
@@ -55,7 +57,7 @@ const SortableRow = memo(({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: row.id });
+  } = useSortable({ id: row.id, disabled: !DND_ENABLED });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -87,10 +89,11 @@ const SortableRow = memo(({
         <div className="flex items-center gap-3">
           <button
             type="button"
-            {...attributes}
-            {...listeners}
-            className="drag-handle text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-grab active:cursor-grabbing select-none text-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-            title="Drag to reorder"
+            {...(DND_ENABLED ? attributes : {})}
+            {...(DND_ENABLED ? listeners : {})}
+            disabled={!DND_ENABLED}
+            className={`drag-handle text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 ${DND_ENABLED ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed'} select-none text-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200`}
+            title={DND_ENABLED ? "Drag to reorder" : "Drag disabled for demo stability"}
             aria-label="Drag to reorder row"
           >
             ⋮⋮
@@ -473,7 +476,7 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
           <div className="pricing-table-container overflow-x-auto mb-6">
             <table className="w-full border-collapse min-w-[800px]">
               <thead>
-                <tr className="bg-gray-900 dark:bg-gray-800">
+                <tr className="bg-[#0E0F0F]">
                   <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-bold text-white uppercase tracking-wide min-w-[300px]">
                     Role
                   </th>

@@ -71,10 +71,12 @@ export default function WorkspaceChat({
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showAllMessages, setShowAllMessages] = useState(false);
+  const MAX_MESSAGES = 100; // windowing to reduce render cost
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    chatEndRef.current?.scrollIntoView({ behavior: "auto" });
   }, [chatMessages]);
 
   // Load workspace system prompt
@@ -99,10 +101,12 @@ export default function WorkspaceChat({
     };
     loadPrompt();
   }, [editorWorkspaceSlug]);
-
+        chatEndRef.current?.scrollIntoView({ behavior: "auto" });
   // Load threads on mount and when workspace changes
   // � NO LOCALSTORAGE - Thread persistence managed by database (sow.threadSlug)
   useEffect(() => {
+      const [showAllMessages, setShowAllMessages] = useState(false);
+      const MAX_MESSAGES = 100; // windowing to reduce render cost
     const initializeThreads = async () => {
       if (!editorWorkspaceSlug) return;
       
@@ -550,13 +554,26 @@ export default function WorkspaceChat({
       {/* Chat Messages */}
       <ScrollArea className="flex-1">
         <div className="p-5 space-y-5">
-          {chatMessages.length === 0 ? (
+              {(!showAllMessages && chatMessages.length > MAX_MESSAGES) && (
+                <div className="flex items-center justify-between text-xs text-gray-400 bg-[#0E2E33] border border-[#1b5e5e] px-3 py-2 rounded">
+                  <span>
+                    Showing last {MAX_MESSAGES} of {chatMessages.length} messages
+                  </span>
+                  <button
+                    onClick={() => setShowAllMessages(true)}
+                    className="underline hover:text-white"
+                  >
+                    Show all
+                  </button>
+                </div>
+              )}
+              {chatMessages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-8">
               <Bot className="h-16 w-16 text-gray-600 mb-3" />
               <p className="text-base text-gray-400">No messages yet</p>
             </div>
           ) : (
-            chatMessages.map(msg => {
+                (showAllMessages ? chatMessages : chatMessages.slice(-MAX_MESSAGES)).map(msg => {
               const shouldShowButton = msg.role === 'assistant';
               const cleaned = cleanSOWContent(msg.content);
               const segments = msg.role === 'assistant' ? [] : [{ type: 'text' as const, content: msg.content }];

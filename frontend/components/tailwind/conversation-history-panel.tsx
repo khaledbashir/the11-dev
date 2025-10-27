@@ -1,3 +1,15 @@
+// Safe date formatter to avoid "Invalid Date"
+const safeDate = (v: any): string => {
+  if (!v) return 'Recent';
+  try {
+    const ts = (typeof v === 'string' && !isNaN(Number(v))) ? Number(v) * 1000 : v; // unix seconds or ISO
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return 'Recent';
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch {
+    return 'Recent';
+  }
+};
 /**
  * Conversation History Panel Component
  * Displays list of all conversations with +New Chat button
@@ -149,7 +161,7 @@ export function ConversationHistoryPanel({
                           {conversation.message_count || 0} messages
                         </p>
                         <p className="text-xs text-gray-500 mt-1">
-                          {new Date(conversation.updated_at).toLocaleDateString()}
+                          {safeDate(conversation.updated_at)}
                         </p>
                       </div>
                     </div>
