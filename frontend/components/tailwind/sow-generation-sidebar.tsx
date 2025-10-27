@@ -49,7 +49,7 @@ export default function SOWGenerationSidebar({
   onEditorThreadChange,
   onClearChat,
   onReplaceChatMessages,
-}: WorkspaceSidebarProps) {
+}: SOWGenerationSidebarProps) {
   const [chatInput, setChatInput] = useState("");
   const [workspacePrompt, setWorkspacePrompt] = useState<string>("");
   const [loadingPrompt, setLoadingPrompt] = useState(false);
