@@ -266,12 +266,12 @@ export async function PUT(
         
         // Import AnythingLLM service and HTML converter
         const { AnythingLLMService } = await import('@/lib/anythingllm');
-        const { sowContentToHTML } = await import('@/lib/export-utils');
+        const { tiptapToHTML } = await import('@/lib/export-utils');
         const anythingLLM = new AnythingLLMService();
         
         // Convert JSON content to HTML for embedding
         const contentObj = typeof content === 'string' ? JSON.parse(content) : content;
-        const htmlContent = sowContentToHTML(contentObj);
+        const htmlContent = tiptapToHTML(contentObj);
         
         // Embed in individual workspace
         const embedded = await anythingLLM.embedSOWDocument(

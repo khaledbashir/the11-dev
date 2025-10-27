@@ -875,3 +875,135 @@ export function extractSOWStructuredJson(text: string): ArchitectSOW | null {
 
   return null;
 }
+
+/**
+ * Convert TipTap JSON content to HTML
+ * Used for embedding SOWs into AnythingLLM workspaces
+ */
+export function tiptapToHTML(content: any): string {
+  if (!content || !content.content) return '';
+  
+  const processNode = (node: any): string => {
+    if (!node) return '';
+    
+    let html = '';
+    
+    switch (node.type) {
+      case 'paragraph':
+        html += '<p>';
+        if (node.content) {
+          html += node.content.map(processNode).join('');
+        }
+        html += '</p>';
+        break;
+        
+      case 'heading':
+        const level = node.attrs?.level || 1;
+        html += `<h${level}>`;
+        if (node.content) {
+          html += node.content.map(processNode).join('');
+        }
+        html += `</h${level}>`;
+        break;
+        
+      case 'bulletList':
+        html += '<ul>';
+        if (node.content) {
+          html += node.content.map(processNode).join('');
+        }
+        html += '</ul>';
+        break;
+        
+      case 'orderedList':
+        html += '<ol>';
+        if (node.content) {
+          html += node.content.map(processNode).join('');
+        }
+        html += '</ol>';
+        break;
+        
+      case 'listItem':
+        html += '<li>';
+        if (node.content) {
+          html += node.content.map(processNode).join('');
+        }
+        html += '</li>';
+        break;
+        
+      case 'text':
+        let text = node.text || '';
+        if (node.marks) {
+          for (const mark of node.marks) {
+            if (mark.type === 'bold') text = `<strong>${text}</strong>`;
+            if (mark.type === 'italic') text = `<em>${text}</em>`;
+            if (mark.type === 'code') text = `<code>${text}</code>`;
+          }
+        }
+        html += text;
+        break;
+        
+      case 'hardBreak':
+        html += '<br>';
+        break;
+        
+      case 'horizontalRule':
+        html += '<hr>';
+        break;
+        
+      case 'codeBlock':
+        html += '<pre><code>';
+        if (node.content) {
+          html += node.content.map(processNode).join('');
+        }
+        html += '</code></pre>';
+        break;
+        
+      case 'table':
+        html += '<table>';
+        if (node.content) {
+          html += node.content.map(processNode).join('');
+        }
+        html += '</table>';
+        break;
+        
+      case 'tableRow':
+        html += '<tr>';
+        if (node.content) {
+          html += node.content.map(processNode).join('');
+        }
+        html += '</tr>';
+        break;
+        
+      case 'tableCell':
+        html += '<td>';
+        if (node.content) {
+          html += node.content.map(processNode).join('');
+        }
+        html += '</td>';
+        break;
+        
+      case 'tableHeader':
+        html += '<th>';
+        if (node.content) {
+          html += node.content.map(processNode).join('');
+        }
+        html += '</th>';
+        break;
+        
+      case 'editablePricingTable':
+        // Custom pricing table - convert to HTML table
+        html += '<div class="pricing-table"><p><em>[Pricing Table]</em></p></div>';
+        break;
+        
+      default:
+        // Unknown node type - try to process content anyway
+        if (node.content) {
+          html += node.content.map(processNode).join('');
+        }
+    }
+    
+    return html;
+  };
+  
+  return content.content.map(processNode).join('');
+}

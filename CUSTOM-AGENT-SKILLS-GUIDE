@@ -1,0 +1,1385 @@
+# Custom Agent Skills Guide for AnythingLLM & EasyPanel
+
+## Table of Contents
+1. [Overview](#overview)
+2. [Prerequisites](#prerequisites)
+3. [Agent Framework Architecture](#agent-framework-architecture)
+4. [Skill Creation Workflows](#skill-creation-workflows)
+5. [Best Practices](#best-practices)
+6. [EasyPanel Integration](#easypanel-integration)
+7. [Practical Examples](#practical-examples)
+8. [Templates](#templates)
+9. [Testing & Validation](#testing--validation)
+10. [Troubleshooting](#troubleshooting)
+
+## Overview
+
+This guide provides a comprehensive approach to creating and deploying custom agent skills in AnythingLLM, with specific considerations for EasyPanel deployment environments. Custom agent skills allow you to extend AnythingLLM's capabilities with specialized functionality tailored to your business needs.
+
+### Key Benefits
+- **Hot Loading**: Skills can be updated without restarting AnythingLLM
+- **Extensible**: Add unlimited custom functionality
+- **Workspace-Specific**: Skills can be scoped to specific workspaces
+- **API Integration**: Connect to external services and databases
+- **Custom Prompts**: Define specialized system prompts per skill
+
+## Prerequisites
+
+### Required Environment
+- **NodeJS 18+**: JavaScript runtime environment
+- **Yarn**: Package manager for Node.js dependencies
+- **AnythingLLM**: Running instance in Docker, Desktop, or Cloud
+- **EasyPanel**: For production deployment (optional but recommended)
+
+### Development Environment Setup
+```bash
+# Install Node.js 18+
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Install Yarn
+npm install -g yarn
+
+# Verify installations
+node --version
+yarn --version
+```
+
+## Agent Framework Architecture
+
+### Core Components
+
+#### 1. Plugin Configuration (`plugin.json`)
+Every custom skill requires a `plugin.json` file defining metadata and behavior:
+
+```json
+{
+  "name": "Social Garden SOW Generator",
+  "hubId": "social-garden-sow-generator",
+  "version": "1.0.0",
+  "description": "Generate Statements of Work for Social Garden clients",
+  "author": "Social Garden",
+  "license": "MIT",
+  "keywords": ["sow", "proposal", "client", "billing"],
+  "category": "productivity"
+}
+```
+
+#### 2. Skill Handler (`handler.js`)
+The main execution logic for your skill:
+
+```javascript
+module.exports = {
+  // Skill metadata
+  name: 'Social Garden SOW Generator',
+  description: 'Generate professional SOW documents',
+  
+  // Skill execution
+  execute: async function(params) {
+    const { clientName, projectType, budget, requirements } = params;
+    
+    // Business logic implementation
+    const sow = await generateSOW({
+      clientName,
+      projectType,
+      budget,
+      requirements
+    });
+    
+    return {
+      success: true,
+      data: sow,
+      message: 'SOW generated successfully'
+    };
+  },
+  
+  // Skill validation
+  validate: function(params) {
+    return {
+      isValid: !!params.clientName && !!params.projectType,
+      errors: []
+    };
+  }
+};
+```
+
+#### 3. Dependencies (`package.json`)
+Node.js packages your skill depends on:
+
+```json
+{
+  "name": "social-garden-sow-skill",
+  "version": "1.0.0",
+  "dependencies": {
+    "lodash": "^4.17.21",
+    "date-fns": "^2.29.3"
+  }
+}
+```
+
+### Architecture Patterns
+
+#### Pattern 1: Workspace-Scoped Skills
+Skills that operate within a specific workspace context:
+
+```javascript
+// Access to current workspace context
+module.exports = {
+  execute: async function(params, context) {
+    const { workspace, user, documents } = context;
+    // Process using workspace-specific data
+    return await processWorkspaceData(workspace, documents);
+  }
+};
+```
+
+#### Pattern 2: Cross-Workspace Skills
+Skills that operate across multiple workspaces:
+
+```javascript
+// Access to AnythingLLM instance
+module.exports = {
+  execute: async function(params, context) {
+    const { anythingLLM } = context;
+    const allWorkspaces = await anythingLLM.listWorkspaces();
+    return await aggregateData(allWorkspaces);
+  }
+};
+```
+
+#### Pattern 3: External API Integration
+Skills that connect to external services:
+
+```javascript
+// External API integration
+const axios = require('axios');
+
+module.exports = {
+  execute: async function(params) {
+    try {
+      const response = await axios.post('https://api.external-service.com/generate', {
+        data: params
+      });
+      
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+};
+```
+
+## Skill Creation Workflows
+
+### Workflow 1: Basic Skill Development
+
+#### Step 1: Create Skill Structure
+```
+storage/plugins/agent-skills/my-custom-skill/
+├── plugin.json          # Skill configuration
+├── handler.js           # Main skill logic
+├── package.json         # Dependencies
+└── README.md           # Documentation
+```
+
+#### Step 2: Implement Core Logic
+```javascript
+// handler.js
+module.exports = {
+  name: 'My Custom Skill',
+  description: 'A custom skill for specific functionality',
+  
+  execute: async function(params) {
+    // Your skill logic here
+    return {
+      success: true,
+      data: processedData,
+      message: 'Operation completed'
+    };
+  }
+};
+```
+
+#### Step 3: Test in Development
+```bash
+# Start AnythingLLM locally
+cd /path/to/anythingllm
+docker-compose up -d
+
+# Test your skill
+curl -X POST http://localhost:3001/api/v1/skill/test \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{"skill": "my-custom-skill", "params": {...}}'
+```
+
+### Workflow 2: Advanced Skill with External Dependencies
+
+#### Step 1: Set Up Package Management
+```bash
+# Initialize npm project
+cd storage/plugins/agent-skills/my-advanced-skill
+npm init -y
+
+# Install dependencies
+npm install axios lodash date-fns
+
+# Create package.json with proper structure
+```
+
+#### Step 2: Implement Advanced Logic
+```javascript
+// handler.js with external dependencies
+const axios = require('axios');
+const _ = require('lodash');
+const { format } = require('date-fns');
+
+module.exports = {
+  name: 'Advanced Data Processor',
+  description: 'Process data using external APIs',
+  
+  execute: async function(params) {
+    // Use lodash for data manipulation
+    const processedData = _.map(params.data, item => {
+      return {
+        ...item,
+        processedAt: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
+        id: _.uuid()
+      };
+    });
+    
+    // Use axios for external API calls
+    const response = await axios.post('https://api.processor.com/v1/process', {
+      data: processedData
+    });
+    
+    return {
+      success: true,
+      data: response.data,
+      processed: processedData.length
+    };
+  }
+};
+```
+
+### Workflow 3: Workspace-Integrated Skill
+
+#### Step 1: Access Workspace Context
+```javascript
+// handler.js with workspace integration
+module.exports = {
+  name: 'Workspace Analytics',
+  description: 'Analyze workspace data and provide insights',
+  
+  execute: async function(params, context) {
+    const { workspace, documents, threads, anythingLLM } = context;
+    
+    // Analyze workspace data
+    const analytics = {
+      documentCount: documents.length,
+      threadCount: threads.length,
+      lastActivity: new Date().toISOString(),
+      workspaceId: workspace.id,
+      workspaceName: workspace.name
+    };
+    
+    // Generate insights
+    const insights = await generateInsights(analytics);
+    
+    return {
+      success: true,
+      data: {
+        analytics,
+        insights,
+        recommendations: await generateRecommendations(analytics)
+      }
+    };
+  }
+};
+```
+
+## Best Practices
+
+### 1. Error Handling
+Always implement comprehensive error handling:
+
+```javascript
+module.exports = {
+  execute: async function(params) {
+    try {
+      // Validate input parameters
+      if (!params || !params.requiredField) {
+        return {
+          success: false,
+          error: 'Missing required parameter: requiredField'
+        };
+      }
+      
+      // Perform operation
+      const result = await performOperation(params);
+      
+      return {
+        success: true,
+        data: result,
+        message: 'Operation completed successfully'
+      };
+      
+    } catch (error) {
+      console.error('Skill execution error:', error);
+      
+      return {
+        success: false,
+        error: error.message || 'Unknown error occurred',
+        details: error.stack
+      };
+    }
+  }
+};
+```
+
+### 2. Input Validation
+Validate all input parameters before processing:
+
+```javascript
+module.exports = {
+  validate: function(params) {
+    const errors = [];
+    
+    // Required fields validation
+    if (!params.clientName) {
+      errors.push('Client name is required');
+    }
+    
+    if (!params.projectType) {
+      errors.push('Project type is required');
+    }
+    
+    // Budget validation
+    if (params.budget && (isNaN(params.budget) || params.budget <= 0)) {
+      errors.push('Budget must be a positive number');
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  }
+};
+```
+
+### 3. Performance Optimization
+Optimize for performance and resource usage:
+
+```javascript
+module.exports = {
+  execute: async function(params) {
+    // Use caching for expensive operations
+    const cacheKey = `skill_${JSON.stringify(params)}`;
+    let result = await getFromCache(cacheKey);
+    
+    if (!result) {
+      result = await performExpensiveOperation(params);
+      await setCache(cacheKey, result, 3600); // 1 hour cache
+    }
+    
+    return {
+      success: true,
+      data: result,
+      cached: !!result.cached
+    };
+  }
+};
+```
+
+### 4. Logging and Monitoring
+Implement comprehensive logging:
+
+```javascript
+module.exports = {
+  execute: async function(params) {
+    const startTime = Date.now();
+    const executionId = generateExecutionId();
+    
+    console.log(`[${executionId}] Skill execution started`, {
+      params: sanitizeParams(params),
+      timestamp: new Date().toISOString()
+    });
+    
+    try {
+      const result = await performOperation(params);
+      
+      console.log(`[${executionId}] Skill execution completed`, {
+        duration: Date.now() - startTime,
+        success: true,
+        dataSize: JSON.stringify(result).length
+      });
+      
+      return {
+        success: true,
+        data: result,
+        executionId,
+        duration: Date.now() - startTime
+      };
+      
+    } catch (error) {
+      console.error(`[${executionId}] Skill execution failed`, {
+        duration: Date.now() - startTime,
+        error: error.message,
+        stack: error.stack
+      });
+      
+      return {
+        success: false,
+        error: error.message,
+        executionId
+      };
+    }
+  }
+};
+```
+
+## EasyPanel Integration
+
+### EasyPanel-Specific Configuration
+
+#### 1. Environment Variables
+Configure EasyPanel-specific environment variables:
+
+```json
+{
+  "name": "EasyPanel Social Garden Skill",
+  "easypanel": {
+    "environment": {
+      "SOCIAL_GARDEN_API_URL": "https://api.socialgarden.com.au",
+      "RATE_CARD_VERSION": "2025-10-27"
+    },
+    "secrets": [
+      "SOCIAL_GARDEN_API_KEY",
+      "EASY_PANEL_WEBHOOK_SECRET"
+    ]
+  }
+}
+```
+
+#### 2. Volume Mounts
+Mount volumes for skill data persistence:
+
+```yaml
+# docker-compose.yml
+services:
+  anythingllm:
+    volumes:
+      - ./storage:/app/storage
+      - ./skill-data:/app/skill-data  # Persistent skill data
+```
+
+#### 3. EasyPanel Deployment Script
+Create deployment script for EasyPanel:
+
+```bash
+#!/bin/bash
+# deploy-skill.sh
+
+SKILL_NAME="social-garden-sow-generator"
+EASYPANEL_HOST="https://your-easypanel-domain"
+
+# Build skill
+echo "Building skill..."
+npm install
+npm run build
+
+# Copy to EasyPanel storage
+echo "Deploying to EasyPanel..."
+scp -r ./skill-package root@$EASYPANEL_HOST:/app/storage/plugins/agent-skills/
+
+# Restart AnythingLLM (if needed)
+echo "Restarting service..."
+ssh root@$EASYPANEL_HOST "docker-compose restart anythingllm"
+
+echo "Deployment completed!"
+```
+
+### EasyPanel Monitoring
+
+#### 1. Skill Health Check
+```javascript
+// handler.js with health monitoring
+module.exports = {
+  execute: async function(params) {
+    // Health check endpoint
+    if (params.healthCheck) {
+      return {
+        success: true,
+        data: {
+          status: 'healthy',
+          version: process.env.SKILL_VERSION || '1.0.0',
+          uptime: process.uptime(),
+          memory: process.memoryUsage(),
+          timestamp: new Date().toISOString()
+        }
+      };
+    }
+    
+    // Normal execution
+    return await performOperation(params);
+  }
+};
+```
+
+#### 2. EasyPanel Logging Integration
+```javascript
+// Enhanced logging for EasyPanel
+const winston = require('winston');
+
+// Configure EasyPanel-compatible logger
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.File({ 
+      filename: '/app/storage/logs/skill.log' 
+    })
+  ]
+});
+
+module.exports = {
+  execute: async function(params) {
+    logger.info('Skill execution started', { 
+      skill: 'social-garden-sow-generator',
+      params: sanitizeParams(params) 
+    });
+    
+    try {
+      const result = await performOperation(params);
+      logger.info('Skill execution completed', { 
+        success: true,
+        dataSize: JSON.stringify(result).length 
+      });
+      
+      return { success: true, data: result };
+      
+    } catch (error) {
+      logger.error('Skill execution failed', { 
+        error: error.message,
+        stack: error.stack 
+      });
+      
+      return { success: false, error: error.message };
+    }
+  }
+};
+```
+
+## Practical Examples
+
+### Example 1: SOW Generator Skill
+```javascript
+// Social Garden SOW Generator Skill
+const rateCard = require('./rate-card.json');
+const templateEngine = require('./template-engine');
+
+module.exports = {
+  name: 'Social Garden SOW Generator',
+  description: 'Generate professional SOW documents with accurate pricing',
+  
+  execute: async function(params) {
+    const { 
+      clientName, 
+      projectType, 
+      budget, 
+      requirements,
+      options = [] 
+    } = params;
+    
+    // Validate input
+    if (!clientName || !projectType || !budget) {
+      return {
+        success: false,
+        error: 'Missing required parameters: clientName, projectType, budget'
+      };
+    }
+    
+    try {
+      // Generate SOW using template engine
+      const sow = await templateEngine.generate({
+        clientName,
+        projectType,
+        budget,
+        requirements,
+        options,
+        rateCard
+      });
+      
+      // Embed in workspace
+      const anythingLLM = this.context?.anythingLLM;
+      if (anythingLLM && params.workspaceSlug) {
+        await anythingLLM.embedSOWDocument(
+          params.workspaceSlug,
+          `SOW - ${clientName} - ${projectType}`,
+          sow.markdown
+        );
+      }
+      
+      return {
+        success: true,
+        data: {
+          sow,
+          metadata: {
+            generatedAt: new Date().toISOString(),
+            budget,
+            clientName,
+            projectType
+          }
+        }
+      };
+      
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+        details: error.stack
+      };
+    }
+  }
+};
+```
+
+### Example 2: Rate Card Manager Skill
+```javascript
+// Rate Card Management Skill
+const fs = require('fs').promises;
+const path = require('path');
+
+module.exports = {
+  name: 'Social Garden Rate Card Manager',
+  description: 'Manage and update Social Garden rate cards',
+  
+  execute: async function(params) {
+    const { action, roleName, newRate, effectiveDate } = params;
+    
+    try {
+      const rateCardPath = path.join(__dirname, 'rate-card.json');
+      const currentRateCard = JSON.parse(
+        await fs.readFile(rateCardPath, 'utf8')
+      );
+      
+      switch (action) {
+        case 'get':
+          return {
+            success: true,
+            data: currentRateCard,
+            message: 'Rate card retrieved successfully'
+          };
+          
+        case 'update':
+          if (!roleName || !newRate) {
+            return {
+              success: false,
+              error: 'roleName and newRate are required for updates'
+            };
+          }
+          
+          // Update rate for specific role
+          const roleIndex = currentRateCard.roles.findIndex(
+            r => r.name === roleName
+          );
+          
+          if (roleIndex === -1) {
+            return {
+              success: false,
+              error: `Role not found: ${roleName}`
+            };
+          }
+          
+          currentRateCard.roles[roleIndex].rate = newRate;
+          currentRateCard.lastUpdated = new Date().toISOString();
+          
+          // Save updated rate card
+          await fs.writeFile(
+            rateCardPath,
+            JSON.stringify(currentRateCard, null, 2)
+          );
+          
+          return {
+            success: true,
+            data: currentRateCard,
+            message: `Rate updated for ${roleName} to $${newRate}/hr`
+          };
+          
+        case 'version':
+          return {
+            success: true,
+            data: {
+              version: currentRateCard.version,
+              lastUpdated: currentRateCard.lastUpdated,
+              roles: currentRateCard.roles.length
+            }
+          };
+          
+        default:
+          return {
+            success: false,
+            error: `Unknown action: ${action}`
+          };
+      }
+      
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+};
+```
+
+### Example 3: Client Analytics Skill
+```javascript
+// Client Analytics Skill
+const analytics = require('./analytics-engine');
+
+module.exports = {
+  name: 'Client Analytics Dashboard',
+  description: 'Generate analytics reports for client workspaces',
+  
+  execute: async function(params) {
+    const { clientName, dateRange, metrics = [] } = params;
+    const anythingLLM = this.context?.anythingLLM;
+    
+    if (!anythingLLM) {
+      return {
+        success: false,
+        error: 'AnythingLLM context not available'
+      };
+    }
+    
+    try {
+      // Find client workspace
+      const workspaces = await anythingLLM.listWorkspaces();
+      const clientWorkspace = workspaces.find(w => 
+        w.name.toLowerCase().includes(clientName.toLowerCase())
+      );
+      
+      if (!clientWorkspace) {
+        return {
+          success: false,
+          error: `No workspace found for client: ${clientName}`
+        };
+      }
+      
+      // Generate analytics
+      const report = await analytics.generateReport({
+        workspace: clientWorkspace,
+        dateRange,
+        metrics,
+        anythingLLM
+      });
+      
+      return {
+        success: true,
+        data: report,
+        metadata: {
+          clientName,
+          workspaceSlug: clientWorkspace.slug,
+          reportGenerated: new Date().toISOString(),
+          dateRange,
+          metrics
+        }
+      };
+      
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+};
+```
+
+## Templates
+
+### Template 1: Basic Skill Template
+```javascript
+// Template for basic custom skill
+module.exports = {
+  // Skill identification
+  name: 'Your Skill Name',
+  description: 'Description of what your skill does',
+  version: '1.0.0',
+  author: 'Your Name',
+  
+  // Skill execution
+  execute: async function(params) {
+    try {
+      // Input validation
+      if (!params || !params.requiredParam) {
+        return {
+          success: false,
+          error: 'Missing required parameter: requiredParam'
+        };
+      }
+      
+      // Main skill logic
+      const result = await performMainLogic(params);
+      
+      return {
+        success: true,
+        data: result,
+        message: 'Skill executed successfully'
+      };
+      
+    } catch (error) {
+      console.error('Skill execution error:', error);
+      
+      return {
+        success: false,
+        error: error.message || 'Unknown error occurred'
+      };
+    }
+  },
+  
+  // Parameter validation (optional)
+  validate: function(params) {
+    const errors = [];
+    
+    if (!params || typeof params !== 'object') {
+      errors.push('Parameters must be an object');
+    }
+    
+    if (!params.requiredParam) {
+      errors.push('requiredParam is required');
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  }
+};
+```
+
+### Template 2: Workspace-Integrated Skill Template
+```javascript
+// Template for workspace-integrated skill
+module.exports = {
+  name: 'Workspace Integrated Skill',
+  description: 'Skill that works with workspace data',
+  
+  execute: async function(params, context) {
+    try {
+      const { workspace, documents, threads, anythingLLM } = context;
+      
+      if (!workspace) {
+        return {
+          success: false,
+          error: 'No workspace context available'
+        };
+      }
+      
+      // Process workspace data
+      const processedData = await processWorkspaceData({
+        workspace,
+        documents,
+        threads,
+        params
+      });
+      
+      // Optional: Update workspace
+      if (params.updateWorkspace && anythingLLM) {
+        await anythingLLM.updateWorkspace(workspace.slug, {
+          // workspace updates
+        });
+      }
+      
+      return {
+        success: true,
+        data: {
+          workspaceInfo: {
+            id: workspace.id,
+            name: workspace.name,
+            slug: workspace.slug
+          },
+          processedData
+        }
+      };
+      
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+};
+```
+
+### Template 3: External API Integration Template
+```javascript
+// Template for external API integration
+const axios = require('axios');
+
+module.exports = {
+  name: 'External API Integration Skill',
+  description: 'Skill that integrates with external APIs',
+  
+  execute: async function(params) {
+    try {
+      const {
+        apiEndpoint,
+        method = 'POST',
+        data,
+        headers = {}
+      } = params;
+      
+      if (!apiEndpoint) {
+        return {
+          success: false,
+          error: 'apiEndpoint is required'
+        };
+      }
+      
+      // Make API request
+      const response = await axios({
+        method,
+        url: apiEndpoint,
+        data,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.API_TOKEN}`,
+          ...headers
+        },
+        timeout: 30000 // 30 second timeout
+      });
+      
+      return {
+        success: true,
+        data: response.data,
+        metadata: {
+          status: response.status,
+          endpoint: apiEndpoint,
+          method
+        }
+      };
+      
+    } catch (error) {
+      const errorMessage = error.response 
+        ? `API Error (${error.response.status}): ${error.response.data.message || error.response.statusText}`
+        : error.message;
+      
+      return {
+        success: false,
+        error: errorMessage,
+        details: {
+          code: error.code,
+          response: error.response?.data
+        }
+      };
+    }
+  }
+};
+```
+
+### Template 4: Analytics Skill Template
+```javascript
+// Template for analytics and reporting
+const moment = require('moment');
+
+module.exports = {
+  name: 'Analytics Skill',
+  description: 'Generate analytics and reports',
+  
+  execute: async function(params, context) {
+    try {
+      const { workspace, anythingLLM } = context;
+      const {
+        reportType = 'summary',
+        dateRange = '30d',
+        format = 'json'
+      } = params;
+      
+      // Calculate date range
+      const endDate = moment();
+      const startDate = moment().subtract(
+        parseInt(dateRange.replace('d', '')), 
+        'days'
+      );
+      
+      // Gather data from workspace
+      const documents = await anythingLLM.getWorkspaceDocuments(workspace.slug);
+      const threads = await anythingLLM.getWorkspaceThreads(workspace.slug);
+      
+      // Generate analytics based on report type
+      let analytics = {};
+      
+      switch (reportType) {
+        case 'summary':
+          analytics = {
+            documentCount: documents.length,
+            threadCount: threads.length,
+            dateRange: {
+              start: startDate.format('YYYY-MM-DD'),
+              end: endDate.format('YYYY-MM-DD')
+            },
+            averageActivity: calculateAverageActivity(documents, threads)
+          };
+          break;
+          
+        case 'detailed':
+          analytics = {
+            ...generateDetailedAnalytics(documents, threads),
+            trends: generateTrends(documents, threads),
+            recommendations: generateRecommendations(documents, threads)
+          };
+          break;
+          
+        default:
+          return {
+            success: false,
+            error: `Unknown report type: ${reportType}`
+          };
+      }
+      
+      // Format output
+      let formattedOutput;
+      switch (format) {
+        case 'json':
+          formattedOutput = analytics;
+          break;
+        case 'markdown':
+          formattedOutput = generateMarkdownReport(analytics);
+          break;
+        default:
+          formattedOutput = analytics;
+      }
+      
+      return {
+        success: true,
+        data: formattedOutput,
+        metadata: {
+          reportType,
+          dateRange,
+          format,
+          generatedAt: new Date().toISOString()
+        }
+      };
+      
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+};
+```
+
+## Testing & Validation
+
+### Testing Framework
+```javascript
+// test-framework.js
+const assert = require('assert');
+
+class SkillTestFramework {
+  constructor(skillModule) {
+    this.skill = skillModule;
+    this.results = [];
+  }
+  
+  async test(name, testFunction) {
+    try {
+      console.log(`Running test: ${name}`);
+      await testFunction();
+      this.results.push({ name, status: 'PASSED' });
+      console.log(`✅ ${name} - PASSED`);
+    } catch (error) {
+      this.results.push({ name, status: 'FAILED', error: error.message });
+      console.log(`❌ ${name} - FAILED: ${error.message}`);
+    }
+  }
+  
+  async validate(params, expectedResult) {
+    const result = await this.skill.execute(params);
+    assert.deepStrictEqual(result, expectedResult);
+  }
+  
+  async validateStructure(params, expectedStructure) {
+    const result = await this.skill.execute(params);
+    assert(result.success);
+    assert(result.data);
+    
+    for (const key of Object.keys(expectedStructure)) {
+      assert(result.data[key] !== undefined);
+    }
+  }
+  
+  generateReport() {
+    const passed = this.results.filter(r => r.status === 'PASSED').length;
+    const failed = this.results.filter(r => r.status === 'FAILED').length;
+    
+    return {
+      summary: {
+        total: this.results.length,
+        passed,
+        failed,
+        successRate: `${((passed / this.results.length) * 100).toFixed(1)}%`
+      },
+      results: this.results
+    };
+  }
+}
+
+// Example test usage
+const framework = new SkillTestFramework(require('./handler'));
+
+// Test cases
+framework.test('Should return error for missing parameters', async () => {
+  await framework.validate(null, {
+    success: false,
+    error: expect.stringContaining('required')
+  });
+});
+
+framework.test('Should process valid parameters', async () => {
+  await framework.validateStructure(
+    { clientName: 'Test Client', projectType: 'Marketing' },
+    { sow: {}, metadata: {} }
+  );
+});
+
+// Run tests and generate report
+(async () => {
+  await framework.testAll();
+  const report = framework.generateReport();
+  console.log('Test Report:', report);
+})();
+```
+
+### Validation Checklist
+```markdown
+## Skill Validation Checklist
+
+### Functionality
+- [ ] Skill executes without errors
+- [ ] Proper error handling for invalid inputs
+- [ ] Returns expected data structure
+- [ ] Handles edge cases gracefully
+
+### Performance
+- [ ] Completes within reasonable time (< 30 seconds)
+- [ ] Memory usage is acceptable
+- [ ] No memory leaks in long-running operations
+- [ ] Proper timeout handling
+
+### Security
+- [ ] Input validation and sanitization
+- [ ] No sensitive data exposure in logs
+- [ ] Secure API key/token handling
+- [ ] Proper error message sanitization
+
+### Integration
+- [ ] Works with workspace context
+- [ ] Integrates with AnythingLLM APIs
+- [ ] Handles network timeouts
+- [ ] Proper cleanup of resources
+
+### Documentation
+- [ ] Clear README with usage examples
+- [ ] Parameter documentation
+- [ ] Error code documentation
+- [ ] Setup and deployment instructions
+```
+
+### Automated Testing Script
+```bash
+#!/bin/bash
+# test-skill.sh
+
+SKILL_NAME="social-garden-sow-generator"
+EASYPANEL_HOST="https://your-easypanel-domain"
+
+echo "Testing skill: $SKILL_NAME"
+
+# Test skill loading
+echo "Testing skill loading..."
+curl -s -X GET "$EASYPANEL_HOST/api/v1/skills/$SKILL_NAME" \
+  -H "Authorization: Bearer $ANYTHINGLLM_API_KEY"
+
+# Test skill execution
+echo "Testing skill execution..."
+curl -s -X POST "$EASYPANEL_HOST/api/v1/skills/$SKILL_NAME/execute" \
+  -H "Authorization: Bearer $ANYTHINGLLM_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "clientName": "Test Client",
+    "projectType": "Marketing",
+    "budget": 10000
+  }'
+
+# Test error handling
+echo "Testing error handling..."
+curl -s -X POST "$EASYPANEL_HOST/api/v1/skills/$SKILL_NAME/execute" \
+  -H "Authorization: Bearer $ANYTHINGLLM_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
+echo "Testing completed!"
+```
+
+## Troubleshooting
+
+### Common Issues and Solutions
+
+#### Issue 1: Skill Not Loading
+```bash
+# Check skill file structure
+ls -la storage/plugins/agent-skills/your-skill/
+
+# Verify plugin.json syntax
+cat storage/plugins/agent-skills/your-skill/plugin.json | jq .
+
+# Check handler.js syntax
+node -c storage/plugins/agent-skills/your-skill/handler.js
+
+# Check AnythingLLM logs
+docker logs anythingllm | grep skill
+```
+
+#### Issue 2: Skill Execution Timeout
+```javascript
+// Add timeout handling to your skill
+const { withTimeout } = require('./utils');
+
+module.exports = {
+  execute: async function(params) {
+    return await withTimeout(
+      performOperation(params),
+      25000, // 25 second timeout
+      new Error('Operation timed out')
+    );
+  }
+};
+```
+
+#### Issue 3: Memory Issues
+```javascript
+// Implement proper memory management
+const {gc} = require('v8');
+
+module.exports = {
+  execute: async function(params) {
+    try {
+      // Process data in chunks
+      const chunkSize = 100;
+      const results = [];
+      
+      for (let i = 0; i < params.data.length; i += chunkSize) {
+        const chunk = params.data.slice(i, i + chunkSize);
+        const chunkResult = await processChunk(chunk);
+        results.push(...chunkResult);
+        
+        // Force garbage collection periodically
+        if (i % (chunkSize * 10) === 0) {
+          gc();
+        }
+      }
+      
+      return { success: true, data: results };
+      
+    } catch (error) {
+      // Cleanup on error
+      gc();
+      throw error;
+    }
+  }
+};
+```
+
+#### Issue 4: EasyPanel Integration Problems
+```bash
+# Check EasyPanel service status
+curl -s "https://your-easypanel-domain/health"
+
+# Verify skill deployment
+ssh root@your-easypanel-host "ls -la /app/storage/plugins/agent-skills/"
+
+# Check EasyPanel logs
+ssh root@your-easypanel-host "docker logs anythingllm 2>&1 | grep -i skill"
+```
+
+### Debug Mode
+```javascript
+// Enable debug logging
+module.exports = {
+  execute: async function(params) {
+    if (process.env.DEBUG === 'true') {
+      console.log('DEBUG: Skill execution started', {
+        timestamp: new Date().toISOString(),
+        params: sanitizeParams(params)
+      });
+    }
+    
+    try {
+      const result = await performOperation(params);
+      
+      if (process.env.DEBUG === 'true') {
+        console.log('DEBUG: Skill execution completed', {
+          duration: Date.now() - startTime,
+          resultSize: JSON.stringify(result).length
+        });
+      }
+      
+      return result;
+      
+    } catch (error) {
+      if (process.env.DEBUG === 'true') {
+        console.error('DEBUG: Skill execution failed', {
+          error: error.message,
+          stack: error.stack
+        });
+      }
+      
+      throw error;
+    }
+  }
+};
+```
+
+## Conclusion
+
+This comprehensive guide provides everything needed to create, deploy, and maintain custom agent skills for AnythingLLM in EasyPanel environments. The frameworks, patterns, and examples provided here can be adapted for any business need.
+
+### Key Takeaways
+1. **Start Simple**: Begin with basic skills and gradually add complexity
+2. **Follow Patterns**: Use established architectural patterns for consistency
+3. **Test Thoroughly**: Implement comprehensive testing from the beginning
+4. **Monitor Performance**: Use logging and monitoring for production skills
+5. **Document Everything**: Maintain clear documentation for maintainability
+
+### Next Steps
+1. Choose a skill template from the examples
+2. Implement your first custom skill using this guide
+3. Set up testing and validation processes
+4. Deploy to your EasyPanel environment
+5. Monitor and iterate based on usage patterns
+
+### Additional Resources
+- [AnythingLLM Official Documentation](https://docs.anythingllm.com/)
+- [EasyPanel Documentation](https://easypanel.io/docs/)
+- [Node.js Best Practices](https://nodejs.org/en/docs/guides/)
+- [API Integration Patterns](https://github.com/request/request#readme)
+
+---
+
+*Last Updated: October 27, 2025*
+*Version: 1.0.0*
+*Author: Social Garden Development Team*
