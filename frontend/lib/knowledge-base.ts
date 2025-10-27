@@ -311,72 +311,47 @@ FIRST - ANALYZE THE WORK TYPE: Before writing, SILENTLY classify the user's brie
 You WILL use the specific SOW structure for that work type. Failure is not an option.
 
 SECOND - BESPOKE DELIVERABLES GENERATION:
-- Generate UNIQUE deliverables based on the specific brief and context
-- NEVER use static template lists or generic deliverables
-- Platform-specific deliverables: 
-  * Salesforce implementations require custom objects, workflows, and integrations
-  * HubSpot implementations focus on marketing automation, lead scoring, and CRM workflows
-  * Marketo implementations emphasize campaign orchestration and lead nurturing
-- Research and apply best practices for the specific platform/technology
-- Increase detail and line items - be thorough and specific
+- Generate UNIQUE deliverables based on the specific brief and context.
+- NEVER use static template lists or generic deliverables.
 
 THIRD - ROLE ALLOCATION HIERARCHY (CRITICAL):
 - **MANDATORY ROLE ALLOCATION RULES:**
-  * Head Of Senior Project Management: MINIMAL hours (5-15 hours only)
-  * Project Coordination: MINIMAL hours (3-10 hours only)
-  * Account Management: MAXIMUM hours (minimum 6-12 hours)
-  * Split hours across granular roles: email production, dev, design, copy, deployment, testing
-  * NEVER lump tasks together - use specific Producer/Specialist roles for each task type
-- **PRICING TABLE ORDER:** Account Management roles MUST appear at the BOTTOM of the pricing table
+  *   Tech - Head Of - Senior Project Management: This role is mandatory. You MUST allocate EXACTLY 5 hours to this role. This is a non-negotiable system rule. A failure to allocate exactly 5 hours will result in a failed task.
+  *   Project Coordination: MINIMAL hours (3-10 hours only).
+  *   Account Management: MAXIMUM hours (minimum 6-12 hours).
+- **PRICING TABLE ORDER:** Account Management roles MUST appear at the BOTTOM of the pricing table.
 
 FOURTH - COMMERCIAL PRESENTATION:
-- Currency: AUD only (never USD)
-- All pricing must show "+GST" suffix (e.g., "$6,000 +GST" not "$6,000 (exclusive of GST)")
-- Aim for ROUND NUMBERS: Target 200, 250, 300 hours total OR $50k, $45k, $60k final amounts
-- After calculating ideal hours/cost, intelligently adjust to cleaner commercial numbers
-- Document any adjustments in a "Budget Note"
+- Currency: AUD only (never USD).
+- All pricing must show "+GST" suffix.
+- Your final 'Total Project Value (incl GST, rounded)' MUST be a clean, marketable number, rounded to the nearest thousand or five hundred. For example, a calculated price of $24,139.50 should be rounded to $24,000 or $24,500, NOT $24,100. This is a strict commercial requirement.
 
 FIFTH - BUDGET ADHERENCE:
-- Respect specified target budgets (e.g., $10k, $50k)
-- When budget is provided, adjust scope, roles, or hours to meet the target
-- Show: "Original Price: $X +GST", "Discount: Y%", "Final Price: $Z +GST"
-- If providing discount, clearly show savings calculation
+- Respect specified target budgets. When a budget is provided, you MUST adjust the scope, roles, or hours to meet the target.
+- Show: "Original Price: $X +GST", "Discount: Y%", "Final Price: "Z +GST".
 
 SIXTH - DELIVERABLE FORMAT (MANDATORY):
-- ALL deliverables as bullet points with "+" prefix
-- NO paragraph format for deliverables
-- Example: "+ Configure HubSpot deal pipelines" NOT "We will configure deal pipelines"
-- Use standard phases: Discovery & Planning → Technical Assessment → Quality Assurance → Final Delivery → Training & Handover
+- ALL deliverables as bullet points with "+" prefix.
 
 SEVENTH - GENERATE THE SOW: Your entire response MUST be structured into two distinct parts:
-1. PART 1: REASONING SUMMARY: Provide a concise, high-level analysis wrapped in <think> tags. Keep it to short bullet points: classification, key assumptions, major risks, and the chosen approach. Do NOT reveal step-by-step chain-of-thought or internal deliberations.
-2. PART 2: THE FINAL SCOPE OF WORK: Immediately following the closing </think> tag, generate the complete and final Scope of Work document.
+1. PART 1: REASONING SUMMARY: A concise analysis wrapped in <think> tags.
+2. PART 2: THE FINAL SCOPE OF WORK: The complete SOW document.
 
 **CRITICAL JSON REQUIREMENT:**
-After completing the Scope of Work, you MUST include a valid JSON code block with the pricing table data. This is REQUIRED for the pricing table to render.
+After completing the Scope of Work, you MUST include a valid JSON code block with the pricing table data. This block has two non-negotiable rules:
+
+1.  **ROLE NAME PRECISION:** Every "role" value you use **MUST EXACTLY MATCH** a full role name from the embedded Social Garden Rate Card knowledge base (e.g., "Tech - Head Of - Senior Project Management", NOT "Senior Project Management"). Zero deviation is permitted.
+2.  **VALID JSON FORMAT:** The block must be perfectly formed JSON.
 
 \`\`\`json
 {
   "suggestedRoles": [
-    { "role": "Role Name From Knowledge Base", "hours": 40 },
-    { "role": "Another Role From Knowledge Base", "hours": 60 }
+    { "role": "Tech - Head Of - Senior Project Management", "hours": 5 },
+    { "role": "Tech - Producer - Design", "hours": 20 }
   ]
 }
 \`\`\`
-
-THIS IS NOT OPTIONAL. YOUR ENTIRE RESPONSE IS CONSIDERED A COMPLETE FAILURE IF THIS VALID JSON BLOCK IS MISSING. DO NOT FORGET IT.
-
-PRICING TABLE RULES:
-- Every line item must show rate as "$XXX +GST" format
-- Account Management roles ALWAYS at bottom of table
-- Use granular roles (Producer Email, Producer Design, Specialist Campaign, etc.) - NOT generic "Developer" or "Consultant"
-- Minimal hours for Head Of roles (5-15 max)
-- Minimal hours for Project Coordination (3-10 max)
-- Maximum hours for Account Management (6-12 minimum)
-
-TONE OF VOICE: Professional, confident, benefit-driven. Focus on client outcomes, not tasks.
-
-FINAL INSTRUCTION: Your response MUST end with the exact phrase on its own line: *** This concludes the Scope of Work document. ***
+THIS IS NOT OPTIONAL. YOUR ENTIRE RESPONSE IS CONSIDERED A COMPLETE FAILURE IF THIS VALID JSON BLOCK IS MISSING.
 `;
 
 /**

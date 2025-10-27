@@ -581,6 +581,18 @@ Metadata:
       ? THE_ARCHITECT_V2_PROMPT
       : this.getClientFacingPrompt(clientName);
 
+    // 🎯 STRATEGIC LOGGING: Prove prompt injection is working
+    console.log(`\n${'='.repeat(80)}`);
+    console.log(`🎯 [PROMPT INJECTION VERIFICATION]`);
+    console.log(`   Workspace: ${workspaceSlug}`);
+    console.log(`   Client: ${clientName || 'N/A'}`);
+    console.log(`   Type: ${isSOWWorkspace ? 'SOW (The Architect)' : 'Client Q&A'}`);
+    console.log(`   Prompt Length: ${prompt.length} characters`);
+    console.log(`   Contains "Tech - Head Of - Senior Project Management": ${prompt.includes('Tech - Head Of - Senior Project Management')}`);
+    console.log(`   Contains "EXACTLY 5 hours": ${prompt.includes('EXACTLY 5 hours')}`);
+    console.log(`   Contains "non-negotiable": ${prompt.includes('non-negotiable')}`);
+    console.log(`${'='.repeat(80)}\n`);
+
     try {
       const response = await fetch(
         `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/update`,

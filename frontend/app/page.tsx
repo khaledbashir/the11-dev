@@ -1463,13 +1463,20 @@ Ask me questions to get business insights, such as:
       // 🧠 STEP 1b: Configure workspace with The Architect system prompt (SOW type only)
       if (workspaceType === "sow") {
         console.log('🧠 Configuring SOW workspace with The Architect system prompt...');
+        
+        // 🎯 STRATEGIC: Log prompt injection for verification
+        console.log(`🎯 [PROMPT INJECTION] Injecting master prompt into new workspace: "${workspaceName}"`);
+        console.log(`   Workspace slug: ${workspace.slug}`);
+        console.log(`   Workspace type: ${workspaceType}`);
+        
         try {
           // Use AnythingLLM service method to avoid client env/key exposure
           const configured = await anythingLLM.setWorkspacePrompt(workspace.slug, workspaceName, true);
           if (!configured) {
             console.warn('⚠️ Failed to configure workspace system prompt via service');
           } else {
-            console.log('✅ Workspace configured with The Architect system prompt');
+            console.log('✅ [PROMPT INJECTION SUCCESS] Workspace configured with The Architect system prompt');
+            console.log(`   This workspace will now use the battle-tested prompt with mandatory rules`);
           }
         } catch (error) {
           console.error('⚠️ Error configuring workspace:', error);

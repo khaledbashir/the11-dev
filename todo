@@ -1,10 +1,7 @@
-- [ ] Read and analyze agent-sidebar.tsx
-- [ ] Read and analyze agent-sidebar-clean.tsx  
-- [ ] Read and analyze agent-sidebar-enhanced.tsx
-- [ ] Search for imports and usage of these components across the codebase
-- [ ] Identify which component is used on the Master Dashboard
-- [ ] Analyze each component's purpose and functionality
-- [ ] Determine which components are current vs legacy/deprecated
-- [ ] Propose new descriptive names for active components
-- [ ] Identify components for deletion
-- [ ] Create comprehensive audit report
+- [ ] Read key project documentation files
+- [ ] Analyze the main application components
+- [ ] Understand the AI integration architecture
+- [ ] Review workflow processes
+- [ ] Identify key features and benefits
+- [ ] Create comprehensive explainer document
+- [ ] Balance technical (40%) and marketing (60%) content
