@@ -126,6 +126,15 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
   let i = 0;
   let pricingTableInserted = false;
   const strictRoles = !!options.strictRoles;
+  
+  // 🎯 SMART DISCOUNT FEATURE: Parse discount from the raw text
+  let parsedDiscount = 0;
+  const discountMatch = markdown.match(/\*\*Discount[:\s]*\*\*\s*(\d+(?:\.\d+)?)\s*%/i) || 
+                        markdown.match(/Discount[:\s]*(\d+(?:\.\d+)?)\s*%/i);
+  if (discountMatch && discountMatch[1]) {
+    parsedDiscount = parseFloat(discountMatch[1]);
+    console.log(`🎯 Smart Discount detected: ${parsedDiscount}%`);
+  }
 
   const parseTextWithFormatting = (text: string) => {
     // This function handles bold/italic without creating empty text nodes
@@ -331,7 +340,7 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
       type: 'editablePricingTable',
       attrs: {
         rows: pricingRows,
-        discount: 0,
+        discount: parsedDiscount, // 🎯 Smart Discount: Use parsed discount from AI content
       },
     });
   };
@@ -2093,6 +2102,20 @@ Ask me questions to get business insights, such as:
     toast.info('📄 Generating PDF...');
     
     try {
+      // Extract showTotal flag from pricing table node (if exists)
+      let showPricingSummary = true; // Default to true
+      if (currentDoc.content?.content) {
+        const pricingTableNode = currentDoc.content.content.find(
+          (node: any) => node.type === 'editablePricingTable'
+        );
+        if (pricingTableNode && pricingTableNode.attrs) {
+          showPricingSummary = pricingTableNode.attrs.showTotal !== undefined 
+            ? pricingTableNode.attrs.showTotal 
+            : true;
+          console.log('🎯 Show Pricing Summary in PDF:', showPricingSummary);
+        }
+      }
+      
       // Build clean HTML from TipTap JSON to ensure proper tables/lists
       const editorHTML = convertNovelToHTML(currentDoc.content);
       
@@ -2112,6 +2135,7 @@ Ask me questions to get business insights, such as:
         body: JSON.stringify({
           html_content: editorHTML,
           filename: filename,
+          show_pricing_summary: showPricingSummary, // 🎯 Pass showTotal flag to backend
           // Include TipTap JSON so server can apply final programmatic checks (e.g., Head Of enforcement)
           content: currentDoc.content
         })
@@ -2498,6 +2522,7 @@ Ask me questions to get business insights, such as:
           // Render editable pricing table as HTML table for PDF export
           const rows = node.attrs?.rows || [];
           const discount = node.attrs?.discount || 0;
+          const showTotal = node.attrs?.showTotal !== undefined ? node.attrs.showTotal : true;
           
           html += '<h3>Project Pricing</h3>';
           html += '<table>';
@@ -2518,28 +2543,31 @@ Ask me questions to get business insights, such as:
           
           html += '</table>';
           
-          // Summary section
-          html += '<h4 style="margin-top: 20px;">Summary</h4>';
-          html += '<table class="summary-table">';
-          html += `<tr><td style="text-align: right; padding-right: 12px;"><strong>Subtotal (ex GST):</strong></td><td class="num">${formatCurrency(subtotal)} <span style="color:#6b7280; font-size: 0.85em;">+GST</span></td></tr>`;
-          
-          if (discount > 0) {
-            const discountAmount = subtotal * (discount / 100);
-            const afterDiscount = subtotal - discountAmount;
-            html += `<tr><td style="text-align: right; padding-right: 12px; color: #dc2626;"><strong>Discount (${discount}%):</strong></td><td class="num" style="color: #dc2626;">-${formatCurrency(discountAmount)}</td></tr>`;
-            html += `<tr><td style="text-align: right; padding-right: 12px;"><strong>After Discount (ex GST):</strong></td><td class="num">${formatCurrency(afterDiscount)} <span style=\"color:#6b7280; font-size: 0.85em;\">+GST</span></td></tr>`;
-            subtotal = afterDiscount;
+          // 🎯 SMART PDF EXPORT: Only show summary section if showTotal is true
+          if (showTotal) {
+            // Summary section
+            html += '<h4 style="margin-top: 20px;">Summary</h4>';
+            html += '<table class="summary-table">';
+            html += `<tr><td style="text-align: right; padding-right: 12px;"><strong>Subtotal (ex GST):</strong></td><td class="num">${formatCurrency(subtotal)} <span style="color:#6b7280; font-size: 0.85em;">+GST</span></td></tr>`;
+            
+            if (discount > 0) {
+              const discountAmount = subtotal * (discount / 100);
+              const afterDiscount = subtotal - discountAmount;
+              html += `<tr><td style="text-align: right; padding-right: 12px; color: #dc2626;"><strong>Discount (${discount}%):</strong></td><td class="num" style="color: #dc2626;">-${formatCurrency(discountAmount)}</td></tr>`;
+              html += `<tr><td style="text-align: right; padding-right: 12px;"><strong>After Discount (ex GST):</strong></td><td class="num">${formatCurrency(afterDiscount)} <span style=\"color:#6b7280; font-size: 0.85em;\">+GST</span></td></tr>`;
+              subtotal = afterDiscount;
+            }
+            
+            const gst = subtotal * 0.1;
+            const total = subtotal + gst;
+            const roundedTotal = Math.round(total / 100) * 100; // nearest $100
+            
+            html += `<tr><td style=\"text-align: right; padding-right: 12px;\"><strong>GST (10%):</strong></td><td class=\"num\">${formatCurrency(gst)}</td></tr>`;
+            html += `<tr><td style=\"text-align: right; padding-right: 12px;\"><strong>Total (incl GST, unrounded):</strong></td><td class=\"num\">${formatCurrency(total)}</td></tr>`;
+            html += `<tr style=\"border-top: 2px solid #2C823D;\"><td style=\"text-align: right; padding-right: 12px; padding-top: 8px;\"><strong>Total Project Value (incl GST, rounded):</strong></td><td class=\"num\" style=\"padding-top: 8px; color: #2C823D; font-size: 18px;\"><strong>${formatCurrency(roundedTotal)}</strong></td></tr>`;
+            html += '</table>';
+            html += '<p style=\"color:#6b7280; font-size: 0.85em; margin-top: 4px;\">All amounts shown in the pricing table are exclusive of GST unless otherwise stated. The Total Project Value includes GST and is rounded to the nearest $100.</p>';
           }
-          
-          const gst = subtotal * 0.1;
-          const total = subtotal + gst;
-          const roundedTotal = Math.round(total / 100) * 100; // nearest $100
-          
-          html += `<tr><td style=\"text-align: right; padding-right: 12px;\"><strong>GST (10%):</strong></td><td class=\"num\">${formatCurrency(gst)}</td></tr>`;
-          html += `<tr><td style=\"text-align: right; padding-right: 12px;\"><strong>Total (incl GST, unrounded):</strong></td><td class=\"num\">${formatCurrency(total)}</td></tr>`;
-          html += `<tr style=\"border-top: 2px solid #2C823D;\"><td style=\"text-align: right; padding-right: 12px; padding-top: 8px;\"><strong>Total Project Value (incl GST, rounded):</strong></td><td class=\"num\" style=\"padding-top: 8px; color: #2C823D; font-size: 18px;\"><strong>${formatCurrency(roundedTotal)}</strong></td></tr>`;
-          html += '</table>';
-          html += '<p style=\"color:#6b7280; font-size: 0.85em; margin-top: 4px;\">All amounts shown in the pricing table are exclusive of GST unless otherwise stated. The Total Project Value includes GST and is rounded to the nearest $100.</p>';
           break;
         default:
           if (node.content) {

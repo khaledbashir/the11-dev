@@ -29,6 +29,8 @@ app.add_middleware(
 class PDFRequest(BaseModel):
     html_content: str
     filename: str = "document"
+    show_pricing_summary: bool = True  # 🎯 Smart PDF Export: flag to control pricing summary visibility
+    content: Optional[Dict[str, Any]] = None  # TipTap JSON content for enforcement checks
 
 class SheetRequest(BaseModel):
     client_name: str
@@ -349,8 +351,10 @@ hr {
 @app.post("/generate-pdf")
 async def generate_pdf(request: PDFRequest):
     try:
-        print("=== DEBUG: Received HTML Content ===")
-        print(request.html_content[:500] if len(request.html_content) > 500 else request.html_content)
+        print("=== DEBUG: PDF Generation Request ===")
+        print(f"📄 Filename: {request.filename}")
+        print(f"🎯 Show Pricing Summary: {request.show_pricing_summary}")
+        print(f"📊 HTML Content Length: {len(request.html_content)}")
         print("=== Has table tag:", "<table" in request.html_content.lower(), "===")
         
         # Load and encode the Social Garden logo

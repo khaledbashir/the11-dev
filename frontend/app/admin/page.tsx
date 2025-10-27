@@ -10,14 +10,17 @@ export default function AdminPage() {
   const [adminKey, setAdminKey] = useState('');
   const [resetStatus, setResetStatus] = useState<string | null>(null);
 
-  const handleResetDashboard = async () => {
+  const handleResetDashboard = async (filter?: 'test') => {
     if (!adminKey) {
       setResetStatus('Enter admin key first.');
       return;
     }
     try {
-      setResetStatus('Resetting...');
-      const res = await fetch('/api/admin/reset-dashboard', {
+      const action = filter === 'test' ? 'Deleting test SOWs...' : 'Resetting all data...';
+      setResetStatus(action);
+      
+      const url = filter ? `/api/admin/reset-dashboard?filter=${filter}` : '/api/admin/reset-dashboard';
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'x-admin-key': adminKey },
       });
@@ -26,7 +29,11 @@ export default function AdminPage() {
         setResetStatus(`Failed: ${data?.error || res.statusText}`);
         return;
       }
-      setResetStatus('✅ Dashboard data cleared. Click Refresh on the dashboard panel.');
+      
+      const msg = filter === 'test' 
+        ? `✅ Deleted ${data.test_sows_deleted || 0} test SOWs. Refresh dashboard.`
+        : '✅ Dashboard data cleared. Refresh dashboard.';
+      setResetStatus(msg);
     } catch (e: any) {
       setResetStatus(`Error: ${e?.message || 'Unknown error'}`);
     }
@@ -139,10 +146,16 @@ export default function AdminPage() {
                 className="w-full sm:w-80 px-4 py-2 border border-[#1FE18E]/20 bg-black rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1FE18E] text-white placeholder-gray-600"
               />
               <button
-                onClick={handleResetDashboard}
-                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white"
+                onClick={() => handleResetDashboard('test')}
+                className="px-4 py-2 rounded-lg bg-yellow-600 hover:bg-yellow-700 text-white whitespace-nowrap"
               >
-                Reset Dashboard Data
+                Delete Test SOWs
+              </button>
+              <button
+                onClick={() => handleResetDashboard()}
+                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white whitespace-nowrap"
+              >
+                Reset All Data
               </button>
             </div>
             {resetStatus && (
