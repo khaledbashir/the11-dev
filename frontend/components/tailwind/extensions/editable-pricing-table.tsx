@@ -2,7 +2,8 @@
 
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createSwapy } from 'swapy';
 
 // Social Garden 82 roles with AUD rates
 const ROLES = [
@@ -93,6 +94,7 @@ const ROLES = [
 export { ROLES };
 
 interface PricingRow {
+  id: string;
   role: string;
   description: string;
   hours: number;
@@ -100,71 +102,84 @@ interface PricingRow {
 }
 
 const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
-  const [rows, setRows] = useState<PricingRow[]>(node.attrs.rows || []);
+  const [rows, setRows] = useState<PricingRow[]>(
+    (node.attrs.rows || [{ role: '', description: '', hours: 0, rate: 0 }]).map((row: any, idx: number) => ({
+      ...row,
+      id: row.id || `row-${idx}`
+    }))
+  );
   const [discount, setDiscount] = useState(node.attrs.discount || 0);
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const containerRef = useRef<HTMLTableSectionElement>(null);
+  const swapyRef = useRef<any>(null);
+
+  // Initialize Swapy
+  useEffect(() => {
+    if (containerRef.current && rows.length > 0) {
+      // Destroy existing instance if any
+      if (swapyRef.current) {
+        swapyRef.current.destroy();
+      }
+
+      // Create new Swapy instance
+      swapyRef.current = createSwapy(containerRef.current, {
+        animation: 'dynamic'
+      });
+
+      // Listen to swap events
+      swapyRef.current.onSwap((event: any) => {
+        console.log('Swapy swap event:', event);
+        
+        // Get the new order from the event
+        const newOrder = event.data.array;
+        
+        // Create a map of current rows by ID
+        const rowMap = new Map(rows.map(row => [row.id, row]));
+        
+        // Reorder rows based on the new slot order
+        const reorderedRows = newOrder.map((item: any) => rowMap.get(item.item)).filter(Boolean);
+        
+        setRows(reorderedRows);
+      });
+    }
+
+    return () => {
+      if (swapyRef.current) {
+        swapyRef.current.destroy();
+      }
+    };
+  }, [rows.length]); // Re-initialize when row count changes
 
   useEffect(() => {
     updateAttributes({ rows, discount });
   }, [rows, discount]);
 
-  const updateRow = (index: number, field: keyof PricingRow, value: string | number) => {
-    const newRows = [...rows];
-    if (field === 'role') {
-      const selectedRole = ROLES.find(r => r.name === value);
-      newRows[index] = {
-        ...newRows[index],
-        role: value as string,
-        rate: selectedRole?.rate || newRows[index].rate,
-      };
-    } else {
-      newRows[index] = { ...newRows[index], [field]: value };
-    }
+  const updateRow = (id: string, field: keyof PricingRow, value: string | number) => {
+    const newRows = rows.map(row => {
+      if (row.id !== id) return row;
+      
+      if (field === 'role') {
+        const selectedRole = ROLES.find(r => r.name === value);
+        return {
+          ...row,
+          role: value as string,
+          rate: selectedRole?.rate || row.rate,
+        };
+      }
+      
+      return { ...row, [field]: value };
+    });
     setRows(newRows);
   };
 
   const addRow = () => {
-    setRows([...rows, { role: '', description: '', hours: 0, rate: 0 }]);
+    const newId = `row-${Date.now()}`;
+    setRows([...rows, { id: newId, role: '', description: '', hours: 0, rate: 0 }]);
   };
 
-  const removeRow = (index: number) => {
+  const removeRow = (id: string) => {
     if (rows.length > 1) {
-      setRows(rows.filter((_, i) => i !== index));
+      setRows(rows.filter(row => row.id !== id));
     }
-  };
-
-  // Drag and drop handlers
-  const handleDragStart = (e: React.DragEvent, index: number) => {
-    setDraggedIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
-    // Add a subtle opacity to the dragged row
-    (e.target as HTMLElement).style.opacity = '0.5';
-  };
-
-  const handleDragEnd = (e: React.DragEvent) => {
-    setDraggedIndex(null);
-    (e.target as HTMLElement).style.opacity = '1';
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault(); // Allow drop
-    e.dataTransfer.dropEffect = 'move';
-  };
-
-  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
-    e.preventDefault();
-    
-    if (draggedIndex === null || draggedIndex === dropIndex) {
-      return;
-    }
-
-    // Reorder the rows
-    const newRows = [...rows];
-    const [draggedRow] = newRows.splice(draggedIndex, 1);
-    newRows.splice(dropIndex, 0, draggedRow);
-    
-    setRows(newRows);
-    setDraggedIndex(null);
   };
 
   const calculateSubtotal = () => {
@@ -191,19 +206,21 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
     <NodeViewWrapper className="editable-pricing-table my-6">
       <style>
         {`
-          .pricing-row-dragging {
-            opacity: 0.5;
-            background-color: #f3f4f6;
-          }
-          .pricing-row:hover .drag-handle {
-            opacity: 1;
+          .pricing-row {
+            transition: background-color 0.15s ease;
           }
           .drag-handle {
             opacity: 0.3;
             transition: opacity 0.2s;
+            cursor: grab;
           }
-          .pricing-row {
-            transition: background-color 0.15s ease;
+          .drag-handle:active {
+            cursor: grabbing;
+          }
+          .pricing-row:hover .drag-handle {
+            opacity: 1;
+          }
+          [data-swapy-highlighted] {
           }
         `}
       </style>
@@ -221,7 +238,6 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
           </button>
         </div>
 
-        {/* Pricing Table */}
         <div className="overflow-x-auto mb-4">
           <table className="w-full border-collapse">
             <thead>
@@ -234,90 +250,72 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
                 <th className="border border-border px-3 py-2 text-center text-sm w-16">Actions</th>
               </tr>
             </thead>
-            <tbody>
-              {rows.map((row, index) => (
-                <tr 
-                  key={index} 
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, index)}
-                  onDragEnd={handleDragEnd}
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, index)}
-                  className={`pricing-row hover:bg-muted dark:bg-gray-800 cursor-move ${
-                    draggedIndex === index ? 'pricing-row-dragging' : ''
-                  }`}
-                  title="💡 Drag to reorder rows"
-                >
-                  <td className="border border-border p-2">
-                    <div className="flex items-center gap-2">
-                      <span className="drag-handle text-gray-400 cursor-grab active:cursor-grabbing select-none text-lg" title="Drag to reorder">⋮⋮</span>
-                      <select
-                        value={row.role}
-                        onChange={(e) => updateRow(index, 'role', e.target.value)}
-                        
-                        className="flex-1 px-2 py-1 text-sm !text-foreground dark:text-gray-100 bg-muted dark:bg-gray-800 border border-border rounded focus:outline-none focus:border-[#0e2e33]"
+            <tbody ref={containerRef}>
+              {rows.map((row) => (
+                <div key={row.id} data-swapy-slot={row.id}>
+                  <tr data-swapy-item={row.id} className="pricing-row hover:bg-muted dark:bg-gray-800">
+                    <td className="border border-border p-2">
+                      <div className="flex items-center gap-2">
+                        <span data-swapy-handle className="drag-handle text-gray-400 select-none text-lg" title="Drag to reorder">⋮⋮</span>
+                        <select
+                          value={row.role}
+                          onChange={(e) => updateRow(row.id, 'role', e.target.value)}
+                        >
+                          <option value="">Select role...</option>
+                          {ROLES.map((role) => (
+                            <option key={role.name} value={role.name}>
+                              {role.name} - ${role.rate}/hr
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </td>
+                    <td className="border border-border p-2">
+                      <input
+                        type="text"
+                        value={row.description}
+                        onChange={(e) => updateRow(row.id, 'description', e.target.value)}
+                        placeholder="Description..."
+                      />
+                    </td>
+                    <td className="border border-border p-2">
+                      <input
+                        type="number"
+                        value={row.hours || ''}
+                        onChange={(e) => updateRow(row.id, 'hours', parseFloat(e.target.value) || 0)}
+                        placeholder="0"
+                        min="0"
+                        step="0.5"
+                      />
+                    </td>
+                    <td className="border border-border p-2">
+                      <input
+                        type="number"
+                        value={row.rate || ''}
+                        onChange={(e) => updateRow(row.id, 'rate', parseFloat(e.target.value) || 0)}
+                        placeholder="$0"
+                        min="0"
+                      />
+                    </td>
+                    <td className="border border-border px-3 py-2 text-right text-sm font-semibold">
+                      ${(row.hours * row.rate).toFixed(2)}
+                    </td>
+                    <td className="border border-border p-2 text-center">
+                      <button
+                        onClick={() => removeRow(row.id)}
+                        disabled={rows.length === 1}
+                        className="text-red-600 hover:text-red-800 disabled:text-gray-400 disabled:cursor-not-allowed"
                       >
-                        <option value="">Select role...</option>
-                        {ROLES.map((role) => (
-                          <option key={role.name} value={role.name}>
-                            {role.name} - ${role.rate}/hr
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </td>
-                  <td className="border border-border p-2">
-                    <input
-                      type="text"
-                      value={row.description}
-                      onChange={(e) => updateRow(index, 'description', e.target.value)}
-                      placeholder="Description..."
-                      
-                      className="w-full px-2 py-1 text-sm !text-black bg-muted dark:bg-gray-700 border border-border rounded focus:outline-none focus:border-[#0e2e33] placeholder:text-gray-500"
-                    />
-                  </td>
-                  <td className="border border-border p-2">
-                    <input
-                      type="number"
-                      value={row.hours || ''}
-                      onChange={(e) => updateRow(index, 'hours', parseFloat(e.target.value) || 0)}
-                      placeholder="0"
-                      min="0"
-                      step="0.5"
-                      
-                      className="w-full px-2 py-1 text-sm !text-foreground dark:text-gray-100 bg-muted dark:bg-gray-800 border border-border rounded focus:outline-none focus:border-[#0e2e33] placeholder:text-gray-400"
-                    />
-                  </td>
-                  <td className="border border-border p-2">
-                    <input
-                      type="number"
-                      value={row.rate || ''}
-                      onChange={(e) => updateRow(index, 'rate', parseFloat(e.target.value) || 0)}
-                      placeholder="$0"
-                      min="0"
-                      
-                      className="w-full px-2 py-1 text-sm !text-foreground dark:text-gray-100 bg-muted dark:bg-gray-800 border border-border rounded focus:outline-none focus:border-[#0e2e33] placeholder:text-gray-400"
-                    />
-                  </td>
-                  <td className="border border-border px-3 py-2 text-right text-sm font-semibold" >
-                    ${(row.hours * row.rate).toFixed(2)}
-                  </td>
-                  <td className="border border-border p-2 text-center">
-                    <button
-                      onClick={() => removeRow(index)}
-                      disabled={rows.length === 1}
-                      className="text-red-600 hover:text-red-800 disabled:text-gray-400 disabled:cursor-not-allowed"
-                    >
-                      ✕
-                    </button>
-                  </td>
-                </tr>
+                        ✕
+                      </button>
+                    </td>
+                  </tr>
+                </div>
               ))}
             </tbody>
           </table>
         </div>
 
-        {/* Summary Section */}
         <div className="flex justify-end">
           <div className="w-full max-w-md">
             <div className="bg-muted dark:bg-gray-800 rounded-lg p-4 space-y-2">
@@ -329,8 +327,6 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
                   onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
                   min="0"
                   max="100"
-                  
-                  className="w-20 px-2 py-1 text-sm !text-foreground dark:text-gray-100 bg-muted dark:bg-gray-800 border border-border rounded focus:outline-none focus:border-[#0e2e33] text-right placeholder:text-gray-400"
                 />
               </div>
               <div className="flex justify-between text-sm text-foreground dark:text-gray-100">
@@ -375,7 +371,7 @@ export const EditablePricingTable = Node.create({
   addAttributes() {
     return {
       rows: {
-        default: [{ role: '', description: '', hours: 0, rate: 0 }],
+        default: [{ id: 'row-0', role: '', description: '', hours: 0, rate: 0 }],
       },
       discount: {
         default: 0,
@@ -395,14 +391,12 @@ export const EditablePricingTable = Node.create({
     const rows: PricingRow[] = node.attrs.rows || [];
     const discount = node.attrs.discount || 0;
     
-    // Calculate totals
     const subtotal = rows.reduce((sum, row) => sum + (row.hours * row.rate), 0);
     const discountAmount = (subtotal * discount) / 100;
     const subtotalAfterDiscount = subtotal - discountAmount;
     const gst = subtotalAfterDiscount * 0.10;
     const total = subtotalAfterDiscount + gst;
     
-    // Build proper DOM structure for rendering
     const tableContent: any[] = [
       'table',
       { style: 'width:100%; border-collapse:collapse; margin:1.5rem 0; border:2px solid #0e2e33;' },
@@ -438,7 +432,6 @@ export const EditablePricingTable = Node.create({
       ]
     ];
     
-    // Build totals section
     const totalsSection: any[] = [
       'div',
       { style: 'margin-top:1.5rem; padding-top:1rem; border-top:2px solid #0e2e33;' },
