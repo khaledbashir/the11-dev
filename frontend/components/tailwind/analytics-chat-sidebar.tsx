@@ -63,6 +63,20 @@ export default function AnalyticsChatSidebar({
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
 
+  // Restore last active thread from localStorage on mount
+  useEffect(() => {
+    if (dashboardChatTarget) {
+      const storageKey = `dashboard-thread-${dashboardChatTarget}`;
+      const savedThreadSlug = localStorage.getItem(storageKey);
+      if (savedThreadSlug) {
+        console.log('🔄 Restoring last active thread:', savedThreadSlug);
+        setCurrentThreadSlug(savedThreadSlug);
+        // Load the thread's chat history
+        handleSelectThread(savedThreadSlug);
+      }
+    }
+  }, [dashboardChatTarget]);
+
   // Load threads on mount and when workspace changes
   useEffect(() => {
     if (dashboardChatTarget) {
@@ -146,6 +160,10 @@ export default function AnalyticsChatSidebar({
       setThreads(prev => [newThread, ...prev]);
       setCurrentThreadSlug(newThreadSlug);
       
+      // Save to localStorage for persistence across refreshes
+      const storageKey = `dashboard-thread-${dashboardChatTarget}`;
+      localStorage.setItem(storageKey, newThreadSlug);
+      
       // Clear chat for new thread
       onClearChat();
       
@@ -168,6 +186,10 @@ export default function AnalyticsChatSidebar({
     setCurrentThreadSlug(threadSlug);
     setShowThreadList(false);
     setLoadingThreads(true);
+    
+    // Save to localStorage for persistence across refreshes
+    const storageKey = `dashboard-thread-${dashboardChatTarget}`;
+    localStorage.setItem(storageKey, threadSlug);
     
     try {
       const response = await fetch(`/api/anythingllm/thread?workspace=${encodeURIComponent(dashboardChatTarget)}&thread=${encodeURIComponent(threadSlug)}`);
