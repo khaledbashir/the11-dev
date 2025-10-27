@@ -63,14 +63,23 @@ export default function DashboardChat({
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
 
-  // Load threads and restore most recent thread from SERVER on mount
+  // Load threads and restore last active thread on mount
   useEffect(() => {
     if (dashboardChatTarget) {
       initializeThreads(dashboardChatTarget);
     }
   }, [dashboardChatTarget]);
 
-  // Initialize threads from server and auto-select most recent
+  // 💾 Persist active thread to localStorage when it changes
+  useEffect(() => {
+    if (dashboardChatTarget && currentThreadSlug) {
+      const storageKey = `dashboard-thread-${dashboardChatTarget}`;
+      localStorage.setItem(storageKey, currentThreadSlug);
+      console.log('💾 Saved active thread to localStorage:', { workspace: dashboardChatTarget, thread: currentThreadSlug });
+    }
+  }, [currentThreadSlug, dashboardChatTarget]);
+
+  // Initialize threads from server and restore last active thread
   const initializeThreads = async (workspaceSlug: string) => {
     console.log('🔄 Initializing threads from server for workspace:', workspaceSlug);
     setLoadingThreads(true);
@@ -99,13 +108,27 @@ export default function DashboardChat({
       
       setThreads(threadList);
 
-      // Auto-select most recent thread if available
-      if (threadList.length > 0) {
+      // 🔄 Try to restore last active thread from localStorage
+      const storageKey = `dashboard-thread-${workspaceSlug}`;
+      const savedThreadSlug = localStorage.getItem(storageKey);
+      
+      let threadToLoad: string | null = null;
+      
+      if (savedThreadSlug && threadList.some((t: any) => t.slug === savedThreadSlug)) {
+        // Saved thread still exists - restore it
+        console.log('✅ Restoring saved thread from localStorage:', savedThreadSlug);
+        threadToLoad = savedThreadSlug;
+      } else if (threadList.length > 0) {
+        // No saved thread or it was deleted - use most recent
         const mostRecentThread = threadList[0]; // API returns sorted by updated_at DESC
-        console.log('🎯 Auto-selecting most recent thread:', mostRecentThread.slug);
-        setCurrentThreadSlug(mostRecentThread.slug);
+        console.log('🎯 No saved thread, using most recent:', mostRecentThread.slug);
+        threadToLoad = mostRecentThread.slug;
+      }
+
+      if (threadToLoad) {
+        setCurrentThreadSlug(threadToLoad);
         // Load its chat history
-        await loadThreadHistory(mostRecentThread.slug, workspaceSlug);
+        await loadThreadHistory(threadToLoad, workspaceSlug);
       }
     } catch (error: any) {
       console.error('❌ Exception initializing threads:', error);
