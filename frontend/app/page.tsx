@@ -69,6 +69,54 @@ const extractClientName = (prompt: string): string | null => {
   return null;
 };
 
+// 🎯 UTILITY: Extract budget and discount from user prompt
+const extractBudgetAndDiscount = (prompt: string): { budget: number; discount: number } => {
+  let budget = 0;
+  let discount = 0;
+  
+  // Extract budget using same patterns as parseBudgetFromMarkdown
+  const budgetPatterns = [
+    /firm\s*\$?\s*([\d\s,\.]+)\s*(k)?\s*aud/i,
+    /(budget|target|total|investment)\s*(?:[:=]|is|of)?\s*(aud\s*)?\$?\s*([\d\s,\.]+)\s*(k)?\s*(aud)?\s*(\+\s*gst|incl\s*gst|ex\s*gst)?/i,
+  ];
+  
+  for (const re of budgetPatterns) {
+    const m = prompt.match(re);
+    if (m) {
+      const numGroup = (m[3] || m[2] || m[1] || '');
+      let raw = String(numGroup).replace(/[\,\s]/g, '');
+      let v = parseFloat(raw || '0');
+      const kGroup = (m[4] || m[3] || m[2] || '');
+      if (kGroup && /k/i.test(kGroup)) v = v * 1000;
+      const gstStr = (m[6] || m[5] || '').toLowerCase();
+      const inclGST = /incl\s*gst/.test(gstStr);
+      if (!isNaN(v) && v > 0) {
+        budget = inclGST ? v / 1.1 : v; // Always return ex GST
+        console.log(`💰 Budget extracted from user prompt: $${budget.toFixed(2)} ex GST`);
+        break;
+      }
+    }
+  }
+  
+  // Extract discount percentage
+  const discountPatterns = [
+    /(\d+(?:\.\d+)?)\s*%\s*(?:goodwill\s+)?discount/i,
+    /discount\s*(?:of\s+)?(\d+(?:\.\d+)?)\s*%/i,
+    /(\d+(?:\.\d+)?)\s*%\s*off/i,
+  ];
+  
+  for (const re of discountPatterns) {
+    const m = prompt.match(re);
+    if (m && m[1]) {
+      discount = parseFloat(m[1]);
+      console.log(`🎯 Discount extracted from user prompt: ${discount}%`);
+      break;
+    }
+  }
+  
+  return { budget, discount };
+};
+
 // Helper function to convert markdown to Novel editor JSON format
 // Extract pricing roles from markdown table format
 
@@ -98,7 +146,11 @@ const sanitizeEmptyTextNodes = (content: any): any => {
   return content;
 };
 
-type ConvertOptions = { strictRoles?: boolean };
+type ConvertOptions = { 
+  strictRoles?: boolean;
+  userPromptBudget?: number; // Budget extracted from user's original prompt
+  userPromptDiscount?: number; // Discount extracted from user's original prompt
+};
 
 // Build suggestedRoles[] from Architect structured JSON (scopeItems[].roles)
 const buildSuggestedRolesFromArchitectSOW = (structured: ArchitectSOW | null) => {
@@ -134,13 +186,17 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
   let pricingTableInserted = false;
   const strictRoles = !!options.strictRoles;
   
-  // 🎯 SMART DISCOUNT FEATURE: Parse discount from the raw text
-  let parsedDiscount = 0;
-  const discountMatch = markdown.match(/\*\*Discount[:\s]*\*\*\s*(\d+(?:\.\d+)?)\s*%/i) || 
-                        markdown.match(/Discount[:\s]*(\d+(?:\.\d+)?)\s*%/i);
-  if (discountMatch && discountMatch[1]) {
-    parsedDiscount = parseFloat(discountMatch[1]);
-    console.log(`🎯 Smart Discount detected: ${parsedDiscount}%`);
+  // 🎯 SMART DISCOUNT FEATURE: Parse discount from the raw text OR use user prompt override
+  let parsedDiscount = options.userPromptDiscount || 0;
+  if (!parsedDiscount) {
+    const discountMatch = markdown.match(/\*\*Discount[:\s]*\*\*\s*(\d+(?:\.\d+)?)\s*%/i) || 
+                          markdown.match(/Discount[:\s]*(\d+(?:\.\d+)?)\s*%/i);
+    if (discountMatch && discountMatch[1]) {
+      parsedDiscount = parseFloat(discountMatch[1]);
+      console.log(`🎯 Smart Discount detected from AI response: ${parsedDiscount}%`);
+    }
+  } else {
+    console.log(`🎯 Using discount from user prompt: ${parsedDiscount}%`);
   }
 
   const parseTextWithFormatting = (text: string) => {
@@ -302,14 +358,28 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
 
       if (rolesAreStrings || rolesLackHours) {
         const names = (suggestedRoles as any[]).map(r => typeof r === 'string' ? r : r.role).filter(Boolean);
-        const budgetInfo = parseBudgetFromMarkdown(markdown) || { value: 0, inclGST: false };
-        let budgetExGst = budgetInfo.value;
-        if (budgetInfo.inclGST) budgetExGst = budgetExGst / 1.1;
+        
+        // Priority 1: Use budget from user's original prompt if provided
+        // Priority 2: Parse budget from AI's markdown response
+        let budgetExGst = 0;
+        if (options.userPromptBudget && options.userPromptBudget > 0) {
+          budgetExGst = options.userPromptBudget;
+          console.log(`💰 Using budget from user prompt: $${budgetExGst.toFixed(2)} (ex GST)`);
+        } else {
+          const budgetInfo = parseBudgetFromMarkdown(markdown) || { value: 0, inclGST: false };
+          budgetExGst = budgetInfo.value;
+          if (budgetInfo.inclGST) budgetExGst = budgetExGst / 1.1;
+          if (budgetExGst > 0) {
+            console.log(`💰 Budget parsed from AI response: $${budgetExGst.toFixed(2)} (ex GST)`);
+          }
+        }
+        
         if (budgetExGst > 0) {
           console.log(`🧮 Deterministic allocation with budget (ex GST): $${budgetExGst.toFixed(2)}`);
           pricingRows = calculatePricingTable(names, budgetExGst);
         } else {
-          console.warn('⚠️ No budget detected in markdown. Building zero-hour rows (AM default applied later).');
+          console.error('❌ CRITICAL: No budget found in user prompt OR AI response. Cannot allocate hours.');
+          console.error('   User must provide budget like "firm $15,000 AUD" or AI must include budget in response.');
           pricingRows = names.map(roleName => {
             const m = findCanon(roleName);
             return { role: m?.name || roleName, description: '', hours: 0, rate: m?.rate || 0 };
@@ -647,6 +717,7 @@ export default function Page() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null); // Track which message is streaming
+  const [lastUserPrompt, setLastUserPrompt] = useState<string>(''); // 🎯 Track last user message for budget/discount extraction
   const [showSendModal, setShowSendModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareModalData, setShareModalData] = useState<{
@@ -2962,6 +3033,14 @@ Ask me questions to get business insights, such as:
       console.log('📊 suggestedRoles array:', suggestedRoles);
       console.log('📊 suggestedRoles length:', suggestedRoles?.length || 0);
       
+      // 🎯 Extract budget and discount from last user prompt for financial calculations
+      const { budget: userPromptBudget, discount: userPromptDiscount } = extractBudgetAndDiscount(lastUserPrompt);
+      const convertOptions: ConvertOptions = { 
+        strictRoles: false,
+        userPromptBudget,
+        userPromptDiscount
+      };
+      
       // CRITICAL: If no suggestedRoles provided from JSON, try extracting Architect structured JSON from the message body
   let convertedContent;
   if (!hasValidSuggestedRoles) {
@@ -2985,7 +3064,7 @@ Ask me questions to get business insights, such as:
           console.log(`✅ Using ${derived.length} roles derived from Architect structured JSON.`);
           // 🔒 AM Guardrail: sanitize Account Management variants
           const sanitized = sanitizeAccountManagementRoles(derived);
-          convertedContent = convertMarkdownToNovelJSON(cleanedContent, sanitized, { strictRoles: false });
+          convertedContent = convertMarkdownToNovelJSON(cleanedContent, sanitized, convertOptions);
         } else {
           console.error('❌ CRITICAL ERROR: AI did not provide suggestedRoles JSON or scopeItems. The application requires one of these.');
           const blockedMessage: ChatMessage = {
@@ -3000,7 +3079,7 @@ Ask me questions to get business insights, such as:
       } else {
         // 🔒 AM Guardrail: sanitize Account Management variants
         const sanitized = sanitizeAccountManagementRoles(suggestedRoles);
-        convertedContent = convertMarkdownToNovelJSON(cleanedContent, sanitized, { strictRoles: false });
+        convertedContent = convertMarkdownToNovelJSON(cleanedContent, sanitized, convertOptions);
       }
       console.log('✅ Content converted');
       
@@ -3213,6 +3292,15 @@ Ask me questions to get business insights, such as:
           
           // 3. Convert markdown and roles to Novel/TipTap JSON
           console.log('🔄 Converting markdown to JSON for insertion...');
+          
+          // 🎯 Extract budget and discount from last user prompt for financial calculations
+          const { budget: userPromptBudget, discount: userPromptDiscount } = extractBudgetAndDiscount(lastUserPrompt);
+          const convertOptions: ConvertOptions = { 
+            strictRoles: false,
+            userPromptBudget,
+            userPromptDiscount
+          };
+          
           let content;
           if (!hasValidSuggestedRoles) {
             // Try deriving roles from Architect structured JSON in the chat message
@@ -3222,7 +3310,7 @@ Ask me questions to get business insights, such as:
               console.log(`✅ Using ${derived.length} roles derived from Architect structured JSON (insert command).`);
               // 🔒 AM Guardrail in insert flow
               const sanitized = sanitizeAccountManagementRoles(derived);
-              content = convertMarkdownToNovelJSON(cleanedMessage, sanitized, { strictRoles: false });
+              content = convertMarkdownToNovelJSON(cleanedMessage, sanitized, convertOptions);
             } else {
               console.error('❌ CRITICAL ERROR: AI did not provide suggestedRoles JSON for insert command. Aborting insert to avoid placeholder pricing.');
               // Emit an assistant message explaining the requirement and exit without inserting
@@ -3239,7 +3327,7 @@ Ask me questions to get business insights, such as:
           } else {
             // 🔒 AM Guardrail: sanitize in insert flow as well
             const sanitized = sanitizeAccountManagementRoles(suggestedRoles);
-            content = convertMarkdownToNovelJSON(cleanedMessage, sanitized, { strictRoles: false });
+            content = convertMarkdownToNovelJSON(cleanedMessage, sanitized, convertOptions);
           }
           console.log('✅ Content converted');
           
@@ -3374,6 +3462,9 @@ Ask me questions to get business insights, such as:
       console.log('✅ Auto-renamed SOW to:', newSOWTitle);
       toast.success(`🏢 Auto-detected client: ${detectedClientName}`);
     }
+    
+    // 🎯 EXTRACT BUDGET AND DISCOUNT from user prompt for pricing calculator
+    setLastUserPrompt(message); // Store for later use when AI responds
 
     const userMessage: ChatMessage = {
       id: `msg${Date.now()}`,
