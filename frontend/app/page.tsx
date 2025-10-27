@@ -19,7 +19,6 @@ import OnboardingFlow from "@/components/tailwind/onboarding-flow";
 import { toast } from "sonner";
 import { Sparkles, Info, ExternalLink, Send } from "lucide-react";
 import { defaultEditorContent } from "@/lib/content";
-import { THE_ARCHITECT_SYSTEM_PROMPT } from "@/lib/knowledge-base";
 import { InteractiveOnboarding } from "@/components/tailwind/interactive-onboarding";
 import { GuidedClientSetup } from "@/components/tailwind/guided-client-setup";
 import { EnhancedDashboard } from "@/components/tailwind/enhanced-dashboard";

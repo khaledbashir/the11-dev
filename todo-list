@@ -1,26 +1,40 @@
-- [x] Examine the run-llm file to understand its purpose
-- [x] Execute the run-llm script  
-- [x] Verify the execution results
+# Investigation Task: Unused Components & Problematic Areas
 
-## Execution Summary
+## Phase 1: Project Structure Analysis
+- [x] Map project architecture and dependencies  
+- [ ] Analyze frontend structure (React/TypeScript components)
+- [ ] Analyze backend structure (Python APIs)  
+- [ ] Analyze database structure and migrations
+- [ ] Identify duplicate/missing documentation files
 
-The `run-llm.ts` script executed successfully and demonstrated the complete AnythingLLM workflow:
+## Phase 2: Frontend Analysis (React/TypeScript)
+- [ ] Check for unused React components
+- [ ] Identify redundant import statements
+- [ ] Analyze unused CSS/styling files
+- [ ] Check for deprecated React patterns
+- [ ] Review unused utility functions
 
-### ✅ Successfully Completed Steps:
-1. **Workspace Creation**: Created workspace "architect-sow-test-1761391907855"
-2. **Prompt Configuration**: Set "The Architect" system prompt in the workspace
-3. **Rate Card Embedding**: Successfully embedded the 91-role Social Garden rate card as knowledge base
-4. **Thread Management**: Created threads for chat functionality
-5. **Chat Initialization**: Started the AI chat query for HubSpot CRM implementation
+## Phase 3: Backend Analysis (Python)
+- [ ] Identify unused API endpoints
+- [ ] Check for dead Python functions/classes
+- [ ] Analyze database models and unused imports
+- [ ] Review configuration inconsistencies
 
-### ⏱️ Timeout Behavior:
-- The script timed out after 30 seconds during the AI response generation
-- This is expected behavior as complex AI responses can take 30-120 seconds
-- The actual AI processing was happening successfully before timeout
+## Phase 4: Configuration & Dependencies
+- [ ] Analyze package.json dependencies
+- [ ] Check for unused environment variables
+- [ ] Identify redundant configuration files
+- [ ] Review Docker configurations
 
-### 🔧 Technical Setup:
-- Required installation of `tsx` TypeScript runtime
-- Successfully connected to AnythingLLM service
-- All workspace operations (create, configure, embed) completed without errors
+## Phase 5: Documentation Analysis
+- [ ] Check documentation accuracy vs implementation
+- [ ] Identify placeholder/incomplete features
+- [ ] Analyze TODO/FIXME comments
+- [ ] Review redundant documentation files
 
-The script demonstrates a complete end-to-end test of the Social Garden AI architecture that generates Scope of Work documents using the "Architect" AI with embedded rate card knowledge.
+## Phase 6: Generate Final Report
+- [ ] Compile all findings into comprehensive report
+- [ ] Prioritize issues by severity
+- [ ] Provide recommendations for cleanup
+
+**Total Files Analyzed: 0/200+ (initial estimate)**
