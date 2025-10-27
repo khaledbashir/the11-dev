@@ -419,9 +419,8 @@ export default function DashboardSidebar({
             </div>
           ) : (
             chatMessages.map((msg) => {
-              // 🧹 FINAL SANITIZATION GUARDRAIL: Strip <think> tags before rendering
-              const sanitizedContent = cleanSOWContent(msg.content);
-              const segments = msg.role === 'assistant' ? [] : [{ type: 'text' as const, content: sanitizedContent }];
+              const cleaned = cleanSOWContent(msg.content);
+              const segments = msg.role === 'assistant' ? [] : [{ type: 'text' as const, content: msg.content }];
               return (
                 <div key={msg.id} className={`flex min-w-0 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`relative w-full max-w-[85%] min-w-0 rounded-xl px-4 py-3 break-words whitespace-pre-wrap overflow-hidden ${
@@ -432,7 +431,7 @@ export default function DashboardSidebar({
                     {msg.role === 'assistant' && (
                       <div className="mb-4">
                         <StreamingThoughtAccordion 
-                          content={sanitizedContent}
+                          content={msg.content}
                           messageId={msg.id}
                           isStreaming={streamingMessageId === msg.id}
                         />
@@ -482,24 +481,17 @@ export default function DashboardSidebar({
             className="min-h-[80px] resize-none bg-[#1b1b1e] border-[#0E2E33] text-white placeholder:text-gray-500"
             disabled={isLoading}
           />
-          {/* Enhance button - standardized to match WorkspaceSidebar */}
+          {/* Enhance button */}
           <Button
             onClick={handleEnhanceOnly}
             disabled={!chatInput.trim() || isLoading || enhancing}
-            size="sm"
-            className="self-end bg-[#0E2E33] hover:bg-[#143e45] text-white h-[50px] font-semibold border border-[#1CBF79]"
-            title="Enhance"
+            className="self-end bg-[#0E2E33] hover:bg-[#143e45] text-white border border-[#1CBF79]"
+            title="Enhance your prompt with AI"
           >
             {enhancing ? (
-              <div className="flex items-center gap-2">
-                <Loader2 className="h-5 w-5 animate-spin text-[#1CBF79]" />
-                <span className="text-sm">Enhancing…</span>
-              </div>
+              <Loader2 className="h-5 w-5 animate-spin text-[#1CBF79]" />
             ) : (
-              <div className="flex items-center gap-2">
-                <span className="text-lg">✨</span>
-                <span className="text-sm">Enhance</span>
-              </div>
+              <span className="text-lg">✨</span>
             )}
           </Button>
           <Button 
