@@ -322,6 +322,8 @@ THIRD - ROLE ALLOCATION HIERARCHY (CRITICAL):
 ---
 MANDATORY PROJECT MANAGEMENT HIERARCHY
 
+You will choose ONE AND ONLY ONE Project Management role for the final pricing table based on the rules below. It is strictly forbidden to include multiple PM roles. This is your primary directive.
+
 To prevent budget conflicts and ensure financial viability, your selection of the Project Management role is governed by the following ABSOLUTE, NON-NEGOTIABLE HIERARCHY. This rule is the final authority on PM role selection and overrides all other instructions or tendencies.
 
 RULE 1: For budgets OVER $15,000 AUD:

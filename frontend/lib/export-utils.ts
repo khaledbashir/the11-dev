@@ -775,7 +775,7 @@ export function cleanSOWContent(content: string): string {
   // 🚨 CRITICAL FIX: Remove REASONING SUMMARY section completely
   // This section is AI internal monologue and must not appear in client-facing documents
   // Pattern: Finds "REASONING SUMMARY" heading and removes everything until the next major section
-  const reasoningSummaryPattern = /^#{1,3}\s*(?:PART\s*\d+:\s*)?REASONING\s+SUMMARY[\s\S]*?(?=^#{1,3}\s*(?:PART\s*\d+:\s*)?(?:THE\s+)?(?:FINAL\s+)?SCOPE\s+OF\s+WORK|^#{1,3}\s*(?!PART)[A-Z]|^\*\*PROJECT\*\*:|^Social\s+Garden\s*-|$)/mi;
+  const reasoningSummaryPattern = /^#{1,3}\s*(?:PART\s*\d+:\s*)?REASONING\s+SUMMARY[\s\S]*?(?=^#{1,3}\s*(?:PART\s*\d+:\s*)?(?:THE\s+)?(?:FINAL\s+)?SCOPE\s+OF\s+WORK|^#{1,3}\s*(?!PART)[A-Z]|^#{1,3}\s*PROJECT\s+OVERVIEW|^\*\*PROJECT\*\*:|^Social\s+Garden\s*-|$)/mi;
   const reasoningMatch = out.match(reasoningSummaryPattern);
   if (reasoningMatch) {
     console.log('🧹 Removing REASONING SUMMARY section:', reasoningMatch[0].substring(0, 150) + '...');
