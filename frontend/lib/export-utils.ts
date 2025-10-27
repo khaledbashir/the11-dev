@@ -770,11 +770,28 @@ export function cleanSOWContent(content: string): string {
     .replace(/<!-- .*? -->/gi, '')
     // Remove any remaining XML-style tags that might be internal
     .replace(/<\/?[A-Z_]+>/gi, '')
-    // 🚨 CRITICAL: Remove internal PART headers (non-client-facing structure markers)
-    .replace(/^##\s*PART\s*\d+:\s*REASONING\s+SUMMARY[\s\S]*?(?=^##\s*PART\s*\d+:|^#{1,6}\s+[^#]|\*\*PROJECT)/mi, '')
-    .replace(/^##\s*PART\s*\d+:\s*THE\s+FINAL\s+SCOPE\s+OF\s+WORK\s*$/mi, '')
-    // Remove any standalone "## PART 1:" or "## PART 2:" headers
-    .replace(/^##\s*PART\s*\d+:.*$/gmi, '')
+    .trim();
+
+  // 🚨 CRITICAL FIX: Remove REASONING SUMMARY section completely
+  // This section is AI internal monologue and must not appear in client-facing documents
+  // Pattern: Finds "REASONING SUMMARY" heading and removes everything until the next major section
+  const reasoningSummaryPattern = /^#{1,3}\s*(?:PART\s*\d+:\s*)?REASONING\s+SUMMARY[\s\S]*?(?=^#{1,3}\s*(?:PART\s*\d+:\s*)?(?:THE\s+)?(?:FINAL\s+)?SCOPE\s+OF\s+WORK|^#{1,3}\s*(?!PART)[A-Z]|^\*\*PROJECT\*\*:|^Social\s+Garden\s*-|$)/mi;
+  const reasoningMatch = out.match(reasoningSummaryPattern);
+  if (reasoningMatch) {
+    console.log('🧹 Removing REASONING SUMMARY section:', reasoningMatch[0].substring(0, 150) + '...');
+  }
+  out = out.replace(reasoningSummaryPattern, '').trim();
+
+  // Remove "PART 2: THE FINAL SCOPE OF WORK" header and similar variants
+  const partHeaderPattern = /^#{1,3}\s*PART\s*\d+:\s*(?:THE\s+)?(?:FINAL\s+)?SCOPE\s+OF\s+WORK\s*$/gmi;
+  const partHeaderMatch = out.match(partHeaderPattern);
+  if (partHeaderMatch) {
+    console.log('🧹 Removing PART headers:', partHeaderMatch);
+  }
+  out = out
+    .replace(partHeaderPattern, '')
+    // Remove any other standalone "PART X:" headers
+    .replace(/^#{1,3}\s*PART\s*\d+:.*$/gmi, '')
     .trim();
 
   // 🎯 CRITICAL FIX: Strip AI conversational preamble before first heading
