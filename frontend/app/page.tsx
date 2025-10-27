@@ -1554,7 +1554,25 @@ export default function Page() {
 
   const handleInsertSOWContent = (markdownContent: string) => {
     if (editorRef.current && markdownContent) {
-      const novelContent = convertMarkdownToNovelJSON(markdownContent);
+      // Filter out internal reasoning sections that shouldn't be client-facing
+      let filteredContent = markdownContent;
+      
+      // Remove [FINANCIAL*REASONING]* sections
+      filteredContent = filteredContent.replace(/\[FINANCIAL[\*_]REASONING[\*_]\][\s\S]*?(?=\[|##|###|$)/gi, '');
+      
+      // Remove [BUDGET*NOTE]* sections
+      filteredContent = filteredContent.replace(/\[BUDGET[\*_]NOTE[\*_]\][\s\S]*?(?=\[|##|###|$)/gi, '');
+      
+      // Remove [PRICING*JSON]* markers (keep the table but remove the marker)
+      filteredContent = filteredContent.replace(/\[PRICING[\*_]JSON[\*_]\]/gi, '');
+      
+      // Remove [GENERATE THE SOW] markers
+      filteredContent = filteredContent.replace(/\[GENERATE THE SOW\]/gi, '');
+      
+      // Clean up extra whitespace
+      filteredContent = filteredContent.replace(/\n{3,}/g, '\n\n').trim();
+      
+      const novelContent = convertMarkdownToNovelJSON(filteredContent);
       editorRef.current.insertContent(novelContent);
     }
   };

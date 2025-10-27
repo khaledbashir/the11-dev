@@ -252,65 +252,72 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
             </thead>
             <tbody ref={containerRef}>
               {rows.map((row) => (
-                <div key={row.id} data-swapy-slot={row.id}>
-                  <tr data-swapy-item={row.id} className="pricing-row hover:bg-muted dark:bg-gray-800">
-                    <td className="border border-border p-2">
-                      <div className="flex items-center gap-2">
-                        <span data-swapy-handle className="drag-handle text-gray-400 select-none text-lg" title="Drag to reorder">⋮⋮</span>
-                        <select
-                          value={row.role}
-                          onChange={(e) => updateRow(row.id, 'role', e.target.value)}
-                        >
-                          <option value="">Select role...</option>
-                          {ROLES.map((role) => (
-                            <option key={role.name} value={role.name}>
-                              {role.name} - ${role.rate}/hr
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </td>
-                    <td className="border border-border p-2">
-                      <input
-                        type="text"
-                        value={row.description}
-                        onChange={(e) => updateRow(row.id, 'description', e.target.value)}
-                        placeholder="Description..."
-                      />
-                    </td>
-                    <td className="border border-border p-2">
-                      <input
-                        type="number"
-                        value={row.hours || ''}
-                        onChange={(e) => updateRow(row.id, 'hours', parseFloat(e.target.value) || 0)}
-                        placeholder="0"
-                        min="0"
-                        step="0.5"
-                      />
-                    </td>
-                    <td className="border border-border p-2">
-                      <input
-                        type="number"
-                        value={row.rate || ''}
-                        onChange={(e) => updateRow(row.id, 'rate', parseFloat(e.target.value) || 0)}
-                        placeholder="$0"
-                        min="0"
-                      />
-                    </td>
-                    <td className="border border-border px-3 py-2 text-right text-sm font-semibold">
-                      ${(row.hours * row.rate).toFixed(2)}
-                    </td>
-                    <td className="border border-border p-2 text-center">
-                      <button
-                        onClick={() => removeRow(row.id)}
-                        disabled={rows.length === 1}
-                        className="text-red-600 hover:text-red-800 disabled:text-gray-400 disabled:cursor-not-allowed"
+                <tr 
+                  key={row.id} 
+                  data-swapy-slot={row.id}
+                  data-swapy-item={row.id}
+                  className="pricing-row hover:bg-muted dark:bg-gray-800"
+                >
+                  <td className="border border-border p-2">
+                    <div className="flex items-center gap-2">
+                      <span data-swapy-handle className="drag-handle text-gray-400 select-none text-lg" title="Drag to reorder">⋮⋮</span>
+                      <select
+                        value={row.role}
+                        onChange={(e) => updateRow(row.id, 'role', e.target.value)}
+                        className="w-full bg-transparent border-none outline-none text-sm"
                       >
-                        ✕
-                      </button>
-                    </td>
-                  </tr>
-                </div>
+                        <option value="">Select role...</option>
+                        {ROLES.map((role) => (
+                          <option key={role.name} value={role.name}>
+                            {role.name} - ${role.rate}/hr
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </td>
+                  <td className="border border-border p-2">
+                    <input
+                      type="text"
+                      value={row.description}
+                      onChange={(e) => updateRow(row.id, 'description', e.target.value)}
+                      placeholder="Description..."
+                      className="w-full bg-transparent border-none outline-none text-sm"
+                    />
+                  </td>
+                  <td className="border border-border p-2">
+                    <input
+                      type="number"
+                      value={row.hours || ''}
+                      onChange={(e) => updateRow(row.id, 'hours', parseFloat(e.target.value) || 0)}
+                      placeholder="0"
+                      min="0"
+                      step="0.5"
+                      className="w-full bg-transparent border-none outline-none text-sm text-right"
+                    />
+                  </td>
+                  <td className="border border-border p-2">
+                    <input
+                      type="number"
+                      value={row.rate || ''}
+                      onChange={(e) => updateRow(row.id, 'rate', parseFloat(e.target.value) || 0)}
+                      placeholder="$0"
+                      min="0"
+                      className="w-full bg-transparent border-none outline-none text-sm text-right"
+                    />
+                  </td>
+                  <td className="border border-border px-3 py-2 text-right text-sm font-semibold">
+                    ${(row.hours * row.rate).toFixed(2)}
+                  </td>
+                  <td className="border border-border p-2 text-center">
+                    <button
+                      onClick={() => removeRow(row.id)}
+                      disabled={rows.length === 1}
+                      className="text-red-600 hover:text-red-800 disabled:text-gray-400 disabled:cursor-not-allowed text-lg"
+                    >
+                      ✕
+                    </button>
+                  </td>
+                </tr>
               ))}
             </tbody>
           </table>
