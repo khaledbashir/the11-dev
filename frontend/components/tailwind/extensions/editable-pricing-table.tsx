@@ -217,8 +217,12 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
     setDraggedIndex(null);
   };
 
+  // Hide placeholder rows (no role selected) from UI rendering and calculations
+  const isVisibleRow = (r: PricingRow) => !!(r.role && r.role.trim().length > 0);
+  const visibleRows = rows.filter(isVisibleRow);
+
   const calculateSubtotal = () => {
-    return rows.reduce((sum, row) => sum + (row.hours * row.rate), 0);
+    return visibleRows.reduce((sum, row) => sum + (row.hours * row.rate), 0);
   };
 
   const calculateDiscount = () => {
@@ -298,7 +302,7 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, index) => (
+              {visibleRows.map((row, index) => (
                 <tr 
                   key={index} 
                   draggable
@@ -349,7 +353,7 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
                   <td className="border border-border p-2 text-center">
                     <button
                       onClick={() => removeRow(index)}
-                      disabled={rows.length === 1}
+                      disabled={visibleRows.length === 1}
                       className="text-red-600 hover:text-red-800 disabled:text-gray-400 disabled:cursor-not-allowed"
                     >
                       ✕
@@ -503,7 +507,7 @@ export const EditablePricingTable = Node.create({
     const headOfRole = ROLES.find(r => r.name === 'Tech - Head Of - Senior Project Management');
   const pcRole = ROLES.find(r => r.name === 'Tech - Delivery - Project Coordination');
 
-    let rows: PricingRow[] = [...originalRows];
+  let rows: PricingRow[] = [...originalRows];
     if (!hasHeadOf) {
       rows.unshift({
         role: headOfRole?.name || 'Tech - Head Of - Senior Project Management',
@@ -537,8 +541,11 @@ export const EditablePricingTable = Node.create({
       rows = tmp;
     }
     
+    // Exclude any zero-cost rows for PDF/HTML rendering (clarity for clients)
+    const exportRows = rows.filter(r => (Number(r.hours) || 0) * (Number(r.rate) || 0) > 0);
+
     // Calculate totals
-  const subtotal = rows.reduce((sum, row) => sum + (row.hours * row.rate), 0);
+  const subtotal = exportRows.reduce((sum, row) => sum + (row.hours * row.rate), 0);
   const discountAmount = (subtotal * discount) / 100;
   const subtotalAfterDiscount = subtotal - discountAmount;
   const gst = subtotalAfterDiscount * 0.10;
@@ -567,7 +574,7 @@ export const EditablePricingTable = Node.create({
       [
         'tbody',
         {},
-        ...rows.map((row, index) => {
+        ...exportRows.map((row, index) => {
           const rowTotal = row.hours * row.rate;
           const bgColor = index % 2 === 0 ? '#f9fafb' : 'white';
           return [

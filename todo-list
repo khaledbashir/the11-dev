@@ -1,40 +1,8 @@
-# Investigation Task: Unused Components & Problematic Areas
+# Pricing Table Architect Prompt v2 Investigation
 
-## Phase 1: Project Structure Analysis
-- [x] Map project architecture and dependencies  
-- [ ] Analyze frontend structure (React/TypeScript components)
-- [ ] Analyze backend structure (Python APIs)  
-- [ ] Analyze database structure and migrations
-- [ ] Identify duplicate/missing documentation files
-
-## Phase 2: Frontend Analysis (React/TypeScript)
-- [ ] Check for unused React components
-- [ ] Identify redundant import statements
-- [ ] Analyze unused CSS/styling files
-- [ ] Check for deprecated React patterns
-- [ ] Review unused utility functions
-
-## Phase 3: Backend Analysis (Python)
-- [ ] Identify unused API endpoints
-- [ ] Check for dead Python functions/classes
-- [ ] Analyze database models and unused imports
-- [ ] Review configuration inconsistencies
-
-## Phase 4: Configuration & Dependencies
-- [ ] Analyze package.json dependencies
-- [ ] Check for unused environment variables
-- [ ] Identify redundant configuration files
-- [ ] Review Docker configurations
-
-## Phase 5: Documentation Analysis
-- [ ] Check documentation accuracy vs implementation
-- [ ] Identify placeholder/incomplete features
-- [ ] Analyze TODO/FIXME comments
-- [ ] Review redundant documentation files
-
-## Phase 6: Generate Final Report
-- [ ] Compile all findings into comprehensive report
-- [ ] Prioritize issues by severity
-- [ ] Provide recommendations for cleanup
-
-**Total Files Analyzed: 0/200+ (initial estimate)**
+- [ ] Examine the enhanced architect v2 prompt document
+- [ ] Analyze the pricing calculator implementation 
+- [ ] Review pricing-related UI components
+- [ ] Understand the overall pricing flow and logic
+- [ ] Document the architecture and data structures
+- [ ] Create comprehensive analysis report

@@ -37,6 +37,7 @@ import type { ArchitectSOW } from "@/lib/export-utils";
 import { extractSOWStructuredJson } from "@/lib/export-utils";
 import { anythingLLM } from "@/lib/anythingllm";
 import { ROLES } from "@/lib/rateCard";
+import { calculatePricingTable } from "@/lib/pricingCalculator";
 import { getWorkspaceForAgent } from "@/lib/workspace-config";
 
 // API key is now handled server-side in /api/chat route
@@ -243,6 +244,21 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
     return rows;
   };
 
+  // Best-effort budget parsing from markdown for deterministic allocation
+  const parseBudgetFromMarkdown = (text: string): { value: number; inclGST: boolean } | null => {
+    if (!text) return null;
+    // Examples matched: "Budget: $25,000 +GST", "Target $30k ex gst", "Total Investment = 18000 incl gst"
+    const re = /(budget|target|total|investment)\s*[:=]?\s*\$?\s*([\d,.]+)\s*(k)?\s*(\+\s*gst|incl\s*gst|ex\s*gst)?/i;
+    const m = text.match(re);
+    if (!m) return null;
+    let raw = (m[2] || '').replace(/,/g, '');
+    let v = parseFloat(raw || '0');
+    if (m[3]) v = v * 1000; // support shorthand like 50k
+    const gstStr = (m[4] || '').toLowerCase();
+    const inclGST = /incl\s*gst/.test(gstStr);
+    return { value: isNaN(v) ? 0 : v, inclGST };
+  };
+
   // Helper function to insert pricing table
   // Removed default zero-hours fallback: enterprise policy prohibits pricing fallbacks
 
@@ -262,22 +278,41 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
     // Use provided suggestedRoles first; otherwise use roles parsed from markdown only
     if (suggestedRoles.length > 0) {
       console.log('✅ Using suggestedRoles from JSON.');
-      pricingRows = suggestedRoles
-        .filter(role => {
-          // 🔧 CRITICAL FIX: Filter out any empty or invalid role names (including "Select role...")
-          const roleName = (role.role || '').trim();
-          return roleName && roleName.length > 0 && roleName.toLowerCase() !== 'select role' && roleName.toLowerCase() !== 'select role...';
-        })
-        .map(role => {
-          const matchedRole = findCanon(role.role);
-          return {
-            // Snap to canonical name so the <select> has a matching option
-            role: matchedRole?.name || role.role,
-            description: role.description || '',
-            hours: role.hours || 0,
-            rate: matchedRole?.rate || role.rate || 0,
-          };
-        });
+      const rolesAreStrings = typeof suggestedRoles[0] === 'string';
+      const rolesLackHours = !rolesAreStrings && suggestedRoles.every((r: any) => !r || !r.hours || r.hours <= 0);
+
+      if (rolesAreStrings || rolesLackHours) {
+        const names = (suggestedRoles as any[]).map(r => typeof r === 'string' ? r : r.role).filter(Boolean);
+        const budgetInfo = parseBudgetFromMarkdown(markdown) || { value: 0, inclGST: false };
+        let budgetExGst = budgetInfo.value;
+        if (budgetInfo.inclGST) budgetExGst = budgetExGst / 1.1;
+        if (budgetExGst > 0) {
+          console.log(`🧮 Deterministic allocation with budget (ex GST): $${budgetExGst.toFixed(2)}`);
+          pricingRows = calculatePricingTable(names, budgetExGst);
+        } else {
+          console.warn('⚠️ No budget detected in markdown. Building zero-hour rows (AM default applied later).');
+          pricingRows = names.map(roleName => {
+            const m = findCanon(roleName);
+            return { role: m?.name || roleName, description: '', hours: 0, rate: m?.rate || 0 };
+          });
+        }
+      } else {
+        // Backward compatibility: AI provided hours
+        pricingRows = suggestedRoles
+          .filter(role => {
+            const roleName = (role.role || '').trim();
+            return roleName && roleName.length > 0 && roleName.toLowerCase() !== 'select role' && roleName.toLowerCase() !== 'select role...';
+          })
+          .map(role => {
+            const matchedRole = findCanon(role.role);
+            return {
+              role: matchedRole?.name || role.role,
+              description: role.description || '',
+              hours: role.hours || 0,
+              rate: matchedRole?.rate || role.rate || 0,
+            };
+          });
+      }
     } else if (rolesFromMarkdown.length > 0) {
       console.log('✅ Using roles parsed from markdown table.');
       pricingRows = rolesFromMarkdown
@@ -303,31 +338,10 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
       return roleName && roleName !== 'select role' && roleName !== 'select role...' && roleName.length > 0;
     });
     
-    // ENFORCEMENT 1: Ensure Head Of role exists as FIRST row
-    const hasHeadOf = pricingRows.some(r => norm(r.role).includes('head of'));
-    if (!hasHeadOf) {
-      const headOf = findCanon('Tech - Head Of - Senior Project Management');
-      pricingRows.unshift({
-        role: headOf?.name || 'Tech - Head Of - Senior Project Management',
-        description: 'Strategic oversight',
-        hours: 3,
-        rate: headOf?.rate || 365,
-      });
-    }
+    // Deterministic PM selection is handled by calculatePricingTable when a budget is provided.
+    // No frontend auto-insertion of Head Of or Project Coordination here.
 
-    // ENFORCEMENT 2: Ensure Project Coordination exists
-    const hasProjectCoord = pricingRows.some(r => norm(r.role).includes('project coordination'));
-    if (!hasProjectCoord) {
-      const pc = findCanon('Tech - Delivery - Project Coordination');
-      pricingRows.splice(1, 0, {
-        role: pc?.name || 'Tech - Delivery - Project Coordination',
-        description: 'Delivery coordination',
-        hours: 6,
-        rate: pc?.rate || 110,
-      });
-    }
-
-    // ENFORCEMENT 3: Ensure Account Management role exists and is LAST
+    // Ensure Account Management role exists and is LAST
     const hasAccountManagement = pricingRows.some(r => norm(r.role).includes('account management'));
     if (!hasAccountManagement) {
       const am = findCanon('Account Management - (Account Manager)');
@@ -452,6 +466,38 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
     }
 
     i++;
+  }
+
+  // Reorder sections to ensure 'Deliverables' appears after Overview/Objectives and before Phases/Pricing
+  const sectionText = (node: any): string => {
+    const flatten = (n: any): string => {
+      if (!n) return '';
+      if (n.type === 'text') return n.text || '';
+      if (Array.isArray(n.content)) return n.content.map(flatten).join(' ');
+      return '';
+    };
+    return flatten(node).toLowerCase();
+  };
+
+  const findHeadingIndex = (predicate: (text: string) => boolean) => {
+    return content.findIndex(n => n?.type === 'heading' && predicate(sectionText(n)));
+  };
+
+  const deliverablesIdx = findHeadingIndex(t => t.includes('deliverables'));
+  if (deliverablesIdx !== -1) {
+    // Determine block for deliverables: from its heading up to (but not including) next heading or end
+    let nextHeadingAfterDeliv = content.slice(deliverablesIdx + 1).findIndex(n => n?.type === 'heading');
+    if (nextHeadingAfterDeliv === -1) nextHeadingAfterDeliv = content.length - (deliverablesIdx + 1);
+    const deliverablesBlock = content.splice(deliverablesIdx, nextHeadingAfterDeliv + 1);
+
+    // Find position after Overview/Objectives
+    const overviewIdx = findHeadingIndex(t => t.includes('project overview'));
+    const objectivesIdx = findHeadingIndex(t => t.includes('project objectives'));
+    const anchorIdx = Math.max(overviewIdx, objectivesIdx);
+    const insertPos = anchorIdx !== -1 ? anchorIdx + 1 : 0;
+
+    // Insert deliverables block right after the anchor
+    content.splice(insertPos, 0, ...deliverablesBlock);
   }
 
   // If we reach the end and pricing table hasn't been inserted, only insert when roles exist
@@ -616,19 +662,20 @@ export default function Page() {
     return /account/.test(n) && /(management|manager|director)/.test(n);
   };
 
-  const sanitizeAccountManagementRoles = (roles: Array<{ role: string; hours?: number; description?: string; rate?: number }>) => {
+  const sanitizeAccountManagementRoles = (roles: Array<{ role: string; hours?: number; description?: string; rate?: number } | string>) => {
     if (!Array.isArray(roles) || roles.length === 0) return roles || [];
 
     // Collect hours from any AM-like variants
     let amHoursFromAI = 0;
     let amDescriptionFromAI: string | undefined = undefined;
-    const nonAM = roles.filter(r => {
-      const isAM = isAccountManagementVariant(r.role || '');
+      const nonAM = roles.filter(r => {
+        const roleName = typeof r === 'string' ? r : (r.role || '');
+        const isAM = isAccountManagementVariant(roleName);
       if (isAM) {
-        const hrs = Number(r.hours) || 0;
+          const hrs = typeof r === 'string' ? 0 : (Number(r.hours) || 0);
         amHoursFromAI += hrs > 0 ? hrs : 0;
-        if (!amDescriptionFromAI && r.description && r.description.trim().length > 0) {
-          amDescriptionFromAI = r.description;
+          if (!amDescriptionFromAI && typeof r !== 'string' && r.description && r.description.trim().length > 0) {
+            amDescriptionFromAI = r.description;
         }
       }
       return !isAM; // drop AM variants from source list
@@ -643,22 +690,22 @@ export default function Page() {
     const finalDescription = amDescriptionFromAI || 'Client comms & governance';
 
     // If a canonical AM already exists somehow, merge hours
-    const existingIndex = nonAM.findIndex(r => normalize(r.role) === normalize(canonicalName));
+    const existingIndex = nonAM.findIndex(r => normalize(typeof r === 'string' ? r : r.role) === normalize(canonicalName));
     if (existingIndex !== -1) {
-      const existing = nonAM[existingIndex];
+      const existing = nonAM[existingIndex] as any;
       const merged = {
-        ...existing,
+        ...(typeof existing === 'string' ? { role: canonicalName } : existing),
         role: canonicalName,
-        hours: (Number(existing.hours) || 0) + finalHours,
+        hours: (Number((existing as any).hours) || 0) + finalHours,
         rate: amRate,
-        description: existing.description || finalDescription,
+        description: (existing as any).description || finalDescription,
       };
-      nonAM.splice(existingIndex, 1, merged);
-      return nonAM;
+      (nonAM as any).splice(existingIndex, 1, merged);
+      return nonAM as any;
     }
 
     return [
-      ...nonAM,
+      ...nonAM.map(r => (typeof r === 'string' ? { role: r, hours: 0, description: '', rate: (ROLES.find(x => x.name === r)?.rate || 0) } : r)),
       {
         role: canonicalName,
         description: finalDescription,
