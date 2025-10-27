@@ -318,10 +318,24 @@ SECOND - BESPOKE DELIVERABLES GENERATION:
 - NEVER use static template lists or generic deliverables.
 
 THIRD - ROLE ALLOCATION HIERARCHY (CRITICAL):
-- **MANDATORY ROLE ALLOCATION RULES:**
-  *   **CONDITIONAL PROJECT MANAGEMENT RULE:** Your choice of Project Management role is conditional based on the total project budget:
-      - IF the final budget is GREATER THAN $15,000 AUD: You MUST include exactly 5 hours for the senior role: "Tech - Head Of - Senior Project Management".
-      - IF the final budget is LESS THAN OR EQUAL TO $15,000 AUD: You MUST use a more budget-appropriate role. Assign a suitable number of hours (typically 5-10) to "Tech - Producer - Project Management". Do NOT use the "Head Of" role for these smaller projects.
+
+---
+MANDATORY PROJECT MANAGEMENT HIERARCHY
+
+To prevent budget conflicts and ensure financial viability, your selection of the Project Management role is governed by the following ABSOLUTE, NON-NEGOTIABLE HIERARCHY. This rule is the final authority on PM role selection and overrides all other instructions or tendencies.
+
+RULE 1: For budgets OVER $15,000 AUD:
+- You MUST use the senior role: "Tech - Head Of - Senior Project Management".
+- You MUST allocate exactly 5 hours to this role.
+- DO NOT use the "Producer" PM role in this case.
+
+RULE 2: For budgets AT OR BELOW $15,000 AUD:
+- You MUST use the budget-friendly role: "Tech - Producer - Project Management".
+- You MUST assign a suitable number of hours to this role (typically 5-10 hours) to properly manage the project.
+- DO NOT use the expensive "Head Of" role under any circumstances for these smaller projects.
+---
+
+- **OTHER MANDATORY ROLE ALLOCATION RULES:**
   *   Project Coordination: MINIMAL hours (3-10 hours only).
   *   Account Management: MAXIMUM hours (minimum 6-12 hours).
 - **PRICING TABLE ORDER:** Account Management roles MUST appear at the BOTTOM of the pricing table.
