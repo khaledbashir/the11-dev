@@ -439,7 +439,7 @@ export default function DashboardChat({
                 key={thread.slug}
                 className={`group flex items-center gap-2 p-2 rounded text-xs transition-colors ${
                   currentThreadSlug === thread.slug 
-                    ? 'bg-[#15a366] text-white' 
+                    ? 'bg-[#0E2E33] text-white' 
                     : 'text-gray-300 hover:bg-[#0e0f0f]'
                 }`}
               >
@@ -509,7 +509,7 @@ export default function DashboardChat({
                 <div key={msg.id} className={`flex min-w-0 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`relative w-full max-w-[85%] min-w-0 rounded-xl px-4 py-3 break-words whitespace-pre-wrap overflow-hidden ${
                     msg.role === 'user' 
-                      ? 'bg-[#15a366] text-white' 
+                      ? 'bg-[#0E2E33]/30 text-white border border-[#1b5e5e]'
                       : 'bg-[#1b1b1e] text-white border border-[#0E2E33]'
                   }`}>
                     {msg.role === 'assistant' && (

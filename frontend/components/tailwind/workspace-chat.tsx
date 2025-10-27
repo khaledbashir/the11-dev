@@ -579,7 +579,7 @@ export default function WorkspaceChat({
                 <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`relative w-full max-w-[85%] min-w-0 rounded-lg p-4 break-words whitespace-pre-wrap overflow-x-hidden ${
                     msg.role === 'user' 
-                      ? 'bg-[#0E2E33]/30 text-white border border-[#1CBF79]' 
+                      ? 'bg-[#0E2E33]/30 text-white border border-[#1b5e5e]' 
                       : 'bg-[#0E2E33] text-white border border-[#1b5e5e]'
                   }`}>
                     

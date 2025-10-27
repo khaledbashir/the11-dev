@@ -33,7 +33,7 @@ interface PricingRow {
 }
 
 // Memoized sortable row component for optimal performance
-const DND_ENABLED = true; // quick kill-switch for demo stability
+const DND_ENABLED = false; // quick kill-switch for demo stability (disabled per user feedback)
 
 const SortableRow = memo(({ 
   row, 
