@@ -86,6 +86,7 @@ const SortableRow = memo(({
       <td className="border border-gray-300 dark:border-gray-600 px-4 py-3">
         <div className="flex items-center gap-3">
           <button
+            type="button"
             {...attributes}
             {...listeners}
             className="drag-handle text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-grab active:cursor-grabbing select-none text-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"
@@ -126,6 +127,7 @@ const SortableRow = memo(({
       )}
       <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center">
         <button
+          type="button"
           onClick={handleRemove}
           disabled={visibleRowsLength === 1}
           className="text-red-600 hover:text-red-800 dark:hover:text-red-400 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors text-lg font-bold"
@@ -310,7 +312,15 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
   // Memoized callback for removing a row
   const removeRow = useCallback((id: string) => {
     setRows(prevRows => {
-      if (prevRows.length <= 1) return prevRows;
+      // Only prevent deletion if this is the last row with a role selected
+      const rowsWithRoles = prevRows.filter(r => r.role && r.role.trim().length > 0);
+      const rowToRemove = prevRows.find(r => r.id === id);
+      
+      // If removing a row with a role and it's the last one, don't allow it
+      if (rowToRemove?.role && rowToRemove.role.trim().length > 0 && rowsWithRoles.length <= 1) {
+        return prevRows;
+      }
+      
       return prevRows.filter(row => row.id !== id);
     });
   }, []);
@@ -382,13 +392,12 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
     setActiveId(null);
   }, []);
 
-  // Hide placeholder rows (no role selected) from UI rendering and calculations
-  const isVisibleRow = useCallback((r: PricingRow) => !!(r.role && r.role.trim().length > 0), []);
-  const visibleRows = useMemo(() => rows.filter(isVisibleRow), [rows, isVisibleRow]);
+  // Filter rows with actual roles for calculations (but show all rows in UI for editing)
+  const rowsWithRoles = useMemo(() => rows.filter(r => r.role && r.role.trim().length > 0), [rows]);
 
-  // Memoized calculations for better performance
+  // Memoized calculations for better performance (only calculate for rows with roles)
   const calculations = useMemo(() => {
-    const subtotal = visibleRows.reduce((sum, row) => sum + (row.hours * row.rate), 0);
+    const subtotal = rowsWithRoles.reduce((sum, row) => sum + (row.hours * row.rate), 0);
     const discountAmount = subtotal * (discount / 100);
     const subtotalAfterDiscount = subtotal - discountAmount;
     const gst = subtotalAfterDiscount * 0.1;
@@ -403,7 +412,7 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
       total,
       roundedTotal,
     };
-  }, [visibleRows, discount]);
+  }, [rowsWithRoles, discount]);
 
   // Get the active dragging row for overlay
   const activeRow = useMemo(() => {
@@ -420,10 +429,12 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
           .editable-pricing-table {
             width: 100%;
             max-width: 100%;
+            min-width: 0; /* Allow shrinking */
           }
           .pricing-table-container {
             position: relative;
             width: 100%;
+            max-width: 100%;
             overflow-x: auto;
             overflow-y: visible;
           }
@@ -436,13 +447,14 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
           }
         `}
       </style>
-      <div className="border-2 border-gray-200 dark:border-gray-700 rounded-xl p-6 bg-white dark:bg-gray-900 shadow-sm w-full max-w-full">
+      <div className="border-2 border-gray-200 dark:border-gray-700 rounded-xl p-6 bg-white dark:bg-[#0E0F0F] shadow-sm w-full max-w-full">
         <div className="flex justify-between items-center mb-6">
           <div>
             <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">Project Pricing</h3>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">💡 Drag the ⋮⋮ icon to reorder rows</p>
           </div>
           <button
+            type="button"
             onClick={addRow}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
           >
@@ -478,15 +490,15 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
                   </th>
                 </tr>
               </thead>
-              <SortableContext items={visibleRows.map(r => r.id)} strategy={verticalListSortingStrategy}>
+              <SortableContext items={rows.map(r => r.id)} strategy={verticalListSortingStrategy}>
                 <tbody>
-                  {visibleRows.map((row, index) => (
+                  {rows.map((row, index) => (
                     <SortableRow
                       key={row.id}
                       row={row}
                       index={index}
                       showTotal={showTotal}
-                      visibleRowsLength={visibleRows.length}
+                      visibleRowsLength={rowsWithRoles.length}
                       onUpdateRow={updateRow}
                       onRemoveRow={removeRow}
                     />
@@ -503,15 +515,16 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
         </DndContext>
 
         {/* Additional Actions */}
-        {visibleRows.some(r => {
+        {rows.some(r => {
           const roleCounts: Record<string, number> = {};
-          visibleRows.forEach(row => {
+          rows.forEach(row => {
             if (row.role) roleCounts[row.role] = (roleCounts[row.role] || 0) + 1;
           });
           return Object.values(roleCounts).some(count => count >= 3);
         }) && (
           <div className="mb-4">
             <button
+              type="button"
               onClick={fixDuplicateRoles}
               className="px-3 py-1.5 bg-orange-600 text-white rounded-lg text-sm hover:bg-orange-700 transition-colors shadow-sm"
               title="Auto-fix duplicate roles"

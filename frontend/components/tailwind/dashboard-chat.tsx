@@ -338,6 +338,32 @@ export default function DashboardChat({
     return date.toLocaleDateString();
   };
 
+  // Helper function to safely format thread dates
+  const formatThreadDate = (dateString: string | number | null | undefined): string => {
+    if (!dateString) return 'Recent';
+    
+    try {
+      // Handle both Unix timestamps (numbers/number strings) and ISO strings
+      const timestamp = typeof dateString === 'string' && !isNaN(Number(dateString))
+        ? Number(dateString) * 1000 // Convert Unix timestamp to milliseconds
+        : dateString;
+      
+      const date = new Date(timestamp);
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) return 'Recent';
+      
+      // Format as readable date
+      return date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined 
+      });
+    } catch (e) {
+      return 'Recent';
+    }
+  };
+
   const currentWorkspaceName = availableWorkspaces.find(w => w.slug === dashboardChatTarget)?.name || '🎯 All SOWs (Master)';
   const isMasterView = dashboardChatTarget === 'sow-master-dashboard';
   const personaName = isMasterView ? 'Analytics Assistant' : 'The Architect';
@@ -423,7 +449,7 @@ export default function DashboardChat({
                     <span>{currentThreadSlug === thread.slug ? '●' : '○'}</span>
                     <div className="flex-1 min-w-0">
                       <div className="font-medium truncate">{thread.name}</div>
-                      <div className="text-[10px] opacity-60">{new Date(thread.createdAt).toLocaleDateString()}</div>
+                      <div className="text-[10px] opacity-60">{formatThreadDate(thread.createdAt)}</div>
                     </div>
                   </div>
                 </button>
