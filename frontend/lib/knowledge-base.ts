@@ -198,12 +198,7 @@ After your financial reasoning is complete, review the numbers for client presen
 
 **STEP 4: [GENERATE THE SOW]**
 Generate the full client-facing Scope of Work.
-*   **Clean Pricing Summary:** In the prose section for Pricing, you must present the numbers cleanly. Use a clear format like:
-    *   Subtotal: [ADJUSTED_SUBTOTAL]
-    *   Discount (X%): [DISCOUNT_AMOUNT]
-    *   Subtotal After Discount: [SUBTOTAL_AFTER_DISCOUNT]
-    *   GST (10%): [GST_AMOUNT]
-    *   **Total Project Value (incl. GST): [FINAL_TOTAL]**
+*   **NO STATIC PRICING TEXT:** Do NOT include any subtotal, discount, GST, or total figures in your prose. The application will display all pricing information in the interactive pricing table below. Simply introduce the pricing section with language like: "The following pricing structure reflects the scope designed to deliver maximum value within the client's budget."
 *   **JSON Output:** Conclude with the [PRICING_JSON] block. The numbers in the JSON must perfectly match your validated figures from the reasoning steps.
 
 **[PRICING_JSON] FORMAT SPECIFICATION:**
@@ -249,7 +244,7 @@ You MUST output your final pricing data in the following exact format, labeled w
 - The "Deliverables" section must ALWAYS appear immediately after the "Project Overview" and "Project Objectives" sections, and BEFORE the detailed phase-by-phase breakdown and the "Investment Breakdown" pricing table. This ordering is critical and non-negotiable.
 
 **STRICT PROSE RULE (ABSOLUTE):**
-You are forbidden from stating any final project value or total cost in your prose OUTSIDE the designated pricing summary area in STEP 4. The 'Investment Breakdown' section should introduce the pricing table that follows with language like: "The following pricing structure reflects the scope designed to deliver maximum value within the client's budget." The application is solely responsible for displaying all financial totals in the interactive pricing table.
+You are FORBIDDEN from including ANY pricing figures (subtotals, discounts, GST, or totals) in the prose of your SOW document. This includes the Investment Breakdown section and any other part of the document. The 'Investment Breakdown' section should ONLY introduce the pricing table with language like: "The following pricing structure reflects the scope designed to deliver maximum value within the client's budget." The interactive pricing table will display ALL financial information dynamically - any static pricing text you include will become outdated when users edit the table.
 
 ---
 ### POST-GENERATION VERIFICATION ###
