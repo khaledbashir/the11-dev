@@ -2,22 +2,195 @@
 
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { ROLES } from '@/lib/rateCard';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  DragEndEvent,
+  DragStartEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface PricingRow {
+  id: string;
   role: string;
   description: string;
   hours: number;
   rate: number;
 }
 
+// Memoized sortable row component for optimal performance
+const SortableRow = memo(({ 
+  row, 
+  index, 
+  showTotal, 
+  visibleRowsLength,
+  onUpdateRow, 
+  onRemoveRow 
+}: { 
+  row: PricingRow;
+  index: number;
+  showTotal: boolean;
+  visibleRowsLength: number;
+  onUpdateRow: (id: string, field: keyof PricingRow, value: string | number) => void;
+  onRemoveRow: (id: string) => void;
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: row.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const handleRoleChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    onUpdateRow(row.id, 'role', e.target.value);
+  }, [row.id, onUpdateRow]);
+
+  const handleHoursChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    onUpdateRow(row.id, 'hours', parseFloat(e.target.value) || 0);
+  }, [row.id, onUpdateRow]);
+
+  const handleRemove = useCallback(() => {
+    onRemoveRow(row.id);
+  }, [row.id, onRemoveRow]);
+
+  const rowTotal = useMemo(() => row.hours * row.rate, [row.hours, row.rate]);
+
+  return (
+    <tr 
+      ref={setNodeRef}
+      style={style}
+      className="pricing-row group hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors duration-150"
+    >
+      <td className="border border-gray-300 dark:border-gray-600 px-4 py-3">
+        <div className="flex items-center gap-3">
+          <button
+            {...attributes}
+            {...listeners}
+            className="drag-handle text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-grab active:cursor-grabbing select-none text-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+            title="Drag to reorder"
+            aria-label="Drag to reorder row"
+          >
+            ⋮⋮
+          </button>
+          <select
+            value={row.role}
+            onChange={handleRoleChange}
+            className="flex-1 px-3 py-2 text-sm !text-foreground dark:text-gray-100 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="">Select role...</option>
+            {ROLES.map((role) => (
+              <option key={role.name} value={role.name}>
+                {role.name} - AUD {role.rate}/hr
+              </option>
+            ))}
+          </select>
+        </div>
+      </td>
+      <td className="border border-gray-300 dark:border-gray-600 px-4 py-3">
+        <input
+          type="number"
+          value={row.hours || ''}
+          onChange={handleHoursChange}
+          placeholder="0"
+          min="0"
+          step="0.5"
+          className="w-full px-3 py-2 text-sm text-right !text-foreground dark:text-gray-100 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+        />
+      </td>
+      {showTotal && (
+        <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right text-sm font-semibold tabular-nums">
+          AUD {rowTotal.toFixed(2)} +GST
+        </td>
+      )}
+      <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center">
+        <button
+          onClick={handleRemove}
+          disabled={visibleRowsLength === 1}
+          className="text-red-600 hover:text-red-800 dark:hover:text-red-400 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors text-lg font-bold"
+          aria-label="Remove row"
+        >
+          ✕
+        </button>
+      </td>
+    </tr>
+  );
+});
+
+SortableRow.displayName = 'SortableRow';
+
+// Ghost overlay component for smooth drag preview
+const DragOverlayRow = ({ row, showTotal }: { row: PricingRow; showTotal: boolean }) => {
+  const rowTotal = row.hours * row.rate;
+  
+  return (
+    <table className="w-full border-collapse shadow-2xl">
+      <tbody>
+        <tr className="bg-blue-100 dark:bg-blue-900 opacity-90">
+          <td className="border border-blue-300 dark:border-blue-700 px-4 py-3">
+            <div className="flex items-center gap-3">
+              <span className="text-gray-400 text-xl">⋮⋮</span>
+              <div className="flex-1 px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md">
+                {row.role || 'Select role...'}
+              </div>
+            </div>
+          </td>
+          <td className="border border-blue-300 dark:border-blue-700 px-4 py-3 text-right tabular-nums">
+            {row.hours || 0}
+          </td>
+          {showTotal && (
+            <td className="border border-blue-300 dark:border-blue-700 px-4 py-3 text-right text-sm font-semibold tabular-nums">
+              AUD {rowTotal.toFixed(2)} +GST
+            </td>
+          )}
+          <td className="border border-blue-300 dark:border-blue-700 px-4 py-3 text-center">
+            <span className="text-red-600 text-lg">✕</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  );
+};
+
 const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
   const [rows, setRows] = useState<PricingRow[]>(node.attrs.rows || []);
   const [discount, setDiscount] = useState(node.attrs.discount || 0);
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [showTotal, setShowTotal] = useState(node.attrs.showTotal !== undefined ? node.attrs.showTotal : true);
   const [isInitialized, setIsInitialized] = useState(false);
+
+  // Configure sensors for drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // 8px of movement required before drag starts
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // ⚠️ CRITICAL FIX: Initialize and normalize rows ONCE on mount
   useEffect(() => {
@@ -45,6 +218,7 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
         // Prefer canonical rate from ROLES if available
         const canon = ROLES.find(x => normalize(x.name) === key);
         roleMap.set(key, {
+          id: r.id || `row-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           // Snap to canonical role name if found to ensure <select> matches an option value
           role: canon?.name || r.role,
           description: r.description || '',
@@ -57,6 +231,7 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
         const mergedHours = (Number(existing.hours) || 0) + (Number(r.hours) || 0);
         const mergedRate = existing.rate > 0 ? existing.rate : (r.rate > 0 ? r.rate : (canon?.rate || 0));
         roleMap.set(key, {
+          id: existing.id,
           role: canon?.name || existing.role,
           description: existing.description || r.description || '',
           hours: mergedHours,
@@ -99,32 +274,48 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
     });
   }, [rows, discount, showTotal, isInitialized]);
 
-  const updateRow = (index: number, field: keyof PricingRow, value: string | number) => {
-    const newRows = [...rows];
-    if (field === 'role') {
-      const selectedRole = ROLES.find(r => r.name === value);
-      newRows[index] = {
-        ...newRows[index],
-        role: value as string,
-        rate: selectedRole?.rate || newRows[index].rate,
-      };
-    } else {
-      newRows[index] = { ...newRows[index], [field]: value };
-    }
-    setRows(newRows);
-  };
+  // Memoized callback for updating a single row field
+  const updateRow = useCallback((id: string, field: keyof PricingRow, value: string | number) => {
+    setRows(prevRows => {
+      const newRows = prevRows.map(row => {
+        if (row.id !== id) return row;
+        
+        if (field === 'role') {
+          const selectedRole = ROLES.find(r => r.name === value);
+          return {
+            ...row,
+            role: value as string,
+            rate: selectedRole?.rate || row.rate,
+          };
+        }
+        
+        return { ...row, [field]: value };
+      });
+      return newRows;
+    });
+  }, []);
 
-  const addRow = () => {
-    setRows([...rows, { role: '', description: '', hours: 0, rate: 0 }]);
-  };
+  // Memoized callback for adding a new row
+  const addRow = useCallback(() => {
+    const newRow: PricingRow = {
+      id: `row-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      role: '',
+      description: '',
+      hours: 0,
+      rate: 0
+    };
+    setRows(prev => [...prev, newRow]);
+  }, []);
 
-  const removeRow = (index: number) => {
-    if (rows.length > 1) {
-      setRows(rows.filter((_, i) => i !== index));
-    }
-  };
+  // Memoized callback for removing a row
+  const removeRow = useCallback((id: string) => {
+    setRows(prevRows => {
+      if (prevRows.length <= 1) return prevRows;
+      return prevRows.filter(row => row.id !== id);
+    });
+  }, []);
 
-  const fixDuplicateRoles = () => {
+  const fixDuplicateRoles = useCallback(() => {
     // Check if all/most rows have the same role
     const roleCounts: Record<string, number> = {};
     rows.forEach(row => {
@@ -149,107 +340,83 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
       'Account Management - (Account Manager)'
     ];
 
-    const newRows = rows.map((row, index) => {
-      // If this row has the duplicate role, assign a different one
-      const isDuplicate = roleCounts[row.role] >= 3;
-      if (isDuplicate) {
-        const desired = canonicalFallbacks[index % canonicalFallbacks.length];
-        const newRole = ROLES.find(r => r.name === desired) || ROLES[index % ROLES.length];
-        return {
-          ...row,
-          role: newRole.name,
-          rate: newRole.rate
-        };
-      }
-      return row;
+    setRows(prevRows => {
+      return prevRows.map((row, index) => {
+        // If this row has the duplicate role, assign a different one
+        const isDuplicate = roleCounts[row.role] >= 3;
+        if (isDuplicate) {
+          const desired = canonicalFallbacks[index % canonicalFallbacks.length];
+          const newRole = ROLES.find(r => r.name === desired) || ROLES[index % ROLES.length];
+          return {
+            ...row,
+            role: newRole.name,
+            rate: newRole.rate
+          };
+        }
+        return row;
+      });
     });
+  }, [rows]);
 
-    setRows(newRows);
-  };
+  // Drag and drop handlers using @dnd-kit
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  }, []);
 
-  // Drag and drop handlers
-  const handleDragStart = (e: React.DragEvent, index: number) => {
-    setDraggedIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
-    // Add a subtle opacity to the dragged row
-    (e.target as HTMLElement).style.opacity = '0.5';
-  };
-
-  const handleDragEnd = (e: React.DragEvent) => {
-    setDraggedIndex(null);
-    (e.target as HTMLElement).style.opacity = '1';
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault(); // Allow drop
-    e.dataTransfer.dropEffect = 'move';
-  };
-
-  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
-    e.preventDefault();
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
     
-    if (draggedIndex === null || draggedIndex === dropIndex) {
-      return;
+    if (over && active.id !== over.id) {
+      setRows((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+        
+        return arrayMove(items, oldIndex, newIndex);
+      });
     }
-
-    // Reorder the rows
-    const newRows = [...rows];
-    const [draggedRow] = newRows.splice(draggedIndex, 1);
-    newRows.splice(dropIndex, 0, draggedRow);
     
-    setRows(newRows);
-    setDraggedIndex(null);
-  };
+    setActiveId(null);
+  }, []);
+
+  const handleDragCancel = useCallback(() => {
+    setActiveId(null);
+  }, []);
 
   // Hide placeholder rows (no role selected) from UI rendering and calculations
-  const isVisibleRow = (r: PricingRow) => !!(r.role && r.role.trim().length > 0);
-  const visibleRows = rows.filter(isVisibleRow);
+  const isVisibleRow = useCallback((r: PricingRow) => !!(r.role && r.role.trim().length > 0), []);
+  const visibleRows = useMemo(() => rows.filter(isVisibleRow), [rows, isVisibleRow]);
 
-  const calculateSubtotal = () => {
-    return visibleRows.reduce((sum, row) => sum + (row.hours * row.rate), 0);
-  };
+  // Memoized calculations for better performance
+  const calculations = useMemo(() => {
+    const subtotal = visibleRows.reduce((sum, row) => sum + (row.hours * row.rate), 0);
+    const discountAmount = subtotal * (discount / 100);
+    const subtotalAfterDiscount = subtotal - discountAmount;
+    const gst = subtotalAfterDiscount * 0.1;
+    const total = subtotalAfterDiscount + gst;
+    const roundedTotal = Math.round(total / 100) * 100;
 
-  const calculateDiscount = () => {
-    return calculateSubtotal() * (discount / 100);
-  };
+    return {
+      subtotal,
+      discountAmount,
+      subtotalAfterDiscount,
+      gst,
+      total,
+      roundedTotal,
+    };
+  }, [visibleRows, discount]);
 
-  const calculateSubtotalAfterDiscount = () => {
-    return calculateSubtotal() - calculateDiscount();
-  };
-
-  const calculateGST = () => {
-    return calculateSubtotalAfterDiscount() * 0.1;
-  };
-
-  const calculateTotal = () => {
-    return calculateSubtotalAfterDiscount() + calculateGST();
-  };
-
-  const calculateRoundedTotal = () => {
-    const total = calculateTotal();
-    // Commercial rounding: nearest $100
-    return Math.round(total / 100) * 100;
-  };
+  // Get the active dragging row for overlay
+  const activeRow = useMemo(() => {
+    return activeId ? rows.find(row => row.id === activeId) : null;
+  }, [activeId, rows]);
 
   return (
     <NodeViewWrapper className="editable-pricing-table my-6">
       <style>
         {`
-          .pricing-row-dragging {
-            opacity: 0.5;
-            background-color: #f3f4f6;
-          }
-          .pricing-row:hover .drag-handle {
-            opacity: 1;
-          }
-          .drag-handle {
-            opacity: 0.3;
-            transition: opacity 0.2s;
-          }
           .pricing-row {
             transition: background-color 0.15s ease;
           }
-          /* Fix for table layout when sidebar toggles */
           .editable-pricing-table {
             width: 100%;
             max-width: 100%;
@@ -260,119 +427,113 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
             overflow-x: auto;
             overflow-y: visible;
           }
+          /* Drop indicator styling */
+          .drop-indicator {
+            height: 3px;
+            background: linear-gradient(90deg, #3b82f6, #60a5fa);
+            border-radius: 2px;
+            box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
+          }
         `}
       </style>
-      <div className="border border-border rounded-lg p-4 bg-background dark:bg-gray-900/50 w-full max-w-full">
-        <div className="flex justify-between items-center mb-4">
+      <div className="border-2 border-gray-200 dark:border-gray-700 rounded-xl p-6 bg-white dark:bg-gray-900 shadow-sm w-full max-w-full">
+        <div className="flex justify-between items-center mb-6">
           <div>
-            <h3 className="text-lg font-bold text-foreground dark:text-gray-100">Project Pricing</h3>
-            <p className="text-xs text-gray-500 mt-0.5">💡 Tip: Drag rows to reorder</p>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">Project Pricing</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">💡 Drag the ⋮⋮ icon to reorder rows</p>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={fixDuplicateRoles}
-              className="px-3 py-1 bg-orange-600 text-white rounded text-sm hover:bg-orange-700 transition-colors"
-              title="Auto-fix duplicate roles"
-            >
-              🔧 Fix Roles
-            </button>
-            <button
-              onClick={addRow}
-              className="px-3 py-1 bg-[#0e2e33] text-white rounded text-sm hover:bg-[#0a2328] transition-colors"
-            >
-              + Add Role
-            </button>
-          </div>
+          <button
+            onClick={addRow}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+          >
+            + Add Role
+          </button>
         </div>
 
-        {/* Pricing Table */}
-        <div className="pricing-table-container overflow-x-auto mb-4">
-          <table className="w-full border-collapse min-w-[800px]">
-            <thead>
-              <tr className="bg-[#0e2e33] text-white">
-                <th className="border border-border px-3 py-2 text-left text-sm min-w-[300px]">ROLE</th>
-                <th className="border border-border px-3 py-2 text-left text-sm w-24 min-w-[100px]">HOURS</th>
-                {showTotal && <th className="border border-border px-3 py-2 text-right text-sm w-32 min-w-[150px]">TOTAL COST + GST</th>}
-                <th className="border border-border px-3 py-2 text-center text-sm w-16 min-w-[80px]">ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleRows.map((row, index) => (
-                <tr 
-                  key={index} 
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, index)}
-                  onDragEnd={handleDragEnd}
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, index)}
-                  className={`pricing-row hover:bg-muted dark:bg-gray-800 cursor-move ${
-                    draggedIndex === index ? 'pricing-row-dragging' : ''
-                  }`}
-                  title="💡 Drag to reorder rows"
-                >
-                  <td className="border border-border p-2">
-                    <div className="flex items-center gap-2">
-                      <span className="drag-handle text-gray-400 cursor-grab active:cursor-grabbing select-none text-lg" title="Drag to reorder">⋮⋮</span>
-                      <select
-                        value={row.role}
-                        onChange={(e) => updateRow(index, 'role', e.target.value)}
-                        
-                        className="flex-1 px-2 py-1 text-sm !text-foreground dark:text-gray-100 bg-muted dark:bg-gray-800 border border-border rounded focus:outline-none focus:border-[#0e2e33]"
-                      >
-                        <option value="">Select role...</option>
-                        {ROLES.map((role) => (
-                          <option key={role.name} value={role.name}>
-                            {role.name} - AUD {role.rate}/hr
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </td>
-                  <td className="border border-border p-2">
-                    <input
-                      type="number"
-                      value={row.hours || ''}
-                      onChange={(e) => updateRow(index, 'hours', parseFloat(e.target.value) || 0)}
-                      placeholder="0"
-                      min="0"
-                      step="0.5"
-                      
-                      className="w-full px-2 py-1 text-sm !text-foreground dark:text-gray-100 bg-muted dark:bg-gray-800 border border-border rounded focus:outline-none focus:border-[#0e2e33] placeholder:text-gray-400"
-                    />
-                  </td>
+        {/* Pricing Table with DnD */}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
+        >
+          <div className="pricing-table-container overflow-x-auto mb-6">
+            <table className="w-full border-collapse min-w-[800px]">
+              <thead>
+                <tr className="bg-gray-900 dark:bg-gray-800">
+                  <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-bold text-white uppercase tracking-wide min-w-[300px]">
+                    Role
+                  </th>
+                  <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right text-sm font-bold text-white uppercase tracking-wide w-32">
+                    Hours
+                  </th>
                   {showTotal && (
-                    <td className="border border-border px-3 py-2 text-right text-sm font-semibold">
-                      AUD {(row.hours * row.rate).toFixed(2)} +GST
-                    </td>
+                    <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right text-sm font-bold text-white uppercase tracking-wide w-40">
+                      Total Cost + GST
+                    </th>
                   )}
-                  <td className="border border-border p-2 text-center">
-                    <button
-                      onClick={() => removeRow(index)}
-                      disabled={visibleRows.length === 1}
-                      className="text-red-600 hover:text-red-800 disabled:text-gray-400 disabled:cursor-not-allowed"
-                    >
-                      ✕
-                    </button>
-                  </td>
+                  <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-sm font-bold text-white uppercase tracking-wide w-20">
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <SortableContext items={visibleRows.map(r => r.id)} strategy={verticalListSortingStrategy}>
+                <tbody>
+                  {visibleRows.map((row, index) => (
+                    <SortableRow
+                      key={row.id}
+                      row={row}
+                      index={index}
+                      showTotal={showTotal}
+                      visibleRowsLength={visibleRows.length}
+                      onUpdateRow={updateRow}
+                      onRemoveRow={removeRow}
+                    />
+                  ))}
+                </tbody>
+              </SortableContext>
+            </table>
+          </div>
+
+          {/* Drag Overlay - Ghost Preview */}
+          <DragOverlay dropAnimation={null}>
+            {activeRow ? <DragOverlayRow row={activeRow} showTotal={showTotal} /> : null}
+          </DragOverlay>
+        </DndContext>
+
+        {/* Additional Actions */}
+        {visibleRows.some(r => {
+          const roleCounts: Record<string, number> = {};
+          visibleRows.forEach(row => {
+            if (row.role) roleCounts[row.role] = (roleCounts[row.role] || 0) + 1;
+          });
+          return Object.values(roleCounts).some(count => count >= 3);
+        }) && (
+          <div className="mb-4">
+            <button
+              onClick={fixDuplicateRoles}
+              className="px-3 py-1.5 bg-orange-600 text-white rounded-lg text-sm hover:bg-orange-700 transition-colors shadow-sm"
+              title="Auto-fix duplicate roles"
+            >
+              🔧 Fix Duplicate Roles
+            </button>
+          </div>
+        )}
 
         {/* Summary Section */}
         <div className="flex justify-end">
           <div className="w-full max-w-md">
-            <div className="bg-muted dark:bg-gray-800 rounded-lg p-4 space-y-2">
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-5 space-y-3 shadow-sm">
               {/* Toggle Button for Total Price - MOVED TO TOP */}
-              <div className="flex justify-between items-center border-b border-border pb-2 mb-2">
-                <span className="text-sm font-medium text-foreground dark:text-gray-100">Show Pricing</span>
+              <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-3 mb-1">
+                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Show Pricing</span>
                 <button
                   onClick={() => setShowTotal(!showTotal)}
-                  className={`px-3 py-1.5 text-xs rounded transition-all ${
+                  className={`px-4 py-2 text-xs font-medium rounded-lg transition-all shadow-sm ${
                     showTotal 
                       ? 'bg-emerald-600 text-white hover:bg-emerald-700' 
-                      : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                   }`}
                   title={showTotal ? "Hide all pricing" : "Show all pricing"}
                 >
@@ -382,52 +543,53 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
 
               {showTotal && (
                 <>
-                  <div className="flex justify-between items-center text-sm text-foreground dark:text-gray-100">
-                    <span>Discount (%):</span>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-700 dark:text-gray-300">Discount (%):</span>
                     <input
                       type="number"
                       value={discount}
                       onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
                       min="0"
                       max="100"
-                      
-                      className="w-20 px-2 py-1 text-sm !text-foreground dark:text-gray-100 bg-muted dark:bg-gray-800 border border-border rounded focus:outline-none focus:border-[#0e2e33] text-right placeholder:text-gray-400"
+                      className="w-20 px-3 py-1.5 text-sm text-right !text-foreground dark:text-gray-100 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
-                  <div className="flex justify-between text-sm text-foreground dark:text-gray-100">
+                  <div className="flex justify-between text-sm text-gray-700 dark:text-gray-300">
                     <span>Subtotal:</span>
-                    <span className="font-semibold">AUD {calculateSubtotal().toFixed(2)}</span>
+                    <span className="font-semibold tabular-nums">AUD {calculations.subtotal.toFixed(2)}</span>
                   </div>
                   {discount > 0 && (
                     <>
-                      <div className="flex justify-between text-sm text-red-600">
+                      <div className="flex justify-between text-sm text-red-600 dark:text-red-400">
                         <span>Discount ({discount}%):</span>
-                        <span>-AUD {calculateDiscount().toFixed(2)}</span>
+                        <span className="tabular-nums">-AUD {calculations.discountAmount.toFixed(2)}</span>
                       </div>
-                      <div className="flex justify-between text-sm text-foreground dark:text-gray-100">
+                      <div className="flex justify-between text-sm text-gray-700 dark:text-gray-300">
                         <span>Subtotal after Discount:</span>
-                        <span className="font-semibold">AUD {calculateSubtotalAfterDiscount().toFixed(2)}</span>
+                        <span className="font-semibold tabular-nums">AUD {calculations.subtotalAfterDiscount.toFixed(2)}</span>
                       </div>
                     </>
                   )}
 
                   {/* Show price as "+GST" OR with GST included */}
-                  <div className="border-t border-border pt-2 mt-2 space-y-1">
-                    <div className="flex justify-between text-base font-bold text-foreground dark:text-gray-100">
+                  <div className="border-t-2 border-gray-200 dark:border-gray-700 pt-3 mt-2 space-y-2">
+                    <div className="flex justify-between text-base font-bold text-gray-900 dark:text-gray-100">
                       <span>Total Project Value:</span>
-                      <span className="text-[#0e2e33]">AUD {calculateSubtotalAfterDiscount().toFixed(2)} <span className="text-sm font-normal">+GST</span></span>
+                      <span className="text-blue-600 dark:text-blue-400 tabular-nums">
+                        AUD {calculations.subtotalAfterDiscount.toFixed(2)} <span className="text-sm font-normal text-gray-500">+GST</span>
+                      </span>
                     </div>
-                    <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                    <div className="flex justify-between text-xs text-gray-600 dark:text-gray-400">
                       <span>GST (10%):</span>
-                      <span>AUD {calculateGST().toFixed(2)}</span>
+                      <span className="tabular-nums">AUD {calculations.gst.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-                      <span className="italic">Total incl. GST (unrounded):</span>
-                      <span>AUD {calculateTotal().toFixed(2)}</span>
+                    <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 italic">
+                      <span>Total incl. GST (unrounded):</span>
+                      <span className="tabular-nums">AUD {calculations.total.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between text-sm text-foreground dark:text-gray-100">
-                      <span className="font-semibold">Total incl. GST (rounded):</span>
-                      <span className="font-semibold">AUD {calculateRoundedTotal().toFixed(2)}</span>
+                    <div className="flex justify-between text-sm text-gray-900 dark:text-gray-100">
+                      <span className="font-bold">Total incl. GST (rounded):</span>
+                      <span className="font-bold tabular-nums">AUD {calculations.roundedTotal.toFixed(2)}</span>
                     </div>
                     <div className="text-[10px] text-gray-500 dark:text-gray-400 text-right">Rounded to nearest $100</div>
                   </div>
@@ -435,7 +597,7 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
               )}
               
               {!showTotal && (
-                <div className="text-center text-sm text-gray-500 dark:text-gray-400 py-2">
+                <div className="text-center text-sm text-gray-500 dark:text-gray-400 py-3">
                   💡 Pricing hidden - toggle to show investment details
                 </div>
               )}
