@@ -2,6 +2,14 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
+import { generateHTML } from '@tiptap/html';
+import StarterKit from '@tiptap/starter-kit';
+import Link from '@tiptap/extension-link';
+import Image from '@tiptap/extension-image';
+import { Table } from '@tiptap/extension-table';
+import { TableRow } from '@tiptap/extension-table-row';
+import { TableCell } from '@tiptap/extension-table-cell';
+import { TableHeader } from '@tiptap/extension-table-header';
 
 export interface PricingRow {
   role: string;
@@ -40,39 +48,51 @@ export interface SOWData {
  */
 export function extractPricingFromContent(content: any): PricingRow[] {
   const rows: PricingRow[] = [];
-  
   if (!content || !content.content) return rows;
 
-  const findTables = (nodes: any[]): void => {
-    nodes.forEach((node: any) => {
-      if (node.type === 'table' && node.content) {
-        // Skip header row, process data rows
-        const dataRows = node.content.slice(1);
-        
-        dataRows.forEach((row: any) => {
-          if (row.type === 'tableRow' && row.content && row.content.length >= 4) {
-            const cells = row.content;
-            const role = cells[0]?.content?.[0]?.content?.[0]?.text || '';
-            const hours = parseFloat(cells[1]?.content?.[0]?.content?.[0]?.text || '0');
-            const rateText = cells[2]?.content?.[0]?.content?.[0]?.text || '';
-            const rate = parseFloat(rateText.replace(/[$,]/g, ''));
-            const totalText = cells[3]?.content?.[0]?.content?.[0]?.text || '';
-            const total = parseFloat(totalText.replace(/[$,+GST]/g, ''));
-            
-            if (role && !role.includes('Total') && !role.includes('Role')) {
-              rows.push({ role, hours, rate, total });
-            }
-          }
-        });
-      }
-      
-      if (node.content) {
-        findTables(node.content);
-      }
-    });
+  const readText = (node: any): string => {
+    if (!node) return '';
+    if (node.type === 'text' && node.text) return node.text;
+    const kids = Array.isArray(node.content) ? node.content : [];
+    return kids.map(readText).join('');
   };
 
-  findTables(content.content);
+  const walk = (nodes: any[]): void => {
+    for (const node of nodes) {
+      // Custom editable pricing table (authoritative)
+      if (node?.type === 'editablePricingTable' && Array.isArray(node?.attrs?.rows)) {
+        for (const r of node.attrs.rows) {
+          const role = String(r?.role || '').trim();
+          const hours = Number(r?.hours) || 0;
+          const rate = Number(r?.rate) || 0;
+          if (!role || /total/i.test(role)) continue;
+          const total = (Number(r?.total) || (hours * rate)) || 0;
+          if (hours > 0 && rate > 0) rows.push({ role, hours, rate, total });
+        }
+      }
+
+      // Generic table fallback (header + data rows)
+      if (node?.type === 'table' && Array.isArray(node.content)) {
+        const dataRows = node.content.slice(1);
+        for (const row of dataRows) {
+          if (row?.type !== 'tableRow' || !Array.isArray(row.content)) continue;
+          const cells = row.content;
+          const role = readText(cells[0] || {}).trim();
+          const hours = parseFloat((readText(cells[1] || {}) || '0').replace(/[^\d.]/g, '')) || 0;
+          const rate = parseFloat((readText(cells[2] || {}) || '0').replace(/[^\d.]/g, '')) || 0;
+          let total = parseFloat((readText(cells[3] || {}) || '0').replace(/[^\d.]/g, '')) || 0;
+          if (!total && hours && rate) total = hours * rate;
+          if (role && !/total|role/i.test(role) && hours > 0 && rate > 0) {
+            rows.push({ role, hours, rate, total });
+          }
+        }
+      }
+
+      if (Array.isArray(node?.content)) walk(node.content);
+    }
+  };
+
+  walk(content.content);
   return rows;
 }
 
@@ -302,52 +322,7 @@ export function formatCurrency(amount: number, showGST: boolean = true): string 
 /**
  * Parse markdown SOW content and extract structured data
  */
-export function parseSOWMarkdown(markdown: string): Partial<SOWData> {
-  const lines = markdown.split('\n');
-  const data: Partial<SOWData> = {
-    pricingRows: [],
-    deliverables: [],
-    assumptions: [],
-  };
-  
-  // Extract title (first H1)
-  const titleMatch = markdown.match(/^#\s+(.+)$/m);
-  if (titleMatch) {
-    data.title = titleMatch[1];
-  }
-  
-  // Extract client name
-  const clientMatch = markdown.match(/\*\*Client:\*\*\s+(.+)$/m);
-  if (clientMatch) {
-    data.client = clientMatch[1];
-  }
-  
-  // Extract overview
-  const overviewMatch = markdown.match(/##\s+Overview\s+(.+?)(?=##|$)/s);
-  if (overviewMatch) {
-    data.overview = overviewMatch[1].trim();
-  }
-  
-  // Extract deliverables
-  const deliverablesMatch = markdown.match(/##\s+What does the scope include\?\s+(.+?)(?=##|$)/s);
-  if (deliverablesMatch) {
-    const deliverableLines = deliverablesMatch[1].trim().split('\n');
-    data.deliverables = deliverableLines
-      .filter(line => line.trim().startsWith('•') || line.trim().startsWith('-') || line.trim().startsWith('+'))
-      .map(line => line.replace(/^[•\-+]\s*/, '').trim());
-  }
-  
-  // Extract discount info
-  const discountMatch = markdown.match(/Discount\s+\((\d+)%\):\s*-?\$?([\d,]+\.?\d*)/i);
-  if (discountMatch) {
-    data.discount = {
-      type: 'percentage',
-      value: parseFloat(discountMatch[1]),
-    };
-  }
-  
-  return data;
-}
+// Legacy markdown parsing removed. SOW data should be extracted from TipTap JSON or Architect JSON.
 
 /**
  * Clean SOW content by removing non-client-facing elements
@@ -394,6 +369,28 @@ export function extractSOWStructuredJson(text: string): ArchitectSOW | null {
 }
 
 /**
+ * Derive flat role rows from Architect SOW structured JSON.
+ * - Merges roles from all scopeItems
+ * - Prefers explicit rate or cost fields when available
+ */
+export function rolesFromArchitectSOW(sow: ArchitectSOW): PricingRow[] {
+  const out: PricingRow[] = [];
+  if (!sow || !Array.isArray(sow.scopeItems)) return out;
+  for (const item of sow.scopeItems) {
+    const roles = Array.isArray(item?.roles) ? item.roles : [];
+    for (const r of roles) {
+      const role = String(r?.role || '').trim();
+      const hours = Number(r?.hours) || 0;
+      const rate = Number(r?.rate) || 0;
+      const cost = Number(r?.cost) || (hours * rate) || 0;
+      if (!role || hours <= 0) continue;
+      out.push({ role, hours, rate, total: cost });
+    }
+  }
+  return out;
+}
+
+/**
  * Extract pricing rows from an HTML string (client-side only). Looks for tables
  * with Role/Hours/Rate/Total columns and returns parsed rows.
  */
@@ -405,28 +402,109 @@ export function extractPricingFromHTML(html: string): PricingRow[] {
     const tables = Array.from(doc.querySelectorAll('table')) as HTMLTableElement[];
     for (const table of tables) {
       const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent?.toLowerCase().trim() || '');
-      // Look for expected headers
-      const roleIdx = headers.findIndex(h => /role/.test(h));
-      const hoursIdx = headers.findIndex(h => /hours?/.test(h));
-      const rateIdx = headers.findIndex(h => /rate/.test(h));
-      const totalIdx = headers.findIndex(h => /total/.test(h));
-      if (roleIdx === -1 || hoursIdx === -1) continue;
-      const rows: PricingRow[] = [];
+      let roleIdx = -1, hoursIdx = -1, rateIdx = -1, totalIdx = -1;
+      if (headers.length) {
+        roleIdx = headers.findIndex(h => /role/.test(h));
+        hoursIdx = headers.findIndex(h => /hours?/.test(h));
+        rateIdx = headers.findIndex(h => /rate/.test(h));
+        totalIdx = headers.findIndex(h => /total/.test(h));
+      }
+      // Fallback: infer columns by numeric patterns when headers absent
       const bodyRows = Array.from(table.querySelectorAll('tbody tr')) as HTMLTableRowElement[];
+      if (bodyRows.length === 0) continue;
+      if (roleIdx === -1 || hoursIdx === -1) {
+        const sample = Array.from(bodyRows[0].querySelectorAll('td')) as HTMLTableCellElement[];
+        // Assume: [role, hours, rate, total]
+        if (sample.length >= 3) {
+          roleIdx = 0;
+          // find first numeric-like index for hours
+          hoursIdx = sample.findIndex(td => /\d/.test(td.textContent || '')) || 1;
+          rateIdx = hoursIdx + 1 < sample.length ? hoursIdx + 1 : -1;
+          totalIdx = rateIdx + 1 < sample.length ? rateIdx + 1 : -1;
+        }
+      }
+      if (roleIdx === -1 || hoursIdx === -1) continue;
+      const out: PricingRow[] = [];
       for (const tr of bodyRows) {
         const cells = Array.from(tr.querySelectorAll('td')) as HTMLTableCellElement[];
-        if (cells.length === 0) continue;
-        const role = cells[roleIdx]?.textContent?.trim() || '';
+        if (!cells.length) continue;
+        const role = (cells[roleIdx]?.textContent || '').trim();
         if (!role || /total/i.test(role)) continue;
-        const hours = parseFloat((cells[hoursIdx]?.textContent || '0').replace(/[^\d\.]/g, '')) || 0;
-        const rate = rateIdx >= 0 ? parseFloat((cells[rateIdx]?.textContent || '0').replace(/[^\d\.]/g, '')) || 0 : 0;
-        const total = totalIdx >= 0 ? parseFloat((cells[totalIdx]?.textContent || '0').replace(/[^\d\.]/g, '')) || (hours * rate) : (hours * rate);
-        rows.push({ role, hours, rate, total });
+        const hours = parseFloat((cells[hoursIdx]?.textContent || '0').replace(/[^\d.]/g, '')) || 0;
+        const rate = rateIdx >= 0 ? parseFloat((cells[rateIdx]?.textContent || '0').replace(/[^\d.]/g, '')) || 0 : 0;
+        const total = totalIdx >= 0 ? parseFloat((cells[totalIdx]?.textContent || '0').replace(/[^\d.]/g, '')) || (hours * rate) : (hours * rate);
+        if (hours > 0 && rate > 0) out.push({ role, hours, rate, total });
       }
-      if (rows.length > 0) return rows;
+      if (out.length) return out;
     }
   } catch (e) {
     console.warn('extractPricingFromHTML failed:', e);
   }
   return [];
+}
+
+/**
+ * Convert TipTap JSON content to HTML suitable for embedding or export.
+ * - Replaces custom editablePricingTable nodes with standard HTML tables.
+ * - Uses TipTap's generateHTML for the rest of the document.
+ */
+export function tiptapToHTML(content: any): string {
+  if (!content || typeof content !== 'object') return '';
+
+  // Replace editablePricingTable nodes by equivalent sequence: heading + table
+  const transform = (node: any): any => {
+    if (!node) return node;
+    if (Array.isArray(node)) return node.map(transform);
+    if (node.type === 'editablePricingTable') {
+      const rows = Array.isArray(node?.attrs?.rows) ? node.attrs.rows : [];
+      const headerRow = {
+        type: 'tableRow',
+        content: ['Role', 'Description', 'Hours', 'Rate (AUD)', 'Cost (AUD, ex GST)'].map((h) => ({
+          type: 'tableHeader',
+          content: [{ type: 'paragraph', content: [{ type: 'text', text: h }] }],
+        })),
+      };
+      const bodyRows = rows.map((r: any) => ({
+        type: 'tableRow',
+        content: [
+          String(r?.role || ''),
+          String(r?.description || ''),
+          String(Number(r?.hours) || 0),
+          `$${(Number(r?.rate) || 0).toFixed(2)}`,
+          `$${(((Number(r?.hours) || 0) * (Number(r?.rate) || 0))).toFixed(2)} +GST`,
+        ].map((txt) => ({
+          type: 'tableCell',
+          content: [{ type: 'paragraph', content: [{ type: 'text', text: txt }] }],
+        })),
+      }));
+      return {
+        type: 'table',
+        content: [headerRow, ...bodyRows],
+      };
+    }
+    if (Array.isArray(node.content)) {
+      return { ...node, content: node.content.map(transform) };
+    }
+    return node;
+  };
+
+  const normalized = transform(content);
+  try {
+    // TipTap v2/v3 type mismatch can occur in this workspace; cast to any to avoid TS friction.
+    return (generateHTML as any)(normalized, [
+      (StarterKit as any).configure?.({
+        bulletList: { keepMarks: true },
+        orderedList: { keepMarks: true },
+      }) || (StarterKit as any),
+      Link as any,
+      Image as any,
+      (Table as any).configure?.({ resizable: false }) || (Table as any),
+      TableRow as any,
+      TableHeader as any,
+      TableCell as any,
+    ] as any);
+  } catch (e) {
+    console.warn('tiptapToHTML failed, returning empty string:', e);
+    return '';
+  }
 }

@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import ExcelJS from 'exceljs';
+import * as XLSX from 'xlsx';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { queryOne } from '@/lib/db';
@@ -146,25 +146,7 @@ function parseScopesFromTipTap(doc: any): ParsedScope[] {
   return scopes;
 }
 
-function applyHeaderStyle(cell: ExcelJS.Cell, green = 'FF4CAF50') {
-  cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: green } } as any;
-  cell.font = { bold: true, color: { argb: 'FFFFFFFF' } } as any;
-  cell.alignment = { vertical: 'middle', horizontal: 'center' } as any;
-}
-
-function applyTableBorders(ws: ExcelJS.Worksheet, startRow: number, endRow: number, startCol: number, endCol: number) {
-  for (let r = startRow; r <= endRow; r++) {
-    for (let c = startCol; c <= endCol; c++) {
-      const cell = ws.getCell(r, c);
-      cell.border = {
-        top: { style: 'thin', color: { argb: 'FF000000' } },
-        left: { style: 'thin', color: { argb: 'FF000000' } },
-        bottom: { style: 'thin', color: { argb: 'FF000000' } },
-        right: { style: 'thin', color: { argb: 'FF000000' } },
-      } as any;
-    }
-  }
-}
+// XLSX (SheetJS) community edition does not support rich styling; we focus on data, formulas, and merges.
 
 export async function GET(
   _req: NextRequest,
@@ -225,306 +207,114 @@ export async function GET(
       console.warn('[Export Excel] Validation step failed, proceeding without blocking:', e);
     }
 
-    // Build workbook (attempt to load branded template if available)
-    const wb = new ExcelJS.Workbook();
-    wb.creator = 'Social Garden';
-    wb.created = new Date();
+    // Build workbook with XLSX
+    const wb = XLSX.utils.book_new();
 
-    try {
-      const templatePath = path.join(process.cwd(), 'public', 'templates', 'Social_Garden_SOW_Template.xlsx');
-      const templateBuf = await fs.readFile(templatePath);
-      const arrayBuf = templateBuf.buffer.slice(
-        templateBuf.byteOffset,
-        templateBuf.byteOffset + templateBuf.byteLength
-      );
-      await wb.xlsx.load(arrayBuf as ArrayBuffer);
-    } catch (e) {
-      // If template not found or cannot be loaded, continue with a blank workbook
-      // eslint-disable-next-line no-console
-      console.warn('[Export Excel] Template not found or failed to load. Using blank workbook.', e?.toString?.() || e);
-    }
-
-  // Summary Sheet (reuse if exists in template)
-  const summary = wb.getWorksheet('SOW_Summary') || wb.addWorksheet('SOW_Summary');
-    summary.columns = [
-      { width: 40 },
-      { width: 16 },
-      { width: 22 },
-      { width: 14 },
-      { width: 22 },
-    ];
-
-    summary.getCell('A1').value = sow.title || 'Scope of Work Summary';
-    applyHeaderStyle(summary.getCell('A1'));
-    summary.mergeCells('A1:E1');
-
-    const headerRowIdx = 3;
-    summary.getRow(headerRowIdx).values = ['Scope', 'Total Hours', 'Subtotal (ex. GST)', 'GST (10%)', 'Total (inc. GST)'];
-    for (let c = 1; c <= 5; c++) applyHeaderStyle(summary.getRow(headerRowIdx).getCell(c));
-
-    let r = headerRowIdx + 1;
+    // Summary sheet
+    const summaryData: any[][] = [];
+    summaryData[0] = [sow.title || 'Scope of Work Summary', '', '', '', ''];
+    summaryData[2] = ['Scope', 'Total Hours', 'Subtotal (ex. GST)', 'GST (10%)', 'Total (inc. GST)'];
+    let r = 3;
     scopes.forEach((s) => {
       const totalHours = s.roles.reduce((acc, x) => acc + x.hours, 0);
       const subtotal = s.roles.reduce((acc, x) => acc + x.total, 0);
       const gst = subtotal * 0.1;
       const inc = subtotal + gst;
-      summary.getCell(r, 1).value = s.title;
-      summary.getCell(r, 2).value = totalHours;
-      summary.getCell(r, 3).value = subtotal;
-      summary.getCell(r, 4).value = gst;
-      summary.getCell(r, 5).value = inc;
-      summary.getCell(r, 3).numFmt = '$#,##0.00';
-      summary.getCell(r, 4).numFmt = '$#,##0.00';
-      summary.getCell(r, 5).numFmt = '$#,##0.00';
-      summary.getCell(r, 2).alignment = { horizontal: 'right' } as any;
-      summary.getCell(r, 3).alignment = { horizontal: 'right' } as any;
-      summary.getCell(r, 4).alignment = { horizontal: 'right' } as any;
-      summary.getCell(r, 5).alignment = { horizontal: 'right' } as any;
-      r++;
+      summaryData[r++] = [s.title, totalHours, subtotal, gst, inc];
     });
-
-    if (r > headerRowIdx + 1) {
-      const totalsRow = summary.getRow(r);
-      totalsRow.getCell(1).value = 'TOTALS';
-      totalsRow.getCell(1).font = { bold: true } as any;
-      totalsRow.getCell(2).value = { formula: `SUM(B${headerRowIdx + 1}:B${r - 1})` } as any;
-      totalsRow.getCell(3).value = { formula: `SUM(C${headerRowIdx + 1}:C${r - 1})` } as any;
-      totalsRow.getCell(4).value = { formula: `SUM(D${headerRowIdx + 1}:D${r - 1})` } as any;
-      totalsRow.getCell(5).value = { formula: `SUM(E${headerRowIdx + 1}:E${r - 1})` } as any;
-      totalsRow.getCell(3).numFmt = '$#,##0.00';
-      totalsRow.getCell(4).numFmt = '$#,##0.00';
-      totalsRow.getCell(5).numFmt = '$#,##0.00';
-      totalsRow.commit();
-      applyTableBorders(summary, headerRowIdx, r, 1, 5);
+    // Totals row
+    if (r > 3) {
+      summaryData[r] = [
+        'TOTALS',
+        { f: `SUM(B4:B${r})` },
+        { f: `SUM(C4:C${r})` },
+        { f: `SUM(D4:D${r})` },
+        { f: `SUM(E4:E${r})` },
+      ];
     }
+    const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
+    // Merge title A1:E1
+    summaryWs['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 4 } }];
+    // Set column widths
+    summaryWs['!cols'] = [
+      { wch: 40 }, { wch: 16 }, { wch: 22 }, { wch: 14 }, { wch: 22 },
+    ];
+    XLSX.utils.book_append_sheet(wb, summaryWs, 'SOW_Summary');
 
     // Scope sheets
     scopes.forEach((s, i) => {
-      const name = `Scope${i + 1}`;
-      const ws = wb.getWorksheet(name) || wb.addWorksheet(name);
-      ws.columns = [
-        { width: 42 },
-        { width: 14 },
-        { width: 16 },
-        { width: 18 },
-      ];
-
-      ws.getCell('A1').value = s.title;
-      applyHeaderStyle(ws.getCell('A1'));
-      ws.mergeCells('A1:D1');
-
-      if (s.overview) {
-        ws.getCell('A3').value = s.overview;
-        ws.getCell('A3').alignment = { wrapText: true } as any;
-        ws.mergeCells('A3:D3');
-      }
-
-      let row = 5;
-      ws.getRow(row).values = ['Role', 'Hours', 'Rate (AUD)', 'Total (AUD)'];
-      for (let c = 1; c <= 4; c++) applyHeaderStyle(ws.getRow(row).getCell(c));
-      row++;
-
+      const data: any[][] = [];
+      data[0] = [s.title, '', '', ''];
+      data[2] = ['Role', 'Hours', 'Rate (AUD)', 'Total (AUD)'];
+      let row = 3;
       s.roles.forEach((rr) => {
-        ws.getCell(row, 1).value = rr.role;
-        ws.getCell(row, 2).value = rr.hours;
-        ws.getCell(row, 3).value = rr.rate;
-        ws.getCell(row, 4).value = rr.total;
-        ws.getCell(row, 3).numFmt = '$#,##0.00';
-        ws.getCell(row, 4).numFmt = '$#,##0.00';
-        ws.getCell(row, 2).alignment = { horizontal: 'right' } as any;
-        ws.getCell(row, 3).alignment = { horizontal: 'right' } as any;
-        ws.getCell(row, 4).alignment = { horizontal: 'right' } as any;
-        row++;
+        data[row++] = [rr.role, rr.hours, rr.rate, rr.total];
       });
-
       // Totals row
-      ws.getCell(row, 1).value = 'TOTAL';
-      ws.getCell(row, 2).value = { formula: `SUM(B6:B${row - 1})` } as any;
-      ws.getCell(row, 4).value = { formula: `SUM(D6:D${row - 1})` } as any;
-      ws.getCell(row, 4).numFmt = '$#,##0.00';
-      ws.getCell(row, 1).font = { bold: true } as any;
-      applyTableBorders(ws, 5, row, 1, 4);
-      row += 2;
-
-      if (s.deliverables.length) {
-        ws.getCell(row++, 1).value = 'Deliverables:';
-        s.deliverables.forEach((d) => {
-          ws.getCell(row++, 1).value = `• ${d}`;
-        });
-        row++;
-      }
-      if (s.assumptions.length) {
-        ws.getCell(row++, 1).value = 'Assumptions:';
-        s.assumptions.forEach((a) => {
-          ws.getCell(row++, 1).value = `• ${a}`;
-        });
-      }
+      data[row] = ['TOTAL', { f: `SUM(B4:B${row})` }, '', { f: `SUM(D4:D${row})` }];
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }];
+      ws['!cols'] = [ { wch: 42 }, { wch: 14 }, { wch: 16 }, { wch: 18 } ];
+      XLSX.utils.book_append_sheet(wb, ws, `Scope${i + 1}`);
     });
 
-    // Pricing_Editable sheet (flat, finance-friendly, easy to modify)
-    const pricingWsName = 'Pricing_Editable';
-    const pricing = wb.getWorksheet(pricingWsName) || wb.addWorksheet(pricingWsName);
-    pricing.columns = [
-      { width: 36 }, // Scope
-      { width: 36 }, // Role
-      { width: 12 }, // Hours
-      { width: 16 }, // Hourly Rate (AUD)
-      { width: 16 }, // Cost (AUD)
-      { width: 2 },  // Spacer
-      { width: 18 }, // Label/Param Key
-      { width: 14 }, // Param Value
-    ];
-    // Headers
-    pricing.getRow(1).values = ['Scope', 'Role', 'Hours', 'Hourly Rate (AUD)', 'Cost (AUD)', '', 'Parameters', 'Value'];
-    for (let c = 1; c <= 5; c++) {
-      const cell = pricing.getCell(1, c);
-      cell.font = { bold: true } as any;
-      cell.alignment = { horizontal: 'center' } as any;
-    }
-    pricing.getCell(1, 7).font = { bold: true } as any;
-
-    // Parameter defaults (editable by AMs)
-    pricing.getCell(2, 7).value = 'Discount %';
-    pricing.getCell(2, 8).value = 0; // default 0%
-    pricing.getCell(3, 7).value = 'Round to Nearest';
-    pricing.getCell(3, 8).value = 5000; // default 5000
-
-    // Populate rows
-    let prow = 2;
+    // Pricing_Editable sheet
+    const pData: any[][] = [];
+    pData[0] = ['Scope', 'Role', 'Hours', 'Hourly Rate (AUD)', 'Cost (AUD)', '', 'Parameters', 'Value'];
+    pData[1] = ['', '', '', '', '', '', 'Discount %', 0];
+    pData[2] = ['', '', '', '', '', '', 'Round to Nearest', 5000];
+    let prow = 3;
     scopes.forEach((s) => {
       s.roles.forEach((rItem) => {
-        pricing.getCell(prow, 1).value = s.title;
-        pricing.getCell(prow, 2).value = rItem.role;
-        pricing.getCell(prow, 3).value = rItem.hours;
-        pricing.getCell(prow, 4).value = rItem.rate;
-        pricing.getCell(prow, 5).value = { formula: `C${prow}*D${prow}` } as any;
-        pricing.getCell(prow, 4).numFmt = '$#,##0.00';
-        pricing.getCell(prow, 5).numFmt = '$#,##0.00';
-        pricing.getCell(prow, 3).alignment = { horizontal: 'right' } as any;
-        pricing.getCell(prow, 4).alignment = { horizontal: 'right' } as any;
-        pricing.getCell(prow, 5).alignment = { horizontal: 'right' } as any;
+        pData[prow] = [
+          s.title,
+          rItem.role,
+          rItem.hours,
+          rItem.rate,
+          { f: `C${prow + 1}*D${prow + 1}` },
+          '',
+          '',
+          '',
+        ];
         prow++;
       });
     });
-
-    const firstDataRow = 2;
-    const lastDataRow = Math.max(firstDataRow, prow - 1);
-
-    // Totals block (to the right, under parameters)
-    let tr = 6;
-    pricing.getCell(tr, 7).value = 'Subtotal (ex. GST)';
-    pricing.getCell(tr, 8).value = { formula: `SUM(E${firstDataRow}:E${lastDataRow})` } as any;
-    pricing.getCell(tr, 8).numFmt = '$#,##0.00';
+    // Totals block to the right (starting at row 6 in col G/H)
+    let tr = 5;
+    pData[tr - 1] = pData[tr - 1] || new Array(8).fill('');
+    pData[tr - 1][6] = 'Subtotal (ex. GST)';
+    pData[tr - 1][7] = { f: `SUM(E3:E${prow})` };
     tr++;
-    pricing.getCell(tr, 7).value = 'Discount Amount';
-    pricing.getCell(tr, 8).value = { formula: `H${tr - 1} * (H2/100)` } as any; // Subtotal * (Discount%/100)
-    pricing.getCell(tr, 8).numFmt = '$#,##0.00';
+    pData[tr - 1] = pData[tr - 1] || new Array(8).fill('');
+    pData[tr - 1][6] = 'Discount Amount';
+    pData[tr - 1][7] = { f: `H${tr - 1}*(H2/100)` };
     tr++;
-    pricing.getCell(tr, 7).value = 'Grand Total (ex. GST)';
-    pricing.getCell(tr, 8).value = { formula: `H${tr - 2} - H${tr - 1}` } as any;
-    pricing.getCell(tr, 8).numFmt = '$#,##0.00';
+    pData[tr - 1] = pData[tr - 1] || new Array(8).fill('');
+    pData[tr - 1][6] = 'Grand Total (ex. GST)';
+    pData[tr - 1][7] = { f: `H${tr - 2}-H${tr - 1}` };
     tr++;
-    pricing.getCell(tr, 7).value = 'GST (10%)';
-    pricing.getCell(tr, 8).value = { formula: `H${tr - 1}*0.10` } as any;
-    pricing.getCell(tr, 8).numFmt = '$#,##0.00';
+    pData[tr - 1] = pData[tr - 1] || new Array(8).fill('');
+    pData[tr - 1][6] = 'GST (10%)';
+    pData[tr - 1][7] = { f: `H${tr - 1}*0.10` };
     tr++;
-    pricing.getCell(tr, 7).value = 'Total (inc. GST)';
-    pricing.getCell(tr, 8).value = { formula: `H${tr - 1}+H${tr - 2}` } as any; // GST + Grand Total ex GST
-    pricing.getCell(tr, 8).numFmt = '$#,##0.00';
+    pData[tr - 1] = pData[tr - 1] || new Array(8).fill('');
+    pData[tr - 1][6] = 'Total (inc. GST)';
+    pData[tr - 1][7] = { f: `H${tr - 1}+H${tr - 2}` };
     tr++;
-    pricing.getCell(tr, 7).value = 'Rounded Total (inc. GST)';
-    // =ROUND(TotalIncGST / RoundTo, 0) * RoundTo
-    pricing.getCell(tr, 8).value = { formula: `ROUND(H${tr - 1}/H3,0)*H3` } as any;
-    pricing.getCell(tr, 8).numFmt = '$#,##0.00';
+    pData[tr - 1] = pData[tr - 1] || new Array(8).fill('');
+    pData[tr - 1][6] = 'Rounded Total (inc. GST)';
+    pData[tr - 1][7] = { f: `ROUND(H${tr - 1}/H3,0)*H3` };
+    const pWs = XLSX.utils.aoa_to_sheet(pData);
+    pWs['!cols'] = [
+      { wch: 36 }, { wch: 36 }, { wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 2 }, { wch: 18 }, { wch: 14 },
+    ];
+    XLSX.utils.book_append_sheet(wb, pWs, 'Pricing_Editable');
 
-    // Thin borders for header row
-    for (let c = 1; c <= 5; c++) {
-      const cell = pricing.getCell(1, c);
-      cell.border = {
-        top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' },
-      } as any;
-    }
-    // Optional borders for data area
-    for (let r = firstDataRow; r <= lastDataRow; r++) {
-      for (let c = 1; c <= 5; c++) {
-        const cell = pricing.getCell(r, c);
-        cell.border = { left: { style: 'thin' }, right: { style: 'thin' } } as any;
-      }
-    }
-
-    // Attempt to populate existing "Scope & Pricing Overview" sheet in template if present
-    const overviewSheet = wb.getWorksheet('Scope & Pricing Overview');
-    if (overviewSheet) {
-      try {
-        // Find header row by scanning for known column headers
-        const expectedHeaders = new Set([
-          'PROJECT DATES', 'TOTAL HOURS', 'AVG. HOURLY RATE', 'DISCOUNT', 'MONTH COST', 'DISCOUNT COST', 'TOTAL COST'
-        ]);
-        const maxRowsToScan = Math.min(50, overviewSheet.rowCount + 5);
-        let headerRow = -1;
-        let headerMap: Record<string, number> = {};
-        for (let rr = 1; rr <= maxRowsToScan && headerRow === -1; rr++) {
-          const row = overviewSheet.getRow(rr);
-          const values = row.values as any[];
-          const upper = values.map(v => typeof v === 'string' ? v.trim().toUpperCase() : String(v ?? '').trim().toUpperCase());
-          const matchCount = Array.from(expectedHeaders).filter(h => upper.includes(h)).length;
-          if (matchCount >= 3) {
-            headerRow = rr;
-            // Build a header map for this row
-            upper.forEach((val, idx) => {
-              if (expectedHeaders.has(val)) headerMap[val] = idx;
-            });
-          }
-        }
-
-        if (headerRow !== -1) {
-          // Write one row per scope beneath the header
-          scopes.forEach((s, i) => {
-            const rowIdx = headerRow + 1 + i;
-            const totalHours = s.roles.reduce((acc, x) => acc + x.hours, 0);
-            const subtotal = s.roles.reduce((acc, x) => acc + x.total, 0);
-            const avgRate = totalHours > 0 ? subtotal / totalHours : 0;
-            // Optional defaults
-            const projectDates = 'TBC';
-            const discountPct = 0;
-            const discountCost = 0;
-            const monthCost = subtotal; // For one-off scopes, treat as subtotal
-            const totalCost = subtotal; // Keep ex. GST as default to avoid double-taxing
-
-            // If there's a first descriptive column before headers, write title in first col
-            // We will place title in column A regardless, it won't hurt
-            overviewSheet.getCell(rowIdx, 1).value = s.title;
-            if (headerMap['PROJECT DATES']) overviewSheet.getCell(rowIdx, headerMap['PROJECT DATES']).value = projectDates;
-            if (headerMap['TOTAL HOURS']) overviewSheet.getCell(rowIdx, headerMap['TOTAL HOURS']).value = totalHours;
-            if (headerMap['AVG. HOURLY RATE']) {
-              overviewSheet.getCell(rowIdx, headerMap['AVG. HOURLY RATE']).value = avgRate;
-              overviewSheet.getCell(rowIdx, headerMap['AVG. HOURLY RATE']).numFmt = '$#,##0.00';
-            }
-            if (headerMap['DISCOUNT']) overviewSheet.getCell(rowIdx, headerMap['DISCOUNT']).value = discountPct;
-            if (headerMap['MONTH COST']) {
-              overviewSheet.getCell(rowIdx, headerMap['MONTH COST']).value = monthCost;
-              overviewSheet.getCell(rowIdx, headerMap['MONTH COST']).numFmt = '$#,##0.00';
-            }
-            if (headerMap['DISCOUNT COST']) {
-              overviewSheet.getCell(rowIdx, headerMap['DISCOUNT COST']).value = discountCost;
-              overviewSheet.getCell(rowIdx, headerMap['DISCOUNT COST']).numFmt = '$#,##0.00';
-            }
-            if (headerMap['TOTAL COST']) {
-              overviewSheet.getCell(rowIdx, headerMap['TOTAL COST']).value = totalCost;
-              overviewSheet.getCell(rowIdx, headerMap['TOTAL COST']).numFmt = '$#,##0.00';
-            }
-          });
-        }
-      } catch (e) {
-        // Non-blocking: if unable to write into the overview sheet, proceed with other sheets
-        console.warn('[Export Excel] Could not populate Scope & Pricing Overview:', e);
-      }
-    }
-
-    const arrayBuffer = await wb.xlsx.writeBuffer();
+    // Serialize workbook
+    const wbout = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
     const filename = `${(sow.clientName || 'Client').toString().replace(/[^a-z0-9]/gi, '_')}_Statement_of_Work.xlsx`;
 
-    return new NextResponse(arrayBuffer as unknown as BodyInit, {
+    return new NextResponse(wbout as unknown as BodyInit, {
       status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

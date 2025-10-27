@@ -30,7 +30,6 @@ import {
   extractPricingFromContent, 
   exportToExcel, 
   exportToPDF,
-  parseSOWMarkdown,
   cleanSOWContent
 } from "@/lib/export-utils";
 import type { ArchitectSOW } from "@/lib/export-utils";
