@@ -11,7 +11,8 @@ const ANYTHINGLLM_API_KEY = process.env.ANYTHINGLLM_API_KEY || process.env.NEXT_
 async function getLiveAnalyticsData(): Promise<string> {
   try {
     // Use internal API call (server-to-server)
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    // In Docker: use NEXT_PUBLIC_BASE_URL, in dev: localhost
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const response = await fetch(`${baseUrl}/api/data/analytics-summary`, {
       cache: 'no-store',
     });

@@ -259,7 +259,66 @@ export async function PUT(
       }
     }
 
-    // 🔒 Invisible background snapshot (best-effort)
+    // � EMBED SOW IN ANYTHINGLLM (best-effort, non-blocking)
+    if (content && workspaceSlug) {
+      try {
+        console.log(`📚 [SOW ${sowId}] Embedding SOW in workspace: ${workspaceSlug}`);
+        
+        // Import AnythingLLM service and HTML converter
+        const { AnythingLLMService } = await import('@/lib/anythingllm');
+        const { sowContentToHTML } = await import('@/lib/export-utils');
+        const anythingLLM = new AnythingLLMService();
+        
+        // Convert JSON content to HTML for embedding
+        const contentObj = typeof content === 'string' ? JSON.parse(content) : content;
+        const htmlContent = sowContentToHTML(contentObj);
+        
+        // Embed in individual workspace
+        const embedded = await anythingLLM.embedSOWDocument(
+          workspaceSlug,
+          title || `SOW ${sowId}`,
+          htmlContent,
+          {
+            docId: sowId,
+            createdAt: new Date().toISOString(),
+            clientName,
+            vertical,
+            serviceLine,
+          }
+        );
+        
+        if (embedded) {
+          console.log(`✅ [SOW ${sowId}] Successfully embedded in workspace: ${workspaceSlug}`);
+          
+          // Also embed in master dashboard for analytics
+          try {
+            await anythingLLM.embedSOWDocument(
+              'sow-master-dashboard-63003769',
+              `[${workspaceSlug}] ${title || `SOW ${sowId}`}`,
+              htmlContent,
+              {
+                docId: sowId,
+                workspace: workspaceSlug,
+                createdAt: new Date().toISOString(),
+                clientName,
+                vertical,
+                serviceLine,
+              }
+            );
+            console.log(`✅ [SOW ${sowId}] Also embedded in master dashboard for analytics`);
+          } catch (dashboardError) {
+            console.warn(`⚠️ [SOW ${sowId}] Failed to embed in master dashboard:`, dashboardError);
+          }
+        } else {
+          console.warn(`⚠️ [SOW ${sowId}] Failed to embed SOW in workspace`);
+        }
+      } catch (embedError) {
+        console.error(`❌ [SOW ${sowId}] Error embedding SOW:`, embedError);
+        // Non-blocking - don't fail the update if embedding fails
+      }
+    }
+
+    // �🔒 Invisible background snapshot (best-effort)
     try {
       const host = req.headers.get('host') || 'localhost:3333';
       const proto = req.headers.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
