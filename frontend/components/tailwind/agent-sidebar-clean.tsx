@@ -703,26 +703,7 @@ export default function AgentSidebar({
           </div>
         </div>
 
-        {/* Editor mode: show Architect system prompt (v2) as a collapsible details */}
-        {isEditorMode && (
-          <div className="mt-3">
-            <details className="group border border-[#0E2E33] rounded-md overflow-hidden">
-              <summary className="cursor-pointer px-3 py-2 bg-[#0E2E33]/40 hover:bg-[#0E2E33]/60 transition-colors text-xs flex items-center gap-2 list-none">
-                <span>🧩 Workspace System Prompt</span>
-                <span className="ml-auto text-gray-400">The Architect v2</span>
-              </summary>
-              <div className="px-3 py-3 bg-[#0b0d0d] border-t border-[#0E2E33]">
-                {loadingPrompt ? (
-                  <div className="text-xs text-gray-400">Loading prompt…</div>
-                ) : workspacePrompt ? (
-                  <pre className="text-[11px] text-gray-300 whitespace-pre-wrap font-mono max-h-56 overflow-y-auto">{workspacePrompt}</pre>
-                ) : (
-                  <div className="text-xs text-gray-500">No prompt found for this workspace.</div>
-                )}
-              </div>
-            </details>
-          </div>
-        )}
+
 
   {/* No agent selection — workspace context only */}
 
@@ -1120,15 +1101,9 @@ export default function AgentSidebar({
                     title="Enhance"
                   >
                     {enhancing ? (
-                      <div className="flex items-center gap-2">
-                        <Loader2 className="h-5 w-5 animate-spin text-[#1CBF79]" />
-                        <span className="text-sm">Enhancing…</span>
-                      </div>
+                      <Loader2 className="h-5 w-5 animate-spin text-[#1CBF79]" />
                     ) : (
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">✨</span>
-                        <span className="text-sm">Enhance</span>
-                      </div>
+                      <span className="text-lg">✨</span>
                     )}
                   </Button>
 

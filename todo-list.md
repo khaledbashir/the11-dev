@@ -1,11 +1,19 @@
-# Custom Agent Skills Guide - Task List
+# TODO LIST: Component Documentation Creation
 
-- [x] Research custom agent skills and implementation methods
-- [x] Investigate AnythingLLM agent capabilities and EasyPanel integration
-- [x] Find examples of custom agent implementations
-- [x] Research agent frameworks and development approaches
-- [ ] Document skill creation workflows and best practices
-- [ ] Create comprehensive guide template for AI use
-- [ ] Include EasyPanel-specific considerations for AnythingLLM
-- [ ] Provide practical examples and templates
-- [ ] Finalize and format the complete guide
+- [ ] Analyze frontend components structure
+- [ ] Analyze backend components and API routes
+- [ ] Identify all features from documentation files
+- [ ] Categorize components by functionality
+- [ ] Create one-liner explainers for each component
+- [ ] Create comprehensive features section
+- [ ] Generate final documentation file
+
+## Component Categories Found So Far:
+- Header Components
+- Tailwind UI Components
+- SOW (Scope of Work) Components  
+- Generative AI Components
+- Extensions Components
+- Selectors Components
+- Dashboard Components
+- Sidebar Components
