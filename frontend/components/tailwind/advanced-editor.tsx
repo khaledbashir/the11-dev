@@ -26,7 +26,7 @@ import { uploadFn } from "./image-upload";
 import { TextButtons } from "./selectors/text-buttons";
 import { slashCommand, suggestionItems } from "./slash-command";
 import { TableMenu } from "./extensions/table-menu";
-import { FloatingAIBar } from "./floating-ai-bar";
+import { InlineEditor } from "./inline-editor";
 
 const hljs = require("highlight.js");
 
@@ -192,7 +192,7 @@ const TailwindAdvancedEditor = forwardRef(({
           {editor && <TableMenu editor={editor} />}
           
           {/* Floating AI Assistant Bar - Inside EditorContent for proper context */}
-          <FloatingAIBar editor={editor} />
+          <InlineEditor editor={editor} />
         </EditorContent>
       </EditorRoot>
       </div>

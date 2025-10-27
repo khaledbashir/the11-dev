@@ -22,12 +22,12 @@ import { SelectionToolbar } from "./selection-toolbar";
 
 import { type EditorInstance } from "novel";
 
-interface FloatingAIBarProps {
+interface InlineEditorProps {
   onGenerate?: (prompt: string, mode: 'replace' | 'insert') => void;
   editor?: EditorInstance | null;
 }
 
-export function FloatingAIBar({ onGenerate, editor: editorProp }: FloatingAIBarProps) {
+export function InlineEditor({ onGenerate, editor: editorProp }: InlineEditorProps) {
   const { editor: editorContext } = useEditor();
   const editor = editorProp || editorContext;
   const { settings, getVisibleQuickActions } = useAISettings();

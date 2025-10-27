@@ -4,8 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from 'next/navigation';
 import TailwindAdvancedEditor from "@/components/tailwind/advanced-editor";
 import SidebarNav from "@/components/tailwind/sidebar-nav";
-import AnalyticsChatSidebar from "@/components/tailwind/analytics-chat-sidebar";
-import SOWGenerationSidebar from "@/components/tailwind/sow-generation-sidebar";
+import DashboardChat from "@/components/tailwind/dashboard-chat";
+import WorkspaceChat from "@/components/tailwind/workspace-chat";
 import PricingTableBuilder from "@/components/tailwind/pricing-table-builder";
 import Menu from "@/components/tailwind/ui/menu";
 import { Button } from "@/components/tailwind/ui/button";
@@ -3854,7 +3854,7 @@ Ask me questions to get business insights, such as:
           // Dashboard mode: Query-only Analytics Assistant with workspace dropdown
           // Editor mode: Full-featured SOW generation with The Architect
           viewMode === 'dashboard' ? (
-            <AnalyticsChatSidebar
+            <DashboardChat
               isOpen={agentSidebarOpen}
               onToggle={() => setAgentSidebarOpen(!agentSidebarOpen)}
               dashboardChatTarget={dashboardChatTarget}
@@ -3874,7 +3874,7 @@ Ask me questions to get business insights, such as:
               }}
             />
           ) : viewMode === 'editor' ? (
-            <SOWGenerationSidebar
+            <WorkspaceChat
               isOpen={agentSidebarOpen}
               onToggle={() => setAgentSidebarOpen(!agentSidebarOpen)}
               chatMessages={chatMessages}

@@ -1,6 +1,6 @@
 "use client";
 
-// ✍️ Workspace SOW Editor Sidebar - Full-featured SOW generation with The Architect
+// 📊 Dashboard Analytics Sidebar - Query-only mode for embedded SOW analytics
 import React, { useEffect, useRef, useState } from "react";
 import { toast } from 'sonner';
 import { Button } from "./ui/button";
@@ -20,38 +20,34 @@ interface ChatMessage {
   timestamp: number;
 }
 
-interface SOWGenerationSidebarProps {
+interface DashboardChatProps {
   isOpen: boolean;
   onToggle: () => void;
-  chatMessages: ChatMessage[];
+  dashboardChatTarget: string;
+  onDashboardWorkspaceChange: (workspace: string) => void;
+  availableWorkspaces: Array<{ slug: string; name: string }>;
+  chatMessages: Array<{ id: string; role: 'user' | 'assistant'; content: string; timestamp: number }>;
   onSendMessage: (message: string, threadSlug?: string | null, attachments?: Array<{name: string; mime: string; contentString: string}>) => void;
   isLoading?: boolean;
-  onInsertToEditor: (content: string) => void;
   streamingMessageId?: string | null;
-  editorWorkspaceSlug: string; // Workspace slug for currently open SOW
-  editorThreadSlug?: string | null; // Current thread for the open SOW
-  onEditorThreadChange: (slug: string | null) => void;
   onClearChat: () => void;
   onReplaceChatMessages: (messages: Array<{ id: string; role: 'user' | 'assistant'; content: string; timestamp: number }>) => void;
 }
 
-export default function SOWGenerationSidebar({
+export default function DashboardChat({
   isOpen,
   onToggle,
   chatMessages,
   onSendMessage,
   isLoading = false,
-  onInsertToEditor,
   streamingMessageId,
-  editorWorkspaceSlug,
-  editorThreadSlug,
-  onEditorThreadChange,
+  dashboardChatTarget,
+  onDashboardWorkspaceChange,
+  availableWorkspaces,
   onClearChat,
   onReplaceChatMessages,
-}: SOWGenerationSidebarProps) {
+}: DashboardChatProps) {
   const [chatInput, setChatInput] = useState("");
-  const [workspacePrompt, setWorkspacePrompt] = useState<string>("");
-  const [loadingPrompt, setLoadingPrompt] = useState(false);
   
   // 🧵 THREAD MANAGEMENT STATE
   const [threads, setThreads] = useState<Array<{ slug: string; name: string; id: number; createdAt: string }>>([]);
@@ -59,61 +55,34 @@ export default function SOWGenerationSidebar({
   const [loadingThreads, setLoadingThreads] = useState(false);
   const [showThreadList, setShowThreadList] = useState(false);
   
-  // 📎 ATTACHMENT STATE
-  const [attachments, setAttachments] = useState<Array<{ name: string; mime: string; contentString: string }>>([]);
-  const [uploading, setUploading] = useState(false);
-  
-  // ⚙️ ADVANCED FEATURES STATE
-  const [showSettings, setShowSettings] = useState(false);
-  const [showSlashCommands, setShowSlashCommands] = useState(false);
-  const [selectedModelForAgent, setSelectedModelForAgent] = useState("");
-  
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
 
-  // Load workspace system prompt
+  // Restore last active thread from localStorage on mount
   useEffect(() => {
-    const loadPrompt = async () => {
-      if (!editorWorkspaceSlug) return;
-      setLoadingPrompt(true);
-      try {
-        const res = await fetch(`/api/anythingllm/workspace?slug=${encodeURIComponent(editorWorkspaceSlug)}`);
-        if (!res.ok) {
-          setWorkspacePrompt("");
-          return;
-        }
-        const data = await res.json();
-        const prompt = data?.workspace?.openAiPrompt || data?.workspace?.prompt || "";
-        setWorkspacePrompt(prompt || "");
-      } catch (e) {
-        setWorkspacePrompt("");
-      } finally {
-        setLoadingPrompt(false);
+    if (dashboardChatTarget) {
+      const storageKey = `dashboard-thread-${dashboardChatTarget}`;
+      const savedThreadSlug = localStorage.getItem(storageKey);
+      if (savedThreadSlug) {
+        console.log('🔄 Restoring last active thread:', savedThreadSlug);
+        setCurrentThreadSlug(savedThreadSlug);
+        // Load the thread's chat history
+        handleSelectThread(savedThreadSlug);
       }
-    };
-    loadPrompt();
-  }, [editorWorkspaceSlug]);
+    }
+  }, [dashboardChatTarget]);
 
   // Load threads on mount and when workspace changes
   useEffect(() => {
-    if (editorWorkspaceSlug) {
-      loadThreads(editorWorkspaceSlug);
-      if (editorThreadSlug) {
-        setCurrentThreadSlug(editorThreadSlug);
-      }
+    if (dashboardChatTarget) {
+      loadThreads(dashboardChatTarget);
     }
-  }, [editorWorkspaceSlug, editorThreadSlug]);
-
-  // Focus input when component mounts or thread changes
-  useEffect(() => {
-    setTimeout(() => chatInputRef.current?.focus(), 50);
-  }, [editorThreadSlug]);
+  }, [dashboardChatTarget]);
 
   const loadThreads = async (workspaceSlug: string) => {
     console.log('📂 Loading threads for workspace:', workspaceSlug);
@@ -153,19 +122,19 @@ export default function SOWGenerationSidebar({
   };
 
   const handleNewThread = async (): Promise<string | null> => {
-    if (!editorWorkspaceSlug) {
-      toast.error('No workspace available');
+    if (!dashboardChatTarget) {
+      toast.error('No workspace selected');
       return null;
     }
     
-    console.log('🆕 Creating new thread for workspace:', editorWorkspaceSlug);
+    console.log('🆕 Creating new thread for workspace:', dashboardChatTarget);
     setLoadingThreads(true);
     
     try {
-      const response = await fetch(`/api/anythingllm/thread?workspace=${encodeURIComponent(editorWorkspaceSlug)}`, {
+      const response = await fetch(`/api/anythingllm/thread?workspace=${encodeURIComponent(dashboardChatTarget)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workspace: editorWorkspaceSlug }),
+        body: JSON.stringify({ workspace: dashboardChatTarget }),
       });
 
       if (!response.ok) {
@@ -191,8 +160,9 @@ export default function SOWGenerationSidebar({
       setThreads(prev => [newThread, ...prev]);
       setCurrentThreadSlug(newThreadSlug);
       
-      // Notify parent
-      onEditorThreadChange(newThreadSlug);
+      // Save to localStorage for persistence across refreshes
+      const storageKey = `dashboard-thread-${dashboardChatTarget}`;
+      localStorage.setItem(storageKey, newThreadSlug);
       
       // Clear chat for new thread
       onClearChat();
@@ -217,8 +187,12 @@ export default function SOWGenerationSidebar({
     setShowThreadList(false);
     setLoadingThreads(true);
     
+    // Save to localStorage for persistence across refreshes
+    const storageKey = `dashboard-thread-${dashboardChatTarget}`;
+    localStorage.setItem(storageKey, threadSlug);
+    
     try {
-      const response = await fetch(`/api/anythingllm/thread?workspace=${encodeURIComponent(editorWorkspaceSlug)}&thread=${encodeURIComponent(threadSlug)}`);
+      const response = await fetch(`/api/anythingllm/thread?workspace=${encodeURIComponent(dashboardChatTarget)}&thread=${encodeURIComponent(threadSlug)}`);
 
       if (!response.ok) {
         throw new Error('Failed to load thread history');
@@ -235,7 +209,6 @@ export default function SOWGenerationSidebar({
       }));
       
       onReplaceChatMessages(mapped);
-      onEditorThreadChange(threadSlug);
     } catch (error) {
       console.error('❌ Failed to load thread history:', error);
     } finally {
@@ -249,7 +222,7 @@ export default function SOWGenerationSidebar({
     console.log('🗑️ Deleting thread:', threadSlug);
     
     try {
-      const response = await fetch(`/api/anythingllm/thread?workspace=${encodeURIComponent(editorWorkspaceSlug)}&thread=${encodeURIComponent(threadSlug)}`, {
+      const response = await fetch(`/api/anythingllm/thread?workspace=${encodeURIComponent(dashboardChatTarget)}&thread=${encodeURIComponent(threadSlug)}`, {
         method: 'DELETE',
       });
 
@@ -264,14 +237,9 @@ export default function SOWGenerationSidebar({
         if (remainingThreads.length > 0) {
           handleSelectThread(remainingThreads[0].slug);
         } else {
-          const newSlug = await handleNewThread();
-          if (newSlug) onEditorThreadChange(newSlug);
+          handleNewThread();
         }
       }
-
-      // Notify parent if current thread was deleted
-      const stillExists = threads.some(t => t.slug === threadSlug);
-      if (!stillExists) onEditorThreadChange(null);
       
       console.log('✅ Thread deleted successfully');
     } catch (error) {
@@ -283,23 +251,22 @@ export default function SOWGenerationSidebar({
   const handleSendMessage = async () => {
     if (!chatInput.trim() || isLoading) return;
 
+    // Ensure a thread exists before sending (for persistence)
+    let threadToUse = currentThreadSlug;
+    if (!threadToUse) {
+      const created = await handleNewThread();
+      if (!created) return;
+      threadToUse = created;
+    }
+
     console.log('📤 Sending message:', {
       message: chatInput,
-      threadSlug: currentThreadSlug,
-      attachments: attachments.length,
-      workspaceSlug: editorWorkspaceSlug,
+      threadSlug: threadToUse,
+      workspaceSlug: dashboardChatTarget,
     });
 
-    onSendMessage(chatInput, currentThreadSlug, attachments);
+    onSendMessage(chatInput, threadToUse);
     setChatInput("");
-    setAttachments([]);
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
   };
 
   // Enhance prompt using AI
@@ -341,51 +308,6 @@ export default function SOWGenerationSidebar({
     }
   };
 
-  // File attachment handling
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    setUploading(true);
-    try {
-      for (const file of Array.from(files)) {
-        console.log('📎 Processing file:', file.name, file.type);
-        
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const contentString = event.target?.result as string;
-          setAttachments(prev => [...prev, {
-            name: file.name,
-            mime: file.type,
-            contentString,
-          }]);
-          console.log('✅ File ready for attachment:', file.name);
-        };
-        reader.readAsDataURL(file);
-      }
-    } catch (error) {
-      console.error('❌ Error processing file:', error);
-      toast.error('Failed to process file');
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const removeAttachment = (index: number) => {
-    setAttachments(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const insertText = (text: string) => {
-    setChatInput(prev => prev + text);
-    chatInputRef.current?.focus();
-  };
-
-  const slashCommands = [
-    { command: '/reset', description: 'Clear chat history and begin a new chat' },
-    { command: '/help', description: 'Show available commands' },
-    { command: '/summarize', description: 'Summarize the current conversation' },
-  ];
-
   const formatTimestamp = (timestamp: number) => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -396,12 +318,17 @@ export default function SOWGenerationSidebar({
     return date.toLocaleDateString();
   };
 
+  const currentWorkspaceName = availableWorkspaces.find(w => w.slug === dashboardChatTarget)?.name || '🎯 All SOWs (Master)';
+  const isMasterView = dashboardChatTarget === 'sow-master-dashboard';
+  const personaName = isMasterView ? 'Analytics Assistant' : 'The Architect';
+  const personaSubtitle = isMasterView ? 'Master Dashboard' : 'Client Workspace';
+
   return (
     <div className="h-full w-full min-w-0 bg-[#0e0f0f] border-l border-[#0E2E33] overflow-hidden flex flex-col">
       {/* Header */}
       <div className="p-4 border-b border-[#0E2E33] bg-[#0e0f0f] flex-shrink-0">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-sm font-bold text-white truncate">Workspace Chat</h2>
+          <h2 className="text-sm font-bold text-white truncate">Dashboard Chat</h2>
           <div className="flex items-center gap-2 flex-shrink-0">
             <Button
               onClick={handleNewThread}
@@ -430,7 +357,25 @@ export default function SOWGenerationSidebar({
           </div>
         </div>
 
-
+        {/* Workspace Selector */}
+        <div className="mt-3">
+          <Select
+            value={dashboardChatTarget}
+            onValueChange={onDashboardWorkspaceChange}
+            disabled={loadingThreads}
+          >
+            <SelectTrigger className="w-full bg-[#1c1c1c] border-[#2a2a2a] text-white h-8 text-xs">
+              <SelectValue placeholder="Select workspace..." />
+            </SelectTrigger>
+            <SelectContent className="bg-[#1c1c1c] border-[#2a2a2a] text-white">
+              {availableWorkspaces.map((workspace) => (
+                <SelectItem key={workspace.slug} value={workspace.slug}>
+                  {workspace.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Thread List */}
@@ -479,8 +424,8 @@ export default function SOWGenerationSidebar({
       <div className="p-3 border-b border-[#0E2E33]">
         <div className="flex items-center gap-2 bg-[#0E2E33] px-3 py-2 rounded-md">
           <Bot className="h-4 w-4 text-gray-400" />
-          <span className="text-sm font-medium text-white">The Architect</span>
-          <span className="ml-2 text-xs text-gray-400">SOW generation</span>
+          <span className="text-sm font-medium text-white">{personaName}</span>
+          <span className="ml-2 text-xs text-gray-400">{personaSubtitle}</span>
         </div>
       </div>
 
@@ -490,61 +435,46 @@ export default function SOWGenerationSidebar({
           {chatMessages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-8">
               <Bot className="h-16 w-16 text-gray-600 mb-3" />
-              <p className="text-base text-gray-400">No messages yet</p>
+              <h3 className="text-xl font-semibold text-white mb-2">Master SOW Analytics</h3>
+              <p className="text-sm text-gray-400 text-center max-w-xs">
+                Query your embedded SOWs and get business insights. I cannot create new SOWs.
+              </p>
             </div>
           ) : (
-            chatMessages.map(msg => {
-              const shouldShowButton = msg.role === 'assistant';
+            chatMessages.map((msg) => {
               const cleaned = cleanSOWContent(msg.content);
               const segments = msg.role === 'assistant' ? [] : [{ type: 'text' as const, content: msg.content }];
-              
               return (
-                <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`relative w-full max-w-[85%] min-w-0 rounded-lg p-4 break-words whitespace-pre-wrap overflow-x-hidden ${
+                <div key={msg.id} className={`flex min-w-0 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`relative w-full max-w-[85%] min-w-0 rounded-xl px-4 py-3 break-words whitespace-pre-wrap overflow-hidden ${
                     msg.role === 'user' 
-                      ? 'bg-[#0E2E33]/30 text-white border border-[#1CBF79]' 
-                      : 'bg-[#0E2E33] text-white border border-[#1b5e5e]'
+                      ? 'bg-[#15a366] text-white' 
+                      : 'bg-[#1b1b1e] text-white border border-[#0E2E33]'
                   }`}>
-                    
-                    {/* Show thinking section with streaming support */}
                     {msg.role === 'assistant' && (
                       <div className="mb-4">
                         <StreamingThoughtAccordion 
                           content={msg.content}
                           messageId={msg.id}
                           isStreaming={streamingMessageId === msg.id}
-                          onInsertClick={(content) => onInsertToEditor(content)}
                         />
                       </div>
                     )}
-                    
-                    {/* Content rendering for user messages only */}
                     <div className="space-y-3">
                       {segments.map((seg, i) => (
-                        <ReactMarkdown
+                        <div
                           key={i}
-                          remarkPlugins={[remarkGfm]}
-                          className="prose prose-invert max-w-none text-sm break-words whitespace-pre-wrap prose-pre:whitespace-pre-wrap prose-pre:overflow-x-auto"
+                          className="prose prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-1 break-words whitespace-pre-wrap prose-pre:whitespace-pre-wrap prose-pre:overflow-x-auto"
                         >
-                          {seg.content}
-                        </ReactMarkdown>
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {seg.content}
+                          </ReactMarkdown>
+                        </div>
                       ))}
                     </div>
-                    
-                    <div className="flex gap-2 mt-4 items-center sticky bottom-0 z-10 bg-[#0E2E33]/85 backdrop-blur-sm px-2 py-1 rounded-md border-t border-[#1b5e5e]">
-                      <p className="text-xs mt-1 opacity-70 flex-1">{formatTimestamp(msg.timestamp)}</p>
-                      {/* Insert button for assistant messages */}
-                      {shouldShowButton && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 px-2 text-xs border-[#1b5e5e] text-gray-200 hover:text-white hover:bg-[#124847]"
-                          title="Insert full SOW (narrative + pricing)"
-                          onClick={() => onInsertToEditor(msg.content)}
-                        >
-                          ✅ Insert SOW
-                        </Button>
-                      )}
+                    <div className="flex items-center gap-2 mt-2 sticky bottom-0 z-10 bg-[#1b1b1e]/80 backdrop-blur-sm px-2 py-1 rounded-md border-t border-[#0E2E33]">
+                      <span className="text-xs opacity-60 flex-1">{formatTimestamp(msg.timestamp)}</span>
+                      {/* NO INSERT BUTTON IN DASHBOARD MODE - Query only */}
                     </div>
                   </div>
                 </div>
@@ -556,75 +486,36 @@ export default function SOWGenerationSidebar({
       </ScrollArea>
 
       {/* Input Area */}
-      <div className="p-5 border-t border-[#0E2E33] bg-[#0e0f0f] space-y-3">
-        {/* Attachments Preview */}
-        {attachments.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {attachments.map((att, idx) => (
-              <div key={idx} className="flex items-center gap-2 bg-[#0E2E33] px-3 py-1.5 rounded text-xs text-gray-300">
-                <span className="truncate max-w-[150px]">{att.name}</span>
-                <button onClick={() => removeAttachment(idx)} className="hover:text-red-500">×</button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Chat Input */}
-        <div className="flex gap-3">
-          <div className="flex-1 space-y-2">
-            <div className="relative">
-              <Textarea 
-                ref={chatInputRef} 
-                value={chatInput} 
-                onChange={(e) => setChatInput(e.target.value)} 
-                onKeyPress={handleKeyPress} 
-                placeholder="Type /help for commands..." 
-                className="min-h-[50px] max-h-[150px] resize-none text-sm bg-[#0E2E33] border-[#0E2E33] text-white placeholder:text-gray-400 rounded-lg pr-12" 
-              />
-            
-            {/* Enhance button - positioned inside textarea */}
-            <button
-              onClick={handleEnhanceOnly}
-              disabled={!chatInput.trim() || isLoading || enhancing}
-              className="absolute right-3 top-3 p-1.5 rounded-md bg-[#1b1b1e] hover:bg-[#2a2a2a] disabled:opacity-40 disabled:cursor-not-allowed transition-colors border border-[#1CBF79]/30 hover:border-[#1CBF79]/60"
-              title="Enhance your prompt with AI"
-            >
-              {enhancing ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-[#1CBF79]" />
-              ) : (
-                <span className="text-[#1CBF79] text-sm">✨</span>
-              )}
-            </button>
-            </div>
-            
-            <div className="flex gap-2 mt-2">
-              {/* File upload */}
-              <input 
-                ref={fileInputRef}
-                type="file" 
-                multiple 
-                onChange={handleFileSelect}
-                className="hidden"
-                accept="image/*,.pdf,.txt,.doc,.docx"
-              />
-              
-              {/* Send button - full width, prominent */}
-              <Button 
-                onClick={handleSendMessage} 
-                disabled={!chatInput.trim() || isLoading} 
-                size="sm" 
-                className="w-full bg-[#15a366] hover:bg-[#10a35a] text-white h-12 font-semibold border-0 text-base"
-                title="Send message to The Architect"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                ) : (
-                  <Send className="h-5 w-5 mr-2" />
-                )}
-                {isLoading ? 'Generating...' : 'Send'}
-              </Button>
-            </div>
-          </div>
+      <div className="p-5 border-t border-[#0E2E33] bg-[#0e0f0f]">
+        <div className="flex items-end gap-3">
+          <Textarea
+            ref={chatInputRef}
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (chatInput.trim() && !isLoading) {
+                  handleSendMessage();
+                }
+              }
+            }}
+            placeholder="Ask a question about an existing SOW..."
+            className="min-h-[80px] resize-none bg-[#1b1b1e] border-[#0E2E33] text-white placeholder:text-gray-500"
+            disabled={isLoading}
+          />
+          {/* Dashboard Analytics: Only Send button, NO enhance */}
+          <Button 
+            onClick={() => {
+              if (chatInput.trim() && !isLoading) {
+                handleSendMessage();
+              }
+            }}
+            disabled={!chatInput.trim() || isLoading}
+            className="self-end bg-[#15a366] hover:bg-[#10a35a] text-white border-0"
+          >
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          </Button>
         </div>
       </div>
     </div>
