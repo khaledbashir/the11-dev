@@ -393,10 +393,14 @@ async def generate_pdf(request: PDFRequest):
         
         # Load and encode the Social Garden logo
         logo_base64 = ""
-        logo_path = Path(__file__).parent / "social-garden-logo-dark.png"
+        # Use the newer logo file that matches frontend branding
+        logo_path = Path(__file__).parent / "social-garden-logo-dark-new.png"
         if logo_path.exists():
             with open(logo_path, "rb") as logo_file:
                 logo_base64 = base64.b64encode(logo_file.read()).decode('utf-8')
+            print(f"✅ Logo loaded successfully from {logo_path}")
+        else:
+            print(f"⚠️ Logo file not found at {logo_path}")
         
         # Render the HTML template with Jinja2
         template = Template(SOW_TEMPLATE)
