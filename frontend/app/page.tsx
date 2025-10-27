@@ -239,15 +239,21 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
     // Use provided suggestedRoles first; otherwise use roles parsed from markdown only
     if (suggestedRoles.length > 0) {
       console.log('✅ Using suggestedRoles from JSON.');
-      pricingRows = suggestedRoles.map(role => {
-        const matchedRole = ROLES.find(r => r.name === role.role);
-        return {
-          role: role.role,
-          description: role.description || '',
-          hours: role.hours || 0,
-          rate: matchedRole?.rate || role.rate || 0,
-        };
-      });
+      pricingRows = suggestedRoles
+        .filter(role => {
+          // Filter out any empty or invalid role names
+          const roleName = (role.role || '').trim();
+          return roleName && roleName.length > 0 && roleName.toLowerCase() !== 'select role';
+        })
+        .map(role => {
+          const matchedRole = ROLES.find(r => r.name === role.role);
+          return {
+            role: role.role,
+            description: role.description || '',
+            hours: role.hours || 0,
+            rate: matchedRole?.rate || role.rate || 0,
+          };
+        });
     } else if (rolesFromMarkdown.length > 0) {
       console.log('✅ Using roles parsed from markdown table.');
       pricingRows = rolesFromMarkdown;
@@ -258,8 +264,14 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
     
     pricingTableInserted = true;
     
-    // ENFORCEMENT 1: Ensure Head Of role exists as FIRST row
+    // 🔧 CRITICAL FIX: Filter out any empty/invalid roles BEFORE enforcement
     const normalize = (s: string) => (s || '').trim().toLowerCase();
+    pricingRows = pricingRows.filter(r => {
+      const roleName = normalize(r.role);
+      return roleName && roleName !== 'select role' && roleName !== 'select role...' && roleName.length > 0;
+    });
+    
+    // ENFORCEMENT 1: Ensure Head Of role exists as FIRST row
     const hasHeadOf = pricingRows.some(r => normalize(r.role).includes('head of'));
     if (!hasHeadOf) {
       const headOf = ROLES.find(r => r.name === 'Tech - Head Of - Senior Project Management');
@@ -2812,7 +2824,28 @@ Ask me questions to get business insights, such as:
       if (useAnythingLLM && currentAgentId) {
         console.log('🤖 Embedding SOW in workspaces...');
         try {
-          const clientWorkspaceSlug = getWorkspaceForAgent(currentAgentId);
+          // 🔧 CRITICAL FIX: Extract client name from document title to create client-specific workspace
+          // SOW title format: "SOW - ClientName - ServiceType" or "Scope of Work: ClientName"
+          let clientWorkspaceSlug = getWorkspaceForAgent(currentAgentId); // Default fallback
+          
+          // Try to extract client name from document title
+          const clientNameMatch = docTitle.match(/(?:SOW|Scope of Work)[:\s-]+([^-:]+)/i);
+          if (clientNameMatch && clientNameMatch[1]) {
+            const clientName = clientNameMatch[1].trim();
+            console.log(`🏢 Detected client name from title: ${clientName}`);
+            
+            // Create or get client-specific workspace
+            try {
+              const clientWorkspace = await anythingLLM.createOrGetClientWorkspace(clientName);
+              clientWorkspaceSlug = clientWorkspace.slug;
+              console.log(`✅ Using client-specific workspace: ${clientWorkspaceSlug}`);
+            } catch (wsError) {
+              console.warn(`⚠️ Could not create client workspace, using default: ${clientWorkspaceSlug}`, wsError);
+            }
+          } else {
+            console.log(`⚠️ Could not extract client name from title: "${docTitle}", using default workspace`);
+          }
+          
           const success = await anythingLLM.embedSOWInBothWorkspaces(clientWorkspaceSlug, docTitle, cleanedContent);
           
           if (success) {

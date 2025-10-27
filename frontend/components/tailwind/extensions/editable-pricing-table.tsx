@@ -31,8 +31,9 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
     const roleMap = new Map<string, PricingRow>();
     for (const r of initialRows) {
       const key = normalize(r.role);
-      // Skip rows with empty or whitespace-only roles
-      if (!key || key === 'select role...' || key === 'select role') continue;
+      // Skip rows with empty, whitespace-only, or placeholder roles
+      // Check for: empty string, "Select role...", "Select role", or any whitespace
+      if (!key || key.length === 0 || key === 'select role...' || key === 'select role' || !r.role || r.role.trim() === '') continue;
       
       const existing = roleMap.get(key);
       if (!existing) {
@@ -96,9 +97,15 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
   useEffect(() => {
     if (!isInitialized) return; // Don't sync until initial setup is done
     
+    // 🔧 FILTER: Remove any empty rows before syncing to attributes
+    const validRows = rows.filter(r => {
+      const roleName = (r.role || '').trim();
+      return roleName && roleName.length > 0 && roleName.toLowerCase() !== 'select role...' && roleName.toLowerCase() !== 'select role';
+    });
+    
     // Use queueMicrotask to defer the updateAttributes call outside the render cycle
     queueMicrotask(() => {
-      updateAttributes({ rows, discount, showTotal });
+      updateAttributes({ rows: validRows, discount, showTotal });
     });
   }, [rows, discount, showTotal, isInitialized]);
 
