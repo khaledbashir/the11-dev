@@ -3071,24 +3071,42 @@ Ask me questions to get business insights, such as:
     }
 
     try {
+      // 🧹 Filter out internal reasoning sections before processing
+      let filteredContent = content;
+      
+      // Remove [FINANCIAL*REASONING]* sections
+      filteredContent = filteredContent.replace(/\[FINANCIAL[\*_]REASONING[\*_]\][\s\S]*?(?=\[|##|###|$)/gi, '');
+      
+      // Remove [BUDGET*NOTE]* sections
+      filteredContent = filteredContent.replace(/\[BUDGET[\*_]NOTE[\*_]\][\s\S]*?(?=\[|##|###|$)/gi, '');
+      
+      // Remove [PRICING*JSON]* markers (keep the table but remove the marker)
+      filteredContent = filteredContent.replace(/\[PRICING[\*_]JSON[\*_]\]/gi, '');
+      
+      // Remove [GENERATE THE SOW] markers
+      filteredContent = filteredContent.replace(/\[GENERATE THE SOW\]/gi, '');
+      
+      // Clean up extra whitespace
+      filteredContent = filteredContent.replace(/\n{3,}/g, '\n\n').trim();
+      
       // 1. Separate Markdown from JSON
-      let markdownPart = content;
+      let markdownPart = filteredContent;
       // let suggestedRoles: any[] = []; // Now passed as an argument
-      const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
+      const jsonMatch = filteredContent.match(/```json\s*([\s\S]*?)\s*```/);
 
       let hasValidSuggestedRoles = false;
       let parsedStructured: ArchitectSOW | null = null;
       let extractedDiscount: number | undefined;
       
       // 🎯 PRIORITY 1: Try extracting [PRICING_JSON] block (The Architect v3.1 format)
-      const pricingJsonData = extractPricingJSON(content);
+      const pricingJsonData = extractPricingJSON(filteredContent);
       if (pricingJsonData && pricingJsonData.roles && pricingJsonData.roles.length > 0) {
         suggestedRoles = pricingJsonData.roles;
         extractedDiscount = pricingJsonData.discount;
         hasValidSuggestedRoles = true;
         // Remove the JSON block from markdown
         if (jsonMatch) {
-          markdownPart = content.replace(jsonMatch[0], '').trim();
+          markdownPart = filteredContent.replace(jsonMatch[0], '').trim();
         }
         console.log(`✅ Using ${suggestedRoles.length} roles from [PRICING_JSON] with validated hours`);
         if (extractedDiscount) {

@@ -2,27 +2,96 @@
 
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
-import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
-import { ROLES } from '@/lib/rateCard';
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragOverlay,
-  DragEndEvent,
-  DragStartEvent,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import React, { useState, useEffect, useRef } from 'react';
+import { createSwapy } from 'swapy';
+
+// Social Garden 82 roles with AUD rates
+const ROLES = [
+  { name: "Project Manager", rate: 160 },
+  { name: "Project Coordination", rate: 140 },
+  { name: "Account Management", rate: 150 },
+  { name: "Strategy Director", rate: 180 },
+  { name: "Senior Strategist", rate: 160 },
+  { name: "Strategist", rate: 140 },
+  { name: "Creative Director", rate: 180 },
+  { name: "Senior Art Director", rate: 160 },
+  { name: "Art Director", rate: 140 },
+  { name: "Senior Copywriter", rate: 160 },
+  { name: "Copywriter", rate: 140 },
+  { name: "Senior Designer", rate: 150 },
+  { name: "Designer", rate: 130 },
+  { name: "Junior Designer", rate: 110 },
+  { name: "Senior UX Designer", rate: 160 },
+  { name: "UX Designer", rate: 140 },
+  { name: "Senior UI Designer", rate: 160 },
+  { name: "UI Designer", rate: 140 },
+  { name: "Motion Designer", rate: 150 },
+  { name: "Senior Motion Designer", rate: 170 },
+  { name: "3D Designer", rate: 160 },
+  { name: "Illustrator", rate: 150 },
+  { name: "Photographer", rate: 180 },
+  { name: "Videographer", rate: 180 },
+  { name: "Video Editor", rate: 150 },
+  { name: "Sound Designer", rate: 140 },
+  { name: "Technical Director", rate: 180 },
+  { name: "Senior Developer", rate: 160 },
+  { name: "Developer", rate: 140 },
+  { name: "Junior Developer", rate: 120 },
+  { name: "Front-End Developer", rate: 150 },
+  { name: "Senior Front-End Developer", rate: 170 },
+  { name: "Back-End Developer", rate: 160 },
+  { name: "Senior Back-End Developer", rate: 180 },
+  { name: "Full-Stack Developer", rate: 160 },
+  { name: "Senior Full-Stack Developer", rate: 180 },
+  { name: "DevOps Engineer", rate: 170 },
+  { name: "Senior DevOps Engineer", rate: 190 },
+  { name: "QA Engineer", rate: 140 },
+  { name: "Senior QA Engineer", rate: 160 },
+  { name: "Data Analyst", rate: 150 },
+  { name: "Senior Data Analyst", rate: 170 },
+  { name: "SEO Specialist", rate: 140 },
+  { name: "Senior SEO Specialist", rate: 160 },
+  { name: "Content Strategist", rate: 140 },
+  { name: "Senior Content Strategist", rate: 160 },
+  { name: "Social Media Manager", rate: 130 },
+  { name: "Senior Social Media Manager", rate: 150 },
+  { name: "Community Manager", rate: 120 },
+  { name: "Email Marketing Specialist", rate: 130 },
+  { name: "Senior Email Marketing Specialist", rate: 150 },
+  { name: "Marketing Automation Specialist", rate: 150 },
+  { name: "CRM Specialist", rate: 140 },
+  { name: "Senior CRM Specialist", rate: 160 },
+  { name: "Web Analytics Specialist", rate: 150 },
+  { name: "Conversion Rate Optimization Specialist", rate: 160 },
+  { name: "UX Researcher", rate: 150 },
+  { name: "Senior UX Researcher", rate: 170 },
+  { name: "Product Manager", rate: 170 },
+  { name: "Senior Product Manager", rate: 190 },
+  { name: "Business Analyst", rate: 150 },
+  { name: "Senior Business Analyst", rate: 170 },
+  { name: "Scrum Master", rate: 160 },
+  { name: "Agile Coach", rate: 180 },
+  { name: "Solutions Architect", rate: 190 },
+  { name: "Enterprise Architect", rate: 200 },
+  { name: "Security Specialist", rate: 170 },
+  { name: "Senior Security Specialist", rate: 190 },
+  { name: "Cloud Architect", rate: 190 },
+  { name: "Database Administrator", rate: 160 },
+  { name: "Senior Database Administrator", rate: 180 },
+  { name: "Systems Administrator", rate: 150 },
+  { name: "Network Engineer", rate: 160 },
+  { name: "Support Engineer", rate: 130 },
+  { name: "Senior Support Engineer", rate: 150 },
+  { name: "Training Specialist", rate: 140 },
+  { name: "Documentation Specialist", rate: 130 },
+  { name: "Accessibility Specialist", rate: 150 },
+  { name: "Localization Specialist", rate: 140 },
+  { name: "Brand Manager", rate: 160 },
+  { name: "Production Manager", rate: 150 },
+  { name: "Traffic Manager", rate: 130 },
+];
+
+export { ROLES };
 
 interface PricingRow {
   id: string;
@@ -32,395 +101,106 @@ interface PricingRow {
   rate: number;
 }
 
-// Memoized sortable row component for optimal performance
-const DND_ENABLED = false; // quick kill-switch for demo stability (disabled per user feedback)
+const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
+  const [rows, setRows] = useState<PricingRow[]>(
+    (node.attrs.rows || [{ role: '', description: '', hours: 0, rate: 0 }]).map((row: any, idx: number) => ({
+      ...row,
+      id: row.id || `row-${idx}`
+    }))
+  );
+  const [discount, setDiscount] = useState(node.attrs.discount || 0);
+  const containerRef = useRef<HTMLTableSectionElement>(null);
+  const swapyRef = useRef<any>(null);
 
-const SortableRow = memo(({ 
-  row, 
-  index, 
-  showTotal, 
-  visibleRowsLength,
-  onUpdateRow, 
-  onRemoveRow 
-}: { 
-  row: PricingRow;
-  index: number;
-  showTotal: boolean;
-  visibleRowsLength: number;
-  onUpdateRow: (id: string, field: keyof PricingRow, value: string | number) => void;
-  onRemoveRow: (id: string) => void;
-}) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: row.id, disabled: !DND_ENABLED });
+  // Initialize Swapy
+  useEffect(() => {
+    if (containerRef.current && rows.length > 0) {
+      // Destroy existing instance if any
+      if (swapyRef.current) {
+        swapyRef.current.destroy();
+      }
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
+      // Create new Swapy instance
+      swapyRef.current = createSwapy(containerRef.current, {
+        animation: 'dynamic'
+      });
+
+      // Listen to swap events
+      swapyRef.current.onSwap((event: any) => {
+        console.log('Swapy swap event:', event);
+        
+        // Get the new order from the event
+        const newOrder = event.data.array;
+        
+        // Create a map of current rows by ID
+        const rowMap = new Map(rows.map(row => [row.id, row]));
+        
+        // Reorder rows based on the new slot order
+        const reorderedRows = newOrder.map((item: any) => rowMap.get(item.item)).filter(Boolean);
+        
+        setRows(reorderedRows);
+      });
+    }
+
+    return () => {
+      if (swapyRef.current) {
+        swapyRef.current.destroy();
+      }
+    };
+  }, [rows.length]); // Re-initialize when row count changes
+
+  useEffect(() => {
+    updateAttributes({ rows, discount });
+  }, [rows, discount]);
+
+  const updateRow = (id: string, field: keyof PricingRow, value: string | number) => {
+    const newRows = rows.map(row => {
+      if (row.id !== id) return row;
+      
+      if (field === 'role') {
+        const selectedRole = ROLES.find(r => r.name === value);
+        return {
+          ...row,
+          role: value as string,
+          rate: selectedRole?.rate || row.rate,
+        };
+      }
+      
+      return { ...row, [field]: value };
+    });
+    setRows(newRows);
   };
 
-  const handleRoleChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
-    onUpdateRow(row.id, 'role', e.target.value);
-  }, [row.id, onUpdateRow]);
+  const addRow = () => {
+    const newId = `row-${Date.now()}`;
+    setRows([...rows, { id: newId, role: '', description: '', hours: 0, rate: 0 }]);
+  };
 
-  const handleHoursChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    onUpdateRow(row.id, 'hours', parseFloat(e.target.value) || 0);
-  }, [row.id, onUpdateRow]);
-
-  const handleRemove = useCallback(() => {
-    onRemoveRow(row.id);
-  }, [row.id, onRemoveRow]);
-
-  const rowTotal = useMemo(() => row.hours * row.rate, [row.hours, row.rate]);
-
-  return (
-    <tr 
-      ref={setNodeRef}
-      style={style}
-      className="pricing-row group hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors duration-150"
-    >
-      <td className="border border-gray-300 dark:border-gray-600 px-4 py-3">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            {...(DND_ENABLED ? attributes : {})}
-            {...(DND_ENABLED ? listeners : {})}
-            disabled={!DND_ENABLED}
-            className={`drag-handle text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 ${DND_ENABLED ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed'} select-none text-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200`}
-            title={DND_ENABLED ? "Drag to reorder" : "Drag disabled for demo stability"}
-            aria-label="Drag to reorder row"
-          >
-            ⋮⋮
-          </button>
-          <select
-            value={row.role}
-            onChange={handleRoleChange}
-            className="flex-1 px-3 py-2 text-sm !text-foreground dark:text-gray-100 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="">Select role...</option>
-            {ROLES.map((role) => (
-              <option key={role.name} value={role.name}>
-                {role.name} - AUD {role.rate}/hr
-              </option>
-            ))}
-          </select>
-        </div>
-      </td>
-      <td className="border border-gray-300 dark:border-gray-600 px-4 py-3">
-        <input
-          type="number"
-          value={row.hours || ''}
-          onChange={handleHoursChange}
-          placeholder="0"
-          min="0"
-          step="0.5"
-          className="w-full px-3 py-2 text-sm text-right !text-foreground dark:text-gray-100 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
-        />
-      </td>
-      {showTotal && (
-        <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right text-sm font-semibold tabular-nums">
-          AUD {rowTotal.toFixed(2)} +GST
-        </td>
-      )}
-      <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center">
-        <button
-          type="button"
-          onClick={handleRemove}
-          disabled={visibleRowsLength === 1}
-          className="text-red-600 hover:text-red-800 dark:hover:text-red-400 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors text-lg font-bold"
-          aria-label="Remove row"
-        >
-          ✕
-        </button>
-      </td>
-    </tr>
-  );
-});
-
-SortableRow.displayName = 'SortableRow';
-
-// Ghost overlay component for smooth drag preview
-const DragOverlayRow = ({ row, showTotal }: { row: PricingRow; showTotal: boolean }) => {
-  const rowTotal = row.hours * row.rate;
-  
-  return (
-    <table className="w-full border-collapse shadow-2xl">
-      <tbody>
-        <tr className="bg-blue-100 dark:bg-blue-900 opacity-90">
-          <td className="border border-blue-300 dark:border-blue-700 px-4 py-3">
-            <div className="flex items-center gap-3">
-              <span className="text-gray-400 text-xl">⋮⋮</span>
-              <div className="flex-1 px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md">
-                {row.role || 'Select role...'}
-              </div>
-            </div>
-          </td>
-          <td className="border border-blue-300 dark:border-blue-700 px-4 py-3 text-right tabular-nums">
-            {row.hours || 0}
-          </td>
-          {showTotal && (
-            <td className="border border-blue-300 dark:border-blue-700 px-4 py-3 text-right text-sm font-semibold tabular-nums">
-              AUD {rowTotal.toFixed(2)} +GST
-            </td>
-          )}
-          <td className="border border-blue-300 dark:border-blue-700 px-4 py-3 text-center">
-            <span className="text-red-600 text-lg">✕</span>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  );
-};
-
-const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
-  const [rows, setRows] = useState<PricingRow[]>(node.attrs.rows || []);
-  const [discount, setDiscount] = useState(node.attrs.discount || 0);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [showTotal, setShowTotal] = useState(node.attrs.showTotal !== undefined ? node.attrs.showTotal : true);
-  const [isInitialized, setIsInitialized] = useState(false);
-
-  // Configure sensors for drag and drop
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8, // 8px of movement required before drag starts
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  // ⚠️ CRITICAL FIX: Initialize and normalize rows ONCE on mount
-  useEffect(() => {
-    if (isInitialized || !node.attrs.rows) return;
-    // Robust normalizer: lowercase, trim, collapse whitespace, normalize hyphen spacing
-    const normalize = (s: string) => (s || '')
-      .toLowerCase()
-      .replace(/\s*-/g, '-')
-      .replace(/-\s*/g, '-')
-      .replace(/\s+/g, ' ')
-      .trim();
-    const initialRows = node.attrs.rows || [];
-
-    // 1) Dedupe by role: combine hours, prefer known rate from ROLES, keep first description
-    // CRITICAL: Filter out completely empty roles BEFORE processing
-    const roleMap = new Map<string, PricingRow>();
-    for (const r of initialRows) {
-      const key = normalize(r.role);
-      // Skip rows with empty, whitespace-only, or placeholder roles
-      // Check for: empty string, "Select role...", "Select role", or any whitespace
-      if (!key || key.length === 0 || key === 'select role...' || key === 'select role' || !r.role || r.role.trim() === '') continue;
-      
-      const existing = roleMap.get(key);
-      if (!existing) {
-        // Prefer canonical rate from ROLES if available
-        const canon = ROLES.find(x => normalize(x.name) === key);
-        roleMap.set(key, {
-          id: r.id || `row-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          // Snap to canonical role name if found to ensure <select> matches an option value
-          role: canon?.name || r.role,
-          description: r.description || '',
-          hours: Number(r.hours) || 0,
-          rate: typeof r.rate === 'number' && r.rate > 0 ? r.rate : (canon?.rate || 0),
-        });
-      } else {
-        // Merge hours; keep first description; prefer non-zero rate or canonical
-        const canon = ROLES.find(x => normalize(x.name) === key);
-        const mergedHours = (Number(existing.hours) || 0) + (Number(r.hours) || 0);
-        const mergedRate = existing.rate > 0 ? existing.rate : (r.rate > 0 ? r.rate : (canon?.rate || 0));
-        roleMap.set(key, {
-          id: existing.id,
-          role: canon?.name || existing.role,
-          description: existing.description || r.description || '',
-          hours: mergedHours,
-          rate: mergedRate,
-        });
-      }
+  const removeRow = (id: string) => {
+    if (rows.length > 1) {
+      setRows(rows.filter(row => row.id !== id));
     }
+  };
 
-    let deduped = Array.from(roleMap.values());
+  const calculateSubtotal = () => {
+    return rows.reduce((sum, row) => sum + (row.hours * row.rate), 0);
+  };
 
-    // 2) Do not auto-insert mandatory roles here; pricing calculator provides governance rows deterministically
+  const calculateDiscount = () => {
+    return calculateSubtotal() * (discount / 100);
+  };
 
-    // 3) Ensure Account Management is at the bottom
-    const amIndex = deduped.findIndex(r => normalize(r.role).includes('account management'));
-    if (amIndex !== -1 && amIndex !== deduped.length - 1) {
-      const temp = [...deduped];
-      const [amRow] = temp.splice(amIndex, 1);
-      temp.push(amRow);
-      deduped = temp;
-    }
+  const calculateSubtotalAfterDiscount = () => {
+    return calculateSubtotal() - calculateDiscount();
+  };
 
-    setRows(deduped);
-    setIsInitialized(true);
-  }, [isInitialized, node.attrs.rows]);
+  const calculateGST = () => {
+    return calculateSubtotalAfterDiscount() * 0.1;
+  };
 
-  // ⚠️ CRITICAL FIX: Update attributes ONLY when state actually changes
-  // This runs AFTER state updates, preventing render cycle violations
-  useEffect(() => {
-    if (!isInitialized) return; // Don't sync until initial setup is done
-    
-    // 🔧 FILTER: Remove any empty rows before syncing to attributes
-    const validRows = rows.filter(r => {
-      const roleName = (r.role || '').trim();
-      return roleName && roleName.length > 0 && roleName.toLowerCase() !== 'select role...' && roleName.toLowerCase() !== 'select role';
-    });
-    
-    // Use queueMicrotask to defer the updateAttributes call outside the render cycle
-    queueMicrotask(() => {
-      updateAttributes({ rows: validRows, discount, showTotal });
-    });
-  }, [rows, discount, showTotal, isInitialized]);
-
-  // Memoized callback for updating a single row field
-  const updateRow = useCallback((id: string, field: keyof PricingRow, value: string | number) => {
-    setRows(prevRows => {
-      const newRows = prevRows.map(row => {
-        if (row.id !== id) return row;
-        
-        if (field === 'role') {
-          const selectedRole = ROLES.find(r => r.name === value);
-          return {
-            ...row,
-            role: value as string,
-            rate: selectedRole?.rate || row.rate,
-          };
-        }
-        
-        return { ...row, [field]: value };
-      });
-      return newRows;
-    });
-  }, []);
-
-  // Memoized callback for adding a new row
-  const addRow = useCallback(() => {
-    const newRow: PricingRow = {
-      id: `row-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      role: '',
-      description: '',
-      hours: 0,
-      rate: 0
-    };
-    setRows(prev => [...prev, newRow]);
-  }, []);
-
-  // Memoized callback for removing a row
-  const removeRow = useCallback((id: string) => {
-    setRows(prevRows => {
-      // Only prevent deletion if this is the last row with a role selected
-      const rowsWithRoles = prevRows.filter(r => r.role && r.role.trim().length > 0);
-      const rowToRemove = prevRows.find(r => r.id === id);
-      
-      // If removing a row with a role and it's the last one, don't allow it
-      if (rowToRemove?.role && rowToRemove.role.trim().length > 0 && rowsWithRoles.length <= 1) {
-        return prevRows;
-      }
-      
-      return prevRows.filter(row => row.id !== id);
-    });
-  }, []);
-
-  const fixDuplicateRoles = useCallback(() => {
-    // Check if all/most rows have the same role
-    const roleCounts: Record<string, number> = {};
-    rows.forEach(row => {
-      if (row.role) {
-        roleCounts[row.role] = (roleCounts[row.role] || 0) + 1;
-      }
-    });
-
-    // Find if there's a role that appears too many times
-    const maxCount = Math.max(...Object.values(roleCounts));
-    if (maxCount < 3) return; // No need to fix if no role appears 3+ times
-
-    // Auto-assign varied roles while keeping hours
-    // Use canonical roles from the rate card to ensure select values match options
-    const canonicalFallbacks = [
-      'Tech - Head Of - Senior Project Management',
-      'Tech - Delivery - Project Coordination',
-      'Tech - Producer - Development',
-      'Tech - Integrations',
-      'Tech - Producer - Campaign Strategy',
-      'Tech - Producer - Landing Page (Onshore)',
-      'Account Management - (Account Manager)'
-    ];
-
-    setRows(prevRows => {
-      return prevRows.map((row, index) => {
-        // If this row has the duplicate role, assign a different one
-        const isDuplicate = roleCounts[row.role] >= 3;
-        if (isDuplicate) {
-          const desired = canonicalFallbacks[index % canonicalFallbacks.length];
-          const newRole = ROLES.find(r => r.name === desired) || ROLES[index % ROLES.length];
-          return {
-            ...row,
-            role: newRole.name,
-            rate: newRole.rate
-          };
-        }
-        return row;
-      });
-    });
-  }, [rows]);
-
-  // Drag and drop handlers using @dnd-kit
-  const handleDragStart = useCallback((event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
-  }, []);
-
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-    
-    if (over && active.id !== over.id) {
-      setRows((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
-        
-        return arrayMove(items, oldIndex, newIndex);
-      });
-    }
-    
-    setActiveId(null);
-  }, []);
-
-  const handleDragCancel = useCallback(() => {
-    setActiveId(null);
-  }, []);
-
-  // Filter rows with actual roles for calculations (but show all rows in UI for editing)
-  const rowsWithRoles = useMemo(() => rows.filter(r => r.role && r.role.trim().length > 0), [rows]);
-
-  // Memoized calculations for better performance (only calculate for rows with roles)
-  const calculations = useMemo(() => {
-    const subtotal = rowsWithRoles.reduce((sum, row) => sum + (row.hours * row.rate), 0);
-    const discountAmount = subtotal * (discount / 100);
-    const subtotalAfterDiscount = subtotal - discountAmount;
-    const gst = subtotalAfterDiscount * 0.1;
-    const total = subtotalAfterDiscount + gst;
-    const roundedTotal = Math.round(total / 100) * 100;
-
-    return {
-      subtotal,
-      discountAmount,
-      subtotalAfterDiscount,
-      gst,
-      total,
-      roundedTotal,
-    };
-  }, [rowsWithRoles, discount]);
-
-  // Get the active dragging row for overlay
-  const activeRow = useMemo(() => {
-    return activeId ? rows.find(row => row.id === activeId) : null;
-  }, [activeId, rows]);
+  const calculateTotal = () => {
+    return calculateSubtotalAfterDiscount() + calculateGST();
+  };
 
   return (
     <NodeViewWrapper className="editable-pricing-table my-6">
@@ -429,194 +209,157 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
           .pricing-row {
             transition: background-color 0.15s ease;
           }
-          .editable-pricing-table {
-            width: 100%;
-            max-width: 100%;
-            min-width: 0; /* Allow shrinking */
+          .drag-handle {
+            opacity: 0.3;
+            transition: opacity 0.2s;
+            cursor: grab;
           }
-          .pricing-table-container {
-            position: relative;
-            width: 100%;
-            max-width: 100%;
-            overflow-x: auto;
-            overflow-y: visible;
+          .drag-handle:active {
+            cursor: grabbing;
           }
-          /* Drop indicator styling */
-          .drop-indicator {
-            height: 3px;
-            background: linear-gradient(90deg, #3b82f6, #60a5fa);
-            border-radius: 2px;
-            box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
+          .pricing-row:hover .drag-handle {
+            opacity: 1;
+          }
+          [data-swapy-highlighted] {
           }
         `}
       </style>
-      <div className="border-2 border-gray-200 dark:border-gray-700 rounded-xl p-6 bg-white dark:bg-[#0E0F0F] shadow-sm w-full max-w-full">
-        <div className="flex justify-between items-center mb-6">
+      <div className="border border-border rounded-lg p-4 bg-background dark:bg-gray-900/50">
+        <div className="flex justify-between items-center mb-4">
           <div>
-            <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">Project Pricing</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">💡 Drag the ⋮⋮ icon to reorder rows</p>
+            <h3 className="text-lg font-bold text-foreground dark:text-gray-100">Project Pricing</h3>
+            <p className="text-xs text-gray-500 mt-0.5">💡 Tip: Drag rows to reorder</p>
           </div>
           <button
-            type="button"
             onClick={addRow}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+            className="px-3 py-1 bg-[#0e2e33] text-white rounded text-sm hover:bg-[#0a2328] transition-colors"
           >
             + Add Role
           </button>
         </div>
 
-        {/* Pricing Table with DnD */}
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-          onDragCancel={handleDragCancel}
-        >
-          <div className="pricing-table-container overflow-x-auto mb-6">
-            <table className="w-full border-collapse min-w-[800px]">
-              <thead>
-                <tr className="bg-[#0E0F0F]">
-                  <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-bold text-white uppercase tracking-wide min-w-[300px]">
-                    Role
-                  </th>
-                  <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right text-sm font-bold text-white uppercase tracking-wide w-32">
-                    Hours
-                  </th>
-                  {showTotal && (
-                    <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-right text-sm font-bold text-white uppercase tracking-wide w-40">
-                      Total Cost + GST
-                    </th>
-                  )}
-                  <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-center text-sm font-bold text-white uppercase tracking-wide w-20">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <SortableContext items={rows.map(r => r.id)} strategy={verticalListSortingStrategy}>
-                <tbody>
-                  {rows.map((row, index) => (
-                    <SortableRow
-                      key={row.id}
-                      row={row}
-                      index={index}
-                      showTotal={showTotal}
-                      visibleRowsLength={rowsWithRoles.length}
-                      onUpdateRow={updateRow}
-                      onRemoveRow={removeRow}
-                    />
-                  ))}
-                </tbody>
-              </SortableContext>
-            </table>
-          </div>
-
-          {/* Drag Overlay - Ghost Preview */}
-          <DragOverlay dropAnimation={null}>
-            {activeRow ? <DragOverlayRow row={activeRow} showTotal={showTotal} /> : null}
-          </DragOverlay>
-        </DndContext>
-
-        {/* Additional Actions */}
-        {rows.some(r => {
-          const roleCounts: Record<string, number> = {};
-          rows.forEach(row => {
-            if (row.role) roleCounts[row.role] = (roleCounts[row.role] || 0) + 1;
-          });
-          return Object.values(roleCounts).some(count => count >= 3);
-        }) && (
-          <div className="mb-4">
-            <button
-              type="button"
-              onClick={fixDuplicateRoles}
-              className="px-3 py-1.5 bg-orange-600 text-white rounded-lg text-sm hover:bg-orange-700 transition-colors shadow-sm"
-              title="Auto-fix duplicate roles"
-            >
-              🔧 Fix Duplicate Roles
-            </button>
-          </div>
-        )}
-
-        {/* Summary Section */}
-        <div className="flex justify-end">
-          <div className="w-full max-w-md">
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-5 space-y-3 shadow-sm">
-              {/* Toggle Button for Total Price - MOVED TO TOP */}
-              <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-3 mb-1">
-                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Show Pricing</span>
-                <button
-                  onClick={() => setShowTotal(!showTotal)}
-                  className={`px-4 py-2 text-xs font-medium rounded-lg transition-all shadow-sm ${
-                    showTotal 
-                      ? 'bg-emerald-600 text-white hover:bg-emerald-700' 
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                  }`}
-                  title={showTotal ? "Hide all pricing" : "Show all pricing"}
+        <div className="overflow-x-auto mb-4">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-[#0e2e33] text-white">
+                <th className="border border-border px-3 py-2 text-left text-sm">Role</th>
+                <th className="border border-border px-3 py-2 text-left text-sm">Description</th>
+                <th className="border border-border px-3 py-2 text-left text-sm w-24">Hours</th>
+                <th className="border border-border px-3 py-2 text-left text-sm w-24">Rate</th>
+                <th className="border border-border px-3 py-2 text-right text-sm w-32">Cost</th>
+                <th className="border border-border px-3 py-2 text-center text-sm w-16">Actions</th>
+              </tr>
+            </thead>
+            <tbody ref={containerRef}>
+              {rows.map((row) => (
+                <tr 
+                  key={row.id} 
+                  data-swapy-slot={row.id}
+                  data-swapy-item={row.id}
+                  className="pricing-row hover:bg-muted dark:bg-gray-800"
                 >
-                  {showTotal ? "✓ Visible" : "Hidden"}
-                </button>
-              </div>
-
-              {showTotal && (
-                <>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-700 dark:text-gray-300">Discount (%):</span>
+                  <td className="border border-border p-2">
+                    <div className="flex items-center gap-2">
+                      <span data-swapy-handle className="drag-handle text-gray-400 select-none text-lg" title="Drag to reorder">⋮⋮</span>
+                      <select
+                        value={row.role}
+                        onChange={(e) => updateRow(row.id, 'role', e.target.value)}
+                        className="w-full bg-transparent border-none outline-none text-sm"
+                      >
+                        <option value="">Select role...</option>
+                        {ROLES.map((role) => (
+                          <option key={role.name} value={role.name}>
+                            {role.name} - ${role.rate}/hr
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </td>
+                  <td className="border border-border p-2">
+                    <input
+                      type="text"
+                      value={row.description}
+                      onChange={(e) => updateRow(row.id, 'description', e.target.value)}
+                      placeholder="Description..."
+                      className="w-full bg-transparent border-none outline-none text-sm"
+                    />
+                  </td>
+                  <td className="border border-border p-2">
                     <input
                       type="number"
-                      value={discount}
-                      onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
+                      value={row.hours || ''}
+                      onChange={(e) => updateRow(row.id, 'hours', parseFloat(e.target.value) || 0)}
+                      placeholder="0"
                       min="0"
-                      max="100"
-                      className="w-20 px-3 py-1.5 text-sm text-right !text-foreground dark:text-gray-100 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      step="0.5"
+                      className="w-full bg-transparent border-none outline-none text-sm text-right"
                     />
-                  </div>
-                  <div className="flex justify-between text-sm text-gray-700 dark:text-gray-300">
-                    <span>Subtotal:</span>
-                    <span className="font-semibold tabular-nums">AUD {calculations.subtotal.toFixed(2)}</span>
-                  </div>
-                  {discount > 0 && (
-                    <>
-                      <div className="flex justify-between text-sm text-red-600 dark:text-red-400">
-                        <span>Discount ({discount}%):</span>
-                        <span className="tabular-nums">-AUD {calculations.discountAmount.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm text-gray-700 dark:text-gray-300">
-                        <span>Subtotal after Discount:</span>
-                        <span className="font-semibold tabular-nums">AUD {calculations.subtotalAfterDiscount.toFixed(2)}</span>
-                      </div>
-                    </>
-                  )}
+                  </td>
+                  <td className="border border-border p-2">
+                    <input
+                      type="number"
+                      value={row.rate || ''}
+                      onChange={(e) => updateRow(row.id, 'rate', parseFloat(e.target.value) || 0)}
+                      placeholder="$0"
+                      min="0"
+                      className="w-full bg-transparent border-none outline-none text-sm text-right"
+                    />
+                  </td>
+                  <td className="border border-border px-3 py-2 text-right text-sm font-semibold">
+                    ${(row.hours * row.rate).toFixed(2)}
+                  </td>
+                  <td className="border border-border p-2 text-center">
+                    <button
+                      onClick={() => removeRow(row.id)}
+                      disabled={rows.length === 1}
+                      className="text-red-600 hover:text-red-800 disabled:text-gray-400 disabled:cursor-not-allowed text-lg"
+                    >
+                      ✕
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
-                  {/* Show price as "+GST" OR with GST included */}
-                  <div className="border-t-2 border-gray-200 dark:border-gray-700 pt-3 mt-2 space-y-2">
-                    <div className="flex justify-between text-base font-bold text-gray-900 dark:text-gray-100">
-                      <span>Total Project Value:</span>
-                      <span className="text-blue-600 dark:text-blue-400 tabular-nums">
-                        AUD {calculations.subtotalAfterDiscount.toFixed(2)} <span className="text-sm font-normal text-gray-500">+GST</span>
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-xs text-gray-600 dark:text-gray-400">
-                      <span>GST (10%):</span>
-                      <span className="tabular-nums">AUD {calculations.gst.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 italic">
-                      <span>Total incl. GST (unrounded):</span>
-                      <span className="tabular-nums">AUD {calculations.total.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm text-gray-900 dark:text-gray-100">
-                      <span className="font-bold">Total incl. GST (rounded):</span>
-                      <span className="font-bold tabular-nums">AUD {calculations.roundedTotal.toFixed(2)}</span>
-                    </div>
-                    <div className="text-[10px] text-gray-500 dark:text-gray-400 text-right">Rounded to nearest $100</div>
+        <div className="flex justify-end">
+          <div className="w-full max-w-md">
+            <div className="bg-muted dark:bg-gray-800 rounded-lg p-4 space-y-2">
+              <div className="flex justify-between items-center text-sm text-foreground dark:text-gray-100">
+                <span>Discount (%):</span>
+                <input
+                  type="number"
+                  value={discount}
+                  onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
+                  min="0"
+                  max="100"
+                />
+              </div>
+              <div className="flex justify-between text-sm text-foreground dark:text-gray-100">
+                <span>Subtotal:</span>
+                <span className="font-semibold">${calculateSubtotal().toFixed(2)}</span>
+              </div>
+              {discount > 0 && (
+                <>
+                  <div className="flex justify-between text-sm text-red-600">
+                    <span>Discount ({discount}%):</span>
+                    <span>-${calculateDiscount().toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-foreground dark:text-gray-100">
+                    <span>After Discount:</span>
+                    <span className="font-semibold">${calculateSubtotalAfterDiscount().toFixed(2)}</span>
                   </div>
                 </>
               )}
-              
-              {!showTotal && (
-                <div className="text-center text-sm text-gray-500 dark:text-gray-400 py-3">
-                  💡 Pricing hidden - toggle to show investment details
-                </div>
-              )}
+              <div className="flex justify-between text-sm text-foreground dark:text-gray-100">
+                <span>GST (10%):</span>
+                <span>${calculateGST().toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-base font-bold text-foreground dark:text-gray-100 border-t border-border pt-2 mt-2">
+                <span>Total Project Value:</span>
+                <span className="text-[#0e2e33]">${calculateTotal().toFixed(2)}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -635,14 +378,10 @@ export const EditablePricingTable = Node.create({
   addAttributes() {
     return {
       rows: {
-        // Avoid inserting a default blank row; rows will be provided by the caller
-        default: [],
+        default: [{ id: 'row-0', role: '', description: '', hours: 0, rate: 0 }],
       },
       discount: {
         default: 0,
-      },
-      showTotal: {
-        default: true,
       },
     };
   },
@@ -655,48 +394,16 @@ export const EditablePricingTable = Node.create({
     ];
   },
 
-  // Markdown serialization: skip markdown and use HTML only
-  // This custom node is not suitable for markdown export
-  renderMarkdown() {
-    return null; // Skip markdown rendering for this node
-  },
-
   renderHTML({ node, HTMLAttributes }) {
-    const originalRows: PricingRow[] = node.attrs.rows || [];
+    const rows: PricingRow[] = node.attrs.rows || [];
     const discount = node.attrs.discount || 0;
-    const showTotal: boolean = node.attrs.showTotal !== undefined ? node.attrs.showTotal : true;
-
-    const norm = (s: string) => (s || '')
-      .toLowerCase()
-      .replace(/\s*-/g, '-')
-      .replace(/-\s*/g, '-')
-      .replace(/\s+/g, ' ')
-      .trim();
-
-    // Start with provided rows; do not inject governance rows here
-    let rows: PricingRow[] = [...originalRows];
-
-    // Ensure Account Management last if present
-    const amIdx = rows.findIndex(r => norm(r.role).includes('account management'));
-    if (amIdx !== -1 && amIdx !== rows.length - 1) {
-      const tmp = [...rows];
-      const [amRow] = tmp.splice(amIdx, 1);
-      tmp.push(amRow);
-      rows = tmp;
-    }
-
-    // Exclude any zero-cost rows for PDF/HTML rendering (clarity for clients)
-    const exportRows = rows.filter(r => (Number(r.hours) || 0) * (Number(r.rate) || 0) > 0);
-
-    // Calculate totals
-  const subtotal = exportRows.reduce((sum, row) => sum + (row.hours * row.rate), 0);
-  const discountAmount = (subtotal * discount) / 100;
-  const subtotalAfterDiscount = subtotal - discountAmount;
-  const gst = subtotalAfterDiscount * 0.10;
-  const total = subtotalAfterDiscount + gst;
-  const roundedTotal = Math.round(total / 100) * 100;
     
-    // Build proper DOM structure for rendering
+    const subtotal = rows.reduce((sum, row) => sum + (row.hours * row.rate), 0);
+    const discountAmount = (subtotal * discount) / 100;
+    const subtotalAfterDiscount = subtotal - discountAmount;
+    const gst = subtotalAfterDiscount * 0.10;
+    const total = subtotalAfterDiscount + gst;
+    
     const tableContent: any[] = [
       'table',
       { style: 'width:100%; border-collapse:collapse; margin:1.5rem 0; border:2px solid #0e2e33;' },
@@ -708,17 +415,15 @@ export const EditablePricingTable = Node.create({
           {},
           ['th', { style: 'background:#0e2e33; color:white; padding:0.875rem 1rem; text-align:left; border:1px solid #0e2e33;' }, 'Role'],
           ['th', { style: 'background:#0e2e33; color:white; padding:0.875rem 1rem; text-align:left; border:1px solid #0e2e33;' }, 'Description'],
-          ...(showTotal ? [
-            ['th', { style: 'background:#0e2e33; color:white; padding:0.875rem 1rem; text-align:right; border:1px solid #0e2e33;' }, 'Hours'],
-            ['th', { style: 'background:#0e2e33; color:white; padding:0.875rem 1rem; text-align:right; border:1px solid #0e2e33;' }, 'Rate'],
-            ['th', { style: 'background:#0e2e33; color:white; padding:0.875rem 1rem; text-align:right; border:1px solid #0e2e33;' }, 'Total'],
-          ] : []),
+          ['th', { style: 'background:#0e2e33; color:white; padding:0.875rem 1rem; text-align:right; border:1px solid #0e2e33;' }, 'Hours'],
+          ['th', { style: 'background:#0e2e33; color:white; padding:0.875rem 1rem; text-align:right; border:1px solid #0e2e33;' }, 'Rate'],
+          ['th', { style: 'background:#0e2e33; color:white; padding:0.875rem 1rem; text-align:right; border:1px solid #0e2e33;' }, 'Total'],
         ]
       ],
       [
         'tbody',
         {},
-        ...exportRows.map((row, index) => {
+        ...rows.map((row, index) => {
           const rowTotal = row.hours * row.rate;
           const bgColor = index % 2 === 0 ? '#f9fafb' : 'white';
           return [
@@ -726,17 +431,14 @@ export const EditablePricingTable = Node.create({
             { style: `background:${bgColor};` },
             ['td', { style: 'padding:0.875rem 1rem; border:1px solid #d1d5db;' }, row.role],
             ['td', { style: 'padding:0.875rem 1rem; border:1px solid #d1d5db;' }, row.description || ''],
-            ...(showTotal ? [
-              ['td', { style: 'padding:0.875rem 1rem; border:1px solid #d1d5db; text-align:right;' }, row.hours.toString()],
-              ['td', { style: 'padding:0.875rem 1rem; border:1px solid #d1d5db; text-align:right;' }, `AUD ${row.rate.toFixed(2)}`],
-              ['td', { style: 'padding:0.875rem 1rem; border:1px solid #d1d5db; text-align:right; font-weight:600;' }, `AUD ${rowTotal.toFixed(2)} +GST`],
-            ] : []),
+            ['td', { style: 'padding:0.875rem 1rem; border:1px solid #d1d5db; text-align:right;' }, row.hours.toString()],
+            ['td', { style: 'padding:0.875rem 1rem; border:1px solid #d1d5db; text-align:right;' }, `$${row.rate.toFixed(2)}`],
+            ['td', { style: 'padding:0.875rem 1rem; border:1px solid #d1d5db; text-align:right; font-weight:600;' }, `$${rowTotal.toFixed(2)}`],
           ];
         })
       ]
     ];
     
-    // Build totals section (respect visibility)
     const totalsSection: any[] = [
       'div',
       { style: 'margin-top:1.5rem; padding-top:1rem; border-top:2px solid #0e2e33;' },
@@ -745,31 +447,26 @@ export const EditablePricingTable = Node.create({
         { style: 'max-width:400px; margin-left:auto;' },
         ['div', { style: 'display:flex; justify-content:space-between; padding:0.5rem 0;' },
           ['span', { style: 'font-weight:600; color:#0e2e33;' }, 'Subtotal:'],
-          ['span', { style: 'font-weight:600; color:#0e2e33;' }, `AUD ${subtotal.toFixed(2)}`]
+          ['span', { style: 'font-weight:600; color:#0e2e33;' }, `$${subtotal.toFixed(2)}`]
         ],
         ...(discount > 0 ? [
           ['div', { style: 'display:flex; justify-content:space-between; padding:0.5rem 0; color:#ef4444;' },
             ['span', {}, `Discount (${discount}%):`],
-            ['span', {}, `-AUD ${discountAmount.toFixed(2)}`]
+            ['span', {}, `-$${discountAmount.toFixed(2)}`]
           ],
-        ['div', { style: 'display:flex; justify-content:space-between; padding:0.5rem 0;' },
-          ['span', { style: 'font-weight:600;' }, 'Subtotal After Discount:'],
-          ['span', { style: 'font-weight:600;' }, `AUD ${subtotalAfterDiscount.toFixed(2)}`]
-        ]
-      ] : []),
+          ['div', { style: 'display:flex; justify-content:space-between; padding:0.5rem 0;' },
+            ['span', { style: 'font-weight:600;' }, 'Subtotal After Discount:'],
+            ['span', { style: 'font-weight:600;' }, `$${subtotalAfterDiscount.toFixed(2)}`]
+          ]
+        ] : []),
         ['div', { style: 'display:flex; justify-content:space-between; padding:0.5rem 0;' },
           ['span', {}, 'GST (10%):'],
-          ['span', {}, `AUD ${gst.toFixed(2)}`]
+          ['span', {}, `$${gst.toFixed(2)}`]
         ],
-        ['div', { style: 'display:flex; justify-content:space-between; padding:0.25rem 0; border-top:2px solid #0e2e33; margin-top:0.5rem; font-style:italic; color:#6b7280;' },
-          ['span', {}, 'Total incl. GST (unrounded):'],
-          ['span', {}, `AUD ${total.toFixed(2)}`]
-        ],
-        ['div', { style: 'display:flex; justify-content:space-between; padding:0.5rem 0;' },
-          ['span', { style: 'font-size:1.10rem; font-weight:700; color:#0e2e33;' }, 'Total Investment (rounded):'],
-          ['span', { style: 'font-size:1.10rem; font-weight:700; color:#0e2e33;' }, `AUD ${roundedTotal.toFixed(2)}`]
-        ],
-        ['div', { style: 'text-align:right; font-size:10px; color:#6b7280;' }, 'Rounded to nearest $100']
+        ['div', { style: 'display:flex; justify-content:space-between; padding:0.75rem 0; border-top:2px solid #0e2e33; margin-top:0.5rem;' },
+          ['span', { style: 'font-size:1.25rem; font-weight:700; color:#0e2e33;' }, 'Total Investment:'],
+          ['span', { style: 'font-size:1.25rem; font-weight:700; color:#0e2e33;' }, `$${total.toFixed(2)}`]
+        ]
       ]
     ];
     
@@ -777,7 +474,7 @@ export const EditablePricingTable = Node.create({
       'div',
       mergeAttributes(HTMLAttributes, { 'data-type': 'editable-pricing-table' }),
       tableContent,
-      ...(showTotal ? [totalsSection] : [])
+      totalsSection
     ];
   },
 
