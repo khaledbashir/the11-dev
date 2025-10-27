@@ -316,7 +316,7 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
     const line = lines[i];
 
     // Check for explicit pricing table placeholder
-    if (line.trim() === '[pricing_table]') {
+    if (line.trim() === '[pricing_table]' || line.trim() === '[editablePricingTable]') {
       insertPricingTable();
       i++;
       continue;

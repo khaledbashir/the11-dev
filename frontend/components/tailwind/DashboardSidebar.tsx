@@ -247,7 +247,7 @@ export default function DashboardSidebar({
     setChatInput("");
   };
 
-    // Enhance prompt using AI
+  // Enhance prompt using AI
   const [enhancing, setEnhancing] = useState(false);
   const handleEnhanceOnly = async () => {
     if (!chatInput.trim() || isLoading || enhancing) return;
@@ -271,15 +271,16 @@ export default function DashboardSidebar({
       const data = await resp.json();
       const enhanced = data.enhancedPrompt;
       
-      if (enhanced && enhanced.trim()) {
-        setChatInput(enhanced.trim());
-        toast.success('Prompt enhanced');
-      } else {
-        toast.error('No enhancement generated');
+      if (!enhanced || !enhanced.trim()) {
+        toast.error('Enhancer returned empty text');
+        return;
       }
-    } catch (err) {
-      console.error('Enhance failed:', err);
-      toast.error('Failed to enhance prompt');
+      
+      setChatInput(enhanced.trim());
+      toast.success('Prompt enhanced');
+    } catch (e) {
+      console.error('Enhance failed:', e);
+      toast.error('Failed to enhance your prompt.');
     } finally {
       setEnhancing(false);
     }
@@ -485,13 +486,20 @@ export default function DashboardSidebar({
           <Button
             onClick={handleEnhanceOnly}
             disabled={!chatInput.trim() || isLoading || enhancing}
-            className="self-end bg-[#0E2E33] hover:bg-[#143e45] text-white border border-[#1CBF79]"
-            title="Enhance your prompt with AI"
+            size="sm"
+            className="self-end bg-[#0E2E33] hover:bg-[#143e45] text-white h-[50px] font-semibold border border-[#1CBF79]"
+            title="Enhance"
           >
             {enhancing ? (
-              <Loader2 className="h-5 w-5 animate-spin text-[#1CBF79]" />
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-5 w-5 animate-spin text-[#1CBF79]" />
+                <span className="text-sm">Enhancing…</span>
+              </div>
             ) : (
-              <span className="text-lg">✨</span>
+              <div className="flex items-center gap-2">
+                <span className="text-lg">✨</span>
+                <span className="text-sm">Enhance</span>
+              </div>
             )}
           </Button>
           <Button 

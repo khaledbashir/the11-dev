@@ -770,6 +770,11 @@ export function cleanSOWContent(content: string): string {
     .replace(/<!-- .*? -->/gi, '')
     // Remove any remaining XML-style tags that might be internal
     .replace(/<\/?[A-Z_]+>/gi, '')
+    // 🚨 CRITICAL: Remove internal PART headers (non-client-facing structure markers)
+    .replace(/^##\s*PART\s*\d+:\s*REASONING\s+SUMMARY[\s\S]*?(?=^##\s*PART\s*\d+:|^#{1,6}\s+[^#]|\*\*PROJECT)/mi, '')
+    .replace(/^##\s*PART\s*\d+:\s*THE\s+FINAL\s+SCOPE\s+OF\s+WORK\s*$/mi, '')
+    // Remove any standalone "## PART 1:" or "## PART 2:" headers
+    .replace(/^##\s*PART\s*\d+:.*$/gmi, '')
     .trim();
 
   // Optional: sanitize placeholder client brands in narrative when no explicit client is set

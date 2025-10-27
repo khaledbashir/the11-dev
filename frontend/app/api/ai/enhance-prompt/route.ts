@@ -110,14 +110,52 @@ export async function POST(req: NextRequest) {
       }, { status: 500 });
     }
 
+    // 🧹 CRITICAL SANITIZATION: Remove <think> tags, questions, and conversational fluff
+    let sanitized = enhancedPrompt.trim();
+
+    // 1. Strip all thinking/reasoning tags and their content
+    sanitized = sanitized.replace(/<think>[\s\S]*?<\/think>/gi, '');
+    sanitized = sanitized.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '');
+    sanitized = sanitized.replace(/<AI_THINK>[\s\S]*?<\/AI_THINK>/gi, '');
+    
+    // 2. Remove any remaining orphaned tags
+    sanitized = sanitized.replace(/<\/?think>/gi, '');
+    sanitized = sanitized.replace(/<\/?thinking>/gi, '');
+    sanitized = sanitized.replace(/<\/?AI_THINK>/gi, '');
+
+    // 3. Remove conversational prefixes and meta-commentary
+    const conversationalPatterns = [
+      /^(here'?s|here is) (the|an?) (enhanced|improved|rewritten|refined|optimized) (prompt|version)[\s:]+/i,
+      /^(i'?ve|i have) (enhanced|improved|rewritten|refined) (your prompt|it)[\s:]+/i,
+      /^(i'?ll|i will) (help you|create|provide)[\s\S]*$/i,
+      /^(please (provide|add|include|specify)|could you (provide|add|include|specify))[\s\S]*$/i,
+      /^(let me know if|feel free to|don't hesitate)[\s\S]*$/i,
+      /^(to provide|in order to|to answer)[\s\S]*$/i,
+      /^what (industry|business|specific|features)[\s\S]*\?$/im,
+    ];
+
+    for (const pattern of conversationalPatterns) {
+      sanitized = sanitized.replace(pattern, '');
+    }
+
+    // 4. Remove question blocks at the end (common AI behavior)
+    sanitized = sanitized.replace(/\n\n[\s\S]*\?\s*$/m, '');
+    sanitized = sanitized.replace(/\*\*Data Source Questions:\*\*[\s\S]*$/i, '');
+    sanitized = sanitized.replace(/\*\*Information Needed:\*\*[\s\S]*$/i, '');
+    sanitized = sanitized.replace(/\*\*.*Questions.*:\*\*[\s\S]*$/i, '');
+
+    // 5. Clean up extra whitespace
+    sanitized = sanitized.trim();
+
     console.log('[enhance-prompt] Enhanced successfully:', {
       originalLength: prompt.length,
       enhancedLength: enhancedPrompt.length,
+      sanitizedLength: sanitized.length,
     });
 
     // Return JSON in the format the frontend expects
     return NextResponse.json({ 
-      enhancedPrompt: enhancedPrompt.trim() 
+      enhancedPrompt: sanitized 
     });
 
   } catch (error: any) {
