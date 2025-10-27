@@ -3,6 +3,7 @@
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
 import React, { useState, useEffect } from 'react';
+import { ROLES as RATE_ROLES, RATE_CARD_MAP, getRateForRole } from '@/lib/rateCard';
 import {
   DndContext,
   closestCenter,
@@ -21,93 +22,8 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-// Social Garden 82 roles with AUD rates
-const ROLES = [
-  { name: "Project Manager", rate: 160 },
-  { name: "Project Coordination", rate: 140 },
-  { name: "Account Management", rate: 150 },
-  { name: "Strategy Director", rate: 180 },
-  { name: "Senior Strategist", rate: 160 },
-  { name: "Strategist", rate: 140 },
-  { name: "Creative Director", rate: 180 },
-  { name: "Senior Art Director", rate: 160 },
-  { name: "Art Director", rate: 140 },
-  { name: "Senior Copywriter", rate: 160 },
-  { name: "Copywriter", rate: 140 },
-  { name: "Senior Designer", rate: 150 },
-  { name: "Designer", rate: 130 },
-  { name: "Junior Designer", rate: 110 },
-  { name: "Senior UX Designer", rate: 160 },
-  { name: "UX Designer", rate: 140 },
-  { name: "Senior UI Designer", rate: 160 },
-  { name: "UI Designer", rate: 140 },
-  { name: "Motion Designer", rate: 150 },
-  { name: "Senior Motion Designer", rate: 170 },
-  { name: "3D Designer", rate: 160 },
-  { name: "Illustrator", rate: 150 },
-  { name: "Photographer", rate: 180 },
-  { name: "Videographer", rate: 180 },
-  { name: "Video Editor", rate: 150 },
-  { name: "Sound Designer", rate: 140 },
-  { name: "Technical Director", rate: 180 },
-  { name: "Senior Developer", rate: 160 },
-  { name: "Developer", rate: 140 },
-  { name: "Junior Developer", rate: 120 },
-  { name: "Front-End Developer", rate: 150 },
-  { name: "Senior Front-End Developer", rate: 170 },
-  { name: "Back-End Developer", rate: 160 },
-  { name: "Senior Back-End Developer", rate: 180 },
-  { name: "Full-Stack Developer", rate: 160 },
-  { name: "Senior Full-Stack Developer", rate: 180 },
-  { name: "DevOps Engineer", rate: 170 },
-  { name: "Senior DevOps Engineer", rate: 190 },
-  { name: "QA Engineer", rate: 140 },
-  { name: "Senior QA Engineer", rate: 160 },
-  { name: "Data Analyst", rate: 150 },
-  { name: "Senior Data Analyst", rate: 170 },
-  { name: "SEO Specialist", rate: 140 },
-  { name: "Senior SEO Specialist", rate: 160 },
-  { name: "Content Strategist", rate: 140 },
-  { name: "Senior Content Strategist", rate: 160 },
-  { name: "Social Media Manager", rate: 130 },
-  { name: "Senior Social Media Manager", rate: 150 },
-  { name: "Community Manager", rate: 120 },
-  { name: "Email Marketing Specialist", rate: 130 },
-  { name: "Senior Email Marketing Specialist", rate: 150 },
-  { name: "Marketing Automation Specialist", rate: 150 },
-  { name: "CRM Specialist", rate: 140 },
-  { name: "Senior CRM Specialist", rate: 160 },
-  { name: "Web Analytics Specialist", rate: 150 },
-  { name: "Conversion Rate Optimization Specialist", rate: 160 },
-  { name: "UX Researcher", rate: 150 },
-  { name: "Senior UX Researcher", rate: 170 },
-  { name: "Product Manager", rate: 170 },
-  { name: "Senior Product Manager", rate: 190 },
-  { name: "Business Analyst", rate: 150 },
-  { name: "Senior Business Analyst", rate: 170 },
-  { name: "Scrum Master", rate: 160 },
-  { name: "Agile Coach", rate: 180 },
-  { name: "Solutions Architect", rate: 190 },
-  { name: "Enterprise Architect", rate: 200 },
-  { name: "Security Specialist", rate: 170 },
-  { name: "Senior Security Specialist", rate: 190 },
-  { name: "Cloud Architect", rate: 190 },
-  { name: "Database Administrator", rate: 160 },
-  { name: "Senior Database Administrator", rate: 180 },
-  { name: "Systems Administrator", rate: 150 },
-  { name: "Network Engineer", rate: 160 },
-  { name: "Support Engineer", rate: 130 },
-  { name: "Senior Support Engineer", rate: 150 },
-  { name: "Training Specialist", rate: 140 },
-  { name: "Documentation Specialist", rate: 130 },
-  { name: "Accessibility Specialist", rate: 150 },
-  { name: "Localization Specialist", rate: 140 },
-  { name: "Brand Manager", rate: 160 },
-  { name: "Production Manager", rate: 150 },
-  { name: "Traffic Manager", rate: 130 },
-];
-
-export { ROLES };
+// Use single source of truth for roles/rates
+const ROLES = RATE_ROLES;
 
 interface PricingRow {
   id: string;
@@ -150,8 +66,8 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
     setRows((prev) => prev.map((row) => {
       if (row.id !== id) return row;
       if (field === 'role') {
-        const selectedRole = ROLES.find(r => r.name === value);
-        return { ...row, role: value as string, rate: selectedRole?.rate || row.rate };
+        const rate = getRateForRole(value as string) || row.rate;
+        return { ...row, role: value as string, rate };
       }
       return { ...row, [field]: value };
     }));
