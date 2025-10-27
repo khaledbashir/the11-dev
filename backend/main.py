@@ -31,6 +31,7 @@ class PDFRequest(BaseModel):
     filename: str = "document"
     show_pricing_summary: bool = True  # 🎯 Smart PDF Export: flag to control pricing summary visibility
     content: Optional[Dict[str, Any]] = None  # TipTap JSON content for enforcement checks
+    final_investment_target_text: Optional[str] = None  # 🎯 Authoritative final price to display in PDF
 
 class SheetRequest(BaseModel):
     client_name: str
@@ -66,6 +67,18 @@ SOW_TEMPLATE = """
 
         <div class="sow-content">
             {{ html_content }}
+            {% if final_investment_target_text %}
+            <h4 style="margin-top: 20px;">Summary</h4>
+            <table class="summary-table">
+                <tr>
+                    <td style="text-align: right; padding-right: 12px;"><strong>Final Project Value:</strong></td>
+                    <td class="num" style="color: #2C823D; font-size: 18px;">
+                        <strong>{{ final_investment_target_text }}</strong>
+                    </td>
+                </tr>
+            </table>
+            <p style="color:#6b7280; font-size: 0.85em; margin-top: 4px;">This final project value is authoritative and supersedes any computed totals.</p>
+            {% endif %}
         </div>
 
         <div class="sow-footer">
@@ -369,7 +382,8 @@ async def generate_pdf(request: PDFRequest):
         full_html = template.render(
             html_content=request.html_content,
             css_content=DEFAULT_CSS,
-            logo_base64=logo_base64
+            logo_base64=logo_base64,
+            final_investment_target_text=request.final_investment_target_text,
         )
         
         # Generate PDF with WeasyPrint

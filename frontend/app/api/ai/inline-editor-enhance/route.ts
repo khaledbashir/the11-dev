@@ -2,13 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * Inline Editor Enhancement Proxy
- * Routes text improvement requests to the utility-inline-enhancer workspace in AnythingLLM
- * This is SEPARATE from the prompt enhancer - it's for enhancing selected text in the editor
+ * Routes text improvement requests to the utility-inline-editor workspace in AnythingLLM
+ * 
+ * IMPORTANT: This is SEPARATE from the prompt enhancer (✨ Enhance button):
+ * - ✨ Enhance button (workspace creation) → utility-prompt-enhancer workspace
+ * - Inline editor (selection + slash /ai) → utility-inline-editor workspace
+ * 
+ * Each has different prompts optimized for their use case.
  */
 export async function POST(req: NextRequest) {
   try {
     const anythingLLMURL = process.env.ANYTHINGLLM_URL || process.env.NEXT_PUBLIC_ANYTHINGLLM_URL;
     const anythingLLMKey = process.env.ANYTHINGLLM_API_KEY || process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY;
+    const configuredWorkspace = process.env.INLINE_EDITOR_WORKSPACE || process.env.NEXT_PUBLIC_INLINE_EDITOR_WORKSPACE;
     
     if (!anythingLLMURL || !anythingLLMKey) {
       console.error('[inline-editor-enhance] Missing AnythingLLM configuration');
@@ -40,45 +46,80 @@ export async function POST(req: NextRequest) {
       preview: text.substring(0, 100),
     });
 
-    // Route to the utility-inline-enhancer workspace via stream-chat
-    const endpoint = `${anythingLLMURL.replace(/\/$/, '')}/api/v1/workspace/utility-inline-enhancer/stream-chat`;
-    
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${anythingLLMKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message: text,
-        mode: 'chat',
-      }),
-    });
+    // Resolve candidate workspaces in order of preference
+    // 1) Body override (workspaceSlug), 2) ENV, 3) known slugs, 4) fallback to editor workspace
+    const { workspaceSlug: bodyWorkspaceSlug } = body as { workspaceSlug?: string };
+    const candidates = Array.from(
+      new Set(
+        [
+          bodyWorkspaceSlug,
+          configuredWorkspace,
+          'utility-inline-editor',   // PRIMARY: dedicated inline editor workspace
+          'pop',                      // FALLBACK: editor assistant workspace (general-purpose)
+        ].filter(Boolean) as string[]
+      )
+    );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[inline-editor-enhance] AnythingLLM error:', {
-        status: response.status,
-        error: errorText.substring(0, 200),
+    let response: Response | null = null;
+    let lastNon404Error: { status: number; statusText: string; body?: string } | null = null;
+
+    for (const slug of candidates) {
+      const endpoint = `${anythingLLMURL.replace(/\/$/, '')}/api/v1/workspace/${slug}/stream-chat`;
+      console.log('[inline-editor-enhance] Trying workspace:', slug, '→', endpoint);
+      const attempt = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${anythingLLMKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: text,
+          mode: 'chat',
+        }),
       });
-      
-      // Check if workspace doesn't exist
-      if (response.status === 404) {
+
+      if (attempt.ok) {
+        response = attempt;
+        break;
+      }
+
+      const errBody = await attempt.text().catch(() => '');
+      console.warn('[inline-editor-enhance] Workspace failed:', {
+        slug,
+        status: attempt.status,
+        statusText: attempt.statusText,
+        bodyPreview: errBody.substring(0, 200),
+      });
+
+      if (attempt.status !== 404 && !lastNon404Error) {
+        lastNon404Error = {
+          status: attempt.status,
+          statusText: attempt.statusText,
+          body: errBody.substring(0, 200),
+        };
+      }
+      // If 404, try next candidate
+    }
+
+    if (!response) {
+      if (lastNon404Error) {
         return NextResponse.json(
-          { 
-            error: 'Inline editor enhancement workspace not found. Please run create-inline-editor-workspace.sh',
-            details: 'The utility-inline-enhancer workspace needs to be created first',
+          {
+            error: `AnythingLLM API error: ${lastNon404Error.statusText}`,
+            details: lastNon404Error.body || '',
           },
-          { status: 404 }
+          { status: lastNon404Error.status }
         );
       }
-      
+      // All attempts returned 404
       return NextResponse.json(
-        { 
-          error: `AnythingLLM API error: ${response.statusText}`,
-          details: errorText.substring(0, 200),
+        {
+          error: 'Inline editor enhancement workspace not found in AnythingLLM',
+          details:
+            'Tried workspaces: ' + candidates.join(', ') +
+            '. Create one of these or set INLINE_ENHANCER_WORKSPACE in environment.',
         },
-        { status: response.status }
+        { status: 404 }
       );
     }
 

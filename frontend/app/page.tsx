@@ -590,6 +590,109 @@ export default function Page() {
   // Track latest editor JSON to drive debounced auto-saves reliably
   const [latestEditorJSON, setLatestEditorJSON] = useState<any | null>(null);
 
+  // --- Role sanitization helpers ---
+  const normalize = (s: string) => (s || '')
+    .toLowerCase()
+    .replace(/\s*-/g, '-')
+    .replace(/-\s*/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const isAccountManagementVariant = (roleName: string) => {
+    const n = normalize(roleName);
+    // Match any Account Management family variant (manager/director/etc.)
+    return /account/.test(n) && /(management|manager|director)/.test(n);
+  };
+
+  const sanitizeAccountManagementRoles = (roles: Array<{ role: string; hours?: number; description?: string; rate?: number }>) => {
+    if (!Array.isArray(roles) || roles.length === 0) return roles || [];
+
+    // Collect hours from any AM-like variants
+    let amHoursFromAI = 0;
+    let amDescriptionFromAI: string | undefined = undefined;
+    const nonAM = roles.filter(r => {
+      const isAM = isAccountManagementVariant(r.role || '');
+      if (isAM) {
+        const hrs = Number(r.hours) || 0;
+        amHoursFromAI += hrs > 0 ? hrs : 0;
+        if (!amDescriptionFromAI && r.description && r.description.trim().length > 0) {
+          amDescriptionFromAI = r.description;
+        }
+      }
+      return !isAM; // drop AM variants from source list
+    });
+
+    // Ensure exactly ONE canonical AM row is appended
+    const canonicalName = 'Account Management - (Account Manager)';
+    const amDef = ROLES.find(r => r.name === canonicalName);
+    const amRate = amDef?.rate || 180;
+    const defaultHours = 8;
+    const finalHours = amHoursFromAI > 0 ? amHoursFromAI : defaultHours;
+    const finalDescription = amDescriptionFromAI || 'Client comms & governance';
+
+    // If a canonical AM already exists somehow, merge hours
+    const existingIndex = nonAM.findIndex(r => normalize(r.role) === normalize(canonicalName));
+    if (existingIndex !== -1) {
+      const existing = nonAM[existingIndex];
+      const merged = {
+        ...existing,
+        role: canonicalName,
+        hours: (Number(existing.hours) || 0) + finalHours,
+        rate: amRate,
+        description: existing.description || finalDescription,
+      };
+      nonAM.splice(existingIndex, 1, merged);
+      return nonAM;
+    }
+
+    return [
+      ...nonAM,
+      {
+        role: canonicalName,
+        description: finalDescription,
+        hours: finalHours,
+        rate: amRate,
+      },
+    ];
+  };
+
+  // --- Final price extraction helper ---
+  const extractFinalPriceTargetText = (content: any): string | null => {
+    if (!content || !Array.isArray(content.content)) return null;
+
+    // Flatten all text content
+    const flattenText = (node: any): string => {
+      if (!node) return '';
+      if (node.type === 'text') return node.text || '';
+      if (Array.isArray(node.content)) return node.content.map(flattenText).join(' ');
+      return '';
+    };
+
+    const allText = content.content.map(flattenText).join(' ').replace(/\s+/g, ' ').trim();
+    if (!allText) return null;
+
+    // Look for patterns like "Final Price: $20,000 +GST" or "Final Investment: $20,000"
+    const patterns = [
+      /(final\s*(price|investment|project\s*value)\s*[:\-]?\s*)(\$?\s*[\d,]+(?:\.\d+)?(?:\s*\+?\s*gst|\s*ex\s*gst|\s*incl\s*gst)?)/i,
+    ];
+
+    for (const re of patterns) {
+      const m = allText.match(re);
+      if (m && m[3]) {
+        // Return the value part, normalized a bit to include a $ sign if missing
+        let val = m[3].trim();
+        if (!val.startsWith('$')) {
+          const numPart = val.replace(/[^\d.,a-z\s+]/gi, '').trim();
+          val = `$${numPart}`;
+        }
+        // Normalize spacing around GST annotations
+        val = val.replace(/\s*\+\s*gst/i, ' +GST').replace(/\s*ex\s*gst/i, ' ex GST').replace(/\s*incl\s*gst/i, ' incl GST');
+        return val;
+      }
+    }
+    return null;
+  };
+
   // 🎯 Phase 1C: Dashboard filter state (vertical/service line click-to-filter)
   const [dashboardFilter, setDashboardFilter] = useState<{
     type: 'vertical' | 'serviceLine' | null;
@@ -2116,8 +2219,27 @@ Ask me questions to get business insights, such as:
         }
       }
       
+      // Extract final price target text from content, if present
+      const finalPriceTargetText = extractFinalPriceTargetText(currentDoc.content);
+
+      // If final price target exists, suppress the computed summary in export HTML
+      let contentForExport = currentDoc.content;
+      if (finalPriceTargetText && currentDoc.content?.content) {
+        try {
+          const cloned = JSON.parse(JSON.stringify(currentDoc.content));
+          const ptIndex = cloned.content.findIndex((n: any) => n?.type === 'editablePricingTable');
+          if (ptIndex !== -1) {
+            cloned.content[ptIndex].attrs = cloned.content[ptIndex].attrs || {};
+            cloned.content[ptIndex].attrs.showTotal = false; // Hide computed summary in PDF
+            contentForExport = cloned;
+          }
+        } catch (e) {
+          console.warn('⚠️ Failed to clone content for PDF export; proceeding without hiding summary.', e);
+        }
+      }
+
       // Build clean HTML from TipTap JSON to ensure proper tables/lists
-      const editorHTML = convertNovelToHTML(currentDoc.content);
+      const editorHTML = convertNovelToHTML(contentForExport);
       
       if (!editorHTML || editorHTML.trim() === '' || editorHTML === '<p></p>') {
         toast.error('❌ Document is empty. Please add content before exporting.');
@@ -2137,7 +2259,9 @@ Ask me questions to get business insights, such as:
           filename: filename,
           show_pricing_summary: showPricingSummary, // 🎯 Pass showTotal flag to backend
           // Include TipTap JSON so server can apply final programmatic checks (e.g., Head Of enforcement)
-          content: currentDoc.content
+          content: currentDoc.content,
+          // 🎯 Explicit final investment target to be shown in PDF summary instead of computed totals
+          final_investment_target_text: finalPriceTargetText || undefined,
         })
       });
       
@@ -2755,7 +2879,7 @@ Ask me questions to get business insights, such as:
       console.log('📊 suggestedRoles length:', suggestedRoles?.length || 0);
       
       // CRITICAL: If no suggestedRoles provided from JSON, try extracting Architect structured JSON from the message body
-      let convertedContent;
+  let convertedContent;
   if (!hasValidSuggestedRoles) {
         // Try to extract structured JSON from cleaned markdown (if not already parsed above)
         let structured = parsedStructured;
@@ -2775,7 +2899,9 @@ Ask me questions to get business insights, such as:
 
         if (derived && derived.length > 0) {
           console.log(`✅ Using ${derived.length} roles derived from Architect structured JSON.`);
-          convertedContent = convertMarkdownToNovelJSON(cleanedContent, derived, { strictRoles: false });
+          // 🔒 AM Guardrail: sanitize Account Management variants
+          const sanitized = sanitizeAccountManagementRoles(derived);
+          convertedContent = convertMarkdownToNovelJSON(cleanedContent, sanitized, { strictRoles: false });
         } else {
           console.error('❌ CRITICAL ERROR: AI did not provide suggestedRoles JSON or scopeItems. The application requires one of these.');
           const blockedMessage: ChatMessage = {
@@ -2788,7 +2914,9 @@ Ask me questions to get business insights, such as:
           return; // Strictly abort insertion when no pricing data is available
         }
       } else {
-        convertedContent = convertMarkdownToNovelJSON(cleanedContent, suggestedRoles, { strictRoles: false });
+        // 🔒 AM Guardrail: sanitize Account Management variants
+        const sanitized = sanitizeAccountManagementRoles(suggestedRoles);
+        convertedContent = convertMarkdownToNovelJSON(cleanedContent, sanitized, { strictRoles: false });
       }
       console.log('✅ Content converted');
       
@@ -3008,7 +3136,9 @@ Ask me questions to get business insights, such as:
             const derived = buildSuggestedRolesFromArchitectSOW(structured);
             if (derived.length > 0) {
               console.log(`✅ Using ${derived.length} roles derived from Architect structured JSON (insert command).`);
-              content = convertMarkdownToNovelJSON(cleanedMessage, derived, { strictRoles: false });
+              // 🔒 AM Guardrail in insert flow
+              const sanitized = sanitizeAccountManagementRoles(derived);
+              content = convertMarkdownToNovelJSON(cleanedMessage, sanitized, { strictRoles: false });
             } else {
               console.error('❌ CRITICAL ERROR: AI did not provide suggestedRoles JSON for insert command. Aborting insert to avoid placeholder pricing.');
               // Emit an assistant message explaining the requirement and exit without inserting
@@ -3023,7 +3153,9 @@ Ask me questions to get business insights, such as:
               return;
             }
           } else {
-            content = convertMarkdownToNovelJSON(cleanedMessage, suggestedRoles, { strictRoles: false });
+            // 🔒 AM Guardrail: sanitize in insert flow as well
+            const sanitized = sanitizeAccountManagementRoles(suggestedRoles);
+            content = convertMarkdownToNovelJSON(cleanedMessage, sanitized, { strictRoles: false });
           }
           console.log('✅ Content converted');
           
