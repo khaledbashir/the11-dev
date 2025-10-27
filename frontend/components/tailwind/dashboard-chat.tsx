@@ -82,9 +82,12 @@ export default function DashboardChat({
       setCurrentThreadSlug(mostRecentThread.slug);
       loadThreadHistory(mostRecentThread.slug, dashboardChatTarget);
     } else {
-      // No threads exist, so ensure chat is clear and no history is "restored".
-      console.log('ℹ️ No threads found for this workspace. Clearing chat.');
-      onClearChat();
+      // No threads exist - this is the initial state, not a "clear" action
+      // Don't call onClearChat() as that resets the isHistoryRestored flag
+      // Instead, just ensure the local thread state is cleared
+      console.log('ℹ️ No threads found for this workspace. Ready for first message.');
+      setCurrentThreadSlug(null);
+      // The parent's welcome message effect will handle showing the welcome
     }
   }, [threads]); // Dependency on `threads` is the key to the fix.
 
@@ -168,17 +171,30 @@ export default function DashboardChat({
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create thread');
+        const errorBody = await response.text().catch(() => '');
+        console.error('❌ Thread creation failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorBody,
+        });
+        throw new Error(`Failed to create thread: ${response.statusText}`);
       }
 
       const data = await response.json();
+      console.log('📥 Thread creation response:', data);
+      
       const newThreadSlug = data.thread?.slug;
       
       if (!newThreadSlug) {
+        console.error('❌ No thread slug in response:', data);
         throw new Error('No thread slug returned from server');
       }
 
-      console.log('✅ New thread created:', newThreadSlug);
+      console.log('✅ New thread created successfully:', {
+        slug: newThreadSlug,
+        name: data.thread?.name,
+        id: data.thread?.id,
+      });
       
       // Add to local state
       const newThread = {
@@ -189,6 +205,8 @@ export default function DashboardChat({
       };
       setThreads(prev => [newThread, ...prev]);
       setCurrentThreadSlug(newThreadSlug);
+      
+      console.log('📋 Updated threads list. New count:', threads.length + 1);
       
       // Clear chat for new thread (no localStorage - server handles persistence)
       onClearChat();
