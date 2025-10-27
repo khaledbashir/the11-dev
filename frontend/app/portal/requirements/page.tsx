@@ -49,8 +49,8 @@ const requirements: Requirement[] = [
     category: "Project Goals",
     requirement: "Knowledge Base Adherence: STRICTLY ADHERE to structured KB for agency standards, pricing, service structure",
     status: "completed",
-    implementation: "Complete 82-role Rate Card integrated into THE_ARCHITECT_SYSTEM_PROMPT with detailed pricing guidelines",
-    location: "frontend/lib/knowledge-base.ts (THE_ARCHITECT_SYSTEM_PROMPT)",
+    implementation: "Complete 82-role Rate Card integrated into THE_ARCHITECT_V2_PROMPT with detailed pricing guidelines",
+    location: "frontend/lib/knowledge-base.ts (THE_ARCHITECT_V2_PROMPT)",
     notes: "Rate card includes all roles with AUD $110-$200/hr rates, retainer pricing logic, budget adjustment guidelines"
   },
   {
@@ -59,7 +59,7 @@ const requirements: Requirement[] = [
     requirement: "AI Deliverable Generation: Come up with bespoke deliverables based on prompt/brief (not static templates)",
     status: "completed",
     implementation: "AI generates custom deliverables for each project. System prompt emphasizes bespoke content creation",
-    location: "THE_ARCHITECT_SYSTEM_PROMPT - Deliverables section",
+    location: "THE_ARCHITECT_V2_PROMPT - Deliverables section",
     notes: "AI trained to create project-specific deliverables, not rely on templates"
   },
   {
@@ -78,7 +78,7 @@ const requirements: Requirement[] = [
     category: "SOW Structure",
     requirement: "Adherence to Social Garden Structure: Overview, Scope, Outcomes, Phases, Deliverables, Management, Pricing, Assumptions, Timeline",
     status: "completed",
-    implementation: "THE_ARCHITECT_SYSTEM_PROMPT defines exact SOW structure matching Social Garden standards",
+    implementation: "THE_ARCHITECT_V2_PROMPT defines exact SOW structure matching Social Garden standards",
     location: "frontend/lib/knowledge-base.ts - SOW STRUCTURE section",
     notes: "All required sections documented in system prompt"
   },
@@ -88,7 +88,7 @@ const requirements: Requirement[] = [
     requirement: "Deliverables: Must be bulleted items (not paragraph), moved underneath scope overview before role/tasks table",
     status: "completed",
     implementation: "System prompt explicitly instructs: 'Deliverables MUST be: Bulleted list items, Placed BEFORE the pricing table'",
-    location: "THE_ARCHITECT_SYSTEM_PROMPT - Deliverables Formatting",
+    location: "THE_ARCHITECT_V2_PROMPT - Deliverables Formatting",
     notes: "AI generates properly formatted deliverable lists"
   },
   {
@@ -97,7 +97,7 @@ const requirements: Requirement[] = [
     requirement: "Granularity: If client brief has itemized sub-components, provide scope + deliverables + pricing table for EACH",
     status: "completed",
     implementation: "System prompt includes: 'If brief contains multiple distinct components, create separate pricing breakdown for each'",
-    location: "THE_ARCHITECT_SYSTEM_PROMPT - Multi-Component Projects",
+    location: "THE_ARCHITECT_V2_PROMPT - Multi-Component Projects",
     notes: "Supports Options A/B/C format with individual pricing"
   },
   {
@@ -106,7 +106,7 @@ const requirements: Requirement[] = [
     requirement: "Project Phases: Use standard phases with nuanced, client-friendly names (advisory vs technical)",
     status: "completed",
     implementation: "Rate card includes phase-appropriate roles. System prompt instructs on professional phase naming",
-    location: "THE_ARCHITECT_SYSTEM_PROMPT - Project Phases section",
+    location: "THE_ARCHITECT_V2_PROMPT - Project Phases section",
     notes: "AI adapts phase language based on project type"
   },
   {
@@ -134,8 +134,8 @@ const requirements: Requirement[] = [
     category: "Pricing Logic",
     requirement: "Rate Card Usage: All roles/rates must precisely match Social Garden Rate Card",
     status: "completed",
-    implementation: "Complete 82-role rate card embedded in THE_ARCHITECT_SYSTEM_PROMPT with exact hourly rates",
-    location: "THE_ARCHITECT_SYSTEM_PROMPT - RATE CARD section",
+    implementation: "Complete 82-role rate card embedded in THE_ARCHITECT_V2_PROMPT with exact hourly rates",
+    location: "THE_ARCHITECT_V2_PROMPT - RATE CARD section",
     notes: "Includes Strategy, Tech, Creative, Ops roles with $110-$200/hr AUD rates"
   },
   {
@@ -144,7 +144,7 @@ const requirements: Requirement[] = [
     requirement: "Currency: Must be AUD, not USD",
     status: "completed",
     implementation: "System prompt explicitly states: 'All rates are in AUD (Australian Dollars)'",
-    location: "THE_ARCHITECT_SYSTEM_PROMPT - Currency section",
+    location: "THE_ARCHITECT_V2_PROMPT - Currency section",
     notes: "Rate card shows AUD pricing throughout"
   },
   {
@@ -153,7 +153,7 @@ const requirements: Requirement[] = [
     requirement: "Granular Role Assignment: Assign to most specific role available, avoid overusing generalist roles",
     status: "completed",
     implementation: "System prompt: 'Use the MOST SPECIFIC role that matches the task. Avoid defaulting to generic roles'",
-    location: "THE_ARCHITECT_SYSTEM_PROMPT - Role Assignment Logic",
+    location: "THE_ARCHITECT_V2_PROMPT - Role Assignment Logic",
     notes: "82 specialized roles ensure granular assignment"
   },
   {
@@ -162,7 +162,7 @@ const requirements: Requirement[] = [
     requirement: "Hour Estimation: Hours are capped and provided as estimates",
     status: "completed",
     implementation: "System prompt includes: 'All hour estimates are CAPPED maximums, not exact predictions'",
-    location: "THE_ARCHITECT_SYSTEM_PROMPT - Hour Allocation",
+    location: "THE_ARCHITECT_V2_PROMPT - Hour Allocation",
     notes: "AI presents hours as estimates"
   },
   {
@@ -171,7 +171,7 @@ const requirements: Requirement[] = [
     requirement: "Realistic Hour Distribution: Avoid excessive senior hours for execution. Bulk work to specialists/producers",
     status: "completed",
     implementation: "System prompt: 'Avoid over-allocating senior/strategic roles to execution tasks. Bulk work → Mid/Producer level'",
-    location: "THE_ARCHITECT_SYSTEM_PROMPT - Balanced Allocation",
+    location: "THE_ARCHITECT_V2_PROMPT - Balanced Allocation",
     notes: "Explicit guidance on realistic role distribution"
   },
   {
@@ -180,7 +180,7 @@ const requirements: Requirement[] = [
     requirement: "Mandatory Management Layers: Include Head Of/Senior PM, Delivery/Project Coordination, Account Management in every SOW",
     status: "completed",
     implementation: "System prompt mandates: 'EVERY pricing table MUST include: Tech-Head Of Senior Project Management (minimal hours), Tech-Delivery - Project Coordination, Account Management (at bottom)'",
-    location: "THE_ARCHITECT_SYSTEM_PROMPT - Mandatory Roles",
+    location: "THE_ARCHITECT_V2_PROMPT - Mandatory Roles",
     notes: "All three management layers required"
   },
   {
@@ -189,7 +189,7 @@ const requirements: Requirement[] = [
     requirement: "Role Order: Account Management hours should come at bottom of roles in pricing summary",
     status: "completed",
     implementation: "System prompt: 'Account Management hours should appear LAST in the pricing table'",
-    location: "THE_ARCHITECT_SYSTEM_PROMPT - Table Structure",
+    location: "THE_ARCHITECT_V2_PROMPT - Table Structure",
     notes: "Clear ordering instructions"
   },
   {
@@ -198,7 +198,7 @@ const requirements: Requirement[] = [
     requirement: "Budget Adherence: If target budget provided, aim to meet it. Document adjustments in 'Budget Notes'",
     status: "completed",
     implementation: "System prompt: 'If client provides target budget, optimize scope to meet it. Document all budget adjustments'",
-    location: "THE_ARCHITECT_SYSTEM_PROMPT - Budget Management",
+    location: "THE_ARCHITECT_V2_PROMPT - Budget Management",
     notes: "AI can adjust scope to hit budget targets"
   },
   {
@@ -207,7 +207,7 @@ const requirements: Requirement[] = [
     requirement: "Round Numbers: Keep total hours (200, 250, 300) or final cost (50k, 45k, 60k) to round numbers",
     status: "completed",
     implementation: "System prompt: 'Prefer round numbers for total hours (e.g., 200, 250) and final costs (e.g., $50,000, $45,000)'",
-    location: "THE_ARCHITECT_SYSTEM_PROMPT - Pricing Guidelines",
+    location: "THE_ARCHITECT_V2_PROMPT - Pricing Guidelines",
     notes: "AI rounds to professional figures"
   },
 
@@ -245,7 +245,7 @@ const requirements: Requirement[] = [
     requirement: "GST Calculation: Include +GST in summary price on EACH item, not just at bottom",
     status: "completed",
     implementation: "System prompt: 'Add +GST notation to EACH line item in pricing summary, not just final total'",
-    location: "THE_ARCHITECT_SYSTEM_PROMPT - GST Requirements",
+    location: "THE_ARCHITECT_V2_PROMPT - GST Requirements",
     notes: "AI generates GST notation per line"
   },
   {
@@ -552,7 +552,7 @@ export default function RequirementsPage() {
                     </li>
                     <li className="flex items-start gap-3">
                       <CheckCircle2 className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: colors.primary }} />
-                      <span>Comprehensive system prompt (THE_ARCHITECT_SYSTEM_PROMPT) with all pricing logic, role assignment rules, and SOW structure guidelines</span>
+                      <span>Comprehensive system prompt (THE_ARCHITECT_V2_PROMPT) with all pricing logic, role assignment rules, and SOW structure guidelines</span>
                     </li>
                     <li className="flex items-start gap-3">
                       <CheckCircle2 className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: colors.primary }} />

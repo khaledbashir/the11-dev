@@ -50,13 +50,13 @@ async function testCompleteFlow() {
     // ========================================
     console.log('\n📝 STEP 2: Setting up system prompt...');
     
-    // Get the system prompt from knowledge-base.ts
-    const { THE_ARCHITECT_SYSTEM_PROMPT } = await import('./lib/knowledge-base');
+    // Get the V2 system prompt from knowledge-base.ts (canonical version)
+    const { THE_ARCHITECT_V2_PROMPT } = await import('./lib/knowledge-base');
     
     console.log('✅ System prompt loaded:', {
-      promptLength: THE_ARCHITECT_SYSTEM_PROMPT.length,
-      includesRateCard: THE_ARCHITECT_SYSTEM_PROMPT.includes('rate card'),
-      includesRoles: THE_ARCHITECT_SYSTEM_PROMPT.includes('82 roles')
+      promptLength: THE_ARCHITECT_V2_PROMPT.length,
+      includesRateCard: THE_ARCHITECT_V2_PROMPT.includes('rate card'),
+      includesRoles: THE_ARCHITECT_V2_PROMPT.includes('82 roles')
     });
 
     // ========================================
