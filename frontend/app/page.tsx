@@ -109,15 +109,22 @@ const buildSuggestedRolesFromArchitectSOW = (structured: ArchitectSOW | null) =>
     for (const r of roles) {
       const name = (r?.role || '').toString().trim();
       const hrs = Number(r?.hours) || 0;
-      if (!name) continue;
+      // 🔧 CRITICAL FIX: Filter out empty, placeholder, or invalid role names
+      if (!name || name.length === 0 || name.toLowerCase() === 'select role' || name.toLowerCase() === 'select role...') continue;
       hoursByRole.set(name, (hoursByRole.get(name) || 0) + hrs);
     }
   }
   // Map to suggestedRoles shape and attach rate from ROLES where possible
-  return Array.from(hoursByRole.entries()).map(([role, hours]) => {
-    const match = ROLES.find(x => x.name === role);
-    return { role, hours, description: '', rate: match?.rate || 0 };
-  });
+  return Array.from(hoursByRole.entries())
+    .filter(([role]) => {
+      // 🔧 DOUBLE-CHECK: Final filter to ensure no empty roles slip through
+      const roleName = role.trim();
+      return roleName && roleName.length > 0 && roleName.toLowerCase() !== 'select role' && roleName.toLowerCase() !== 'select role...';
+    })
+    .map(([role, hours]) => {
+      const match = ROLES.find(x => x.name === role);
+      return { role, hours, description: '', rate: match?.rate || 0 };
+    });
 };
 
 const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = [], options: ConvertOptions = {}) => {
@@ -258,9 +265,9 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
       console.log('✅ Using suggestedRoles from JSON.');
       pricingRows = suggestedRoles
         .filter(role => {
-          // Filter out any empty or invalid role names
+          // 🔧 CRITICAL FIX: Filter out any empty or invalid role names (including "Select role...")
           const roleName = (role.role || '').trim();
-          return roleName && roleName.length > 0 && roleName.toLowerCase() !== 'select role';
+          return roleName && roleName.length > 0 && roleName.toLowerCase() !== 'select role' && roleName.toLowerCase() !== 'select role...';
         })
         .map(role => {
           const matchedRole = findCanon(role.role);
@@ -274,10 +281,16 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
         });
     } else if (rolesFromMarkdown.length > 0) {
       console.log('✅ Using roles parsed from markdown table.');
-      pricingRows = rolesFromMarkdown.map(r => {
-        const m = findCanon(r.role);
-        return { ...r, role: m?.name || r.role, rate: m?.rate || r.rate };
-      });
+      pricingRows = rolesFromMarkdown
+        .filter(r => {
+          // 🔧 Apply same filter to markdown-parsed roles
+          const roleName = (r.role || '').trim();
+          return roleName && roleName.length > 0 && roleName.toLowerCase() !== 'select role' && roleName.toLowerCase() !== 'select role...';
+        })
+        .map(r => {
+          const m = findCanon(r.role);
+          return { ...r, role: m?.name || r.role, rate: m?.rate || r.rate };
+        });
     } else {
       console.log('⚠️ No roles available for pricing table.');
       return; // Can't create pricing table without any roles
