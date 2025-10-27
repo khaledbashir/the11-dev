@@ -128,9 +128,7 @@ export const EditablePricingTable = () => {
   };
 
   const handleUpdateRow = (id: string, data: Partial<PricingTableRow>) => {
-    setRows(
-      rows.map((row) => (row.id === id ? { ...row, ...data } : row))
-    );
+    setRows((prev) => prev.map((row) => (row.id === id ? { ...row, ...data } : row)));
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -181,19 +179,26 @@ export const EditablePricingTable = () => {
                 <TableCell>
                   <Popover open={openPopover === row.id} onOpenChange={(isOpen) => setOpenPopover(isOpen ? row.id : null)}>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-start">
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+                      >
                         {row.role || "Select a role"}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="p-0" style={{ width: "400px" }}>
-                      <Command>
-                        <CommandInput placeholder="Search roles..." />
-                        <CommandList>
-                          <CommandEmpty>No roles found.</CommandEmpty>
+                    <PopoverContent
+                      className="p-0 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700"
+                      style={{ width: "400px" }}
+                    >
+                      <Command className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+                        <CommandInput placeholder="Search roles..." className="placeholder:text-gray-500" />
+                        <CommandList className="bg-white dark:bg-gray-900">
+                          <CommandEmpty className="text-gray-600 dark:text-gray-300">No roles found.</CommandEmpty>
                           <CommandGroup>
                             {roleOptions.map((role) => (
                               <CommandItem
                                 key={role}
+                                className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-gray-100 [&[data-selected=true]]:bg-gray-100 dark:[&[data-selected=true]]:bg-gray-800"
                                 onSelect={() => {
                                   handleUpdateRow(row.id, {
                                     role,

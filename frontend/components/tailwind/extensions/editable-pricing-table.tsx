@@ -293,11 +293,15 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
                                 <select
                                   value={row.role}
                                   onChange={(e) => updateRow(row.id, 'role', e.target.value)}
-                                  className="w-full bg-transparent border-none outline-none text-sm"
+                                  className="w-full text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#1CBF79] focus:border-[#1CBF79] hover:border-gray-400 dark:hover:border-gray-600"
                                 >
-                                  <option value="">Select role...</option>
+                                  <option className="bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200" value="">Select role...</option>
                                   {ROLES.map((role) => (
-                                    <option key={role.name} value={role.name}>
+                                    <option
+                                      key={role.name}
+                                      value={role.name}
+                                      className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                                    >
                                       {role.name} - ${role.rate}/hr
                                     </option>
                                   ))}
@@ -310,7 +314,7 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
                                 value={row.description}
                                 onChange={(e) => updateRow(row.id, 'description', e.target.value)}
                                 placeholder="Description..."
-                                className="w-full bg-transparent border-none outline-none text-sm"
+                                className="w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-[#1CBF79] text-sm"
                               />
                             </td>
                             <td className="border-r border-border p-2" style={{ width: '15%' }}>
@@ -321,7 +325,7 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
                                 placeholder="0"
                                 min="0"
                                 step="0.5"
-                                className="w-full bg-transparent border-none outline-none text-sm text-right"
+                                className="w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-[#1CBF79] text-sm text-right"
                               />
                             </td>
                             <td className="border-r border-border p-2" style={{ width: '15%' }}>
@@ -331,7 +335,7 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
                                 onChange={(e) => updateRow(row.id, 'rate', parseFloat(e.target.value) || 0)}
                                 placeholder="$0"
                                 min="0"
-                                className="w-full bg-transparent border-none outline-none text-sm text-right"
+                                className="w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-[#1CBF79] text-sm text-right"
                               />
                             </td>
                             <td className="border-r border-border px-3 py-2 text-right text-sm font-semibold" style={{ width: '15%' }}>
