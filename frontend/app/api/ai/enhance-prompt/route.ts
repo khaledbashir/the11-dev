@@ -115,9 +115,40 @@ export async function POST(req: NextRequest) {
       enhancedLength: enhancedPrompt.length,
     });
 
+    // 🧹 CRITICAL SANITIZATION: Remove <think> tags and conversational fluff
+    // The AI should only return the clean prompt, but we enforce it here as a guardrail
+    let sanitized = enhancedPrompt.trim();
+    
+    // Strip any <think>...</think> blocks (including newlines inside)
+    sanitized = sanitized.replace(/<think>[\s\S]*?<\/think>/gi, '');
+    
+    // Remove any remaining orphaned <think> or </think> tags
+    sanitized = sanitized.replace(/<\/?think>/gi, '');
+    
+    // Remove common conversational prefixes that the AI might add
+    const conversationalPrefixes = [
+      /^(here'?s|here is) (the|an?) (enhanced|improved|rewritten|refined|optimized) (prompt|version)[\s:]+/i,
+      /^(i'?ve|i have) (enhanced|improved|rewritten|refined) (your prompt|it)[\s:]+/i,
+      /^(please (provide|add|include|specify)|could you (provide|add|include|specify))[\s\S]*$/i,
+      /^(let me know if|feel free to|don't hesitate)[\s\S]*$/i,
+    ];
+    
+    for (const pattern of conversationalPrefixes) {
+      sanitized = sanitized.replace(pattern, '');
+    }
+    
+    // Clean up any extra whitespace
+    sanitized = sanitized.trim();
+    
+    console.log('[enhance-prompt] Sanitized output:', {
+      beforeLength: enhancedPrompt.length,
+      afterLength: sanitized.length,
+      removed: enhancedPrompt.length - sanitized.length,
+    });
+
     // Return JSON in the format the frontend expects
     return NextResponse.json({ 
-      enhancedPrompt: enhancedPrompt.trim() 
+      enhancedPrompt: sanitized 
     });
 
   } catch (error: any) {

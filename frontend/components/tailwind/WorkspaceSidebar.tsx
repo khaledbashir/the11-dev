@@ -512,8 +512,9 @@ export default function WorkspaceSidebar({
           ) : (
             chatMessages.map(msg => {
               const shouldShowButton = msg.role === 'assistant';
-              const cleaned = cleanSOWContent(msg.content);
-              const segments = msg.role === 'assistant' ? [] : [{ type: 'text' as const, content: msg.content }];
+              // 🧹 FINAL SANITIZATION GUARDRAIL: Strip <think> tags before rendering
+              const sanitizedContent = cleanSOWContent(msg.content);
+              const segments = msg.role === 'assistant' ? [] : [{ type: 'text' as const, content: sanitizedContent }];
               
               return (
                 <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -527,10 +528,10 @@ export default function WorkspaceSidebar({
                     {msg.role === 'assistant' && (
                       <div className="mb-4">
                         <StreamingThoughtAccordion 
-                          content={msg.content}
+                          content={sanitizedContent}
                           messageId={msg.id}
                           isStreaming={streamingMessageId === msg.id}
-                          onInsertClick={(content) => onInsertToEditor(content)}
+                          onInsertClick={(content) => onInsertToEditor(cleanSOWContent(content))}
                         />
                       </div>
                     )}
@@ -557,7 +558,7 @@ export default function WorkspaceSidebar({
                           variant="outline"
                           className="h-7 px-2 text-xs border-[#1b5e5e] text-gray-200 hover:text-white hover:bg-[#124847]"
                           title="Insert full SOW (narrative + pricing)"
-                          onClick={() => onInsertToEditor(msg.content)}
+                          onClick={() => onInsertToEditor(cleanSOWContent(msg.content))}
                         >
                           ✅ Insert SOW
                         </Button>

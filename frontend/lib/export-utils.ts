@@ -762,6 +762,8 @@ export function cleanSOWContent(content: string): string {
     .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
     // Remove <think> tags
     .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    // Remove any orphaned think tags
+    .replace(/<\/?think>/gi, '')
     // Remove <tool_call> tags
     .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '')
     // Remove HTML comments

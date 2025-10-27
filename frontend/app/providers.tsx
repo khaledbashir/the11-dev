@@ -18,7 +18,23 @@ const ToasterProvider = () => {
   const { theme } = useTheme() as {
     theme: "light" | "dark" | "system";
   };
-  return <Toaster theme={theme} />;
+  
+  return (
+    <Toaster 
+      theme={theme}
+      position="top-right"
+      duration={4000}
+      closeButton
+      richColors
+      toastOptions={{
+        style: {
+          background: 'var(--background)',
+          color: 'var(--foreground)',
+          border: '1px solid var(--border)',
+        },
+      }}
+    />
+  );
 };
 
 export default function Providers({ children }: { children: ReactNode }) {
