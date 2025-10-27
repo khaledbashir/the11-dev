@@ -309,14 +309,25 @@ export default function WorkspaceChat({
   const handleSendMessage = async () => {
     if (!chatInput.trim() || isLoading) return;
 
+    // 🔥 CRITICAL FIX: Auto-create thread if none exists
+    let threadSlug = currentThreadSlug;
+    if (!threadSlug) {
+      console.log('🆕 No thread exists - creating one automatically before sending message');
+      threadSlug = await handleNewThread();
+      if (!threadSlug) {
+        toast.error('Failed to create chat thread');
+        return;
+      }
+    }
+
     console.log('📤 Sending message:', {
       message: chatInput,
-      threadSlug: currentThreadSlug,
+      threadSlug,
       attachments: attachments.length,
       workspaceSlug: editorWorkspaceSlug,
     });
 
-    onSendMessage(chatInput, currentThreadSlug, attachments);
+    onSendMessage(chatInput, threadSlug, attachments);
     setChatInput("");
     setAttachments([]);
   };
