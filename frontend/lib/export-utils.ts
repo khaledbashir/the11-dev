@@ -1,14 +1,26 @@
 // Export utilities for SOW documents
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import ExcelJS from 'exceljs';
-import { ROLES } from '@/lib/rateCard';
+import * as XLSX from 'xlsx';
 
 export interface PricingRow {
   role: string;
   hours: number;
   rate: number;
   total: number;
+}
+
+// Architect structured SOW JSON (subset used for role derivation)
+export interface ArchitectSOW {
+  scopeItems: Array<{
+    title?: string;
+    description?: string;
+    roles?: Array<{ role: string; hours: number; rate?: number; cost?: number }>;
+  }>;
+  project_details?: {
+    discount_percentage?: number;
+  };
+  [key: string]: any;
 }
 
 export interface SOWData {
@@ -23,61 +35,16 @@ export interface SOWData {
   timeline?: string;
 }
 
-// Architect JSON shapes (for Excel engine v2)
-export interface ScopeRole {
-  role: string;
-  hours: number;
-}
-
-export interface ScopeItem {
-  name: string;
-  overview?: string;
-  roles: ScopeRole[];
-  deliverables?: string[];
-  assumptions?: string[];
-}
-
-export interface ArchitectSOW {
-  title: string;
-  overview?: string;
-  outcomes?: string[];
-  assumptions?: string[];
-  scopeItems: ScopeItem[];
-}
-
 /**
  * Extract pricing data from Novel editor content
- * Supports both TipTap tables AND markdown text format
  */
 export function extractPricingFromContent(content: any): PricingRow[] {
   const rows: PricingRow[] = [];
   
   if (!content || !content.content) return rows;
 
-  // First, try to extract from TipTap tables (including editablePricingTable)
   const findTables = (nodes: any[]): void => {
     nodes.forEach((node: any) => {
-      // Handle editablePricingTable custom node
-      if (node.type === 'editablePricingTable' && node.attrs?.rows) {
-        const rows_data = node.attrs.rows;
-        if (Array.isArray(rows_data)) {
-          rows_data.forEach((row: any) => {
-            const hours = Number(row.hours) || 0;
-            const rate = Number(row.rate) || 0;
-            const total = hours * rate; // Always recalculate total
-            const role = String(row.role || '').trim();
-            
-            // Skip header/total rows and invalid data
-            if (role && !role.toLowerCase().includes('total') && 
-                !role.toLowerCase().includes('role') &&
-                hours > 0 && rate > 0) {
-              rows.push({ role, hours, rate, total: isNaN(total) ? 0 : total });
-            }
-          });
-        }
-      }
-      
-      // Handle standard table nodes
       if (node.type === 'table' && node.content) {
         // Skip header row, process data rows
         const dataRows = node.content.slice(1);
@@ -86,19 +53,14 @@ export function extractPricingFromContent(content: any): PricingRow[] {
           if (row.type === 'tableRow' && row.content && row.content.length >= 4) {
             const cells = row.content;
             const role = cells[0]?.content?.[0]?.content?.[0]?.text || '';
-            const hoursText = cells[1]?.content?.[0]?.content?.[0]?.text || '0';
-            const hours = parseFloat(hoursText) || 0;
+            const hours = parseFloat(cells[1]?.content?.[0]?.content?.[0]?.text || '0');
             const rateText = cells[2]?.content?.[0]?.content?.[0]?.text || '';
-            const rate = parseFloat(rateText.replace(/[$,\s]/g, '')) || 0;
+            const rate = parseFloat(rateText.replace(/[$,]/g, ''));
+            const totalText = cells[3]?.content?.[0]?.content?.[0]?.text || '';
+            const total = parseFloat(totalText.replace(/[$,+GST]/g, ''));
             
-            // Calculate total from hours × rate (more reliable than parsing)
-            const total = hours * rate;
-            
-            // Skip header/total rows and invalid data
-            if (role && !role.toLowerCase().includes('total') && 
-                !role.toLowerCase().includes('role') &&
-                hours > 0 && rate > 0) {
-              rows.push({ role, hours, rate, total: isNaN(total) ? 0 : total });
+            if (role && !role.includes('Total') && !role.includes('Role')) {
+              rows.push({ role, hours, rate, total });
             }
           }
         });
@@ -111,89 +73,6 @@ export function extractPricingFromContent(content: any): PricingRow[] {
   };
 
   findTables(content.content);
-  
-  // If no tables found, try to parse from markdown text (fallback for AI-generated content)
-  if (rows.length === 0) {
-    const extractText = (nodes: any[]): string => {
-      let text = '';
-      nodes.forEach((node: any) => {
-        if (node.type === 'text' && node.text) {
-          text += node.text + '\n';
-        }
-        if (node.content) {
-          text += extractText(node.content);
-        }
-      });
-      return text;
-    };
-    
-    const fullText = extractText(content.content);
-    
-    // Match pricing lines in format: "| Role | Hours | $Rate | $Total |"
-    // Also match: "- **Role**: Hours × $Rate = $Total"
-    // Also match: "Role: Hours hours × $Rate/hour = $Total"
-    const pricingPatterns = [
-      /\|\s*([^|]+?)\s*\|\s*(\d+(?:\.\d+)?)\s*(?:hours?)?\s*\|\s*\$?\s*(\d+(?:\.\d+)?)\s*(?:\/hour)?\s*\|\s*\$?\s*(\d+(?:,\d{3})*(?:\.\d+)?)/gi,
-      /[-*]\s*\*\*([^*:]+)\*\*:?\s*(\d+(?:\.\d+)?)\s*(?:hours?)?\s*[×x]\s*\$?\s*(\d+(?:\.\d+)?)\s*(?:\/hour)?\s*=\s*\$?\s*(\d+(?:,\d{3})*(?:\.\d+)?)/gi,
-      /([^:\n]+):\s*(\d+(?:\.\d+)?)\s*hours?\s*[×x]\s*\$?\s*(\d+(?:\.\d+)?)\s*(?:\/hour)?\s*=\s*\$?\s*(\d+(?:,\d{3})*(?:\.\d+)?)/gi,
-    ];
-    
-    pricingPatterns.forEach(pattern => {
-      let match;
-      while ((match = pattern.exec(fullText)) !== null) {
-        const role = match[1].trim();
-        const hours = parseFloat(match[2]);
-        const rate = parseFloat(match[3]);
-        const total = parseFloat(match[4].replace(/,/g, ''));
-        
-        // Skip header rows and invalid data
-        if (role && !role.toLowerCase().includes('role') && 
-            !role.toLowerCase().includes('total') &&
-            hours > 0 && rate > 0) {
-          rows.push({ role, hours, rate, total });
-        }
-      }
-    });
-  }
-  
-  return rows;
-}
-
-/**
- * Extract pricing data from HTML by stripping tags and applying the same text regexes
- */
-export function extractPricingFromHTML(html: string): PricingRow[] {
-  if (!html) return [];
-  const text = html.replace(/<[^>]*>/g, ' ');
-  const rows: PricingRow[] = [];
-
-    const pricingPatterns = [
-    /\|\s*([^|]+?)\s*\|\s*(\d+(?:\.\d+)?)\s*(?:hours?)?\s*\|\s*\$?\s*(\d+(?:\.\d+)?)\s*(?:\/hour)?\s*\|\s*\$?\s*(\d+(?:,\d{3})*(?:\.\d+)?)/gi,
-    /[-*]\s*\*\*([^*:]+)\*\*:?:?\s*(\d+(?:\.\d+)?)\s*(?:hours?)?\s*[×x]\s*\$?\s*(\d+(?:\.\d+)?)\s*(?:\/hour)?\s*=\s*\$?\s*(\d+(?:,\d{3})*(?:\.\d+)?)/gi,
-    /([^:\n]+):\s*(\d+(?:\.\d+)?)\s*hours?\s*[×x]\s*\$?\s*(\d+(?:\.\d+)?)\s*(?:\/hour)?\s*=\s*\$?\s*(\d+(?:,\d{3})*(?:\.\d+)?)/gi,
-      /([^:\n]+?)\s*[—–-]\s*(\d+(?:\.\d+)?)\s*h(?:ours?)?\s*(?:at|@)\s*\$?\s*(\d+(?:\.\d+)?)\s*(?:\/h(?:our)?)?\s*=\s*\$?\s*(\d+(?:,\d{3})*(?:\.\d+)?)/gi,
-    /([^:\n]+?)\s*[—–-]\s*(\d+(?:\.\d+)?)\s*h(?:ours?)?\s*(?:at|@)\s*\$?\s*(\d+(?:\.\d+)?)\s*(?:\/h(?:our)?)?\s*=\s*\$?\s*(\d+(?:,\d{3})*(?:\.\d+)?)/gi,
-  ];
-
-  pricingPatterns.forEach((pattern) => {
-    let match;
-    while ((match = pattern.exec(text)) !== null) {
-      const role = match[1].trim();
-      const hours = parseFloat(match[2]);
-      const rate = parseFloat(match[3]);
-      const total = parseFloat(match[4].replace(/,/g, ''));
-      if (
-        role &&
-        !role.toLowerCase().includes('role') &&
-        !role.toLowerCase().includes('total') &&
-        hours > 0 &&
-        rate > 0
-      ) {
-        rows.push({ role, hours, rate, total });
-      }
-    }
-  });
-
   return rows;
 }
 
@@ -274,336 +153,58 @@ export function exportToCSV(sowData: SOWData, filename: string = 'sow-pricing.cs
 }
 
 /**
- * Export pricing table to Excel using Social Garden template format
+ * Export pricing table to Excel
  */
-export async function exportToExcel(
-  sowData: SOWData | ArchitectSOW,
-  filename?: string
-) {
-  // If Architect JSON shape is provided (scopeItems), use the modular engine
-  if ((sowData as ArchitectSOW)?.scopeItems) {
-    return exportArchitectExcel(sowData as ArchitectSOW, filename);
-  }
-
-  // Fallback to legacy pricing-table export using the static template
-  const { pricingRows, discount, title, client, deliverables, assumptions } = sowData as SOWData;
+export function exportToExcel(sowData: SOWData, filename: string = 'sow-pricing.xlsx') {
+  const { pricingRows, discount, title } = sowData;
   const totals = calculateTotals(pricingRows, discount);
-
-  // Load the Excel template from public folder, with robust fallback if not found (404)
-  let workbook = new ExcelJS.Workbook();
-  let overviewSheet: ExcelJS.Worksheet | undefined;
-  let pricingSheet: ExcelJS.Worksheet | undefined;
-
-  try {
-    const templatePath = encodeURI('/templates/Social_Garden_SOW_Template.xlsx');
-    const res = await fetch(templatePath);
-    if (!res.ok) throw new Error(`Template fetch failed with status ${res.status}`);
-    const arrayBuffer = await res.arrayBuffer();
-    await workbook.xlsx.load(arrayBuffer);
-
-    // Try to access well-known sheets, with graceful fallbacks
-    overviewSheet = workbook.getWorksheet('Overview') || workbook.getWorksheet(1);
-    pricingSheet =
-      workbook.getWorksheet('Pricing') ||
-      workbook.getWorksheet('Pricing Breakdown') ||
-      workbook.getWorksheet(2) ||
-      workbook.worksheets[workbook.worksheets.length - 1];
-  } catch (e) {
-    console.warn('[Excel Export] Template not available, generating workbook from scratch. Reason:', e);
-    workbook = new ExcelJS.Workbook();
-    overviewSheet = workbook.addWorksheet('Overview');
-    pricingSheet = workbook.addWorksheet('Pricing');
-  }
-
-  // Populate overview data (best-effort due to unknown template positions)
-  if (overviewSheet) {
-    try {
-      // Common placements
-      // A1: Title, A3: Client, A5: Date, A7: Grand Total
-      overviewSheet.getCell('A1').value = title || '[PROJECT NAME]';
-      overviewSheet.getCell('A3').value = 'Client Name';
-      overviewSheet.getCell('B3').value = client || '';
-      overviewSheet.getCell('A5').value = 'Created Date';
-      overviewSheet.getCell('B5').value = new Date().toLocaleDateString('en-AU');
-      overviewSheet.getCell('A7').value = 'Grand Total (ex. GST)';
-      overviewSheet.getCell('B7').value = totals.subtotal;
-    } catch (e) {
-      console.warn('Overview sheet population warning:', e);
-    }
-  }
-
-  // Find header row in pricing sheet by scanning for expected headers
-  const findHeaderRow = (): number => {
-    const headers = ['ITEMS', 'ROLE', 'HOURS', 'HOURLY RATE', 'TOTAL COST'];
-    for (let r = 1; r <= Math.min(50, pricingSheet!.rowCount + 5); r++) {
-      const vals: any = pricingSheet!.getRow(r).values as any;
-      const arr: any[] = Array.isArray(vals) ? vals : (vals == null ? [] : [vals]);
-      const rowValues = arr.map((v: any) =>
-        typeof v === 'string' ? v.trim().toUpperCase() : String(v ?? '').trim().toUpperCase()
-      );
-      const matchCount = headers.filter(h => rowValues.includes(h)).length;
-      if (matchCount >= 3) return r; // heuristic
-    }
-    return 2; // default header row
-  };
-
-  // If no headers exist (scratch workbook), write headers now
-  if (!pricingSheet!.rowCount || pricingSheet!.rowCount < 1) {
-    pricingSheet!.getRow(1).values = ['Items', 'Role', 'Hours', 'Hourly Rate', 'Total Cost'];
-  }
-
-  const headerRowIdx = findHeaderRow();
-  let writeRow = headerRowIdx + 1;
-
-  // Clear any existing data rows under header (basic cleanup up to 1000 rows)
-  for (let r = writeRow; r <= writeRow + 1000; r++) {
-    const vals: any = pricingSheet!.getRow(writeRow).values as any;
-    const arr: any[] = Array.isArray(vals) ? vals : (vals == null ? [] : [vals]);
-    const hasAny = arr.some((v: any) => v != null && v !== '');
-    if (!hasAny) break;
-    pricingSheet!.spliceRows(writeRow, 1);
-  }
-
-  // Write pricing rows
-  for (const row of pricingRows) {
-    const excelRow = pricingSheet!.getRow(writeRow++);
-    // Assume columns: A: ITEMS, B: ROLE, C: HOURS, D: HOURLY RATE, E: TOTAL COST +GST
-    excelRow.getCell(1).value = '';
-    excelRow.getCell(2).value = row.role;
-    excelRow.getCell(3).value = row.hours;
-    excelRow.getCell(4).value = row.rate;
-    excelRow.getCell(5).value = row.total;
-    excelRow.commit();
-  }
-
-  // Totals row
-  const totalsRow = pricingSheet!.getRow(writeRow++);
-  totalsRow.getCell(1).value = 'TOTAL';
-  totalsRow.getCell(2).value = totals.totalHours; // total hours
-  totalsRow.getCell(3).value = Math.round((totals.subtotal / Math.max(1, totals.totalHours)) * 100) / 100; // avg rate
-  totalsRow.getCell(5).value = totals.subtotal; // subtotal (ex. GST)
-  totalsRow.commit();
-
-  // Optional sections: deliverables and assumptions (append beneath)
-  if (deliverables && deliverables.length > 0) {
-    writeRow += 1;
-    pricingSheet!.getCell(`A${writeRow++}`).value = 'Deliverables:';
-    for (const d of deliverables) {
-      pricingSheet!.getCell(`A${writeRow++}`).value = `• ${d}`;
-    }
-  }
-  if (assumptions && assumptions.length > 0) {
-    writeRow += 1;
-    pricingSheet!.getCell(`A${writeRow++}`).value = 'Assumptions:';
-    for (const a of assumptions) {
-      pricingSheet!.getCell(`A${writeRow++}`).value = `• ${a}`;
-    }
-  }
-
-  // Prepare filename
-  const safeClient = (client || '').replace(/[^a-z0-9]/gi, '_');
-  const dateStr = new Date().toISOString().split('T')[0];
-  const outName = filename || (safeClient ? `${safeClient}-SOW-${dateStr}.xlsx` : `SOW-${dateStr}.xlsx`);
-
-  // Download
-  const outBuffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([outBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = outName;
-  link.click();
-}
-
-// Excel Engine v2: Build multi-sheet workbook from Architect JSON
-async function exportArchitectExcel(data: ArchitectSOW, filename?: string) {
-  const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'Social Garden SOW Engine';
-  workbook.created = new Date();
-
-  // Helper to create safe sheet names
-  const sheetName = (base: string) => base.replace(/[^A-Za-z0-9_]/g, '').slice(0, 28);
-
-  // Create sheets in order: Pricing, Scope1..N, SOW_Summary
-  const pricingSheet = workbook.addWorksheet('Pricing');
-
-  const scopeSheets = data.scopeItems.map((s, i) => {
-    const name = `Scope${i + 1}`;
-    return {
-      meta: s,
-      sheet: workbook.addWorksheet(sheetName(name)),
-      name,
-    };
-  });
-
-  const summarySheet = workbook.addWorksheet('SOW_Summary');
-
-  // Build Scope sheets with VLOOKUP to Pricing
-  for (const { meta, sheet } of scopeSheets) {
-    // Headers
-    sheet.getCell('A1').value = meta.name;
-    if (meta.overview) sheet.getCell('A2').value = meta.overview;
-    let rowIdx = 4;
-    sheet.getRow(rowIdx).values = ['Role', 'Hours', 'Rate (AUD)', 'Total (AUD)'];
-    sheet.getRow(rowIdx).font = { bold: true };
-    rowIdx++;
-
-    for (const r of meta.roles) {
-      const row = sheet.getRow(rowIdx);
-      row.getCell(1).value = r.role;
-      row.getCell(2).value = r.hours;
-      // VLOOKUP to Pricing sheet for rate
-      const rateCell = sheet.getCell(rowIdx, 3);
-      rateCell.value = {
-        formula: `IFERROR(VLOOKUP(A${rowIdx}, Pricing!$A:$B, 2, FALSE), 0)`,
-      } as any;
-      // Total = Hours * Rate
-      sheet.getCell(rowIdx, 4).value = { formula: `B${rowIdx}*C${rowIdx}` } as any;
-      rowIdx++;
-    }
-
-    // Totals row
-    const totalRow = sheet.getRow(rowIdx);
-    totalRow.getCell(1).value = 'TOTAL';
-    totalRow.getCell(2).value = { formula: `SUM(B5:B${rowIdx - 1})` } as any;
-    totalRow.getCell(4).value = { formula: `SUM(D5:D${rowIdx - 1})` } as any;
-    totalRow.font = { bold: true };
-
-    // Optional: deliverables and assumptions
-    let write = rowIdx + 2;
-    if (meta.deliverables && meta.deliverables.length) {
-      sheet.getCell(`A${write++}`).value = 'Deliverables:';
-      for (const d of meta.deliverables) sheet.getCell(`A${write++}`).value = `• ${d}`;
-    }
-    if (meta.assumptions && meta.assumptions.length) {
-      write += 1;
-      sheet.getCell(`A${write++}`).value = 'Assumptions:';
-      for (const a of meta.assumptions) sheet.getCell(`A${write++}`).value = `• ${a}`;
-    }
-
-    // Column widths
-    sheet.columns = [
-      { width: 40 },
-      { width: 12 },
-      { width: 14 },
-      { width: 16 },
-    ];
-  }
-
-  // Build Pricing sheet with Master Rate Card and SUMIF aggregation
-  // Combine master roles with any extra roles found in scopes
-  const masterRoleMap = new Map<string, number>();
-  ROLES.forEach(r => masterRoleMap.set(r.name, Number(r.rate) || 0));
-  const extraRoles = Array.from(new Set(
-    data.scopeItems.flatMap(s => s.roles.map(r => r.role.trim()))
-  )).filter(name => !masterRoleMap.has(name));
-  extraRoles.forEach(name => masterRoleMap.set(name, 0));
-
-  const pricingRoles = Array.from(masterRoleMap.keys());
-
-  pricingSheet.getRow(1).values = ['Role', 'Hourly Rate (AUD)', 'Total Hours', 'Cost (AUD)'];
-  pricingSheet.getRow(1).font = { bold: true };
-
-  let rIdx = 2;
-  for (const role of pricingRoles) {
-    pricingSheet.getCell(rIdx, 1).value = role;
-    // Pre-populate with master rate (0 if not found in rate card)
-    pricingSheet.getCell(rIdx, 2).value = masterRoleMap.get(role) ?? 0;
-
-    // SUMIF across each Scope sheet for hours
-    const sumifParts = scopeSheets.map(({ name }) => `SUMIF(${name}!$A:$A, Pricing!A${rIdx}, ${name}!$B:$B)`);
-    pricingSheet.getCell(rIdx, 3).value = { formula: `SUM(${sumifParts.join(',')})` } as any;
-    // Cost = Hours * Rate
-    pricingSheet.getCell(rIdx, 4).value = { formula: `C${rIdx}*B${rIdx}` } as any;
-    rIdx++;
-  }
-
-  // Pricing totals
-  pricingSheet.getCell(rIdx, 1).value = 'TOTALS';
-  pricingSheet.getCell(rIdx, 1).font = { bold: true };
-  pricingSheet.getCell(rIdx, 3).value = { formula: `SUM(C2:C${rIdx - 1})` } as any;
-  pricingSheet.getCell(rIdx, 4).value = { formula: `SUM(D2:D${rIdx - 1})` } as any;
-  pricingSheet.columns = [
-    { width: 40 },
-    { width: 18 },
-    { width: 14 },
-    { width: 16 },
+  
+  // Create worksheet data
+  const wsData: any[] = [
+    ['Social Garden - Scope of Work'],
+    [title || 'Statement of Work'],
+    [''],
+    ['Role', 'Hours', 'Rate (AUD)', 'Total (AUD)'],
   ];
-
-  // Build SOW Summary sheet
-  summarySheet.getCell('A1').value = data.title || 'Scope of Work Summary';
-  summarySheet.getCell('A1').font = { bold: true, size: 14 };
-  if (data.overview) {
-    summarySheet.getCell('A2').value = data.overview;
-  }
-
-  let sRow = 4;
-  summarySheet.getRow(sRow).values = ['Scope', 'Total Hours', 'Subtotal (ex. GST)', 'GST (10%)', 'Total (inc. GST)'];
-  summarySheet.getRow(sRow).font = { bold: true };
-  sRow++;
-
-  scopeSheets.forEach(({ name, meta }, idx) => {
-    const sheet = workbook.getWorksheet(name)!;
-    // Find total row: we set totals at last data row + 1. Data starts at row 5 and ends at 5 + roles.length - 1
-    const totalRowIndex = 5 + (meta.roles?.length || 0);
-    summarySheet.getCell(sRow, 1).value = meta.name;
-    // Hours = Scope sheet SUM column B (already totals in B total row)
-    summarySheet.getCell(sRow, 2).value = { formula: `${name}!B${totalRowIndex}` } as any;
-    // Subtotal = Scope sheet total cost cell (column D total row)
-    summarySheet.getCell(sRow, 3).value = { formula: `${name}!D${totalRowIndex}` } as any;
-    // GST and Inc GST
-    summarySheet.getCell(sRow, 4).value = { formula: `C${sRow}*0.1` } as any;
-    summarySheet.getCell(sRow, 5).value = { formula: `C${sRow}+D${sRow}` } as any;
-    sRow++;
+  
+  pricingRows.forEach(row => {
+    wsData.push([
+      row.role,
+      row.hours,
+      row.rate,
+      row.total
+    ]);
   });
-
-  // Summary totals
-  summarySheet.getCell(sRow, 1).value = 'TOTALS';
-  summarySheet.getCell(sRow, 1).font = { bold: true };
-  summarySheet.getCell(sRow, 2).value = { formula: `SUM(B5:B${sRow - 1})` } as any;
-  summarySheet.getCell(sRow, 3).value = { formula: `SUM(C5:C${sRow - 1})` } as any;
-  summarySheet.getCell(sRow, 4).value = { formula: `SUM(D5:D${sRow - 1})` } as any;
-  summarySheet.getCell(sRow, 5).value = { formula: `SUM(E5:E${sRow - 1})` } as any;
-
-  // Outcomes and assumptions
-  let textRow = sRow + 2;
-  if (data.outcomes?.length) {
-    summarySheet.getCell(`A${textRow++}`).value = 'Desired Outcomes:';
-    for (const o of data.outcomes) summarySheet.getCell(`A${textRow++}`).value = `• ${o}`;
+  
+  wsData.push(['']);
+  wsData.push(['Total Hours', totals.totalHours, '', '']);
+  wsData.push(['Sub-Total (excl. GST)', '', '', totals.subtotal]);
+  
+  if (discount && totals.discountAmount > 0) {
+    const discountLabel = discount.type === 'percentage' 
+      ? `Discount (${discount.value}%)` 
+      : 'Discount';
+    wsData.push([discountLabel, '', '', -totals.discountAmount]);
   }
-  if (data.assumptions?.length) {
-    textRow += 1;
-    summarySheet.getCell(`A${textRow++}`).value = 'Global Assumptions:';
-    for (const a of data.assumptions) summarySheet.getCell(`A${textRow++}`).value = `• ${a}`;
-  }
-
-  summarySheet.columns = [
-    { width: 40 },
-    { width: 14 },
-    { width: 18 },
-    { width: 14 },
-    { width: 18 },
+  
+  wsData.push(['Grand Total (excl. GST)', '', '', totals.grandTotal]);
+  wsData.push(['GST (10%)', '', '', totals.gstAmount]);
+  wsData.push(['Total Inc. GST', '', '', totals.grandTotal + totals.gstAmount]);
+  
+  // Create workbook and worksheet
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  
+  // Set column widths
+  ws['!cols'] = [
+    { wch: 50 },  // Role
+    { wch: 10 },  // Hours
+    { wch: 15 },  // Rate
+    { wch: 20 },  // Total
   ];
-
-  // --- Final workbook sanitization ---
-  // Only keep SOW_Summary and Scope sheets visible. Hide Pricing and any other helper sheets.
-  workbook.worksheets.forEach((ws) => {
-    const name = ws.name || '';
-    const isScope = /^Scope\d+$/i.test(name);
-    const isSummary = name === 'SOW_Summary';
-    if (!isScope && !isSummary) {
-      ws.state = 'hidden';
-    }
-  });
-
-  // Filename and download
-  const dateStr = new Date().toISOString().split('T')[0];
-  const outName = filename || `SOW-${dateStr}.xlsx`;
-  const outBuffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([outBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = outName;
-  link.click();
+  
+  XLSX.utils.book_append_sheet(wb, ws, 'SOW Pricing');
+  XLSX.writeFile(wb, filename);
 }
 
 /**
@@ -751,354 +352,81 @@ export function parseSOWMarkdown(markdown: string): Partial<SOWData> {
 /**
  * Clean SOW content by removing non-client-facing elements
  */
-import { PLACEHOLDER_SANITIZATION_ENABLED, PLACEHOLDER_BRANDS } from './policy';
-
 export function cleanSOWContent(content: string): string {
-  // Remove any internal comments, thinking tags, tool calls, etc.
-  let out = content
-    // Remove <AI_THINK> tags
-    .replace(/<AI_THINK>[\s\S]*?<\/AI_THINK>/gi, '')
-    // Remove <thinking> tags (additional variant)
-    .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
-    // Remove <think> tags
+  // Remove any internal comments, thinking tags, etc.
+  return content
     .replace(/<think>[\s\S]*?<\/think>/gi, '')
-    // Remove any orphaned think tags
-    .replace(/<\/?think>/gi, '')
-    // Remove <tool_call> tags
-    .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '')
-    // Remove HTML comments
     .replace(/<!-- .*? -->/gi, '')
-    // Remove any remaining XML-style tags that might be internal
-    .replace(/<\/?[A-Z_]+>/gi, '')
     .trim();
-
-  // 🚨 CRITICAL FIX: Remove REASONING SUMMARY section completely
-  // This section is AI internal monologue and must not appear in client-facing documents
-  // Pattern: Finds "REASONING SUMMARY" heading and removes everything until the next major section
-  const reasoningSummaryPattern = /^#{1,3}\s*(?:PART\s*\d+:\s*)?REASONING\s+SUMMARY[\s\S]*?(?=^#{1,3}\s*(?:PART\s*\d+:\s*)?(?:THE\s+)?(?:FINAL\s+)?SCOPE\s+OF\s+WORK|^#{1,3}\s*(?!PART)[A-Z]|^#{1,3}\s*PROJECT\s+OVERVIEW|^\*\*PROJECT\*\*:|^Social\s+Garden\s*-|$)/mi;
-  const reasoningMatch = out.match(reasoningSummaryPattern);
-  if (reasoningMatch) {
-    console.log('🧹 Removing REASONING SUMMARY section:', reasoningMatch[0].substring(0, 150) + '...');
-  }
-  out = out.replace(reasoningSummaryPattern, '').trim();
-
-  // Remove "PART 2: THE FINAL SCOPE OF WORK" header and similar variants
-  const partHeaderPattern = /^#{1,3}\s*PART\s*\d+:\s*(?:THE\s+)?(?:FINAL\s+)?SCOPE\s+OF\s+WORK\s*$/gmi;
-  const partHeaderMatch = out.match(partHeaderPattern);
-  if (partHeaderMatch) {
-    console.log('🧹 Removing PART headers:', partHeaderMatch);
-  }
-  out = out
-    .replace(partHeaderPattern, '')
-    // Remove any other standalone "PART X:" headers
-    .replace(/^#{1,3}\s*PART\s*\d+:.*$/gmi, '')
-    .trim();
-
-  // 🎯 CRITICAL FIX: Strip AI conversational preamble before first heading
-  // Find the first major heading (H1 or H2) and discard everything before it
-  const firstHeadingMatch = out.match(/^(#{1,2}\s+.+)$/m);
-  if (firstHeadingMatch) {
-    const headingIndex = out.indexOf(firstHeadingMatch[0]);
-    if (headingIndex > 0) {
-      // There's text before the first heading - remove it
-      const preamble = out.substring(0, headingIndex).trim();
-      // Only strip if the preamble looks like conversational AI text (contains common phrases)
-      if (
-        preamble.length > 0 && 
-        (preamble.toLowerCase().includes("i'll create") ||
-         preamble.toLowerCase().includes("i'll draft") ||
-         preamble.toLowerCase().includes("i'll generate") ||
-         preamble.toLowerCase().includes("here's") ||
-         preamble.toLowerCase().includes("here is") ||
-         preamble.toLowerCase().includes("below is") ||
-         preamble.toLowerCase().includes("this is a") ||
-         preamble.toLowerCase().includes("this document") && preamble.length < 200)
-      ) {
-        console.log('🧹 Stripped AI preamble:', preamble.substring(0, 100));
-        out = out.substring(headingIndex).trim();
-      }
-    }
-  }
-
-  // Optional: sanitize placeholder client brands in narrative when no explicit client is set
-  if (PLACEHOLDER_SANITIZATION_ENABLED) {
-    // Heuristic: replace common placeholders with 'Client' (case-insensitive), only when standalone words
-    for (const p of PLACEHOLDER_BRANDS) {
-      const pattern = new RegExp(`\\b${p.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b`, 'gi');
-      out = out.replace(pattern, 'Client');
-    }
-  }
-
-  return out;
 }
 
 /**
- * Extract the modular Architect SOW JSON from an AI response.
- * Looks for a ```json ... ``` code block containing a shape with scopeItems[].
- * Returns a normalized ArchitectSOW or null if not found/invalid.
+ * Attempt to extract Architect structured JSON from a markdown/string blob.
+ * Looks for JSON code fences first; returns object if it contains scopeItems[].
  */
 export function extractSOWStructuredJson(text: string): ArchitectSOW | null {
   if (!text) return null;
-
-  // Prefer fenced JSON blocks first
-  const codeBlockRegex = /```json\s*([\s\S]*?)\s*```/gi;
-  let match: RegExpExecArray | null;
-
-  const tryParse = (raw: string): ArchitectSOW | null => {
+  // 1) Try language-tagged JSON blocks
+  const jsonBlocks = [...text.matchAll(/```json\s*([\s\S]*?)\s*```/gi)];
+  for (const m of jsonBlocks) {
+    const body = m[1];
     try {
-      const obj = JSON.parse(raw);
-      if (!obj || !Array.isArray(obj.scopeItems)) return null;
-
-      // Normalize minimal fields
-      const title = typeof obj.title === 'string' && obj.title.trim().length > 0
-        ? obj.title.trim()
-        : 'Statement of Work';
-      const overview = typeof obj.overview === 'string' ? obj.overview : undefined;
-      const outcomes = Array.isArray(obj.outcomes) ? obj.outcomes.filter(Boolean) : undefined;
-      const assumptions = Array.isArray(obj.assumptions) ? obj.assumptions.filter(Boolean) : undefined;
-
-      const scopeItems: ScopeItem[] = obj.scopeItems.map((s: any) => {
-        const name = typeof s?.name === 'string' && s.name
-          ? s.name
-          : (typeof s?.phaseName === 'string' && s.phaseName ? s.phaseName : 'Scope Item');
-        const rolesArr: ScopeRole[] = Array.isArray(s?.roles)
-          ? s.roles
-              .map((r: any) => ({
-                role: String(r?.role || '').trim(),
-                hours: Number(r?.hours) || 0,
-              }))
-              .filter((r: ScopeRole) => r.role && r.hours >= 0)
-          : [];
-        const deliverables = Array.isArray(s?.deliverables) ? s.deliverables.filter(Boolean) : undefined;
-        const sAssumptions = Array.isArray(s?.assumptions) ? s.assumptions.filter(Boolean) : undefined;
-        const overview = typeof s?.overview === 'string' && s.overview
-          ? s.overview
-          : (typeof s?.description === 'string' ? s.description : undefined);
-        return {
-          name,
-          overview,
-          roles: rolesArr,
-          deliverables,
-          assumptions: sAssumptions,
-        } as ScopeItem;
-      });
-
-      if (!scopeItems.length) return null;
-
-      return {
-        title,
-        overview,
-        outcomes,
-        assumptions,
-        scopeItems,
-      } as ArchitectSOW;
-    } catch (e) {
-      return null;
-    }
-  };
-
-  while ((match = codeBlockRegex.exec(text)) !== null) {
-    const raw = match[1];
-    const parsed = tryParse(raw);
-    if (parsed) return parsed;
+      const obj = JSON.parse(body);
+      if (obj && Array.isArray(obj.scopeItems)) {
+        return obj as ArchitectSOW;
+      }
+    } catch {}
   }
-
-  // Fallback: try to locate a JSON object in the text containing "scopeItems"
-  const scopeIdx = text.indexOf('scopeItems');
-  if (scopeIdx !== -1) {
-    // Heuristic: take the largest {...} block that contains scopeItems
-    const firstBrace = text.lastIndexOf('{', scopeIdx);
-    const lastBrace = text.indexOf('}', scopeIdx);
-    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-      const candidate = text.substring(firstBrace, lastBrace + 1);
-      const parsed = tryParse(candidate);
-      if (parsed) return parsed;
-    }
+  // 2) Try generic code fences if they appear to include scopeItems
+  const anyBlocks = [...text.matchAll(/```\s*([\s\S]*?)\s*```/g)];
+  for (const m of anyBlocks) {
+    const body = m[1];
+    if (!/scopeItems\s*[:]/.test(body)) continue;
+    try {
+      const obj = JSON.parse(body);
+      if (obj && Array.isArray(obj.scopeItems)) {
+        return obj as ArchitectSOW;
+      }
+    } catch {}
   }
-
+  // 3) Nothing found
   return null;
 }
 
 /**
- * Convert TipTap JSON content to HTML
- * Used for embedding SOWs into AnythingLLM workspaces
+ * Extract pricing rows from an HTML string (client-side only). Looks for tables
+ * with Role/Hours/Rate/Total columns and returns parsed rows.
  */
-export function tiptapToHTML(content: any): string {
-  if (!content || !content.content) return '';
-  
-  const processNode = (node: any): string => {
-    if (!node) return '';
-    
-    let html = '';
-    
-    switch (node.type) {
-      case 'paragraph':
-        html += '<p>';
-        if (node.content) {
-          html += node.content.map(processNode).join('');
-        }
-        html += '</p>';
-        break;
-        
-      case 'heading':
-        const level = node.attrs?.level || 1;
-        html += `<h${level}>`;
-        if (node.content) {
-          html += node.content.map(processNode).join('');
-        }
-        html += `</h${level}>`;
-        break;
-        
-      case 'bulletList':
-        html += '<ul>';
-        if (node.content) {
-          html += node.content.map(processNode).join('');
-        }
-        html += '</ul>';
-        break;
-        
-      case 'orderedList':
-        html += '<ol>';
-        if (node.content) {
-          html += node.content.map(processNode).join('');
-        }
-        html += '</ol>';
-        break;
-        
-      case 'listItem':
-        html += '<li>';
-        if (node.content) {
-          html += node.content.map(processNode).join('');
-        }
-        html += '</li>';
-        break;
-        
-      case 'text':
-        let text = node.text || '';
-        if (node.marks) {
-          for (const mark of node.marks) {
-            if (mark.type === 'bold') text = `<strong>${text}</strong>`;
-            if (mark.type === 'italic') text = `<em>${text}</em>`;
-            if (mark.type === 'code') text = `<code>${text}</code>`;
-          }
-        }
-        html += text;
-        break;
-        
-      case 'hardBreak':
-        html += '<br>';
-        break;
-        
-      case 'horizontalRule':
-        html += '<hr>';
-        break;
-        
-      case 'codeBlock':
-        html += '<pre><code>';
-        if (node.content) {
-          html += node.content.map(processNode).join('');
-        }
-        html += '</code></pre>';
-        break;
-        
-      case 'table':
-        html += '<table>';
-        if (node.content) {
-          html += node.content.map(processNode).join('');
-        }
-        html += '</table>';
-        break;
-        
-      case 'tableRow':
-        html += '<tr>';
-        if (node.content) {
-          html += node.content.map(processNode).join('');
-        }
-        html += '</tr>';
-        break;
-        
-      case 'tableCell':
-        html += '<td>';
-        if (node.content) {
-          html += node.content.map(processNode).join('');
-        }
-        html += '</td>';
-        break;
-        
-      case 'tableHeader':
-        html += '<th>';
-        if (node.content) {
-          html += node.content.map(processNode).join('');
-        }
-        html += '</th>';
-        break;
-        
-      case 'editablePricingTable':
-        // Custom pricing table - convert to full HTML table with optional summary
-        {
-          const rows = Array.isArray(node.attrs?.rows) ? node.attrs.rows : [];
-          const discount = Number(node.attrs?.discount) || 0;
-          const showTotal = node.attrs?.showTotal === undefined ? true : !!node.attrs.showTotal;
-
-          const fmt = (n: number) => (Number(n) || 0).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' });
-
-          html += '<h3>Project Pricing</h3>';
-          html += '<table>';
-          html += '<tr><th>Role</th><th>Description</th><th>Hours</th><th>Rate (AUD)</th><th class="num">Cost (AUD, ex GST)</th></tr>';
-
-          let subtotal = 0;
-          rows.forEach((r: any) => {
-            const hours = Number(r?.hours) || 0;
-            const rate = Number(r?.rate) || 0;
-            const cost = hours * rate;
-            subtotal += cost;
-            html += '<tr>';
-            html += `<td>${String(r?.role || '')}</td>`;
-            html += `<td>${String(r?.description || '')}</td>`;
-            html += `<td class="num">${hours}</td>`;
-            html += `<td class="num">${fmt(rate)}</td>`;
-            html += `<td class="num">${fmt(cost)} <span style="color:#6b7280; font-size: 0.85em;">+GST</span></td>`;
-            html += '</tr>';
-          });
-
-          html += '</table>';
-
-          // Optional summary section
-          if (showTotal) {
-            html += '<h4 style="margin-top: 20px;">Summary</h4>';
-            html += '<table class="summary-table">';
-            html += `<tr><td style="text-align: right; padding-right: 12px;"><strong>Subtotal (ex GST):</strong></td><td class="num">${fmt(subtotal)} <span style="color:#6b7280; font-size: 0.85em;">+GST</span></td></tr>`;
-
-            if (discount > 0) {
-              const discountAmount = subtotal * (discount / 100);
-              const afterDiscount = subtotal - discountAmount;
-              html += `<tr><td style="text-align: right; padding-right: 12px; color: #dc2626;"><strong>Discount (${discount}%):</strong></td><td class="num" style="color: #dc2626;">-${fmt(discountAmount)}</td></tr>`;
-              html += `<tr><td style="text-align: right; padding-right: 12px;"><strong>After Discount (ex GST):</strong></td><td class="num">${fmt(afterDiscount)} <span style=\"color:#6b7280; font-size: 0.85em;\">+GST</span></td></tr>`;
-              subtotal = afterDiscount;
-            }
-
-            const gst = subtotal * 0.1;
-            const total = subtotal + gst;
-            const roundedTotal = Math.round(total / 100) * 100; // nearest $100
-
-            html += `<tr><td style=\"text-align: right; padding-right: 12px;\"><strong>GST (10%):</strong></td><td class=\"num\">${fmt(gst)}</td></tr>`;
-            html += `<tr><td style=\"text-align: right; padding-right: 12px;\"><strong>Total (incl GST, unrounded):</strong></td><td class=\"num\">${fmt(total)}</td></tr>`;
-            html += `<tr style=\"border-top: 2px solid #2C823D;\"><td style=\"text-align: right; padding-right: 12px; padding-top: 8px;\"><strong>Total Project Value (incl GST, rounded):</strong></td><td class=\"num\" style=\"padding-top: 8px; color: #2C823D; font-size: 18px;\"><strong>${fmt(roundedTotal)}</strong></td></tr>`;
-            html += '</table>';
-            html += '<p style="color:#6b7280; font-size: 0.85em; margin-top: 4px;">All amounts shown in the pricing table are exclusive of GST unless otherwise stated. The Total Project Value includes GST and is rounded to the nearest $100.</p>';
-          }
-        }
-        break;
-        
-      default:
-        // Unknown node type - try to process content anyway
-        if (node.content) {
-          html += node.content.map(processNode).join('');
-        }
+export function extractPricingFromHTML(html: string): PricingRow[] {
+  try {
+    if (typeof window === 'undefined') return [];
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const tables = Array.from(doc.querySelectorAll('table')) as HTMLTableElement[];
+    for (const table of tables) {
+      const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent?.toLowerCase().trim() || '');
+      // Look for expected headers
+      const roleIdx = headers.findIndex(h => /role/.test(h));
+      const hoursIdx = headers.findIndex(h => /hours?/.test(h));
+      const rateIdx = headers.findIndex(h => /rate/.test(h));
+      const totalIdx = headers.findIndex(h => /total/.test(h));
+      if (roleIdx === -1 || hoursIdx === -1) continue;
+      const rows: PricingRow[] = [];
+      const bodyRows = Array.from(table.querySelectorAll('tbody tr')) as HTMLTableRowElement[];
+      for (const tr of bodyRows) {
+        const cells = Array.from(tr.querySelectorAll('td')) as HTMLTableCellElement[];
+        if (cells.length === 0) continue;
+        const role = cells[roleIdx]?.textContent?.trim() || '';
+        if (!role || /total/i.test(role)) continue;
+        const hours = parseFloat((cells[hoursIdx]?.textContent || '0').replace(/[^\d\.]/g, '')) || 0;
+        const rate = rateIdx >= 0 ? parseFloat((cells[rateIdx]?.textContent || '0').replace(/[^\d\.]/g, '')) || 0 : 0;
+        const total = totalIdx >= 0 ? parseFloat((cells[totalIdx]?.textContent || '0').replace(/[^\d\.]/g, '')) || (hours * rate) : (hours * rate);
+        rows.push({ role, hours, rate, total });
+      }
+      if (rows.length > 0) return rows;
     }
-    
-    return html;
-  };
-  
-  return content.content.map(processNode).join('');
+  } catch (e) {
+    console.warn('extractPricingFromHTML failed:', e);
+  }
+  return [];
 }

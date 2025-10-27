@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/tailwind/ui/button';
 import { toast } from 'sonner';
-import { exportToExcel, extractPricingFromHTML } from '@/lib/export-utils';
+import { exportToExcel } from '@/lib/export-utils';
 import { SocialGardenHeader } from '@/components/header/sg-header';
 
 interface SOWData {

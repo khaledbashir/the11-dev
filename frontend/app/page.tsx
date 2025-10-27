@@ -117,10 +117,10 @@ const extractBudgetAndDiscount = (prompt: string): { budget: number; discount: n
   return { budget, discount };
 };
 
-// 🎯 UTILITY: Extract and parse [PRICING_JSON] block from The Architect v3.1
+// 🎯 UTILITY: Extract and parse [PRICING_JSON] or [PRICING/JSON] block from The Architect v3.1
 const extractPricingJSON = (content: string): { roles: any[]; discount?: number } | null => {
-  // Look for [PRICING_JSON] block or just the JSON code fence
-  const pricingJsonMatch = content.match(/\[PRICING_JSON\]\s*```json\s*([\s\S]*?)\s*```/i) ||
+  // Look for explicit [PRICING_JSON] or [PRICING/JSON] blocks, else fallback to first JSON code fence
+  const pricingJsonMatch = content.match(/\[PRICING[\/_]JSON\]\s*```json\s*([\s\S]*?)\s*```/i) ||
                            content.match(/```json\s*([\s\S]*?)\s*```/);
   
   if (pricingJsonMatch && pricingJsonMatch[1]) {
@@ -221,6 +221,9 @@ type ConvertOptions = {
   userPromptBudget?: number; // Budget extracted from user's original prompt
   userPromptDiscount?: number; // Discount extracted from user's original prompt
   jsonDiscount?: number; // Discount extracted from [PRICING_JSON] block
+  // NEW: Support multiple pricing tables insertion in a single document
+  tablesRoles?: any[][]; // Queue of roles arrays, one per [PRICING_JSON] block
+  tablesDiscounts?: number[]; // Optional per-table discounts aligned with tablesRoles
 };
 
 // Build suggestedRoles[] from Architect structured JSON (scopeItems[].roles)
@@ -254,8 +257,10 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
   const lines = markdown.split('\n');
   const content: any[] = [];
   let i = 0;
-  let pricingTableInserted = false;
+  let pricingTablesInsertedCount = 0;
   const strictRoles = !!options.strictRoles;
+  const tablesQueue: any[][] = Array.isArray(options.tablesRoles) ? [...options.tablesRoles] : [];
+  const discountQueue: number[] = Array.isArray(options.tablesDiscounts) ? [...options.tablesDiscounts] : [];
   
   // 🎯 SMART DISCOUNT FEATURE: Priority cascade for discount extraction
   // Priority 1: JSON discount from [PRICING_JSON] block (most authoritative)
@@ -417,26 +422,69 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
   // Removed default zero-hours fallback: enterprise policy prohibits pricing fallbacks
 
   const insertPricingTable = (rolesFromMarkdown: any[] = []) => {
-    if (pricingTableInserted) return;
+    // Pull the next roles set from queue if provided via options (multi-table support)
+    let rolesSource: any[] = [];
+    if (tablesQueue.length > 0) {
+      rolesSource = tablesQueue.shift() || [];
+    }
+    const effectiveRoles = (rolesSource && rolesSource.length > 0) ? rolesSource : suggestedRoles;
     
     let pricingRows: any[] = [];
-    // Robust normalizer and canonical role finder to ensure names match ROLES exactly
+    // Robust normalizer and canonical role finder to map AI role names to official rate card
     const norm = (s: string) => (s || '')
       .toLowerCase()
       .replace(/\s*-/g, '-')
       .replace(/-\s*/g, '-')
       .replace(/\s+/g, ' ')
+      .replace(/[-()]/g, ' ') // reduce punctuation impact
       .trim();
-    const findCanon = (name: string) => ROLES.find(r => norm(r.name) === norm(name));
+    const tokens = (s: string) => norm(s).split(' ').filter(Boolean);
+    const jaccard = (a: string[], b: string[]) => {
+      const A = new Set(a), B = new Set(b);
+      let inter = 0;
+      for (const t of A) if (B.has(t)) inter++;
+      const uni = new Set([...A, ...B]).size || 1;
+      return inter / uni;
+    };
+    const findCanon = (name: string) => {
+      const n = norm(name);
+      if (!n) return undefined;
+      // 1) Exact normalized match
+      let exact = ROLES.find(r => norm(r.name) === n);
+      if (exact) return exact;
+      // 2) Substring/contains heuristic
+      const contains = ROLES.find(r => norm(r.name).includes(n) || n.includes(norm(r.name)));
+      if (contains) return contains;
+      // 3) Token similarity (Jaccard)
+      const nameTokens = tokens(name);
+      let best = { role: undefined as undefined | typeof ROLES[number], score: 0 };
+      for (const r of ROLES) {
+        const score = jaccard(nameTokens, tokens(r.name));
+        if (score > best.score) best = { role: r, score };
+      }
+      // Accept if reasonably similar
+      if (best.role && best.score >= 0.6) return best.role;
+      // 4) Common synonym fixes
+      const syn = n
+        .replace('offshore', 'off')
+        .replace('on-shore', 'onshore')
+        .replace('on shore', 'onshore')
+        .replace('off-shore', 'offshore')
+        .replace('project-coordination', 'project coordination')
+        .replace('pm', 'project management');
+      exact = ROLES.find(r => norm(r.name) === syn);
+      if (exact) return exact;
+      return undefined;
+    };
     
     // Use provided suggestedRoles first; otherwise use roles parsed from markdown only
-    if (suggestedRoles.length > 0) {
+    if (effectiveRoles.length > 0) {
       console.log('✅ Using suggestedRoles from JSON.');
-      const rolesAreStrings = typeof suggestedRoles[0] === 'string';
-      const rolesLackHours = !rolesAreStrings && suggestedRoles.every((r: any) => !r || !r.hours || r.hours <= 0);
+      const rolesAreStrings = typeof effectiveRoles[0] === 'string';
+      const rolesLackHours = !rolesAreStrings && effectiveRoles.every((r: any) => !r || !r.hours || r.hours <= 0);
 
       if (rolesAreStrings || rolesLackHours) {
-        const names = (suggestedRoles as any[]).map(r => typeof r === 'string' ? r : r.role).filter(Boolean);
+        const names = (effectiveRoles as any[]).map(r => typeof r === 'string' ? r : r.role).filter(Boolean);
         
         // Priority 1: Use budget from user's original prompt if provided
         // Priority 2: Parse budget from AI's markdown response
@@ -466,7 +514,7 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
         }
       } else {
         // Backward compatibility: AI provided hours
-        pricingRows = suggestedRoles
+        pricingRows = effectiveRoles
           .filter(role => {
             const roleName = (role.role || '').trim();
             return roleName && roleName.length > 0 && roleName.toLowerCase() !== 'select role' && roleName.toLowerCase() !== 'select role...';
@@ -498,7 +546,7 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
       return; // Can't create pricing table without any roles
     }
     
-    pricingTableInserted = true;
+  pricingTablesInsertedCount += 1;
     
     // 🔧 CRITICAL FIX: Filter out any empty/invalid roles BEFORE enforcement
     pricingRows = pricingRows.filter(r => {
@@ -530,11 +578,13 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
     }
 
     console.log('✅ Inserting EditablePricingTable with', pricingRows.length, 'roles.');
+    // Use per-table discount if provided; otherwise fall back to parsed/global discount
+    const tableDiscount = (discountQueue.length > 0 ? (discountQueue.shift() || 0) : undefined);
     content.push({
       type: 'editablePricingTable',
       attrs: {
         rows: pricingRows,
-        discount: parsedDiscount, // 🎯 Smart Discount: Use parsed discount from AI content
+        discount: (tableDiscount !== undefined && tableDiscount >= 0) ? tableDiscount : parsedDiscount, // 🎯 Smart Discount hierarchy
       },
     });
   };
@@ -669,8 +719,8 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
   }
 
   // If we reach the end and pricing table hasn't been inserted, only insert when roles exist
-  if (!pricingTableInserted) {
-    if (suggestedRoles.length > 0) {
+  if (pricingTablesInsertedCount === 0) {
+    if ((tablesQueue.length > 0 && tablesQueue[0]?.length > 0) || suggestedRoles.length > 0) {
       console.log('⚠️ Pricing table not auto-inserted earlier, inserting NOW at end of content (from suggestedRoles).');
       content.push({ type: 'horizontalRule' });
       content.push({
@@ -684,7 +734,7 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
     }
   }
 
-  console.log(`📊 Final content has ${content.length} nodes. Pricing table inserted: ${pricingTableInserted}`);
+  console.log(`📊 Final content has ${content.length} nodes. Pricing tables inserted: ${pricingTablesInsertedCount}`);
   // Forensic logging to validate narrative vs pricing merge
   const pricingCount = content.filter(n => n?.type === 'editablePricingTable').length;
   const narrativeCount = content.length - pricingCount;
@@ -3073,72 +3123,126 @@ Ask me questions to get business insights, such as:
     try {
       // 🧹 Filter out internal reasoning sections before processing
       let filteredContent = content;
-      
-      // Remove [FINANCIAL*REASONING]* sections
-      filteredContent = filteredContent.replace(/\[FINANCIAL[\*_]REASONING[\*_]\][\s\S]*?(?=\[|##|###|$)/gi, '');
-      
-      // Remove [BUDGET*NOTE]* sections
-      filteredContent = filteredContent.replace(/\[BUDGET[\*_]NOTE[\*_]\][\s\S]*?(?=\[|##|###|$)/gi, '');
-      
-      // Remove [PRICING*JSON]* markers (keep the table but remove the marker)
-      filteredContent = filteredContent.replace(/\[PRICING[\*_]JSON[\*_]\]/gi, '');
-      
-      // Remove [GENERATE THE SOW] markers
-      filteredContent = filteredContent.replace(/\[GENERATE THE SOW\]/gi, '');
-      
-      // Clean up extra whitespace
-      filteredContent = filteredContent.replace(/\n{3,}/g, '\n\n').trim();
-      
-      // 1. Separate Markdown from JSON
-      let markdownPart = filteredContent;
-      // let suggestedRoles: any[] = []; // Now passed as an argument
-      const jsonMatch = filteredContent.match(/```json\s*([\s\S]*?)\s*```/);
 
-      let hasValidSuggestedRoles = false;
+      // Remove known internal sections (keep narrative clean)
+      filteredContent = filteredContent.replace(/\[FINANCIAL[\*_\s-]*REASONING[\*_\s-]*\][\s\S]*?(?=\n\s*\[|\n\s*##|\n\s*###|$)/gi, '');
+      filteredContent = filteredContent.replace(/\[BUDGET[\*_\s-]*NOTE[\*_\s-]*\][\s\S]*?(?=\n\s*\[|\n\s*##|\n\s*###|$)/gi, '');
+      filteredContent = filteredContent.replace(/\[GENERATE\s+THE\s+SOW\]/gi, '');
+
+      // 1) Extract ALL JSON code blocks and build per-table roles queue.
+      //    Replace each JSON block with a [editablePricingTable] placeholder to preserve placement.
+      let markdownPart = filteredContent;
+      const tablesRolesQueue: any[][] = [];
+      const tablesDiscountsQueue: number[] = [];
       let parsedStructured: ArchitectSOW | null = null;
+      let hasValidSuggestedRoles = false;
       let extractedDiscount: number | undefined;
-      
-      // 🎯 PRIORITY 1: Try extracting [PRICING_JSON] block (The Architect v3.1 format)
-      const pricingJsonData = extractPricingJSON(filteredContent);
-      if (pricingJsonData && pricingJsonData.roles && pricingJsonData.roles.length > 0) {
-        suggestedRoles = pricingJsonData.roles;
-        extractedDiscount = pricingJsonData.discount;
-        hasValidSuggestedRoles = true;
-        // Remove the JSON block from markdown
-        if (jsonMatch) {
-          markdownPart = filteredContent.replace(jsonMatch[0], '').trim();
+
+      const jsonBlocks = Array.from(filteredContent.matchAll(/```json\s*([\s\S]*?)\s*```/gi));
+      if (jsonBlocks.length > 0) {
+        // Rebuild markdown by replacing only qualifying pricing JSON blocks with placeholders
+        let rebuilt = '';
+        let lastIndex = 0;
+        for (const m of jsonBlocks) {
+          const full = m[0];
+          const body = m[1];
+          const start = m.index || 0;
+          const end = start + full.length;
+          // Append text before this block
+          rebuilt += filteredContent.slice(lastIndex, start);
+          lastIndex = end;
+          try {
+            const obj = JSON.parse(body);
+            let rolesArr: any[] = [];
+            let discountVal: number | undefined = undefined;
+            if (Array.isArray(obj?.roles)) {
+              rolesArr = obj.roles;
+            } else if (Array.isArray(obj?.suggestedRoles)) {
+              rolesArr = obj.suggestedRoles;
+            } else if (Array.isArray(obj?.scopeItems)) {
+              const derived = buildSuggestedRolesFromArchitectSOW(obj as ArchitectSOW);
+              rolesArr = derived;
+            }
+            if (typeof obj?.discount === 'number') {
+              discountVal = obj.discount;
+            }
+            if (rolesArr.length > 0) {
+              tablesRolesQueue.push(rolesArr);
+              tablesDiscountsQueue.push(discountVal ?? 0);
+              // Insert placeholder where the JSON block was
+              rebuilt += '\n[editablePricingTable]\n';
+            } else {
+              // Not a pricing JSON; keep original content
+              rebuilt += full;
+            }
+          } catch {
+            // Not valid JSON; keep original content
+            rebuilt += full;
+          }
         }
-        console.log(`✅ Using ${suggestedRoles.length} roles from [PRICING_JSON] with validated hours`);
-        if (extractedDiscount) {
-          console.log(`🎁 Using discount from [PRICING_JSON]: ${extractedDiscount}%`);
+        // Append the rest
+        rebuilt += filteredContent.slice(lastIndex);
+        markdownPart = rebuilt.trim();
+        hasValidSuggestedRoles = tablesRolesQueue.length > 0;
+        if (hasValidSuggestedRoles) {
+          console.log(`✅ Detected ${tablesRolesQueue.length} pricing JSON block(s); will insert same number of pricing tables.`);
         }
-      }
-      // PRIORITY 2: Legacy suggestedRoles or scopeItems format
-      else if (jsonMatch && jsonMatch[1]) {
-        try {
-          const parsedJson = JSON.parse(jsonMatch[1]);
-          if (parsedJson.suggestedRoles) {
-            // If roles are embedded in the content, merge them with any passed roles
-            suggestedRoles = [...suggestedRoles, ...parsedJson.suggestedRoles];
-            // Remove the JSON block from the markdown content
-            markdownPart = content.replace(jsonMatch[0], '').trim();
-            console.log(`✅ Parsed ${suggestedRoles.length} suggested roles from AI response (legacy format).`);
-            hasValidSuggestedRoles = suggestedRoles.length > 0;
-          } else if (parsedJson.scopeItems) {
-            // Architect structured JSON detected - save it for role derivation
-            parsedStructured = parsedJson as ArchitectSOW;
-            const derived = buildSuggestedRolesFromArchitectSOW(parsedStructured);
-            if (derived.length > 0) {
-              suggestedRoles = derived;
-              markdownPart = content.replace(jsonMatch[0], '').trim();
-              hasValidSuggestedRoles = true;
-              console.log(`✅ Derived ${suggestedRoles.length} roles from Architect structured JSON (scopeItems).`);
+      } else {
+        // Backward compatibility: single-block helpers
+        const single = extractPricingJSON(filteredContent);
+        if (single && single.roles && single.roles.length > 0) {
+          suggestedRoles = single.roles;
+          extractedDiscount = single.discount;
+          hasValidSuggestedRoles = true;
+          // Remove first JSON block occurrence if any
+          const jm = filteredContent.match(/```json\s*[\s\S]*?\s*```/i);
+          if (jm) markdownPart = filteredContent.replace(jm[0], '').trim();
+          console.log(`✅ Using ${suggestedRoles.length} roles from [PRICING_JSON] (single-block)`);
+        } else {
+          // Legacy: attempt to parse first JSON block for roles/scopeItems
+          const legacyMatch = filteredContent.match(/```json\s*([\s\S]*?)\s*```/);
+          if (legacyMatch && legacyMatch[1]) {
+            try {
+              const parsedJson = JSON.parse(legacyMatch[1]);
+              if (parsedJson.suggestedRoles) {
+                suggestedRoles = [...suggestedRoles, ...parsedJson.suggestedRoles];
+                markdownPart = content.replace(legacyMatch[0], '').trim();
+                hasValidSuggestedRoles = suggestedRoles.length > 0;
+                console.log(`✅ Parsed ${suggestedRoles.length} suggested roles from legacy JSON.`);
+              } else if (parsedJson.scopeItems) {
+                parsedStructured = parsedJson as ArchitectSOW;
+                const derived = buildSuggestedRolesFromArchitectSOW(parsedStructured);
+                if (derived.length > 0) {
+                  suggestedRoles = derived;
+                  markdownPart = content.replace(legacyMatch[0], '').trim();
+                  hasValidSuggestedRoles = true;
+                  console.log(`✅ Derived ${suggestedRoles.length} roles from Architect structured JSON (legacy).`);
+                }
+              }
+            } catch (e) {
+              console.warn('⚠️ Could not parse suggested roles JSON from AI response.', e);
             }
           }
-        } catch (e) {
-          console.warn('⚠️ Could not parse suggested roles JSON from AI response.', e);
         }
       }
+
+      // 2) Scrub remaining internal bracketed tags (preserve markdown links)
+      const scrubBracketTagsPreserveLinks = (txt: string) => {
+        return txt.replace(/\[[^\]]+\]/g, (match, offset, str) => {
+          const nextChar = str[(offset as number) + match.length];
+          // If this is a markdown link like [text](...), keep it
+          if (nextChar === '(') return match;
+          // Remove only if inside is likely an internal tag (primarily uppercase, digits, spaces, and symbols)
+          const inner = match.slice(1, -1);
+          if (/^[A-Z0-9 _\-\/&]+$/.test(inner)) return '';
+          return match;
+        });
+      };
+      markdownPart = scrubBracketTagsPreserveLinks(markdownPart)
+        // Also directly strip explicit known tags variants
+        .replace(/\[(?:PRICING[\/_ ]?JSON|ANALYZE(?:\s*&\s*CLASSIFY)?|FINANCIAL[_\s-]*REASONING|BUDGET[_\s-]*NOTE)\]/gi, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
 
       // 2. Clean the markdown content
       console.log('🧹 Cleaning SOW content...');
@@ -3156,7 +3260,9 @@ Ask me questions to get business insights, such as:
         strictRoles: false,
         userPromptBudget,
         userPromptDiscount,
-        jsonDiscount: extractedDiscount // Discount from [PRICING_JSON] takes priority
+        jsonDiscount: extractedDiscount, // Discount from [PRICING_JSON] takes priority
+        tablesRoles: tablesRolesQueue,
+        tablesDiscounts: tablesDiscountsQueue,
       };
       
       // CRITICAL: If no suggestedRoles provided from JSON, try extracting Architect structured JSON from the message body
@@ -3380,54 +3486,97 @@ Ask me questions to get business insights, such as:
       
       if (lastAIMessage && currentDocId) {
         try {
-          // 1. Separate Markdown from JSON from the last AI message
-          let markdownPart = lastAIMessage.content;
-          let suggestedRoles: any[] = [];
-          const jsonMatch = markdownPart.match(/```json\s*([\s\S]*?)\s*```/);
+              // 1. Separate Markdown from JSON from the last AI message (multi-block aware)
+              let markdownPart = lastAIMessage.content;
+              let suggestedRoles: any[] = [];
+              let hasValidSuggestedRoles = false;
+              let extractedDiscount: number | undefined;
+              const tablesRolesQueue: any[][] = [];
+              const tablesDiscountsQueue: number[] = [];
 
-          let hasValidSuggestedRoles = false;
-          let extractedDiscount: number | undefined;
-          
-          // 🎯 PRIORITY 1: Try extracting [PRICING_JSON] block (The Architect v3.1 format)
-          const pricingJsonData = extractPricingJSON(lastAIMessage.content);
-          if (pricingJsonData && pricingJsonData.roles && pricingJsonData.roles.length > 0) {
-            suggestedRoles = pricingJsonData.roles;
-            extractedDiscount = pricingJsonData.discount;
-            hasValidSuggestedRoles = true;
-            if (jsonMatch) {
-              markdownPart = markdownPart.replace(jsonMatch[0], '').trim();
-            }
-            console.log(`✅ Using ${suggestedRoles.length} roles from [PRICING_JSON] (insert command)`);
-            if (extractedDiscount) {
-              console.log(`🎁 Using discount from [PRICING_JSON]: ${extractedDiscount}%`);
-            }
-          }
-          // PRIORITY 2: Legacy format
-          else if (jsonMatch && jsonMatch[1]) {
-            try {
-              const parsedJson = JSON.parse(jsonMatch[1]);
-              if (parsedJson.suggestedRoles) {
-                suggestedRoles = parsedJson.suggestedRoles;
-                markdownPart = markdownPart.replace(jsonMatch[0], '').trim();
-                console.log(`✅ Parsed ${suggestedRoles.length} roles from "insert" command (legacy format).`);
-                hasValidSuggestedRoles = suggestedRoles.length > 0;
-              } else if (parsedJson.scopeItems) {
-                const derived = buildSuggestedRolesFromArchitectSOW(parsedJson as ArchitectSOW);
-                if (derived.length > 0) {
-                  suggestedRoles = derived;
-                  markdownPart = markdownPart.replace(jsonMatch[0], '').trim();
+              const jsonBlocks = Array.from(markdownPart.matchAll(/```json\s*([\s\S]*?)\s*```/gi));
+              if (jsonBlocks.length > 0) {
+                let rebuilt = '';
+                let lastIndex = 0;
+                for (const m of jsonBlocks) {
+                  const full = m[0];
+                  const body = m[1];
+                  const start = m.index || 0;
+                  const end = start + full.length;
+                  rebuilt += markdownPart.slice(lastIndex, start);
+                  lastIndex = end;
+                  try {
+                    const obj = JSON.parse(body);
+                    let rolesArr: any[] = [];
+                    let discountVal: number | undefined = undefined;
+                    if (Array.isArray(obj?.roles)) rolesArr = obj.roles;
+                    else if (Array.isArray(obj?.suggestedRoles)) rolesArr = obj.suggestedRoles;
+                    else if (Array.isArray(obj?.scopeItems)) rolesArr = buildSuggestedRolesFromArchitectSOW(obj as ArchitectSOW);
+                    if (typeof obj?.discount === 'number') discountVal = obj.discount;
+                    if (rolesArr.length > 0) {
+                      tablesRolesQueue.push(rolesArr);
+                      tablesDiscountsQueue.push(discountVal ?? 0);
+                      rebuilt += '\n[editablePricingTable]\n';
+                    } else {
+                      rebuilt += full;
+                    }
+                  } catch {
+                    rebuilt += full;
+                  }
+                }
+                rebuilt += markdownPart.slice(lastIndex);
+                markdownPart = rebuilt.trim();
+                hasValidSuggestedRoles = tablesRolesQueue.length > 0;
+                if (hasValidSuggestedRoles) console.log(`✅ Using ${tablesRolesQueue.length} pricing JSON block(s) for insertion (insert command).`);
+              } else {
+                // Single-block helpers
+                const legacyMatch = markdownPart.match(/```json\s*([\s\S]*?)\s*```/);
+                const pricingJsonData = extractPricingJSON(lastAIMessage.content);
+                if (pricingJsonData && pricingJsonData.roles && pricingJsonData.roles.length > 0) {
+                  suggestedRoles = pricingJsonData.roles;
+                  extractedDiscount = pricingJsonData.discount;
                   hasValidSuggestedRoles = true;
-                  console.log(`✅ Derived ${suggestedRoles.length} roles from Architect structured JSON (insert command).`);
+                  if (legacyMatch) markdownPart = markdownPart.replace(legacyMatch[0], '').trim();
+                  console.log(`✅ Using ${suggestedRoles.length} roles from [PRICING_JSON] (insert command)`);
+                } else if (legacyMatch && legacyMatch[1]) {
+                  try {
+                    const parsedJson = JSON.parse(legacyMatch[1]);
+                    if (parsedJson.suggestedRoles) {
+                      suggestedRoles = parsedJson.suggestedRoles;
+                      markdownPart = markdownPart.replace(legacyMatch[0], '').trim();
+                      hasValidSuggestedRoles = suggestedRoles.length > 0;
+                      console.log(`✅ Parsed ${suggestedRoles.length} roles from "insert" command (legacy format).`);
+                    } else if (parsedJson.scopeItems) {
+                      const derived = buildSuggestedRolesFromArchitectSOW(parsedJson as ArchitectSOW);
+                      if (derived.length > 0) {
+                        suggestedRoles = derived;
+                        markdownPart = markdownPart.replace(legacyMatch[0], '').trim();
+                        hasValidSuggestedRoles = true;
+                        console.log(`✅ Derived ${suggestedRoles.length} roles from Architect structured JSON (insert command).`);
+                      }
+                    }
+                  } catch (e) {
+                    console.warn('⚠️ Could not parse suggestedRoles JSON from last AI message.', e);
+                  }
                 }
               }
-            } catch (e) {
-              console.warn('⚠️ Could not parse suggestedRoles JSON from last AI message.', e);
-            }
-          }
 
-          // 2. Clean the markdown content
+          // 2. Scrub internal bracketed tags, then clean the markdown content
+          const scrubBracketTagsPreserveLinks = (txt: string) => {
+            return txt.replace(/\[[^\]]+\]/g, (match, offset, str) => {
+              const nextChar = str[(offset as number) + match.length];
+              if (nextChar === '(') return match; // keep markdown links
+              const inner = match.slice(1, -1);
+              if (/^[A-Z0-9 _\-\/&]+$/.test(inner)) return '';
+              return match;
+            });
+          };
           console.log('🧹 Cleaning SOW content for insertion...');
-          const cleanedMessage = cleanSOWContent(markdownPart);
+          const cleanedMessage = cleanSOWContent(
+            scrubBracketTagsPreserveLinks(
+              markdownPart.replace(/\[(?:PRICING[\/_ ]?JSON|ANALYZE(?:\s*&\s*CLASSIFY)?|FINANCIAL[_\s-]*REASONING|BUDGET[_\s-]*NOTE)\]/gi, '')
+            )
+          );
           console.log('✅ Content cleaned');
           
           // 3. Convert markdown and roles to Novel/TipTap JSON
@@ -3439,7 +3588,9 @@ Ask me questions to get business insights, such as:
             strictRoles: false,
             userPromptBudget,
             userPromptDiscount,
-            jsonDiscount: extractedDiscount // Discount from [PRICING_JSON] takes priority
+            jsonDiscount: extractedDiscount, // Discount from [PRICING_JSON] takes priority
+            tablesRoles: tablesRolesQueue,
+            tablesDiscounts: tablesDiscountsQueue,
           };
           
           let content;

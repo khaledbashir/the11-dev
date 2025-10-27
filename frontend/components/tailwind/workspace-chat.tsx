@@ -550,7 +550,7 @@ export default function WorkspaceChat({
 
       {/* Chat Messages */}
       <ScrollArea className="flex-1">
-        <div className="p-5 space-y-5">
+        <div className="p-5 space-y-5 relative">
               {(!showAllMessages && chatMessages.length > MAX_MESSAGES) && (
                 <div className="flex items-center justify-between text-xs text-gray-400 bg-[#0E2E33] border border-[#1b5e5e] px-3 py-2 rounded">
                   <span>
@@ -629,6 +629,27 @@ export default function WorkspaceChat({
             })
           )}
           <div ref={chatEndRef} />
+
+          {/* Sticky action bar - always visible at bottom of chat pane */}
+          {(() => {
+            const lastAssistant = [...chatMessages].reverse().find(m => m.role === 'assistant');
+            if (!lastAssistant) return null;
+            return (
+              <div className="sticky bottom-0 left-0 right-0 z-20 mt-4">
+                <div className="flex items-center justify-end gap-2 bg-[#0E2E33]/90 backdrop-blur-md border border-[#1b5e5e] rounded-md px-3 py-2 shadow-lg">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 px-3 text-xs border-[#1b5e5e] text-gray-200 hover:text-white hover:bg-[#124847]"
+                    title="Insert the latest AI draft into the editor"
+                    onClick={() => onInsertToEditor(lastAssistant.content)}
+                  >
+                    ✅ Insert into Editor
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </ScrollArea>
 
