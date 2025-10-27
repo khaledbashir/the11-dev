@@ -47,23 +47,7 @@ export default function WorkspaceCreationProgress({
       <DialogContent className="max-w-md border border-emerald-500/20 rounded-xl shadow-2xl" style={{ backgroundColor: '#0E0F0F' }} onOpenAutoFocus={(e) => e.preventDefault()}>
         {/* Logo Section */}
         <div className="flex justify-center mb-4">
-          <img
-            src="/images/logo-light.png"
-            alt="Social Garden"
-            className="h-10 w-auto"
-            onError={(e) => {
-              const img = e.currentTarget as HTMLImageElement;
-              if (!img.dataset.fallbackTried) {
-                img.dataset.fallbackTried = 'dark';
-                img.src = '/images/logo-dark.png';
-              } else if (img.dataset.fallbackTried === 'dark') {
-                img.dataset.fallbackTried = 'root';
-                img.src = '/images/logo-light.png';
-              } else {
-                img.style.display = 'none';
-              }
-            }}
-          />
+          <h2 className="text-xl font-bold text-white">Social Garden</h2>
         </div>
 
         <DialogHeader className="border-b border-emerald-500/10 pb-4">

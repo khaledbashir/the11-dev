@@ -216,23 +216,7 @@ export default function LandingPage() {
         <div className="relative max-w-7xl mx-auto px-6 py-20">
           {/* Logo */}
           <div className="flex justify-center mb-8">
-            <img 
-              src="/images/logo-light.png" 
-              alt="Social Garden" 
-              className="h-16 w-auto"
-              onError={(e) => {
-                const img = e.currentTarget as HTMLImageElement;
-                if (!img.dataset.fallbackTried) {
-                  img.dataset.fallbackTried = 'dark';
-                  img.src = '/images/logo-dark.png';
-                } else if (img.dataset.fallbackTried === 'dark') {
-                  img.dataset.fallbackTried = 'root';
-                  img.src = '/images/logo-light.png';
-                } else {
-                  img.style.display = 'none';
-                }
-              }}
-            />
+            <h1 className="text-3xl font-bold text-white">Social Garden</h1>
           </div>
 
           <div className="text-center mb-12">
@@ -754,23 +738,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <img 
-                src="/images/logo-light.png" 
-                alt="Social Garden" 
-                className="h-8 w-auto" 
-                onError={(e) => {
-                  const img = e.currentTarget as HTMLImageElement;
-                  if (!img.dataset.fallbackTried) {
-                    img.dataset.fallbackTried = 'dark';
-                    img.src = '/images/logo-dark.png';
-                  } else if (img.dataset.fallbackTried === 'dark') {
-                    img.dataset.fallbackTried = 'root';
-                    img.src = '/images/logo-light.png';
-                  } else {
-                    img.style.display = 'none';
-                  }
-                }}
-              />
+              <span className="text-gray-400 text-sm font-semibold">Social Garden</span>
               <span className="text-gray-400 text-sm">© 2025 Social Garden. All rights reserved.</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-gray-400">

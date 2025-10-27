@@ -5,23 +5,6 @@ export function SocialGardenHeader() {
     <header className="sticky top-0 z-50 w-full border-b border-[#1CBF79]/20 bg-[#0e2e33]/95 backdrop-blur supports-[backdrop-filter]:bg-[#0e2e33]/80">
       <div className="container flex h-16 items-center px-4">
         <div className="flex items-center gap-3">
-          <img 
-            src="/images/logo-light.png" 
-            alt="Social Garden Logo" 
-            className="h-10 w-auto"
-            onError={(e) => {
-              const img = e.currentTarget as HTMLImageElement;
-              if (!img.dataset.fallbackTried) {
-                img.dataset.fallbackTried = 'dark';
-                img.src = '/images/logo-dark.png';
-              } else if (img.dataset.fallbackTried === 'dark') {
-                img.dataset.fallbackTried = 'root';
-                img.src = '/images/logo-light.png';
-              } else {
-                img.style.display = 'none';
-              }
-            }}
-          />
           <div className="flex flex-col">
             <span className="text-lg font-bold text-white">Social Garden</span>
             <span className="text-xs text-gray-300">SOW Generator</span>
