@@ -8,7 +8,10 @@ import {
   Search,
   X,
   Zap,
-  ArrowUp
+  ArrowUp,
+  Briefcase,
+  MessageCircle,
+  Code2
 } from "lucide-react";
 import { useEditor } from "novel";
 import { addAIHighlight } from "novel/extensions";
@@ -177,6 +180,47 @@ export function AISelector({ onOpenChange }: AISelectorProps) {
       {/* Main Input Area */}
       {!isLoading && (
         <div className="p-4 space-y-3">
+          {/* Tone Quick Actions */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground shrink-0">Quick Tone:</span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs gap-1.5 flex-1"
+              onClick={() => {
+                setPrompt("Rewrite this in a corporate, professional, and business-appropriate tone. Use formal language and maintain authority.");
+                handleGenerate();
+              }}
+            >
+              <Briefcase className="h-3 w-3" />
+              Corporate
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs gap-1.5 flex-1"
+              onClick={() => {
+                setPrompt("Rewrite this in a friendly, casual, conversational tone. Make it warm and approachable while staying clear.");
+                handleGenerate();
+              }}
+            >
+              <MessageCircle className="h-3 w-3" />
+              Casual
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs gap-1.5 flex-1"
+              onClick={() => {
+                setPrompt("Rewrite this in a precise, technical tone. Use industry terminology and be specific and analytical.");
+                handleGenerate();
+              }}
+            >
+              <Code2 className="h-3 w-3" />
+              Technical
+            </Button>
+          </div>
+
           {/* Prompt Input */}
           <div className="relative">
             <Input

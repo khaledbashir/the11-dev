@@ -18,7 +18,10 @@ import {
   Copy,
   ThumbsUp,
   ThumbsDown,
-  RotateCcw
+  RotateCcw,
+  Briefcase,
+  MessageCircle,
+  Code2
 } from "lucide-react";
 import { useEditor } from "novel";
 import { addAIHighlight } from "novel/extensions";
@@ -588,6 +591,51 @@ export function AISelector({ onOpenChange }: AISelectorProps) {
                         <span>{action.label}</span>
                       </Button>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Tone Quick Actions - New Feature */}
+              {!hasCompletion && selectedText && (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-0.5">Change Tone</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs gap-1.5 border-[#30363D] text-gray-300 hover:bg-[#161B22] hover:border-[#1CBF79] transition-colors"
+                      onClick={() => {
+                        setPrompt("Rewrite this in a corporate, professional, and business-appropriate tone. Use formal language and maintain authority.");
+                        setTimeout(() => handleGenerate(), 50);
+                      }}
+                    >
+                      <Briefcase className="h-3 w-3" />
+                      Corporate
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs gap-1.5 border-[#30363D] text-gray-300 hover:bg-[#161B22] hover:border-[#1CBF79] transition-colors"
+                      onClick={() => {
+                        setPrompt("Rewrite this in a friendly, casual, conversational tone. Make it warm and approachable while staying clear.");
+                        setTimeout(() => handleGenerate(), 50);
+                      }}
+                    >
+                      <MessageCircle className="h-3 w-3" />
+                      Casual
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs gap-1.5 border-[#30363D] text-gray-300 hover:bg-[#161B22] hover:border-[#1CBF79] transition-colors"
+                      onClick={() => {
+                        setPrompt("Rewrite this in a precise, technical tone. Use industry terminology and be specific and analytical.");
+                        setTimeout(() => handleGenerate(), 50);
+                      }}
+                    >
+                      <Code2 className="h-3 w-3" />
+                      Technical
+                    </Button>
                   </div>
                 </div>
               )}
