@@ -729,6 +729,9 @@ export default function Page() {
   ]);
   // Structured SOW from AI (Architect modular JSON)
   const [structuredSow, setStructuredSow] = useState<ArchitectSOW | null>(null);
+  
+  // 🛡️ CRITICAL FIX: Guard flag to prevent race condition on chat history restoration
+  const [isHistoryRestored, setIsHistoryRestored] = useState(false);
 
   // Initialize master dashboard on app load
   useEffect(() => {
@@ -744,9 +747,10 @@ export default function Page() {
   }, []);
 
   // Initialize dashboard with welcome message on app load
+  // 🛡️ CRITICAL FIX: Only show welcome if history hasn't been restored from server
   // Note: DashboardChat component now auto-loads most recent thread from server
   useEffect(() => {
-    if (viewMode === 'dashboard' && chatMessages.length === 0) {
+    if (viewMode === 'dashboard' && chatMessages.length === 0 && !isHistoryRestored) {
       const welcomeMessage: ChatMessage = {
         id: `welcome-${Date.now()}`,
         role: 'assistant',
@@ -763,7 +767,7 @@ Ask me questions to get business insights, such as:
       };
       setChatMessages([welcomeMessage]);
     }
-  }, [viewMode]);
+  }, [viewMode, isHistoryRestored]);
 
   // Check for OAuth callback on mount
   useEffect(() => {
@@ -2031,6 +2035,7 @@ Ask me questions to get business insights, such as:
   const handleViewChange = (view: 'dashboard' | 'editor') => {
     if (view === 'dashboard') {
       setViewMode('dashboard');
+      setIsHistoryRestored(false); // 🛡️ Reset flag to allow history loading when switching to dashboard
     } else {
       setViewMode('editor');
     }
@@ -3868,10 +3873,12 @@ Ask me questions to get business insights, such as:
               onClearChat={() => {
                 console.log('🧹 Clearing chat messages for new thread');
                 setChatMessages([]);
+                setIsHistoryRestored(false); // Reset flag when clearing
               }}
               onReplaceChatMessages={(msgs) => {
                 console.log('🔁 Replacing chat messages from thread history:', msgs.length);
                 setChatMessages(msgs);
+                setIsHistoryRestored(true); // 🛡️ Mark history as restored - prevents welcome message overwrite
               }}
             />
           ) : viewMode === 'editor' ? (
@@ -3924,10 +3931,12 @@ Ask me questions to get business insights, such as:
               onClearChat={() => {
                 console.log('🧹 Clearing chat messages for new thread');
                 setChatMessages([]);
+                setIsHistoryRestored(false); // Reset flag when clearing
               }}
               onReplaceChatMessages={(msgs) => {
-                console.log('� Replacing chat messages from thread history:', msgs.length);
+                console.log('🔁 Replacing chat messages from thread history:', msgs.length);
                 setChatMessages(msgs);
+                setIsHistoryRestored(true); // 🛡️ Mark history as restored
               }}
             />
           ) : null // AI Management mode: no sidebar
