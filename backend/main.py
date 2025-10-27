@@ -18,9 +18,14 @@ load_dotenv()
 app = FastAPI(title="Social Garden PDF & Sheets Service")
 
 # Enable CORS for frontend requests
+# 🔒 Security: Only allow requests from our frontend domain
+# For local dev, add "http://localhost:3000" to the list
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://sow-generator.socialgarden.com.au",
+        "http://localhost:3000",  # Local development
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

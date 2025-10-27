@@ -35,11 +35,7 @@ import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
 import { useUserPreferences } from "@/hooks/use-user-preferences";
 
-// Phase 1 imports
-import { LoadingState } from "./ui/LoadingState";
-import { SuccessAnimation } from "./ui/SuccessAnimation";
-import { ErrorState } from "./ui/ErrorState";
-import { ThinkingIndicator } from "./ui/ThinkingIndicator";
+// Smart Suggestions and Keyboard Shortcuts
 import { SmartSuggestions } from "./ui/SmartSuggestions";
 import { KeyboardShortcutsHelp } from "./ui/KeyboardShortcutsHelp";
 import { detectContext, formatReadingTime, getReadabilityLevel } from "./utils/context-detector";
