@@ -12,6 +12,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { StreamingThoughtAccordion } from "./streaming-thought-accordion";
 import { cleanSOWContent } from "@/lib/export-utils";
+import { EnhancedPromptButton } from "./enhanced-prompt-button";
 
 interface ChatMessage {
   id: string;
@@ -591,22 +592,13 @@ export default function WorkspaceSidebar({
                 accept="image/*,.pdf,.txt,.doc,.docx"
               />
               
-              {/* Enhance button */}
-              <Button
-                onClick={handleEnhanceOnly}
-                disabled={!chatInput.trim() || isLoading || enhancing}
-                size="sm"
-                className="self-end bg-[#0E2E33] hover:bg-[#143e45] text-white h-[50px] font-semibold border border-[#1CBF79]"
-                title="Enhance"
-              >
-                {enhancing ? (
-                  <Loader2 className="h-5 w-5 animate-spin text-[#1CBF79]" />
-                ) : (
-                  <span className="text-lg">✨</span>
-                )}
-              </Button>
-
-              {/* Send button */}
+          {/* Enhance button */}
+          <EnhancedPromptButton
+            onClick={handleEnhanceOnly}
+            disabled={!chatInput.trim() || isLoading || enhancing}
+            isLoading={enhancing}
+            title="Enhance your prompt with AI"
+          />              {/* Send button */}
               <Button 
                 onClick={handleSendMessage} 
                 disabled={!chatInput.trim() || isLoading} 
