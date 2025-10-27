@@ -100,14 +100,62 @@ export default function WorkspaceChat({
     loadPrompt();
   }, [editorWorkspaceSlug]);
 
+  // 💾 Save current thread to localStorage whenever it changes
+  useEffect(() => {
+    if (currentThreadSlug && editorWorkspaceSlug) {
+      const storageKey = `workspace-thread-${editorWorkspaceSlug}`;
+      localStorage.setItem(storageKey, currentThreadSlug);
+      console.log('💾 Saved thread to localStorage:', { workspace: editorWorkspaceSlug, thread: currentThreadSlug });
+    }
+  }, [currentThreadSlug, editorWorkspaceSlug]);
+
   // Load threads on mount and when workspace changes
   useEffect(() => {
-    if (editorWorkspaceSlug) {
-      loadThreads(editorWorkspaceSlug);
+    const initializeThreads = async () => {
+      if (!editorWorkspaceSlug) return;
+      
+      // Load all threads for this workspace
+      await loadThreads(editorWorkspaceSlug);
+      
+      // 🔄 Restore thread from localStorage or use editorThreadSlug
+      const storageKey = `workspace-thread-${editorWorkspaceSlug}`;
+      const savedThreadSlug = localStorage.getItem(storageKey);
+      
+      let threadToLoad: string | null = null;
+      
       if (editorThreadSlug) {
+        threadToLoad = editorThreadSlug;
         setCurrentThreadSlug(editorThreadSlug);
+      } else if (savedThreadSlug) {
+        console.log('🔄 Restored thread from localStorage:', savedThreadSlug);
+        threadToLoad = savedThreadSlug;
+        setCurrentThreadSlug(savedThreadSlug);
+        // Notify parent about the restored thread
+        onEditorThreadChange(savedThreadSlug);
       }
-    }
+      
+      // Load thread history if we have a thread to restore
+      if (threadToLoad) {
+        try {
+          const response = await fetch(`/api/anythingllm/thread?workspace=${encodeURIComponent(editorWorkspaceSlug)}&thread=${encodeURIComponent(threadToLoad)}`);
+          if (response.ok) {
+            const data = await response.json();
+            const mapped = (data.history || []).map((msg: any) => ({
+              id: `msg-${msg.id || Date.now()}-${Math.random()}`,
+              role: msg.role === 'user' ? 'user' : 'assistant',
+              content: msg.content || '',
+              timestamp: new Date(msg.createdAt || Date.now()).getTime(),
+            }));
+            onReplaceChatMessages(mapped);
+            console.log('✅ Restored thread history:', mapped.length, 'messages');
+          }
+        } catch (error) {
+          console.warn('⚠️ Failed to load saved thread history:', error);
+        }
+      }
+    };
+    
+    initializeThreads();
   }, [editorWorkspaceSlug, editorThreadSlug]);
 
   // Focus input when component mounts or thread changes
