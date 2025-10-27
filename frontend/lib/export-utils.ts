@@ -1034,8 +1034,60 @@ export function tiptapToHTML(content: any): string {
         break;
         
       case 'editablePricingTable':
-        // Custom pricing table - convert to HTML table
-        html += '<div class="pricing-table"><p><em>[Pricing Table]</em></p></div>';
+        // Custom pricing table - convert to full HTML table with optional summary
+        {
+          const rows = Array.isArray(node.attrs?.rows) ? node.attrs.rows : [];
+          const discount = Number(node.attrs?.discount) || 0;
+          const showTotal = node.attrs?.showTotal === undefined ? true : !!node.attrs.showTotal;
+
+          const fmt = (n: number) => (Number(n) || 0).toLocaleString('en-AU', { style: 'currency', currency: 'AUD' });
+
+          html += '<h3>Project Pricing</h3>';
+          html += '<table>';
+          html += '<tr><th>Role</th><th>Description</th><th>Hours</th><th>Rate (AUD)</th><th class="num">Cost (AUD, ex GST)</th></tr>';
+
+          let subtotal = 0;
+          rows.forEach((r: any) => {
+            const hours = Number(r?.hours) || 0;
+            const rate = Number(r?.rate) || 0;
+            const cost = hours * rate;
+            subtotal += cost;
+            html += '<tr>';
+            html += `<td>${String(r?.role || '')}</td>`;
+            html += `<td>${String(r?.description || '')}</td>`;
+            html += `<td class="num">${hours}</td>`;
+            html += `<td class="num">${fmt(rate)}</td>`;
+            html += `<td class="num">${fmt(cost)} <span style="color:#6b7280; font-size: 0.85em;">+GST</span></td>`;
+            html += '</tr>';
+          });
+
+          html += '</table>';
+
+          // Optional summary section
+          if (showTotal) {
+            html += '<h4 style="margin-top: 20px;">Summary</h4>';
+            html += '<table class="summary-table">';
+            html += `<tr><td style="text-align: right; padding-right: 12px;"><strong>Subtotal (ex GST):</strong></td><td class="num">${fmt(subtotal)} <span style="color:#6b7280; font-size: 0.85em;">+GST</span></td></tr>`;
+
+            if (discount > 0) {
+              const discountAmount = subtotal * (discount / 100);
+              const afterDiscount = subtotal - discountAmount;
+              html += `<tr><td style="text-align: right; padding-right: 12px; color: #dc2626;"><strong>Discount (${discount}%):</strong></td><td class="num" style="color: #dc2626;">-${fmt(discountAmount)}</td></tr>`;
+              html += `<tr><td style="text-align: right; padding-right: 12px;"><strong>After Discount (ex GST):</strong></td><td class="num">${fmt(afterDiscount)} <span style=\"color:#6b7280; font-size: 0.85em;\">+GST</span></td></tr>`;
+              subtotal = afterDiscount;
+            }
+
+            const gst = subtotal * 0.1;
+            const total = subtotal + gst;
+            const roundedTotal = Math.round(total / 100) * 100; // nearest $100
+
+            html += `<tr><td style=\"text-align: right; padding-right: 12px;\"><strong>GST (10%):</strong></td><td class=\"num\">${fmt(gst)}</td></tr>`;
+            html += `<tr><td style=\"text-align: right; padding-right: 12px;\"><strong>Total (incl GST, unrounded):</strong></td><td class=\"num\">${fmt(total)}</td></tr>`;
+            html += `<tr style=\"border-top: 2px solid #2C823D;\"><td style=\"text-align: right; padding-right: 12px; padding-top: 8px;\"><strong>Total Project Value (incl GST, rounded):</strong></td><td class=\"num\" style=\"padding-top: 8px; color: #2C823D; font-size: 18px;\"><strong>${fmt(roundedTotal)}</strong></td></tr>`;
+            html += '</table>';
+            html += '<p style="color:#6b7280; font-size: 0.85em; margin-top: 4px;">All amounts shown in the pricing table are exclusive of GST unless otherwise stated. The Total Project Value includes GST and is rounded to the nearest $100.</p>';
+          }
+        }
         break;
         
       default:

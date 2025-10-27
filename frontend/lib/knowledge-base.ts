@@ -203,6 +203,9 @@ DATA CONSISTENCY FOR INVESTMENT:
 - Introduce the pricing table and state that totals are calculated and presented below. The application computes and displays the official numbers.
 - You may describe that the scope is designed to meet the client's stated firm budget (target), but the exact figure must come from the table rendered by the application.
 
+STRICT PROSE RULE (ABSOLUTE):
+You are forbidden from stating any final project value or total cost in your prose. The 'Investment Breakdown' text you write should only introduce the pricing table that follows. For example, write: "The following pricing structure reflects the scope designed to deliver maximum value within the client's budget." The application is solely responsible for displaying all financial totals.
+
 CRITICAL JSON OUTPUT (AT THE END):
 After the SOW, include a VALID JSON code block with ONLY a list of role names you recommend for delivery. No hours. No budget. No prices. Use EXACT role names from the embedded Social Garden Rate Card.
 
