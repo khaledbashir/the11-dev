@@ -114,37 +114,62 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
 
   // Initialize Swapy
   useEffect(() => {
-    if (containerRef.current && rows.length > 0) {
-      // Destroy existing instance if any
-      if (swapyRef.current) {
-        swapyRef.current.destroy();
-      }
+    if (!containerRef.current || rows.length === 0) return;
 
-      // Create new Swapy instance
-      swapyRef.current = createSwapy(containerRef.current, {
-        animation: 'dynamic'
-      });
-
-      // Listen to swap events
-      swapyRef.current.onSwap((event: any) => {
-        console.log('Swapy swap event:', event);
-        
-        // Get the new order from the event
-        const newOrder = event.data.array;
-        
-        // Create a map of current rows by ID
-        const rowMap = new Map(rows.map(row => [row.id, row]));
-        
-        // Reorder rows based on the new slot order
-        const reorderedRows = newOrder.map((item: any) => rowMap.get(item.item)).filter(Boolean);
-        
-        setRows(reorderedRows);
-      });
+    // Destroy existing instance if any
+    if (swapyRef.current) {
+      swapyRef.current.destroy();
+      swapyRef.current = null;
     }
 
+    // Use a small delay to ensure DOM is fully rendered
+    const timeoutId = setTimeout(() => {
+      if (!containerRef.current) return;
+
+      try {
+        // Verify all required DOM elements exist before initializing
+        const slots = containerRef.current.querySelectorAll('[data-swapy-slot]');
+        const items = containerRef.current.querySelectorAll('[data-swapy-item]');
+        
+        if (slots.length === 0 || items.length === 0 || slots.length !== items.length) {
+          console.warn(`Swapy initialization skipped: slots=${slots.length}, items=${items.length}`);
+          return;
+        }
+
+        // Create new Swapy instance
+        swapyRef.current = createSwapy(containerRef.current, {
+          animation: 'dynamic'
+        });
+
+        // Listen to swap events
+        swapyRef.current.onSwap((event: any) => {
+          console.log('Swapy swap event:', event);
+          
+          // Get the new order from the event
+          const newOrder = event.data.array;
+          
+          // Create a map of current rows by ID
+          const rowMap = new Map(rows.map(row => [row.id, row]));
+          
+          // Reorder rows based on the new slot order
+          const reorderedRows = newOrder.map((item: any) => rowMap.get(item.item)).filter(Boolean);
+          
+          setRows(reorderedRows);
+        });
+      } catch (error) {
+        console.error('Failed to initialize Swapy:', error);
+      }
+    }, 100); // 100ms delay to ensure DOM is ready
+
     return () => {
+      clearTimeout(timeoutId);
       if (swapyRef.current) {
-        swapyRef.current.destroy();
+        try {
+          swapyRef.current.destroy();
+        } catch (error) {
+          console.warn('Error destroying Swapy instance:', error);
+        }
+        swapyRef.current = null;
       }
     };
   }, [rows.length]); // Re-initialize when row count changes
