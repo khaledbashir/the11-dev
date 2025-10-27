@@ -64,8 +64,10 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const url = `${baseUrl.replace(/\/$/, '')}/api/v1/workspace/${encodeURIComponent(workspace)}/threads`;
-    console.log('[/api/anythingllm/threads] Fetching:', url);
+    // CRITICAL FIX: AnythingLLM doesn't have a /threads endpoint
+    // Threads are returned as part of the workspace object
+    const url = `${baseUrl.replace(/\/$/, '')}/api/v1/workspace/${encodeURIComponent(workspace)}`;
+    console.log('[/api/anythingllm/threads] Fetching workspace to get threads:', url);
     
     const response = await fetchWithTimeoutRetry(url, {
       method: 'GET',
@@ -89,7 +91,7 @@ export async function GET(req: NextRequest) {
       });
       return NextResponse.json(
         { 
-          error: 'Failed to fetch threads from AnythingLLM', 
+          error: 'Failed to fetch workspace from AnythingLLM', 
           upstreamStatus: response.status, 
           workspace,
           upstreamUrl: url,
@@ -108,7 +110,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json(parsed);
       } catch {
         return NextResponse.json({ 
-          error: 'Invalid content-type from AnythingLLM threads endpoint',
+          error: 'Invalid content-type from AnythingLLM workspace endpoint',
           receivedContentType: contentType,
           workspace,
           upstreamUrl: url,
@@ -118,8 +120,20 @@ export async function GET(req: NextRequest) {
     }
 
     const data = await response.json();
-    console.log('[/api/anythingllm/threads] Success:', { workspace, threadsCount: data?.threads?.length || 0 });
-    return NextResponse.json(data);
+    
+    // Extract threads from the workspace object
+    // API returns: { workspace: { ..., threads: [...] } }
+    const workspaceData = data?.workspace || {};
+    const threads = workspaceData?.threads || [];
+    
+    console.log('[/api/anythingllm/threads] Success:', { 
+      workspace, 
+      threadsCount: threads.length,
+      workspaceFound: !!workspaceData.id 
+    });
+    
+    // Return in the format our frontend expects
+    return NextResponse.json({ threads });
   } catch (err: any) {
     console.error('[/api/anythingllm/threads] Exception:', err?.message || err);
     return NextResponse.json({ 

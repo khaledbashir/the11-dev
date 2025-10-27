@@ -63,59 +63,62 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Stream the response back to client
-    const headers = new Headers({
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache, no-transform',
-      'Connection': 'keep-alive',
-      'X-Accel-Buffering': 'no',
-    });
+    // CRITICAL FIX: Frontend expects JSON with enhancedPrompt field, not SSE stream
+    // We need to consume the entire SSE stream and return the accumulated text
+    let enhancedPrompt = '';
+    
+    const reader = response.body?.getReader();
+    if (!reader) {
+      return NextResponse.json({ 
+        error: 'No response body from AnythingLLM' 
+      }, { status: 500 });
+    }
 
-    // Create passthrough stream
-    const { readable, writable } = new TransformStream();
-    const writer = writable.getWriter();
-    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+    let buffer = '';
 
-    (async () => {
-      try {
-        if (!response.body) {
-          await writer.close();
-          return;
-        }
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) break;
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          
-          if (done) {
-            await writer.close();
-            break;
-          }
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-          
-          for (const line of lines) {
-            if (line.trim()) {
-              await writer.write(encoder.encode(line + '\n'));
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6).trim();
+            if (data === '[DONE]') continue;
+            
+            try {
+              const json = JSON.parse(data);
+              if (json.textResponse) {
+                enhancedPrompt += json.textResponse;
+              }
+            } catch (e) {
+              // Not JSON, ignore
             }
           }
         }
-
-        if (buffer.trim()) {
-          await writer.write(encoder.encode(buffer));
-        }
-      } catch (error) {
-        console.error('[enhance-prompt] Stream error:', error);
-        await writer.abort(error);
       }
-    })();
+    } catch (error) {
+      console.error('[enhance-prompt] Stream reading error:', error);
+      return NextResponse.json({ 
+        error: 'Failed to read enhancement stream' 
+      }, { status: 500 });
+    }
 
-    return new Response(readable, { headers });
+    console.log('[enhance-prompt] Enhanced successfully:', {
+      originalLength: prompt.length,
+      enhancedLength: enhancedPrompt.length,
+    });
+
+    // Return JSON in the format the frontend expects
+    return NextResponse.json({ 
+      enhancedPrompt: enhancedPrompt.trim() 
+    });
 
   } catch (error: any) {
     console.error('[enhance-prompt] Exception:', error);

@@ -4,6 +4,56 @@ import { NextRequest } from 'next/server';
 const ANYTHINGLLM_URL = process.env.ANYTHINGLLM_URL || process.env.NEXT_PUBLIC_ANYTHINGLLM_URL;
 const ANYTHINGLLM_API_KEY = process.env.ANYTHINGLLM_API_KEY || process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY;
 
+/**
+ * Fetch live analytics data for the Analytics Assistant
+ * This ensures the AI always has access to current database information
+ */
+async function getLiveAnalyticsData(): Promise<string> {
+  try {
+    // Use internal API call (server-to-server)
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const response = await fetch(`${baseUrl}/api/data/analytics-summary`, {
+      cache: 'no-store',
+    });
+    
+    if (!response.ok) {
+      console.error('❌ [Analytics] Failed to fetch:', response.status);
+      return '[Analytics data temporarily unavailable]';
+    }
+
+    const data = await response.json();
+    
+    // Format the data in a way the AI can easily parse
+    return `
+[LIVE DATABASE SNAPSHOT - ${new Date().toLocaleString()}]
+
+OVERVIEW:
+- Total SOWs: ${data.overview.total_sows}
+- Total Investment Value: $${data.overview.total_investment.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+- Average SOW Value: $${data.overview.average_investment.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+- Unique Clients: ${data.overview.unique_clients}
+
+STATUS BREAKDOWN:
+${Object.entries(data.status_breakdown || {}).map(([status, count]) => `- ${status}: ${count}`).join('\n')}
+
+TOP 5 CLIENTS BY VALUE:
+${data.top_clients.map((c: any, i: number) => 
+  `${i + 1}. ${c.client_name}: ${c.sow_count} SOW${c.sow_count > 1 ? 's' : ''}, $${c.total_value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} total`
+).join('\n')}
+
+ALL CLIENTS (sorted by value):
+${data.all_clients.map((c: any) => 
+  `- ${c.client_name}: ${c.sow_count} SOW${c.sow_count > 1 ? 's' : ''}, $${c.total_value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} total, avg $${c.avg_value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`
+).join('\n')}
+
+[END LIVE DATA]
+`;
+  } catch (error: any) {
+    console.error('❌ [Analytics] Exception:', error);
+    return '[Analytics data temporarily unavailable - database error]';
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Require server-side configuration only
@@ -98,7 +148,7 @@ export async function POST(request: NextRequest) {
 
     // Pass the user's message through without adding or appending extra instructions.
     // The workspace's system prompt governs behavior; do not inject per-message rails here.
-    const messageToSend: string = typeof lastMessage.content === 'string' ? lastMessage.content : '';
+    let messageToSend: string = typeof lastMessage.content === 'string' ? lastMessage.content : '';
     
     if (!messageToSend || typeof messageToSend !== 'string') {
       const errorMsg = 'Message content must be a non-empty string.';
@@ -106,6 +156,21 @@ export async function POST(request: NextRequest) {
         JSON.stringify({ error: errorMsg }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
+    }
+
+    // 🎯 CRITICAL: For master dashboard workspace, inject live analytics data
+    // This ensures the AI has access to the SAME data the UI shows
+    const isMasterDashboard = effectiveWorkspaceSlug === 'sow-master-dashboard';
+    
+    if (isMasterDashboard) {
+      console.log('📊 [Master Dashboard] Fetching live analytics data to inject...');
+      const liveData = await getLiveAnalyticsData();
+      
+      // Prepend the live data to the user's message
+      // The AI will see this data as context for every question
+      messageToSend = `${liveData}\n\nUser Question: ${messageToSend}`;
+      
+      console.log('✅ [Master Dashboard] Live data injected into message');
     }
 
     // Determine the endpoint based on whether this is thread-based chat

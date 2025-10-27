@@ -27,10 +27,13 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
     const initialRows = node.attrs.rows || [];
 
     // 1) Dedupe by role: combine hours, prefer known rate from ROLES, keep first description
+    // CRITICAL: Filter out completely empty roles BEFORE processing
     const roleMap = new Map<string, PricingRow>();
     for (const r of initialRows) {
       const key = normalize(r.role);
-      if (!key) continue;
+      // Skip rows with empty or whitespace-only roles
+      if (!key || key === 'select role...' || key === 'select role') continue;
+      
       const existing = roleMap.get(key);
       if (!existing) {
         // Prefer canonical rate from ROLES if available
