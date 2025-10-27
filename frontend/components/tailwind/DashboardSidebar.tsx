@@ -491,15 +491,9 @@ export default function DashboardSidebar({
             title="Enhance"
           >
             {enhancing ? (
-              <div className="flex items-center gap-2">
-                <Loader2 className="h-5 w-5 animate-spin text-[#1CBF79]" />
-                <span className="text-sm">Enhancing…</span>
-              </div>
+              <Loader2 className="h-5 w-5 animate-spin text-[#1CBF79]" />
             ) : (
-              <div className="flex items-center gap-2">
-                <span className="text-lg">✨</span>
-                <span className="text-sm">Enhance</span>
-              </div>
+              <span className="text-lg">✨</span>
             )}
           </Button>
           <Button 
