@@ -249,6 +249,8 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
     if (!text) return null;
     // Try multiple patterns for robustness
     const patterns = [
+      // "firm $15,000 AUD" - exact pattern from user prompts
+      /firm\s*\$?\s*([\d\s,\.]+)\s*(k)?\s*aud/i,
       // "budget of $15,000 AUD", "budget is 15k", "budget: $15000 ex gst"
       /(budget|target|total|investment)\s*(?:[:=]|is|of)?\s*(aud\s*)?\$?\s*([\d\s,\.]+)\s*(k)?\s*(aud)?\s*(\+\s*gst|incl\s*gst|ex\s*gst)?/i,
       // Loose number capture near AUD or $ (fallback)
@@ -257,17 +259,22 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
     for (const re of patterns) {
       const m = text.match(re);
       if (m) {
-        const numGroup = (m[3] || m[2] || '');
+        // For first pattern (firm $X AUD), groups are different
+        const numGroup = (m[3] || m[2] || m[1] || '');
         // strip spaces and commas from digits
         let raw = String(numGroup).replace(/[\,\s]/g, '');
         let v = parseFloat(raw || '0');
-        const kGroup = (m[4] || m[3] || '');
+        const kGroup = (m[4] || m[3] || m[2] || '');
         if (kGroup && /k/i.test(kGroup)) v = v * 1000; // support 50k
-        const gstStr = (m[6] || '').toLowerCase();
+        const gstStr = (m[6] || m[5] || '').toLowerCase();
         const inclGST = /incl\s*gst/.test(gstStr);
-        if (!isNaN(v) && v > 0) return { value: v, inclGST };
+        if (!isNaN(v) && v > 0) {
+          console.log(`💰 Budget detected: $${v.toFixed(2)} ${inclGST ? 'incl GST' : 'ex GST'} from pattern: "${m[0]}"`);
+          return { value: v, inclGST };
+        }
       }
     }
+    console.warn('⚠️ No budget detected in markdown content');
     return null;
   };
 
