@@ -343,64 +343,46 @@ export function FloatingAIBar({ onGenerate, editor: editorProp }: FloatingAIBarP
     handleGenerate(actionPrompt);
   };
 
-  // Enhance via Clarifier endpoint
+  // Enhance via dedicated Inline Editor endpoint
   const handleEnhance = async () => {
     try {
-      // Slash mode: enhance the command input itself
-      if (triggerSource === 'slash' && !hasSelection) {
-        const raw = prompt.trim();
-        if (!raw) {
-          toast.error('Type something to enhance');
-          return;
-        }
-        setIsEnhancing(true);
-        const resp = await fetch('/api/ai/enhance-prompt', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: raw })
-        });
-        if (!resp.ok) {
-          const msg = await resp.text().catch(() => '');
-          throw new Error(msg || `Enhancer error ${resp.status}`);
-        }
-        const data = await resp.json();
-        const enhanced = (data?.enhancedPrompt || '').toString().trim();
-        if (!enhanced) {
-          toast.error('Enhancer returned empty text');
-        } else {
-          setPrompt(enhanced);
-          toast.success('Prompt enhanced');
-        }
-      } else {
-        // Selection mode: enhance the selected text and show it as completion to allow Replace/Insert
-        if (!hasSelection) {
-          toast.error('Please select some text first');
-          return;
-        }
-        setIsEnhancing(true);
+      // Selection mode: enhance the selected text only
+      if (triggerSource === 'selection' && hasSelection) {
         const selectedText = getSelectedText();
-        const resp = await fetch('/api/ai/enhance-prompt', {
+        if (!selectedText.trim()) {
+          toast.error('Selected text is empty');
+          return;
+        }
+        setIsEnhancing(true);
+        
+        // Use dedicated inline-editor-enhance endpoint
+        const resp = await fetch('/api/ai/inline-editor-enhance', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: selectedText })
+          body: JSON.stringify({ text: selectedText })
         });
+        
         if (!resp.ok) {
           const msg = await resp.text().catch(() => '');
-          throw new Error(msg || `Enhancer error ${resp.status}`);
+          throw new Error(msg || `Enhancement error ${resp.status}`);
         }
+        
         const data = await resp.json();
-        const enhanced = (data?.enhancedPrompt || '').toString().trim();
+        const enhanced = (data?.enhancedText || data?.improvedText || '').toString().trim();
+        
         if (!enhanced) {
-          toast.error('Enhancer returned empty text');
+          toast.error('Enhancement returned empty text');
         } else {
           setCompletion(enhanced);
           setShowActions(false);
-          toast.success('Enhanced text ready');
+          toast.success('Text improved - ready to apply');
         }
+      } else {
+        toast.error('Please select text first to improve it');
       }
     } catch (e) {
-      console.error('Enhance failed:', e);
-      toast.error('Failed to enhance');
+      console.error('Enhancement failed:', e);
+      toast.error('Failed to improve text');
     } finally {
       setIsEnhancing(false);
     }
@@ -512,7 +494,7 @@ export function FloatingAIBar({ onGenerate, editor: editorProp }: FloatingAIBarP
                     onClick={() => handleGenerate()}
                     disabled={!prompt.trim() || isLoading}
                     className="p-2 bg-[#1FE18E] hover:bg-[#1FE18E]/90 disabled:bg-gray-300 text-[#0e2e33] rounded-lg transition-colors disabled:opacity-50 font-medium"
-                    title="Generate (Enter)"
+                    title={triggerSource === 'selection' ? "Generate improvement for selected text" : "Generate with AI"}
                   >
                     {isLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -520,14 +502,16 @@ export function FloatingAIBar({ onGenerate, editor: editorProp }: FloatingAIBarP
                       <Sparkles className="h-4 w-4" />
                     )}
                   </button>
-                  <button
-                    onClick={handleEnhance}
-                    disabled={isEnhancing}
-                    className="px-2 py-2 bg-white/70 hover:bg-white/90 text-[#0e2e33] rounded-lg transition-colors disabled:opacity-50 border border-[#1FE18E]/50 text-xs font-medium"
-                    title="Enhance prompt"
-                  >
-                    {isEnhancing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Enhance'}
-                  </button>
+                  {triggerSource === 'selection' && (
+                    <button
+                      onClick={handleEnhance}
+                      disabled={isEnhancing || !hasSelection}
+                      className="px-2 py-2 bg-white/70 hover:bg-white/90 text-[#0e2e33] rounded-lg transition-colors disabled:opacity-50 border border-[#1FE18E]/50 text-xs font-medium"
+                      title={hasSelection ? "Improve selected text with AI" : "Select text first"}
+                    >
+                      {isEnhancing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Improve'}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
