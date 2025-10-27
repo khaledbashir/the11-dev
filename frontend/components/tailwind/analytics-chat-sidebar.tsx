@@ -328,7 +328,7 @@ export default function AnalyticsChatSidebar({
       {/* Header */}
       <div className="p-4 border-b border-[#0E2E33] bg-[#0e0f0f] flex-shrink-0">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-sm font-bold text-white truncate">Chat</h2>
+          <h2 className="text-sm font-bold text-white truncate">Dashboard Chat</h2>
           <div className="flex items-center gap-2 flex-shrink-0">
             <Button
               onClick={handleNewThread}

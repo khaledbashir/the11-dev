@@ -413,10 +413,10 @@ export function FloatingAIBar({ onGenerate, editor: editorProp }: FloatingAIBarP
                 <div className="flex items-center gap-2">
                   <Wand2 className="h-4 w-4 text-[#0e2e33]" />
                   <span className="text-sm font-medium text-[#0e2e33]">
-                    {hasSelection ? "AI WRITING ASSISTANT" : "Help me write"}
+                    Inline Editor Chat
                   </span>
                   {hasSelection && (
-                    <span className="text-xs text-gray-600">with AI</span>
+                    <span className="text-xs text-gray-600">• Text improvement</span>
                   )}
                 </div>
                 <button

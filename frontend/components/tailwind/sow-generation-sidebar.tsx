@@ -12,7 +12,6 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { StreamingThoughtAccordion } from "./streaming-thought-accordion";
 import { cleanSOWContent } from "@/lib/export-utils";
-import { EnhancedPromptButton } from "./enhanced-prompt-button";
 
 interface ChatMessage {
   id: string;
@@ -573,15 +572,32 @@ export default function SOWGenerationSidebar({
         {/* Chat Input */}
         <div className="flex gap-3">
           <div className="flex-1 space-y-2">
-            <Textarea 
-              ref={chatInputRef} 
-              value={chatInput} 
-              onChange={(e) => setChatInput(e.target.value)} 
-              onKeyPress={handleKeyPress} 
-              placeholder="Type /help for commands..." 
-              className="min-h-[50px] max-h-[150px] resize-none text-sm bg-[#0E2E33] border-[#0E2E33] text-white placeholder:text-gray-400 rounded-lg" 
-            />
-            <div className="flex gap-2">
+            <div className="relative">
+              <Textarea 
+                ref={chatInputRef} 
+                value={chatInput} 
+                onChange={(e) => setChatInput(e.target.value)} 
+                onKeyPress={handleKeyPress} 
+                placeholder="Type /help for commands..." 
+                className="min-h-[50px] max-h-[150px] resize-none text-sm bg-[#0E2E33] border-[#0E2E33] text-white placeholder:text-gray-400 rounded-lg pr-12" 
+              />
+            
+            {/* Enhance button - positioned inside textarea */}
+            <button
+              onClick={handleEnhanceOnly}
+              disabled={!chatInput.trim() || isLoading || enhancing}
+              className="absolute right-3 top-3 p-1.5 rounded-md bg-[#1b1b1e] hover:bg-[#2a2a2a] disabled:opacity-40 disabled:cursor-not-allowed transition-colors border border-[#1CBF79]/30 hover:border-[#1CBF79]/60"
+              title="Enhance your prompt with AI"
+            >
+              {enhancing ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-[#1CBF79]" />
+              ) : (
+                <span className="text-[#1CBF79] text-sm">✨</span>
+              )}
+            </button>
+            </div>
+            
+            <div className="flex gap-2 mt-2">
               {/* File upload */}
               <input 
                 ref={fileInputRef}
@@ -592,21 +608,20 @@ export default function SOWGenerationSidebar({
                 accept="image/*,.pdf,.txt,.doc,.docx"
               />
               
-          {/* Enhance button */}
-          <EnhancedPromptButton
-            onClick={handleEnhanceOnly}
-            disabled={!chatInput.trim() || isLoading || enhancing}
-            isLoading={enhancing}
-            title="Enhance your prompt with AI"
-          />              {/* Send button */}
+              {/* Send button - full width, prominent */}
               <Button 
                 onClick={handleSendMessage} 
                 disabled={!chatInput.trim() || isLoading} 
                 size="sm" 
-                className="self-end bg-[#15a366] hover:bg-[#10a35a] text-white h-[50px] font-semibold border-0"
-                title="Send"
+                className="w-full bg-[#15a366] hover:bg-[#10a35a] text-white h-12 font-semibold border-0 text-base"
+                title="Send message to The Architect"
               >
-                {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+                {isLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                ) : (
+                  <Send className="h-5 w-5 mr-2" />
+                )}
+                {isLoading ? 'Generating...' : 'Send'}
               </Button>
             </div>
           </div>
