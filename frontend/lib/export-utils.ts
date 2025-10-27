@@ -2,14 +2,10 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
-import { generateHTML } from '@tiptap/html';
-import StarterKit from '@tiptap/starter-kit';
-import Link from '@tiptap/extension-link';
-import Image from '@tiptap/extension-image';
-import { Table } from '@tiptap/extension-table';
-import { TableRow } from '@tiptap/extension-table-row';
-import { TableCell } from '@tiptap/extension-table-cell';
-import { TableHeader } from '@tiptap/extension-table-header';
+// NOTE: Removed heavy TipTap runtime imports (StarterKit, extensions) to avoid
+// bundling mismatched @tiptap/* versions during Next.js build. We implement a
+// minimal serializer for TipTap JSON here instead of relying on
+// `@tiptap/starter-kit`/`@tiptap/html`.
 
 export interface PricingRow {
   role: string;
@@ -489,22 +485,85 @@ export function tiptapToHTML(content: any): string {
   };
 
   const normalized = transform(content);
+
+  // Lightweight serializer for TipTap JSON nodes. Handles common node types
+  // used in SOW documents (doc, paragraph, text, heading, lists, tables,
+  // images, links). This avoids importing TipTap runtime extensions which
+  // previously pulled in incompatible dependencies during the Next.js build.
+  const serialize = (node: any): string => {
+    if (!node) return '';
+    if (Array.isArray(node)) return node.map(serialize).join('');
+
+    const type = node.type || 'text';
+
+    switch (type) {
+      case 'doc':
+        return (node.content || []).map(serialize).join('');
+      case 'paragraph':
+        return `<p>${(node.content || []).map(serialize).join('')}</p>`;
+      case 'heading': {
+        const level = Math.min(6, Math.max(1, Number(node.attrs?.level) || 2));
+        return `<h${level}>${(node.content || []).map(serialize).join('')}</h${level}>`;
+      }
+      case 'text': {
+        let text = node.text || '';
+        if (node.marks && Array.isArray(node.marks)) {
+          for (const mark of node.marks) {
+            if (mark.type === 'strong') text = `<strong>${text}</strong>`;
+            if (mark.type === 'em') text = `<em>${text}</em>`;
+            if (mark.type === 'code') text = `<code>${text}</code>`;
+            if (mark.type === 'link' && mark.attrs && mark.attrs.href) {
+              const href = String(mark.attrs.href);
+              text = `<a href="${href}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+            }
+          }
+        }
+        return text;
+      }
+      case 'bulletList':
+        return `<ul>${(node.content || []).map(serialize).join('')}</ul>`;
+      case 'orderedList':
+        return `<ol>${(node.content || []).map(serialize).join('')}</ol>`;
+      case 'listItem':
+        return `<li>${(node.content || []).map(serialize).join('')}</li>`;
+      case 'hardBreak':
+        return '<br/>';
+      case 'blockquote':
+        return `<blockquote>${(node.content || []).map(serialize).join('')}</blockquote>`;
+      case 'codeBlock':
+        return `<pre><code>${(node.content || []).map(n=>n.text||'').join('')}</code></pre>`;
+      case 'image': {
+        const src = node.attrs?.src || '';
+        const alt = node.attrs?.alt || '';
+        return `<img src="${src}" alt="${alt}"/>`;
+      }
+      case 'table': {
+        const rows = (node.content || []).map(serialize).join('');
+        return `<table>${rows}</table>`;
+      }
+      case 'tableRow':
+        return `<tr>${(node.content || []).map(serialize).join('')}</tr>`;
+      case 'tableHeader':
+        return `<th>${(node.content || []).map(serialize).join('')}</th>`;
+      case 'tableCell':
+        return `<td>${(node.content || []).map(serialize).join('')}</td>`;
+      case 'editablePricingTable':
+        // Our transform already turned this into a normal table node, but be
+        // defensive in case an editablePricingTable remains.
+        const rows = Array.isArray(node?.attrs?.rows) ? node.attrs.rows : [];
+        const header = `<tr>${['Role','Description','Hours','Rate (AUD)','Cost (AUD, ex GST)'].map(h=>`<th>${h}</th>`).join('')}</tr>`;
+        const body = rows.map((r:any)=>`<tr>${['role','description','hours','rate','total'].map((k,i)=>`<td>${i===3?`$${(Number(r?.rate)||0).toFixed(2)}`:(k==='total'?`$${(((Number(r?.hours)||0)*(Number(r?.rate)||0))).toFixed(2)} +GST`:String(r?.[k]||''))}</td>`).join('')}</tr>`).join('');
+        return `<table>${header}${body}</table>`;
+      default:
+        // Generic fallback: render children
+        return (node.content || []).map(serialize).join('');
+    }
+  };
+
   try {
-    // TipTap v2/v3 type mismatch can occur in this workspace; cast to any to avoid TS friction.
-    return (generateHTML as any)(normalized, [
-      (StarterKit as any).configure?.({
-        bulletList: { keepMarks: true },
-        orderedList: { keepMarks: true },
-      }) || (StarterKit as any),
-      Link as any,
-      Image as any,
-      (Table as any).configure?.({ resizable: false }) || (Table as any),
-      TableRow as any,
-      TableHeader as any,
-      TableCell as any,
-    ] as any);
+    return serialize(normalized);
   } catch (e) {
-    console.warn('tiptapToHTML failed, returning empty string:', e);
+    console.warn('tiptapToHTML serializer failed, returning empty string:', e);
     return '';
   }
 }

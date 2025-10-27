@@ -1,12 +1,10 @@
 /**
- * Server-side extensions for generateHTML
- * Minimal set that works in Node.js SSR environment
+ * Server-side extensions placeholder.
+ *
+ * NOTE: We avoid importing `@tiptap/starter-kit` here to prevent pulling in
+ * `@tiptap/extension-list` and related runtime extensions during the server
+ * build. Server-side code should prefer the lightweight serializer used by
+ * export utilities, or dynamically import tiptap-only modules in client
+ * contexts.
  */
-
-import StarterKit from "@tiptap/starter-kit";
-
-// Use only StarterKit for server-side rendering
-// It includes: Document, Paragraph, Text, Bold, Italic, Strike, Code, etc.
-export const serverExtensions = [
-  StarterKit,
-];
+export const serverExtensions: any[] = [];
