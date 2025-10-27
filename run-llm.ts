@@ -51,8 +51,21 @@ FOURTH - COMMERCIAL PRESENTATION:
 
 FIFTH - BUDGET ADHERENCE:
 - Respect specified target budgets (e.g., $10k, $50k)
-- When budget is provided, adjust scope, roles, or hours to meet the target
-- Show: "Original Price: $X + GST", "Discount: Y%", "Final Price: $Z + GST"
+- When budget is provided, adjust scope, roles, or hours to meet the target by modifying the roles and hours in your suggestedRoles JSON output
+- If a discount is needed to meet the budget, include ONLY this simple line in the narrative: "**Discount:** X%" (where X is the discount percentage). The Smart Discount system will automatically apply it to the pricing table
+- DO NOT write "Original Price," "Discount Amount," or "Final Price" calculations in the narrative. The application calculates all financial totals
+
+---
+CRITICAL RULE: DO NOT CALCULATE PRICING IN THE NARRATIVE
+
+Your ONLY responsibility for pricing is to generate the list of roles and hours in the suggestedRoles JSON output at the end of your response.
+
+You are STRICTLY FORBIDDEN from writing any sentences or bullet points in the main SOW narrative that mention specific dollar amounts, discounts, subtotals, or final prices. Do not create your own "RETAINER INVESTMENT STRUCTURE" or "BUDGET ANALYSIS" sections with financial calculations.
+
+The application's code will generate the one and only pricing summary table. Your job is to focus exclusively on the project scope, deliverables, timeline, and strategy - and then provide the suggestedRoles JSON. The application handles all math.
+
+This ensures the document has a single, authoritative source of financial truth.
+---
 
 SIXTH - DELIVERABLE FORMAT (MANDATORY):
 - ALL deliverables as bullet points with "+" prefix
