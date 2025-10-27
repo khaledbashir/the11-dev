@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { getPool } from '@/lib/db';
 
 /**
  * GET /api/user/preferences
@@ -17,7 +17,8 @@ export async function GET(request: NextRequest) {
     
     console.log('📥 [USER PREFERENCES] Fetching preferences for user:', userId);
 
-    const connection = await db.getConnection();
+    const pool = getPool();
+    const connection = await pool.getConnection();
     try {
       const [rows] = await connection.execute(
         'SELECT preference_key, preference_value FROM user_preferences WHERE user_id = ?',
@@ -74,7 +75,8 @@ export async function PUT(request: NextRequest) {
 
     console.log('💾 [USER PREFERENCES] Updating preferences for user:', userId, Object.keys(body));
 
-    const connection = await db.getConnection();
+    const pool = getPool();
+    const connection = await pool.getConnection();
     try {
       let updated = 0;
 
@@ -139,7 +141,8 @@ export async function DELETE(request: NextRequest) {
 
     console.log('🗑️ [USER PREFERENCES] Deleting preferences for user:', userId, keys);
 
-    const connection = await db.getConnection();
+    const pool = getPool();
+    const connection = await pool.getConnection();
     try {
       const placeholders = keys.map(() => '?').join(',');
       const [result] = await connection.execute(
