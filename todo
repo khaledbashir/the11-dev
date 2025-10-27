@@ -1,55 +1,10 @@
-# Dashboard Thinking Accordion Fix - TODO LIST
-
-## Objective
-Ensure thinking tags are properly hidden behind accordion functionality in the Master Dashboard (AnythingLLM workspace)
-
-## Current Status
-✅ **GOOD NEWS**: The thinking accordion component exists and is properly integrated in:
-- `agent-sidebar-clean.tsx` (Dashboard & Editor chat interfaces)
-- `message-display-panel.tsx` (Chat interface)
-- `enhanced-dashboard.tsx` (Imported but not used - BI dashboard)
-
-## Steps to Complete
-
-### Step 1: Analyze Current Implementation
-- [x] Review how the thinking accordion component is currently being used
-- [x] Check if it's properly integrated into the chat dashboard
-- [x] Identify any missing integrations or broken connections
-
-**FINDINGS:**
-- ✅ Component properly imported and used in chat interfaces
-- ✅ Supports multiple thinking tag variants: `<think>`, `<thinking>`, `<AI_THINK>`
-- ✅ Includes streaming animations and proper UI styling
-- ✅ Proper integration with message display for both dashboard and editor modes
-
-### Step 2: Test Current Functionality
-- [ ] Check if the thinking tags are being properly extracted from AI responses
-- [ ] Verify the accordion UI is rendering correctly
-- [ ] Test the expand/collapse functionality
-
-### Step 3: Fix Integration Issues (if any)
-- [ ] Ensure the component is imported and used in the correct chat components
-- [ ] Fix any import/export issues
-- [ ] Verify the accordion styling and animations work properly
-
-### Step 4: Verify End-to-End Functionality
-- [ ] Test with actual AI responses containing thinking tags
-- [ ] Confirm thinking content is hidden by default
-- [ ] Confirm users can expand to see thinking process
-- [ ] Test streaming responses with thinking tags
-
-### Step 5: Document and Deploy
-- [ ] Create documentation for the accordion feature
-- [ ] Test the final implementation
-- [ ] Deploy to production
-
-## Key Files to Check
-- `frontend/components/tailwind/streaming-thought-accordion.tsx` ✅ EXISTS & INTEGRATED
-- Chat dashboard components that should use this accordion ✅ VERIFIED
-- API response handling for thinking tag extraction
-
-## Notes
-- Component supports multiple thinking tag variants: `<think>`, `<thinking>`, `<AI_THINK>`
-- It includes streaming animations and proper UI styling
-- Integration with the actual chat interface looks solid
-- Ready for testing with actual AI responses
+- [ ] Read and analyze agent-sidebar.tsx
+- [ ] Read and analyze agent-sidebar-clean.tsx  
+- [ ] Read and analyze agent-sidebar-enhanced.tsx
+- [ ] Search for imports and usage of these components across the codebase
+- [ ] Identify which component is used on the Master Dashboard
+- [ ] Analyze each component's purpose and functionality
+- [ ] Determine which components are current vs legacy/deprecated
+- [ ] Propose new descriptive names for active components
+- [ ] Identify components for deletion
+- [ ] Create comprehensive audit report

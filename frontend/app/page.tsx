@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from 'next/navigation';
 import TailwindAdvancedEditor from "@/components/tailwind/advanced-editor";
 import SidebarNav from "@/components/tailwind/sidebar-nav";
-import AgentSidebar from "@/components/tailwind/agent-sidebar-clean";
+import DashboardSidebar from "@/components/tailwind/DashboardSidebar";
+import WorkspaceSidebar from "@/components/tailwind/WorkspaceSidebar";
 import PricingTableBuilder from "@/components/tailwind/pricing-table-builder";
 import Menu from "@/components/tailwind/ui/menu";
 import { Button } from "@/components/tailwind/ui/button";
@@ -3637,26 +3638,20 @@ Ask me questions to get business insights, such as:
           )
         }
         rightPanel={
-          // ✨ HIDE AI Chat panel completely in AI Management mode
-          // Only show in editor and dashboard modes for a cleaner, context-appropriate UX
-          viewMode === 'editor' || viewMode === 'dashboard' ? (
-            <AgentSidebar
+          // ✨ Render appropriate sidebar based on viewMode
+          // Dashboard mode: Query-only Analytics Assistant with workspace dropdown
+          // Editor mode: Full-featured SOW generation with The Architect
+          viewMode === 'dashboard' ? (
+            <DashboardSidebar
               isOpen={agentSidebarOpen}
               onToggle={() => setAgentSidebarOpen(!agentSidebarOpen)}
-              agents={agents}
-              currentAgentId={currentAgentId}
-              onSelectAgent={handleSelectAgent}
-              onCreateAgent={handleCreateAgent}
-              onUpdateAgent={handleUpdateAgent}
-              onDeleteAgent={handleDeleteAgent}
+              dashboardChatTarget={dashboardChatTarget}
+              onDashboardWorkspaceChange={setDashboardChatTarget}
+              availableWorkspaces={availableWorkspaces}
               chatMessages={chatMessages}
               onSendMessage={handleSendMessage}
               isLoading={isChatLoading}
               streamingMessageId={streamingMessageId}
-              viewMode={viewMode} // Pass viewMode for context awareness
-              dashboardChatTarget={dashboardChatTarget}
-              onDashboardWorkspaceChange={setDashboardChatTarget}
-              availableWorkspaces={availableWorkspaces}
               onClearChat={() => {
                 console.log('🧹 Clearing chat messages for new thread');
                 setChatMessages([]);
@@ -3665,8 +3660,20 @@ Ask me questions to get business insights, such as:
                 console.log('🔁 Replacing chat messages from thread history:', msgs.length);
                 setChatMessages(msgs);
               }}
-              // Editor thread management wiring
-              editorWorkspaceSlug={currentDoc?.workspaceSlug}
+            />
+          ) : viewMode === 'editor' ? (
+            <WorkspaceSidebar
+              isOpen={agentSidebarOpen}
+              onToggle={() => setAgentSidebarOpen(!agentSidebarOpen)}
+              chatMessages={chatMessages}
+              onSendMessage={handleSendMessage}
+              isLoading={isChatLoading}
+              onInsertToEditor={(content) => {
+                console.log('� Insert to Editor button clicked from AI chat');
+                handleInsertContent(content);
+              }}
+              streamingMessageId={streamingMessageId}
+              editorWorkspaceSlug={currentDoc?.workspaceSlug || ''}
               editorThreadSlug={currentDoc?.threadSlug || null}
               onEditorThreadChange={async (slug) => {
                 if (!currentDocId) return;
@@ -3701,13 +3708,16 @@ Ask me questions to get business insights, such as:
                   setChatMessages([]);
                 }
               }}
-              // Only pass onInsertToEditor in EDITOR mode, not in DASHBOARD mode
-              onInsertToEditor={viewMode === 'editor' ? (content) => {
-                console.log('📝 Insert to Editor button clicked from AI chat');
-                handleInsertContent(content);
-              } : undefined}
+              onClearChat={() => {
+                console.log('🧹 Clearing chat messages for new thread');
+                setChatMessages([]);
+              }}
+              onReplaceChatMessages={(msgs) => {
+                console.log('� Replacing chat messages from thread history:', msgs.length);
+                setChatMessages(msgs);
+              }}
             />
-          ) : null // Return null to completely remove the panel from the component tree
+          ) : null // AI Management mode: no sidebar
         }
         leftMinSize={15}
         mainMinSize={30}
