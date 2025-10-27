@@ -3427,14 +3427,35 @@ Ask me questions to get business insights, such as:
 
           if (!response.ok) {
             const errorText = await response.text();
+            console.error('❌ Stream-chat API error:', {
+              status: response.status,
+              statusText: response.statusText,
+              errorText: errorText
+            });
+            
             let errorMessage = "Sorry, there was an error processing your request.";
-
-            if (response.status === 400) {
-              errorMessage = "⚠️ AnythingLLM error: Invalid request. Please check the workspace configuration.";
-            } else if (response.status === 401 || response.status === 403) {
-              errorMessage = "⚠️ AnythingLLM authentication failed. Please check the API key configuration.";
-            } else if (response.status === 404) {
-              errorMessage = `⚠️ AnythingLLM workspace '${workspaceSlug}' not found. Please verify it exists.`;
+            
+            // Try to parse the error response for details
+            try {
+              const errorData = JSON.parse(errorText);
+              console.error('📋 Error details:', errorData);
+              
+              if (errorData.details) {
+                errorMessage = `⚠️ Error: ${errorData.details}`;
+              } else if (errorData.error) {
+                errorMessage = `⚠️ ${errorData.error}`;
+              }
+            } catch (parseError) {
+              // If can't parse, use generic messages based on status
+              if (response.status === 400) {
+                errorMessage = `⚠️ AnythingLLM error (400): Invalid request. ${errorText.substring(0, 200)}`;
+              } else if (response.status === 401 || response.status === 403) {
+                errorMessage = "⚠️ AnythingLLM authentication failed. Please check the API key configuration.";
+              } else if (response.status === 404) {
+                errorMessage = `⚠️ AnythingLLM workspace '${workspaceSlug}' not found. Please verify it exists.`;
+              } else {
+                errorMessage = `⚠️ Error (${response.status}): ${errorText.substring(0, 200)}`;
+              }
             }
 
             setChatMessages(prev => 

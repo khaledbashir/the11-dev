@@ -216,6 +216,16 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       const errorText = await response.text();
       
+      // 🔍 ENHANCED ERROR LOGGING
+      console.error('❌ ❌ ❌ ANYTHINGLLM ERROR ❌ ❌ ❌');
+      console.error('Status:', response.status, response.statusText);
+      console.error('Endpoint:', endpoint);
+      console.error('Workspace:', effectiveWorkspaceSlug);
+      console.error('Thread Slug:', threadSlug);
+      console.error('Mode:', mode);
+      console.error('Error Response:', errorText);
+      console.error('❌ ❌ ❌ END ERROR ❌ ❌ ❌');
+      
       // Special logging for 401
       if (response.status === 401) {
         // Silently fail for 401 - do not expose auth details
@@ -224,8 +234,11 @@ export async function POST(request: NextRequest) {
       return new Response(
         JSON.stringify({ 
           error: `AnythingLLM API error: ${response.statusText}`,
-          details: errorText.substring(0, 200),
-          status: response.status
+          details: errorText.substring(0, 500), // Increased from 200 to 500
+          status: response.status,
+          endpoint: endpoint, // Include endpoint in error response
+          workspace: effectiveWorkspaceSlug,
+          threadSlug: threadSlug
         }),
         { status: response.status, headers: { 'Content-Type': 'application/json' } }
       );
