@@ -309,14 +309,12 @@ export default function WorkspaceSidebar({
     try {
       setEnhancing(true);
       
-      // 🎯 NEW: Use AnythingLLM utility workspace for prompt enhancement
-      const resp = await fetch('/api/anythingllm/stream-chat', {
+      // ✅ Use dedicated enhance-prompt endpoint
+      const resp = await fetch('/api/ai/enhance-prompt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: chatInput,
-          workspaceSlug: 'utility-prompt-enhancer',
-          mode: 'chat',
+          prompt: chatInput,
         })
       });
       
@@ -325,44 +323,15 @@ export default function WorkspaceSidebar({
         throw new Error(msg || `Enhancer error ${resp.status}`);
       }
       
-      // Read the streaming response
-      const reader = resp.body?.getReader();
-      const decoder = new TextDecoder();
-      let enhanced = '';
+      const data = await resp.json();
+      const enhanced = data.enhancedPrompt;
       
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n').filter(line => line.trim());
-          
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const jsonStr = line.slice(6);
-              if (jsonStr === '[DONE]') break;
-              
-              try {
-                const data = JSON.parse(jsonStr);
-                if (data.textResponse) {
-                  enhanced = data.textResponse;
-                }
-              } catch (e) {
-                // Ignore parse errors for streaming chunks
-              }
-            }
-          }
-        }
-      }
-      
-      enhanced = enhanced.trim();
-      if (!enhanced) {
+      if (!enhanced || !enhanced.trim()) {
         toast.error('Enhancer returned empty text');
         return;
       }
       
-      setChatInput(enhanced);
+      setChatInput(enhanced.trim());
       toast.success('Prompt enhanced');
     } catch (e) {
       console.error('Enhance failed:', e);

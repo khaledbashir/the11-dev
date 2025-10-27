@@ -48,34 +48,44 @@ curl "http://localhost:3000/api/anythingllm/threads?workspace=sow-master-dashboa
 ## Priority #2: ✅ FIXED - Prompt Enhancer 404
 
 ### The Problem
-- ✨ Enhance button returned 404 Not Found
-- Route existed but was streaming SSE data
-- **ROOT CAUSE:** Frontend expected JSON response with `enhancedPrompt` field, but route was returning SSE stream
+- ✨ Enhance button returned 400 Bad Gateway with error: `No messages provided. Must provide messages array.`
+- **ROOT CAUSE:** DashboardSidebar and WorkspaceSidebar were calling `/api/anythingllm/stream-chat` directly instead of using the `/api/ai/enhance-prompt` endpoint
+- The stream-chat endpoint expects a `messages` array, not a `message` string
 
 ### The Fix
-**File:** `/frontend/app/api/ai/enhance-prompt/route.ts`
+**Files:** 
+- `/frontend/components/tailwind/DashboardSidebar.tsx`
+- `/frontend/components/tailwind/WorkspaceSidebar.tsx`
 
 **Changed from:**
 ```typescript
-// Stream the response back to client (SSE format)
-const { readable, writable } = new TransformStream();
-// ... streaming logic
-return new Response(readable, { headers }); // ❌ Frontend can't handle this!
+const resp = await fetch('/api/anythingllm/stream-chat', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    message: chatInput, // ❌ Wrong endpoint, wrong format!
+    workspaceSlug: 'utility-prompt-enhancer',
+    mode: 'chat',
+  })
+});
+// ... complex SSE stream parsing logic
 ```
 
 **Changed to:**
 ```typescript
-// Consume the entire SSE stream and return JSON
-let enhancedPrompt = '';
-const reader = response.body?.getReader();
-while (true) {
-  const { done, value } = await reader.read();
-  if (done) break;
-  // Parse SSE chunks and accumulate textResponse
-  enhancedPrompt += json.textResponse;
-}
-return NextResponse.json({ enhancedPrompt: enhancedPrompt.trim() }); // ✅ Frontend expects this!
+const resp = await fetch('/api/ai/enhance-prompt', { // ✅ Correct endpoint!
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    prompt: chatInput, // ✅ Simple prompt field
+  })
+});
+
+const data = await resp.json(); // ✅ Simple JSON response
+const enhanced = data.enhancedPrompt;
 ```
+
+**Note:** `agent-sidebar-clean.tsx` was already using the correct endpoint - no changes needed.
 
 ### How to Verify
 ```bash
@@ -88,8 +98,8 @@ curl -X POST http://localhost:3000/api/ai/enhance-prompt \
 **Expected:** `{ "enhancedPrompt": "..." }` with detailed, enhanced version
 
 **In UI:**
-- Click ✨ button in floating AI bar or agent sidebar
-- Should NOT show 404 error
+- Click ✨ button in floating AI bar, dashboard sidebar, or editor sidebar
+- Should NOT show 400 error
 - Should return enhanced prompt text
 - Should show "Prompt enhanced" toast
 
@@ -128,7 +138,7 @@ for (const r of initialRows) {
 
 ---
 
-## Priority #4: ✅ VERIFIED - Logo 404 Errors
+## Priority #4: ⚠️ DEPLOYMENT ISSUE - Logo 404 Errors
 
 ### Investigation
 Checked all logo file paths and existence:
@@ -146,7 +156,7 @@ ls /root/the11-dev/frontend/public/images/*.png
 -rw-r--r-- 1 root root 3.9K /root/the11-dev/frontend/public/images/logo-light.png ✅
 ```
 
-**All files exist!**
+**All files exist!** ✅
 
 **Checked references:**
 - `app/layout.tsx` → `/favicon.png` ✅
@@ -154,14 +164,36 @@ ls /root/the11-dev/frontend/public/images/*.png
 - `components/tailwind/sidebar-nav.tsx` → `/images/logo-light.png` ✅
 - `components/tailwind/workspace-creation-progress.tsx` → `/images/logo-light.png` ✅
 
-### The Verdict
-**No code changes needed.** All paths are correct and files exist.
+**All paths are correct!** ✅
 
-**If 404 errors persist after rebuild:**
-1. Clear browser cache
-2. Hard refresh (Ctrl+F5)
-3. Check Next.js build output for static file copying
-4. Verify Easypanel static file serving configuration
+### The Real Issue
+Testing revealed the root cause:
+
+```bash
+curl http://localhost:3000/images/logo-light.png
+# Returns: <!doctype html>...<title>Easypanel</title>...
+# Content-Type: text/html (should be image/png)
+```
+
+**The problem:** Browser requests to `/images/logo-light.png` are being served by **Easypanel** (port 80), not by the Next.js app (port 3001/3333).
+
+This is a **reverse proxy / deployment configuration issue**, not a code issue.
+
+### The Solution
+**This requires Easypanel/Traefik configuration fix:**
+
+1. Ensure static assets (`/images/*`, `/favicon.png`) are proxied to Next.js app
+2. OR: Configure Next.js to serve static files from a CDN
+3. OR: Copy logos to Easypanel's static directory (quick workaround)
+
+**Code is correct - no changes needed.**
+
+### Temporary Workaround
+If logos persist after rebuild:
+1. Check Easypanel service configuration
+2. Verify port mapping and reverse proxy rules
+3. Ensure static file requests go to Next.js, not Easypanel UI
+4. Consider using absolute URLs: `https://yourdomain.com/images/logo-light.png`
 
 ---
 
@@ -196,6 +228,35 @@ AI allocated only 3 hours to "Tech - Head Of - Senior Project Management" when m
 
 | Priority | Issue | Status | Files Changed | Verification |
 |----------|-------|--------|---------------|--------------|
+| **#1** | 502 on threads API | ✅ FIXED | 1 file | `curl /api/anythingllm/threads` |
+| **#2** | Enhancer 400 error | ✅ FIXED | 3 files | Click ✨ button in any sidebar |
+| **#3** | Ghost role row | ✅ FIXED | 1 file | Generate & insert pricing table |
+| **#4** | Logo 404s | ⚠️ DEPLOYMENT | 0 files | Requires Easypanel/proxy config |
+| **#5** | Mandatory hours | ⏳ MANUAL | N/A | Update prompt in AnythingLLM |
+
+**Total Files Changed:** 5 files  
+**Total Code Fixes:** 5 fixes  
+**Total Manual Tasks:** 1 task  
+**Total Deployment Issues:** 1 issue
+
+---
+
+## Files Changed
+
+### 1. `/frontend/app/api/anythingllm/threads/route.ts`
+**Fix:** Changed endpoint from non-existent `/threads` to `/workspace/{slug}` and extract threads from response
+
+### 2. `/frontend/app/api/ai/enhance-prompt/route.ts`
+**Fix:** Changed from SSE streaming to consuming stream and returning JSON with `enhancedPrompt` field
+
+### 3. `/frontend/components/tailwind/editable-pricing-table.tsx`
+**Fix:** Filter out empty and placeholder role values during initialization
+
+### 4. `/frontend/components/tailwind/DashboardSidebar.tsx`
+**Fix:** Changed from calling `/api/anythingllm/stream-chat` directly to using `/api/ai/enhance-prompt` endpoint
+
+### 5. `/frontend/components/tailwind/WorkspaceSidebar.tsx`
+**Fix:** Changed from calling `/api/anythingllm/stream-chat` directly to using `/api/ai/enhance-prompt` endpoint
 | **#1** | 502 on threads API | ✅ FIXED | 1 file | `curl /api/anythingllm/threads` |
 | **#2** | Enhancer 404 | ✅ FIXED | 1 file | Click ✨ button |
 | **#3** | Ghost role row | ✅ FIXED | 1 file | Generate & insert pricing table |
