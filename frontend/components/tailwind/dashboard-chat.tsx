@@ -63,57 +63,30 @@ export default function DashboardChat({
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
 
-  // Load threads on mount - NO LOCALSTORAGE, always load most recent thread
-  // Thread history is managed by AnythingLLM natively
+  // 🛡️ FIXED: Refactored into two separate, chained useEffects to fix race condition
+
+  // Step 1: Load the list of available threads when the workspace target changes.
   useEffect(() => {
     if (dashboardChatTarget) {
-      initializeThreads(dashboardChatTarget);
+      loadThreads(dashboardChatTarget);
     }
   }, [dashboardChatTarget]);
 
-  // Initialize threads from AnythingLLM and load most recent thread automatically
-  const initializeThreads = async (workspaceSlug: string) => {
-    console.log('🔄 Loading threads from AnythingLLM for workspace:', workspaceSlug);
-    setLoadingThreads(true);
-    
-    try {
-      const response = await fetch(`/api/anythingllm/threads?workspace=${encodeURIComponent(workspaceSlug)}`);
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('❌ Failed to load threads:', {
-          status: response.status,
-          workspace: workspaceSlug,
-          error: errorData,
-        });
-        setThreads([]);
-        return;
-      }
-
-      const data = await response.json();
-      const threadList = data?.threads || [];
-      
-      console.log('✅ Threads loaded from AnythingLLM:', {
-        workspace: workspaceSlug,
-        count: threadList.length,
-      });
-      
-      setThreads(threadList);
-
-      // 🎯 Always load most recent thread (AnythingLLM returns sorted by updated_at DESC)
-      if (threadList.length > 0) {
-        const mostRecentThread = threadList[0];
-        console.log('🎯 Loading most recent thread:', mostRecentThread.slug);
-        setCurrentThreadSlug(mostRecentThread.slug);
-        await loadThreadHistory(mostRecentThread.slug, workspaceSlug);
-      }
-    } catch (error: any) {
-      console.error('❌ Exception initializing threads:', error);
-      setThreads([]);
-    } finally {
-      setLoadingThreads(false);
+  // Step 2: When the threads list is updated, automatically load the most recent one.
+  // This hook runs after the one above has successfully updated the `threads` state.
+  useEffect(() => {
+    // 🎯 Always load most recent thread (AnythingLLM returns sorted by updated_at DESC)
+    if (threads.length > 0) {
+      const mostRecentThread = threads[0];
+      console.log('🎯 Loading most recent thread history:', mostRecentThread.slug);
+      setCurrentThreadSlug(mostRecentThread.slug);
+      loadThreadHistory(mostRecentThread.slug, dashboardChatTarget);
+    } else {
+      // No threads exist, so ensure chat is clear and no history is "restored".
+      console.log('ℹ️ No threads found for this workspace. Clearing chat.');
+      onClearChat();
     }
-  };
+  }, [threads]); // Dependency on `threads` is the key to the fix.
 
   // Helper function to load thread chat history from AnythingLLM
   const loadThreadHistory = async (threadSlug: string, workspaceSlug: string) => {
