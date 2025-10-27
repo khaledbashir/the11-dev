@@ -63,25 +63,17 @@ export default function DashboardChat({
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
 
-  // Load threads and restore last active thread on mount
+  // Load threads on mount - NO LOCALSTORAGE, always load most recent thread
+  // Thread history is managed by AnythingLLM natively
   useEffect(() => {
     if (dashboardChatTarget) {
       initializeThreads(dashboardChatTarget);
     }
   }, [dashboardChatTarget]);
 
-  // 💾 Persist active thread to localStorage when it changes
-  useEffect(() => {
-    if (dashboardChatTarget && currentThreadSlug) {
-      const storageKey = `dashboard-thread-${dashboardChatTarget}`;
-      localStorage.setItem(storageKey, currentThreadSlug);
-      console.log('💾 Saved active thread to localStorage:', { workspace: dashboardChatTarget, thread: currentThreadSlug });
-    }
-  }, [currentThreadSlug, dashboardChatTarget]);
-
-  // Initialize threads from server and restore last active thread
+  // Initialize threads from AnythingLLM and load most recent thread automatically
   const initializeThreads = async (workspaceSlug: string) => {
-    console.log('🔄 Initializing threads from server for workspace:', workspaceSlug);
+    console.log('🔄 Loading threads from AnythingLLM for workspace:', workspaceSlug);
     setLoadingThreads(true);
     
     try {
@@ -101,34 +93,19 @@ export default function DashboardChat({
       const data = await response.json();
       const threadList = data?.threads || [];
       
-      console.log('✅ Threads loaded from server:', {
+      console.log('✅ Threads loaded from AnythingLLM:', {
         workspace: workspaceSlug,
         count: threadList.length,
       });
       
       setThreads(threadList);
 
-      // 🔄 Try to restore last active thread from localStorage
-      const storageKey = `dashboard-thread-${workspaceSlug}`;
-      const savedThreadSlug = localStorage.getItem(storageKey);
-      
-      let threadToLoad: string | null = null;
-      
-      if (savedThreadSlug && threadList.some((t: any) => t.slug === savedThreadSlug)) {
-        // Saved thread still exists - restore it
-        console.log('✅ Restoring saved thread from localStorage:', savedThreadSlug);
-        threadToLoad = savedThreadSlug;
-      } else if (threadList.length > 0) {
-        // No saved thread or it was deleted - use most recent
-        const mostRecentThread = threadList[0]; // API returns sorted by updated_at DESC
-        console.log('🎯 No saved thread, using most recent:', mostRecentThread.slug);
-        threadToLoad = mostRecentThread.slug;
-      }
-
-      if (threadToLoad) {
-        setCurrentThreadSlug(threadToLoad);
-        // Load its chat history
-        await loadThreadHistory(threadToLoad, workspaceSlug);
+      // 🎯 Always load most recent thread (AnythingLLM returns sorted by updated_at DESC)
+      if (threadList.length > 0) {
+        const mostRecentThread = threadList[0];
+        console.log('🎯 Loading most recent thread:', mostRecentThread.slug);
+        setCurrentThreadSlug(mostRecentThread.slug);
+        await loadThreadHistory(mostRecentThread.slug, workspaceSlug);
       }
     } catch (error: any) {
       console.error('❌ Exception initializing threads:', error);
@@ -138,7 +115,7 @@ export default function DashboardChat({
     }
   };
 
-  // Helper function to load thread chat history
+  // Helper function to load thread chat history from AnythingLLM
   const loadThreadHistory = async (threadSlug: string, workspaceSlug: string) => {
     try {
       const response = await fetch(`/api/anythingllm/thread?workspace=${encodeURIComponent(workspaceSlug)}&thread=${encodeURIComponent(threadSlug)}`);
