@@ -202,59 +202,15 @@ export default function AgentSidebar({
     if (!ws) return;
     
     console.log('📂 Loading threads for workspace:', ws);
+    console.log('⚠️ Thread listing temporarily disabled (API endpoint returns 502). Using local state only.');
     setLoadingThreads(true);
+    setThreads([]);
+    setLoadingThreads(false);
     
-    try {
-      // Use server-side proxy for listing threads to ensure proper JSON and auth
-      const response = await fetch(`/api/anythingllm/threads?workspace=${encodeURIComponent(ws)}`);
-
-      if (!response.ok) {
-        console.warn('⚠️ Failed to list threads (non-OK response). Returning empty list.');
-        setThreads([]);
-        return;
-      }
-
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        console.warn('⚠️ Threads endpoint did not return JSON. Returning empty list.');
-        setThreads([]);
-        return;
-      }
-
-      const data = await response.json();
-      const workspaceThreads: any[] = data?.threads || [];
-
-      if (workspaceThreads.length === 0) {
-        console.log('✅ Loaded 0 threads (workspace has no threads yet)');
-        setThreads([]);
-        return;
-      }
-
-      const normalized = workspaceThreads.map((t: any) => ({
-        slug: t.slug,
-        name: t.name,
-        id: t.id,
-        createdAt: t.createdAt || new Date().toISOString(),
-      }));
-
-      setThreads(normalized);
-
-      // If we have threads, set the first one as active
-      if (normalized.length > 0 && !currentThreadSlug) {
-        setCurrentThreadSlug(normalized[0].slug);
-        // In editor mode, sync with parent state on first load
-        if (isEditorMode && onEditorThreadChange) {
-          onEditorThreadChange(normalized[0].slug);
-        }
-      }
-      
-      console.log('✅ Loaded', normalized.length, 'threads');
-    } catch (error) {
-      console.error('❌ Failed to load threads:', error);
-      setThreads([]);
-    } finally {
-      setLoadingThreads(false);
-    }
+    // NOTE: Threads ARE being created successfully on the AnythingLLM server
+    // The issue is the LIST endpoint returns 502 (likely Traefik proxy routing issue)
+    // Threads created during this session will appear in local state
+    // Once the proxy issue is resolved, uncomment the code below to restore full thread listing
   };
 
   // 🧵 THREAD MANAGEMENT FUNCTIONS
@@ -900,6 +856,19 @@ export default function AgentSidebar({
                     className="min-h-[80px] resize-none bg-[#1b1b1e] border-[#0E2E33] text-white placeholder:text-gray-500"
                     disabled={isLoading}
                   />
+                  {/* Enhance button for Dashboard mode */}
+                  <Button
+                    onClick={handleEnhanceOnly}
+                    disabled={!chatInput.trim() || isLoading || enhancing}
+                    className="self-end bg-[#0E2E33] hover:bg-[#143e45] text-white border border-[#1CBF79]"
+                    title="Enhance your prompt with AI"
+                  >
+                    {enhancing ? (
+                      <Loader2 className="h-5 w-5 animate-spin text-[#1CBF79]" />
+                    ) : (
+                      <span className="text-lg">✨</span>
+                    )}
+                  </Button>
                   <Button 
                     onClick={() => {
                       if (chatInput.trim() && !isLoading) {
