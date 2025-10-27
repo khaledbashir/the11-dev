@@ -250,6 +250,24 @@ export function formatInvestment(value: number) {
 }
 
 export function cleanSOWContent(content: string) {
-  // Stub implementation
-  return content;
+  // Remove <think>...</think> tags and their content (AI's internal reasoning)
+  // This prevents the AI's planning notes from appearing in client-facing SOWs
+  let cleaned = content
+    // Remove <AI_THINK> tags
+    .replace(/<AI_THINK>[\s\S]*?<\/AI_THINK>/gi, '')
+    // Remove <thinking> tags (additional variant)
+    .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
+    // Remove <think> tags
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    // Remove any orphaned think tags
+    .replace(/<\/?think>/gi, '')
+    // Remove <tool_call> tags
+    .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '')
+    // Remove HTML comments
+    .replace(/<!-- .*? -->/gi, '')
+    // Clean up extra whitespace that might be left behind
+    .replace(/\n\n\n+/g, '\n\n')
+    .trim();
+  
+  return cleaned;
 }

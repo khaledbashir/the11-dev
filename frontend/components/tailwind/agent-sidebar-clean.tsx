@@ -862,19 +862,7 @@ export default function AgentSidebar({
                     className="min-h-[80px] resize-none bg-[#1b1b1e] border-[#0E2E33] text-white placeholder:text-gray-500"
                     disabled={isLoading}
                   />
-                  {/* Enhance button for Dashboard mode */}
-                  <Button
-                    onClick={handleEnhanceOnly}
-                    disabled={!chatInput.trim() || isLoading || enhancing}
-                    className="self-end bg-[#0E2E33] hover:bg-[#143e45] text-white border border-[#1CBF79]"
-                    title="Enhance your prompt with AI"
-                  >
-                    {enhancing ? (
-                      <Loader2 className="h-5 w-5 animate-spin text-[#1CBF79]" />
-                    ) : (
-                      <span className="text-lg">✨</span>
-                    )}
-                  </Button>
+                  {/* Dashboard chat: Only send button, NO enhance */}
                   <Button 
                     onClick={() => {
                       if (chatInput.trim() && !isLoading) {

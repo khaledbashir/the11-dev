@@ -493,23 +493,26 @@ export function FloatingAIBar({ onGenerate, editor: editorProp }: FloatingAIBarP
                   <button
                     onClick={() => handleGenerate()}
                     disabled={!prompt.trim() || isLoading}
-                    className="p-2 bg-[#1FE18E] hover:bg-[#1FE18E]/90 disabled:bg-gray-300 text-[#0e2e33] rounded-lg transition-colors disabled:opacity-50 font-medium"
+                    className="px-3 py-2 bg-[#1FE18E] hover:bg-[#1FE18E]/90 disabled:bg-gray-300 text-[#0e2e33] rounded-lg transition-colors disabled:opacity-50 font-medium text-sm flex items-center gap-2"
                     title={triggerSource === 'selection' ? "Generate improvement for selected text" : "Generate with AI"}
                   >
                     {isLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      <Sparkles className="h-4 w-4" />
+                      <>
+                        <Sparkles className="h-4 w-4" />
+                        <span>Send</span>
+                      </>
                     )}
                   </button>
                   {triggerSource === 'selection' && (
                     <button
                       onClick={handleEnhance}
                       disabled={isEnhancing || !hasSelection}
-                      className="px-2 py-2 bg-white/70 hover:bg-white/90 text-[#0e2e33] rounded-lg transition-colors disabled:opacity-50 border border-[#1FE18E]/50 text-xs font-medium"
+                      className="px-3 py-2 bg-white/70 hover:bg-white/90 text-[#0e2e33] rounded-lg transition-colors disabled:opacity-50 border border-[#1FE18E]/50 text-xs font-medium flex items-center gap-1"
                       title={hasSelection ? "Improve selected text with AI" : "Select text first"}
                     >
-                      {isEnhancing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Improve'}
+                      {isEnhancing ? <Loader2 className="h-4 w-4 animate-spin" /> : <>✨ Improve</>}
                     </button>
                   )}
                 </div>
