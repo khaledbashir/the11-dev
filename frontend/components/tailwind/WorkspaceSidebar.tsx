@@ -590,55 +590,34 @@ export default function WorkspaceSidebar({
                 className="hidden"
                 accept="image/*,.pdf,.txt,.doc,.docx"
               />
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="h-8 px-3 border-[#0E2E33] text-gray-400 hover:text-white hover:bg-[#0E2E33]"
-                title="Attach files"
-              >
-                📎 {uploading ? 'Uploading...' : 'Attach'}
-              </Button>
               
-              {/* Settings button */}
+              {/* Enhance button */}
               <Button
+                onClick={handleEnhanceOnly}
+                disabled={!chatInput.trim() || isLoading || enhancing}
                 size="sm"
-                variant="outline"
-                onClick={() => setShowSettings(!showSettings)}
-                className="h-8 px-3 border-[#0E2E33] text-gray-400 hover:text-white hover:bg-[#0E2E33]"
-                title="Chat settings"
+                className="self-end bg-[#0E2E33] hover:bg-[#143e45] text-white h-[50px] font-semibold border border-[#1CBF79]"
+                title="Enhance"
               >
-                ⚙️
+                {enhancing ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-[#1CBF79]" />
+                ) : (
+                  <span className="text-lg">✨</span>
+                )}
+              </Button>
+
+              {/* Send button */}
+              <Button 
+                onClick={handleSendMessage} 
+                disabled={!chatInput.trim() || isLoading} 
+                size="sm" 
+                className="self-end bg-[#15a366] hover:bg-[#10a35a] text-white h-[50px] font-semibold border-0"
+                title="Send"
+              >
+                {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
               </Button>
             </div>
           </div>
-
-          {/* Enhance button */}
-          <Button
-            onClick={handleEnhanceOnly}
-            disabled={!chatInput.trim() || isLoading || enhancing}
-            size="sm"
-            className="self-end bg-[#0E2E33] hover:bg-[#143e45] text-white h-[50px] font-semibold border border-[#1CBF79]"
-            title="Enhance"
-          >
-            {enhancing ? (
-              <Loader2 className="h-5 w-5 animate-spin text-[#1CBF79]" />
-            ) : (
-              <span className="text-lg">✨</span>
-            )}
-          </Button>
-
-          {/* Send button */}
-          <Button 
-            onClick={handleSendMessage} 
-            disabled={!chatInput.trim() || isLoading} 
-            size="sm" 
-            className="self-end bg-[#15a366] hover:bg-[#10a35a] text-white h-[50px] font-semibold border-0"
-            title="Send"
-          >
-            {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-          </Button>
         </div>
       </div>
     </div>

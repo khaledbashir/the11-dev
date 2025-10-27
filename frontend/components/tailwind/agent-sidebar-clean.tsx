@@ -1067,27 +1067,7 @@ export default function AgentSidebar({
                         className="hidden"
                         accept="image/*,.pdf,.txt,.doc,.docx"
                       />
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={uploading}
-                        className="h-8 px-3 border-[#0E2E33] text-gray-400 hover:text-white hover:bg-[#0E2E33]"
-                        title="Attach files"
-                      >
-                        📎 {uploading ? 'Uploading...' : 'Attach'}
-                      </Button>
-                      
-                      {/* Settings button */}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setShowSettings(!showSettings)}
-                        className="h-8 px-3 border-[#0E2E33] text-gray-400 hover:text-white hover:bg-[#0E2E33]"
-                        title="Chat settings"
-                      >
-                        ⚙️
-                      </Button>
+
                     </div>
                   </div>
                   {/* Removed compact 'Insert last reply' button to avoid duplicate insert controls */}
