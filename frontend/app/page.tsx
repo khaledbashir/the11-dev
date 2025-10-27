@@ -117,6 +117,20 @@ const extractBudgetAndDiscount = (prompt: string): { budget: number; discount: n
   return { budget, discount };
 };
 
+// 🎯 UTILITY: Extract and log [FINANCIAL_REASONING] block from AI response for transparency
+const extractFinancialReasoning = (content: string): string | null => {
+  const reasoningMatch = content.match(/\[FINANCIAL_REASONING\]([\s\S]*?)(?:\[|$)/i);
+  if (reasoningMatch && reasoningMatch[1]) {
+    const reasoning = reasoningMatch[1].trim();
+    console.log('📊 [FINANCIAL_REASONING] Block Detected:');
+    console.log('─────────────────────────────────────');
+    console.log(reasoning);
+    console.log('─────────────────────────────────────');
+    return reasoning;
+  }
+  return null;
+};
+
 // Helper function to convert markdown to Novel editor JSON format
 // Extract pricing roles from markdown table format
 
@@ -2978,6 +2992,9 @@ Ask me questions to get business insights, such as:
     console.log('📝 Editor ref exists:', !!editorRef.current);
     console.log('📄 Current doc ID:', currentDocId);
     
+    // 🎯 Extract and log [FINANCIAL_REASONING] block for transparency
+    extractFinancialReasoning(content);
+    
     if (!editorRef.current) {
       console.error("Editor not initialized, cannot insert content.");
       return;
@@ -3254,6 +3271,11 @@ Ask me questions to get business insights, such as:
       console.log('📋 Found AI message:', lastAIMessage?.content.substring(0, 100));
       console.log('📝 Editor ref exists:', !!editorRef.current);
       console.log('📄 Current doc ID:', currentDocId);
+      
+      // 🎯 Extract and log [FINANCIAL_REASONING] block for transparency
+      if (lastAIMessage) {
+        extractFinancialReasoning(lastAIMessage.content);
+      }
       
       if (lastAIMessage && currentDocId) {
         try {
