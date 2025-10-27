@@ -744,6 +744,7 @@ export default function Page() {
   }, []);
 
   // Initialize dashboard with welcome message on app load
+  // Note: DashboardChat component now auto-loads most recent thread from server
   useEffect(() => {
     if (viewMode === 'dashboard' && chatMessages.length === 0) {
       const welcomeMessage: ChatMessage = {

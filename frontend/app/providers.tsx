@@ -3,7 +3,7 @@
 import { type Dispatch, type ReactNode, type SetStateAction, createContext } from "react";
 import { ThemeProvider, useTheme } from "next-themes";
 import { Toaster } from "sonner";
-import useLocalStorage from "@/hooks/use-local-storage";
+import { usePreference } from "@/hooks/use-user-preferences";
 import { AISettingsProvider } from "@/context/ai-settings";
 
 export const AppContext = createContext<{
@@ -38,7 +38,8 @@ const ToasterProvider = () => {
 };
 
 export default function Providers({ children }: { children: ReactNode }) {
-  const [font, setFont] = useLocalStorage<string>("novel__font", "Default");
+  // Use database-backed preference instead of localStorage
+  const [font, setFont] = usePreference<string>("novel__font", "Default");
 
   return (
     <ThemeProvider attribute="class" enableSystem disableTransitionOnChange defaultTheme="system">

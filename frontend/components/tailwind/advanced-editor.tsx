@@ -94,10 +94,7 @@ const TailwindAdvancedEditor = forwardRef(({
     setCharsCount(editor.storage.characterCount.words());
     if (onUpdate) {
       onUpdate(json);
-    } else {
-      window.localStorage.setItem("html-content", highlightCodeblocks(editor.getHTML()));
-      window.localStorage.setItem("novel-content", JSON.stringify(json));
-      window.localStorage.setItem("markdown", editor.storage.markdown.getMarkdown());
+      // Database auto-save handles persistence - no localStorage needed
     }
     setSaveStatus("Saved");
   }, 500);
@@ -106,9 +103,8 @@ const TailwindAdvancedEditor = forwardRef(({
     if (propInitialContent !== undefined) {
       setInitialContent(propInitialContent);
     } else {
-      const content = window.localStorage.getItem("novel-content");
-      if (content) setInitialContent(JSON.parse(content));
-      else setInitialContent(defaultEditorContent);
+      // No localStorage fallback - content comes from database via propInitialContent
+      setInitialContent(defaultEditorContent);
     }
   }, [propInitialContent]);
 

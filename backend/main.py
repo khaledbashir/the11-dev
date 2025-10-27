@@ -367,8 +367,24 @@ async def generate_pdf(request: PDFRequest):
         print("=== DEBUG: PDF Generation Request ===")
         print(f"📄 Filename: {request.filename}")
         print(f"🎯 Show Pricing Summary: {request.show_pricing_summary}")
-        print(f"📊 HTML Content Length: {len(request.html_content)}")
+        print(f"� Final Investment Target: {request.final_investment_target_text}")
+        print(f"�📊 HTML Content Length: {len(request.html_content)}")
         print("=== Has table tag:", "<table" in request.html_content.lower(), "===")
+        
+        # 🎯 CRITICAL FIX: When final_investment_target_text is provided,
+        # strip any computed summary sections from the HTML to avoid duplicates
+        html_content = request.html_content
+        if request.final_investment_target_text:
+            import re
+            # Remove any <h4>Summary</h4> section and its following table/paragraph
+            # This regex removes: <h4...>Summary</h4> + following <table...>...</table> + optional disclaimer <p>
+            html_content = re.sub(
+                r'<h4[^>]*>\s*Summary\s*</h4>\s*<table[^>]*>.*?</table>\s*(<p[^>]*>.*?</p>)?',
+                '',
+                html_content,
+                flags=re.IGNORECASE | re.DOTALL
+            )
+            print("✅ Stripped computed summary section from HTML (final_investment_target_text provided)")
         
         # Load and encode the Social Garden logo
         logo_base64 = ""
@@ -380,7 +396,7 @@ async def generate_pdf(request: PDFRequest):
         # Render the HTML template with Jinja2
         template = Template(SOW_TEMPLATE)
         full_html = template.render(
-            html_content=request.html_content,
+            html_content=html_content,
             css_content=DEFAULT_CSS,
             logo_base64=logo_base64,
             final_investment_target_text=request.final_investment_target_text,

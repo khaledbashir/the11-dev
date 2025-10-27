@@ -53,35 +53,6 @@ export function StatefulDashboardChat({
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Initial load: fetch conversations and restore last active conversation
-  useEffect(() => {
-    const restoreLastConversation = async () => {
-      await fetchConversations();
-      // After fetching conversations, restore the last active conversation from localStorage
-      const lastConversationId = typeof window !== 'undefined' 
-        ? localStorage.getItem(`dashboard-last-conversation-${userId}`)
-        : null;
-      
-      if (lastConversationId) {
-        setActiveConversationId(lastConversationId);
-      }
-    };
-    restoreLastConversation();
-  }, [userId]);
-
-  // When active conversation changes, fetch its messages and persist selection
-  useEffect(() => {
-    if (activeConversationId) {
-      // Persist the active conversation to localStorage for recovery after page reload
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(`dashboard-last-conversation-${userId}`, activeConversationId);
-      }
-      fetchMessages(activeConversationId);
-    } else {
-      setMessages([]);
-    }
-  }, [activeConversationId, userId]);
-
   /**
    * Fetch all conversations for the user
    */
@@ -103,7 +74,8 @@ export function StatefulDashboardChat({
       const data = await response.json();
       setConversations(data.conversations || []);
 
-      // If there are conversations, select the first one
+      // Auto-select most recent conversation (server sorts by updated_at DESC)
+      // No localStorage needed - server maintains order
       if (data.conversations && data.conversations.length > 0) {
         setActiveConversationId(data.conversations[0].id);
       }
@@ -142,6 +114,20 @@ export function StatefulDashboardChat({
       setIsLoadingMessages(false);
     }
   };
+
+  // Initial load: fetch conversations and restore most recent from SERVER
+  useEffect(() => {
+    fetchConversations();
+  }, [userId]);
+
+  // When active conversation changes, fetch its messages (no localStorage needed)
+  useEffect(() => {
+    if (activeConversationId) {
+      fetchMessages(activeConversationId);
+    } else {
+      setMessages([]);
+    }
+  }, [activeConversationId, userId]);
 
   /**
    * Create a new conversation

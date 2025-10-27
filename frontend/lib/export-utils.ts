@@ -777,6 +777,32 @@ export function cleanSOWContent(content: string): string {
     .replace(/^##\s*PART\s*\d+:.*$/gmi, '')
     .trim();
 
+  // 🎯 CRITICAL FIX: Strip AI conversational preamble before first heading
+  // Find the first major heading (H1 or H2) and discard everything before it
+  const firstHeadingMatch = out.match(/^(#{1,2}\s+.+)$/m);
+  if (firstHeadingMatch) {
+    const headingIndex = out.indexOf(firstHeadingMatch[0]);
+    if (headingIndex > 0) {
+      // There's text before the first heading - remove it
+      const preamble = out.substring(0, headingIndex).trim();
+      // Only strip if the preamble looks like conversational AI text (contains common phrases)
+      if (
+        preamble.length > 0 && 
+        (preamble.toLowerCase().includes("i'll create") ||
+         preamble.toLowerCase().includes("i'll draft") ||
+         preamble.toLowerCase().includes("i'll generate") ||
+         preamble.toLowerCase().includes("here's") ||
+         preamble.toLowerCase().includes("here is") ||
+         preamble.toLowerCase().includes("below is") ||
+         preamble.toLowerCase().includes("this is a") ||
+         preamble.toLowerCase().includes("this document") && preamble.length < 200)
+      ) {
+        console.log('🧹 Stripped AI preamble:', preamble.substring(0, 100));
+        out = out.substring(headingIndex).trim();
+      }
+    }
+  }
+
   // Optional: sanitize placeholder client brands in narrative when no explicit client is set
   if (PLACEHOLDER_SANITIZATION_ENABLED) {
     // Heuristic: replace common placeholders with 'Client' (case-insensitive), only when standalone words

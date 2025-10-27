@@ -33,6 +33,7 @@ import { ScrollArea } from "../ui/scroll-area";
 import AICompletionCommands from "./ai-completion-command";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
+import { useUserPreferences } from "@/hooks/use-user-preferences";
 
 // Phase 1 imports
 import { LoadingState } from "./ui/LoadingState";
@@ -63,13 +64,17 @@ export function AISelector({ onOpenChange }: AISelectorProps) {
   const { editor } = useEditor();
   const [prompt, setPrompt] = useState("");
   const [models, setModels] = useState<OpenRouterModel[]>([]);
-  const [selectedModel, setSelectedModel] = useState("z-ai/glm-4.5-air:free");
   const [loadingModels, setLoadingModels] = useState(false);
-  const [showFreeOnly, setShowFreeOnly] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showModelPicker, setShowModelPicker] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Use database-backed preferences instead of localStorage
+  const { preferences, updatePreference, loading: prefsLoading } = useUserPreferences();
+  
+  const selectedModel = preferences['ai-selector-model'] || "z-ai/glm-4.5-air:free";
+  const showFreeOnly = preferences['ai-selector-free-only'] === true;
 
   const [completion, setCompletion] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -83,20 +88,9 @@ export function AISelector({ onOpenChange }: AISelectorProps) {
 
   const hasCompletion = completion.length > 0;
 
-  // Client-side only - load from localStorage
+  // Client-side mount flag
   useEffect(() => {
     setIsClient(true);
-    const savedModel = localStorage.getItem("ai-selector-model");
-    // Validate saved model - if it's an old AnythingLLM model, reset to default
-    if (savedModel && savedModel.startsWith('anythingllm-')) {
-      console.log('🔄 Clearing old AnythingLLM model from localStorage');
-      localStorage.removeItem("ai-selector-model");
-      setSelectedModel("z-ai/glm-4.5-air:free"); // Reset to default
-    } else if (savedModel) {
-      setSelectedModel(savedModel);
-    }
-    const savedFreeOnly = localStorage.getItem("ai-selector-free-only") === "true";
-    setShowFreeOnly(savedFreeOnly);
   }, []);
 
   // Fetch models on mount
@@ -210,17 +204,17 @@ export function AISelector({ onOpenChange }: AISelectorProps) {
     );
 
   const handleModelSelect = (modelId: string) => {
-    setSelectedModel(modelId);
-    localStorage.setItem("ai-selector-model", modelId);
+    // Save to database instead of localStorage
+    updatePreference('ai-selector-model', modelId);
     setShowModelPicker(false);
     const modelName = models.find(m => m.id === modelId)?.name;
     toast.success(`Switched to ${modelName}`);
   };
 
   const toggleFreeFilter = () => {
+    // Save to database instead of localStorage
     const newValue = !showFreeOnly;
-    setShowFreeOnly(newValue);
-    localStorage.setItem("ai-selector-free-only", String(newValue));
+    updatePreference('ai-selector-free-only', newValue);
   };
 
   const handleGenerate = async () => {

@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import { useUserPreferences } from '@/hooks/use-user-preferences';
 
 export interface QuickAction {
   id: string;
@@ -39,33 +40,32 @@ const defaultSettings: AISettings = {
 const AISettingsContext = createContext<AISettingsContextType | undefined>(undefined);
 
 export function AISettingsProvider({ children }: { children: React.ReactNode }) {
-  const [settings, setSettings] = useState<AISettings>(defaultSettings);
-  const [isLoaded, setIsLoaded] = useState(false);
+  // Use database-backed preferences instead of localStorage
+  const { preferences, updatePreferences, loading } = useUserPreferences();
+  
+  // Merge preferences with defaults
+  const settings: AISettings = {
+    aiModel: preferences['ai-settings-model'] || defaultSettings.aiModel,
+    quickActionsEnabled: preferences['ai-settings-quickActionsEnabled'] !== undefined 
+      ? preferences['ai-settings-quickActionsEnabled'] 
+      : defaultSettings.quickActionsEnabled,
+    quickActions: preferences['ai-settings-quickActions'] || defaultSettings.quickActions,
+  };
 
-  // Load settings from localStorage on mount
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('ai-settings');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        setSettings({ ...defaultSettings, ...parsed });
-      }
-    } catch (e) {
-      console.error('Failed to load AI settings:', e);
+  const updateSettings = async (newSettings: Partial<AISettings>) => {
+    // Convert to preference keys and save to database
+    const updates: Record<string, any> = {};
+    if (newSettings.aiModel !== undefined) {
+      updates['ai-settings-model'] = newSettings.aiModel;
     }
-    setIsLoaded(true);
-  }, []);
-
-  const updateSettings = (newSettings: Partial<AISettings>) => {
-    setSettings(prev => {
-      const updated = { ...prev, ...newSettings };
-      try {
-        localStorage.setItem('ai-settings', JSON.stringify(updated));
-      } catch (e) {
-        console.error('Failed to save AI settings:', e);
-      }
-      return updated;
-    });
+    if (newSettings.quickActionsEnabled !== undefined) {
+      updates['ai-settings-quickActionsEnabled'] = newSettings.quickActionsEnabled;
+    }
+    if (newSettings.quickActions !== undefined) {
+      updates['ai-settings-quickActions'] = newSettings.quickActions;
+    }
+    
+    await updatePreferences(updates);
   };
 
   const updateModel = (model: string) => {
@@ -77,7 +77,8 @@ export function AISettingsProvider({ children }: { children: React.ReactNode }) 
     return settings.quickActions.filter(a => a.visible);
   };
 
-  if (!isLoaded) {
+  // Wait for preferences to load
+  if (loading) {
     return <>{children}</>;
   }
 

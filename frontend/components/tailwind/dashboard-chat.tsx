@@ -1,7 +1,7 @@
 "use client";
 
 // 📊 Dashboard Analytics Sidebar - Query-only mode for embedded SOW analytics
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { toast } from 'sonner';
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
@@ -63,26 +63,83 @@ export default function DashboardChat({
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
 
-  // Restore last active thread from localStorage on mount
+  // Load threads and restore most recent thread from SERVER on mount
   useEffect(() => {
     if (dashboardChatTarget) {
-      const storageKey = `dashboard-thread-${dashboardChatTarget}`;
-      const savedThreadSlug = localStorage.getItem(storageKey);
-      if (savedThreadSlug) {
-        console.log('🔄 Restoring last active thread:', savedThreadSlug);
-        setCurrentThreadSlug(savedThreadSlug);
-        // Load the thread's chat history
-        handleSelectThread(savedThreadSlug);
-      }
+      initializeThreads(dashboardChatTarget);
     }
   }, [dashboardChatTarget]);
 
-  // Load threads on mount and when workspace changes
-  useEffect(() => {
-    if (dashboardChatTarget) {
-      loadThreads(dashboardChatTarget);
+  // Initialize threads from server and auto-select most recent
+  const initializeThreads = async (workspaceSlug: string) => {
+    console.log('🔄 Initializing threads from server for workspace:', workspaceSlug);
+    setLoadingThreads(true);
+    
+    try {
+      const response = await fetch(`/api/anythingllm/threads?workspace=${encodeURIComponent(workspaceSlug)}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Failed to load threads:', {
+          status: response.status,
+          workspace: workspaceSlug,
+          error: errorData,
+        });
+        setThreads([]);
+        return;
+      }
+
+      const data = await response.json();
+      const threadList = data?.threads || [];
+      
+      console.log('✅ Threads loaded from server:', {
+        workspace: workspaceSlug,
+        count: threadList.length,
+      });
+      
+      setThreads(threadList);
+
+      // Auto-select most recent thread if available
+      if (threadList.length > 0) {
+        const mostRecentThread = threadList[0]; // API returns sorted by updated_at DESC
+        console.log('🎯 Auto-selecting most recent thread:', mostRecentThread.slug);
+        setCurrentThreadSlug(mostRecentThread.slug);
+        // Load its chat history
+        await loadThreadHistory(mostRecentThread.slug, workspaceSlug);
+      }
+    } catch (error: any) {
+      console.error('❌ Exception initializing threads:', error);
+      setThreads([]);
+    } finally {
+      setLoadingThreads(false);
     }
-  }, [dashboardChatTarget]);
+  };
+
+  // Helper function to load thread chat history
+  const loadThreadHistory = async (threadSlug: string, workspaceSlug: string) => {
+    try {
+      const response = await fetch(`/api/anythingllm/thread?workspace=${encodeURIComponent(workspaceSlug)}&thread=${encodeURIComponent(threadSlug)}`);
+
+      if (!response.ok) {
+        throw new Error('Failed to load thread history');
+      }
+
+      const data = await response.json();
+      console.log('✅ Loaded thread history:', data.history?.length || 0, 'messages');
+      
+      const mapped = (data.history || []).map((msg: any) => ({
+        id: `msg-${msg.id || Date.now()}-${Math.random()}`,
+        role: msg.role === 'user' ? 'user' : 'assistant',
+        content: msg.content || '',
+        timestamp: new Date(msg.createdAt || Date.now()).getTime(),
+      }));
+      
+      onReplaceChatMessages(mapped);
+    } catch (error) {
+      console.error('❌ Failed to load thread history:', error);
+      toast.error('Failed to load chat history');
+    }
+  };
 
   const loadThreads = async (workspaceSlug: string) => {
     console.log('📂 Loading threads for workspace:', workspaceSlug);
@@ -160,11 +217,7 @@ export default function DashboardChat({
       setThreads(prev => [newThread, ...prev]);
       setCurrentThreadSlug(newThreadSlug);
       
-      // Save to localStorage for persistence across refreshes
-      const storageKey = `dashboard-thread-${dashboardChatTarget}`;
-      localStorage.setItem(storageKey, newThreadSlug);
-      
-      // Clear chat for new thread
+      // Clear chat for new thread (no localStorage - server handles persistence)
       onClearChat();
       
       return newThreadSlug;
@@ -187,33 +240,9 @@ export default function DashboardChat({
     setShowThreadList(false);
     setLoadingThreads(true);
     
-    // Save to localStorage for persistence across refreshes
-    const storageKey = `dashboard-thread-${dashboardChatTarget}`;
-    localStorage.setItem(storageKey, threadSlug);
-    
-    try {
-      const response = await fetch(`/api/anythingllm/thread?workspace=${encodeURIComponent(dashboardChatTarget)}&thread=${encodeURIComponent(threadSlug)}`);
-
-      if (!response.ok) {
-        throw new Error('Failed to load thread history');
-      }
-
-      const data = await response.json();
-      console.log('✅ Loaded thread history:', data.history?.length || 0, 'messages');
-      
-      const mapped = (data.history || []).map((msg: any) => ({
-        id: `msg-${msg.id || Date.now()}-${Math.random()}`,
-        role: msg.role === 'user' ? 'user' : 'assistant',
-        content: msg.content || '',
-        timestamp: new Date(msg.createdAt || Date.now()).getTime(),
-      }));
-      
-      onReplaceChatMessages(mapped);
-    } catch (error) {
-      console.error('❌ Failed to load thread history:', error);
-    } finally {
-      setLoadingThreads(false);
-    }
+    // Load thread history from server (no localStorage - AnythingLLM persists everything)
+    await loadThreadHistory(threadSlug, dashboardChatTarget);
+    setLoadingThreads(false);
   };
 
   const handleDeleteThread = async (threadSlug: string) => {
