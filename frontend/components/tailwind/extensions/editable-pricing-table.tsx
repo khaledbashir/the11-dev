@@ -22,8 +22,13 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
   // ⚠️ CRITICAL FIX: Initialize and normalize rows ONCE on mount
   useEffect(() => {
     if (isInitialized || !node.attrs.rows) return;
-
-    const normalize = (s: string) => (s || '').trim().toLowerCase();
+    // Robust normalizer: lowercase, trim, collapse whitespace, normalize hyphen spacing
+    const normalize = (s: string) => (s || '')
+      .toLowerCase()
+      .replace(/\s*-/g, '-')
+      .replace(/-\s*/g, '-')
+      .replace(/\s+/g, ' ')
+      .trim();
     const initialRows = node.attrs.rows || [];
 
     // 1) Dedupe by role: combine hours, prefer known rate from ROLES, keep first description
@@ -40,7 +45,8 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
         // Prefer canonical rate from ROLES if available
         const canon = ROLES.find(x => normalize(x.name) === key);
         roleMap.set(key, {
-          role: r.role,
+          // Snap to canonical role name if found to ensure <select> matches an option value
+          role: canon?.name || r.role,
           description: r.description || '',
           hours: Number(r.hours) || 0,
           rate: typeof r.rate === 'number' && r.rate > 0 ? r.rate : (canon?.rate || 0),
@@ -51,7 +57,7 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
         const mergedHours = (Number(existing.hours) || 0) + (Number(r.hours) || 0);
         const mergedRate = existing.rate > 0 ? existing.rate : (r.rate > 0 ? r.rate : (canon?.rate || 0));
         roleMap.set(key, {
-          role: existing.role,
+          role: canon?.name || existing.role,
           description: existing.description || r.description || '',
           hours: mergedHours,
           rate: mergedRate,
@@ -148,21 +154,23 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
     if (maxCount < 3) return; // No need to fix if no role appears 3+ times
 
     // Auto-assign varied roles while keeping hours
-    const defaultRoles = [
-      "Project Manager",
-      "Senior Designer", 
-      "Developer",
-      "Copywriter",
-      "Art Director",
-      "Strategist",
-      "Account Management"
+    // Use canonical roles from the rate card to ensure select values match options
+    const canonicalFallbacks = [
+      'Tech - Head Of - Senior Project Management',
+      'Tech - Delivery - Project Coordination',
+      'Tech - Producer - Development',
+      'Tech - Integrations',
+      'Tech - Producer - Campaign Strategy',
+      'Tech - Producer - Landing Page (Onshore)',
+      'Account Management - (Account Manager)'
     ];
 
     const newRows = rows.map((row, index) => {
       // If this row has the duplicate role, assign a different one
       const isDuplicate = roleCounts[row.role] >= 3;
-      if (isDuplicate && index < defaultRoles.length) {
-        const newRole = ROLES.find(r => r.name === defaultRoles[index]) || ROLES[index];
+      if (isDuplicate) {
+        const desired = canonicalFallbacks[index % canonicalFallbacks.length];
+        const newRole = ROLES.find(r => r.name === desired) || ROLES[index % ROLES.length];
         return {
           ...row,
           role: newRole.name,
@@ -450,7 +458,8 @@ export const EditablePricingTable = Node.create({
   addAttributes() {
     return {
       rows: {
-        default: [{ role: '', description: '', hours: 0, rate: 0 }],
+        // Avoid inserting a default blank row; rows will be provided by the caller
+        default: [],
       },
       discount: {
         default: 0,
@@ -481,10 +490,15 @@ export const EditablePricingTable = Node.create({
     const showTotal: boolean = node.attrs.showTotal !== undefined ? node.attrs.showTotal : true;
     
     // Ensure mandatory roles exist for render (Head Of, Project Coordination, Account Management)
-    const lower = (s: string) => (s || '').toLowerCase();
-    const hasAM = originalRows.some(r => lower(r.role).includes('account management') || lower(r.role).includes('account manager'));
-    const hasHeadOf = originalRows.some(r => lower(r.role).includes('head of'));
-  const hasPC = originalRows.some(r => lower(r.role) === 'tech - delivery - project coordination');
+    const norm = (s: string) => (s || '')
+      .toLowerCase()
+      .replace(/\s*-/g, '-')
+      .replace(/-\s*/g, '-')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const hasAM = originalRows.some(r => norm(r.role).includes('account management') || norm(r.role).includes('account manager'));
+    const hasHeadOf = originalRows.some(r => norm(r.role).includes('head of'));
+    const hasPC = originalRows.some(r => norm(r.role) === norm('Tech - Delivery - Project Coordination'));
     const amRole = ROLES.find(r => r.name === 'Account Management');
     const headOfRole = ROLES.find(r => r.name === 'Tech - Head Of - Senior Project Management');
   const pcRole = ROLES.find(r => r.name === 'Tech - Delivery - Project Coordination');
@@ -515,7 +529,7 @@ export const EditablePricingTable = Node.create({
       });
     }
     // Ensure Account Management last
-    const amIdx = rows.findIndex(r => lower(r.role).includes('account management'));
+  const amIdx = rows.findIndex(r => norm(r.role).includes('account management'));
     if (amIdx !== -1 && amIdx !== rows.length - 1) {
       const tmp = [...rows];
       const [amRow] = tmp.splice(amIdx, 1);

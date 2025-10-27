@@ -235,6 +235,14 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
     if (pricingTableInserted) return;
     
     let pricingRows: any[] = [];
+    // Robust normalizer and canonical role finder to ensure names match ROLES exactly
+    const norm = (s: string) => (s || '')
+      .toLowerCase()
+      .replace(/\s*-/g, '-')
+      .replace(/-\s*/g, '-')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const findCanon = (name: string) => ROLES.find(r => norm(r.name) === norm(name));
     
     // Use provided suggestedRoles first; otherwise use roles parsed from markdown only
     if (suggestedRoles.length > 0) {
@@ -246,9 +254,10 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
           return roleName && roleName.length > 0 && roleName.toLowerCase() !== 'select role';
         })
         .map(role => {
-          const matchedRole = ROLES.find(r => r.name === role.role);
+          const matchedRole = findCanon(role.role);
           return {
-            role: role.role,
+            // Snap to canonical name so the <select> has a matching option
+            role: matchedRole?.name || role.role,
             description: role.description || '',
             hours: role.hours || 0,
             rate: matchedRole?.rate || role.rate || 0,
@@ -256,7 +265,10 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
         });
     } else if (rolesFromMarkdown.length > 0) {
       console.log('✅ Using roles parsed from markdown table.');
-      pricingRows = rolesFromMarkdown;
+      pricingRows = rolesFromMarkdown.map(r => {
+        const m = findCanon(r.role);
+        return { ...r, role: m?.name || r.role, rate: m?.rate || r.rate };
+      });
     } else {
       console.log('⚠️ No roles available for pricing table.');
       return; // Can't create pricing table without any roles
@@ -265,16 +277,15 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
     pricingTableInserted = true;
     
     // 🔧 CRITICAL FIX: Filter out any empty/invalid roles BEFORE enforcement
-    const normalize = (s: string) => (s || '').trim().toLowerCase();
     pricingRows = pricingRows.filter(r => {
-      const roleName = normalize(r.role);
+      const roleName = norm(r.role);
       return roleName && roleName !== 'select role' && roleName !== 'select role...' && roleName.length > 0;
     });
     
     // ENFORCEMENT 1: Ensure Head Of role exists as FIRST row
-    const hasHeadOf = pricingRows.some(r => normalize(r.role).includes('head of'));
+    const hasHeadOf = pricingRows.some(r => norm(r.role).includes('head of'));
     if (!hasHeadOf) {
-      const headOf = ROLES.find(r => r.name === 'Tech - Head Of - Senior Project Management');
+      const headOf = findCanon('Tech - Head Of - Senior Project Management');
       pricingRows.unshift({
         role: headOf?.name || 'Tech - Head Of - Senior Project Management',
         description: 'Strategic oversight',
@@ -284,9 +295,9 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
     }
 
     // ENFORCEMENT 2: Ensure Project Coordination exists
-    const hasProjectCoord = pricingRows.some(r => normalize(r.role).includes('project coordination'));
+    const hasProjectCoord = pricingRows.some(r => norm(r.role).includes('project coordination'));
     if (!hasProjectCoord) {
-      const pc = ROLES.find(r => r.name === 'Tech - Delivery - Project Coordination');
+      const pc = findCanon('Tech - Delivery - Project Coordination');
       pricingRows.splice(1, 0, {
         role: pc?.name || 'Tech - Delivery - Project Coordination',
         description: 'Delivery coordination',
@@ -296,9 +307,9 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
     }
 
     // ENFORCEMENT 3: Ensure Account Management role exists and is LAST
-    const hasAccountManagement = pricingRows.some(r => normalize(r.role).includes('account management'));
+    const hasAccountManagement = pricingRows.some(r => norm(r.role).includes('account management'));
     if (!hasAccountManagement) {
-      const am = ROLES.find(r => r.name === 'Account Management - (Account Manager)');
+      const am = findCanon('Account Management - (Account Manager)');
       pricingRows.push({
         role: am?.name || 'Account Management - (Account Manager)',
         description: 'Client comms & governance',
@@ -307,10 +318,11 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
       });
     } else {
       // Move Account Management to the end
-      const amIndex = pricingRows.findIndex(r => normalize(r.role).includes('account management'));
+      const amIndex = pricingRows.findIndex(r => norm(r.role).includes('account management'));
       if (amIndex !== -1 && amIndex !== pricingRows.length - 1) {
         const [amRow] = pricingRows.splice(amIndex, 1);
-        pricingRows.push(amRow);
+        const amCanon = findCanon(amRow.role);
+        pricingRows.push({ ...amRow, role: amCanon?.name || amRow.role, rate: amCanon?.rate || amRow.rate });
       }
     }
 
