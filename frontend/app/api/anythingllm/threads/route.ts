@@ -121,15 +121,17 @@ export async function GET(req: NextRequest) {
 
     const data = await response.json();
     
+    // CRITICAL FIX: AnythingLLM returns workspace as an array: { workspace: [{ ...data }] }
     // Extract threads from the workspace object
-    // API returns: { workspace: { ..., threads: [...] } }
-    const workspaceData = data?.workspace || {};
+    const workspaceData = Array.isArray(data?.workspace) ? data.workspace[0] : (data?.workspace || {});
     const threads = workspaceData?.threads || [];
     
     console.log('[/api/anythingllm/threads] Success:', { 
       workspace, 
       threadsCount: threads.length,
-      workspaceFound: !!workspaceData.id 
+      workspaceFound: !!workspaceData.id,
+      workspaceId: workspaceData.id,
+      workspaceName: workspaceData.name,
     });
     
     // Return in the format our frontend expects
