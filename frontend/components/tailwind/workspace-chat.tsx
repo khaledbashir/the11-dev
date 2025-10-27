@@ -101,12 +101,9 @@ export default function WorkspaceChat({
     };
     loadPrompt();
   }, [editorWorkspaceSlug]);
-        chatEndRef.current?.scrollIntoView({ behavior: "auto" });
   // Load threads on mount and when workspace changes
   // � NO LOCALSTORAGE - Thread persistence managed by database (sow.threadSlug)
   useEffect(() => {
-      const [showAllMessages, setShowAllMessages] = useState(false);
-      const MAX_MESSAGES = 100; // windowing to reduce render cost
     const initializeThreads = async () => {
       if (!editorWorkspaceSlug) return;
       
