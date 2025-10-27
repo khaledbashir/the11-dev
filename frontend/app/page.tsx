@@ -117,6 +117,62 @@ const extractBudgetAndDiscount = (prompt: string): { budget: number; discount: n
   return { budget, discount };
 };
 
+// 🎯 UTILITY: Extract and parse [PRICING_JSON] block from The Architect v3.1
+const extractPricingJSON = (content: string): { roles: any[]; discount?: number } | null => {
+  // Look for [PRICING_JSON] block or just the JSON code fence
+  const pricingJsonMatch = content.match(/\[PRICING_JSON\]\s*```json\s*([\s\S]*?)\s*```/i) ||
+                           content.match(/```json\s*([\s\S]*?)\s*```/);
+  
+  if (pricingJsonMatch && pricingJsonMatch[1]) {
+    try {
+      const parsedJson = JSON.parse(pricingJsonMatch[1]);
+      
+      // Check for role_allocation array (The Architect v3.1 format)
+      if (parsedJson.role_allocation && Array.isArray(parsedJson.role_allocation)) {
+        console.log('📊 [PRICING_JSON] Block Detected - v3.1 Format');
+        console.log(`✅ Extracted ${parsedJson.role_allocation.length} roles with validated hours/costs`);
+        
+        // Transform role_allocation to suggestedRoles format
+        const rolesWithHours = parsedJson.role_allocation.map((item: any) => ({
+          role: item.role,
+          hours: item.hours || 0,
+          rate: item.rate || 0,
+          cost: item.cost || (item.hours * item.rate)
+        }));
+        
+        // Extract discount from project_details if available
+        let discount = 0;
+        if (parsedJson.project_details && parsedJson.project_details.discount_percentage) {
+          discount = parsedJson.project_details.discount_percentage;
+          console.log(`🎁 Discount extracted from [PRICING_JSON]: ${discount}%`);
+        }
+        
+        // Log financial summary if available
+        if (parsedJson.financial_summary) {
+          console.log('💰 Financial Summary from AI:');
+          console.log(`   Subtotal (before discount): $${parsedJson.financial_summary.subtotal_before_discount}`);
+          console.log(`   Discount: $${parsedJson.financial_summary.discount_amount}`);
+          console.log(`   Subtotal (after discount): $${parsedJson.financial_summary.subtotal_after_discount}`);
+          console.log(`   GST: $${parsedJson.financial_summary.gst_amount}`);
+          console.log(`   FINAL TOTAL: $${parsedJson.financial_summary.total_project_value_final}`);
+        }
+        
+        return { roles: rolesWithHours, discount };
+      }
+      
+      // Fallback: Check for legacy suggestedRoles format
+      if (parsedJson.suggestedRoles && Array.isArray(parsedJson.suggestedRoles)) {
+        console.log(`✅ Extracted ${parsedJson.suggestedRoles.length} roles (legacy suggestedRoles format)`);
+        return { roles: parsedJson.suggestedRoles };
+      }
+    } catch (e) {
+      console.warn('⚠️ Could not parse [PRICING_JSON] block:', e);
+    }
+  }
+  
+  return null;
+};
+
 // 🎯 UTILITY: Extract and log [FINANCIAL_REASONING] block from AI response for transparency
 const extractFinancialReasoning = (content: string): string | null => {
   const reasoningMatch = content.match(/\[FINANCIAL_REASONING\]([\s\S]*?)(?:\[|$)/i);
@@ -164,6 +220,7 @@ type ConvertOptions = {
   strictRoles?: boolean;
   userPromptBudget?: number; // Budget extracted from user's original prompt
   userPromptDiscount?: number; // Discount extracted from user's original prompt
+  jsonDiscount?: number; // Discount extracted from [PRICING_JSON] block
 };
 
 // Build suggestedRoles[] from Architect structured JSON (scopeItems[].roles)
@@ -200,17 +257,25 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
   let pricingTableInserted = false;
   const strictRoles = !!options.strictRoles;
   
-  // 🎯 SMART DISCOUNT FEATURE: Parse discount from the raw text OR use user prompt override
-  let parsedDiscount = options.userPromptDiscount || 0;
-  if (!parsedDiscount) {
+  // 🎯 SMART DISCOUNT FEATURE: Priority cascade for discount extraction
+  // Priority 1: JSON discount from [PRICING_JSON] block (most authoritative)
+  // Priority 2: User prompt discount override
+  // Priority 3: Parse from AI's markdown response
+  let parsedDiscount = 0;
+  
+  if (options.jsonDiscount !== undefined && options.jsonDiscount > 0) {
+    parsedDiscount = options.jsonDiscount;
+    console.log(`🎯 Using discount from [PRICING_JSON]: ${parsedDiscount}%`);
+  } else if (options.userPromptDiscount !== undefined && options.userPromptDiscount > 0) {
+    parsedDiscount = options.userPromptDiscount;
+    console.log(`🎯 Using discount from user prompt: ${parsedDiscount}%`);
+  } else {
     const discountMatch = markdown.match(/\*\*Discount[:\s]*\*\*\s*(\d+(?:\.\d+)?)\s*%/i) || 
                           markdown.match(/Discount[:\s]*(\d+(?:\.\d+)?)\s*%/i);
     if (discountMatch && discountMatch[1]) {
       parsedDiscount = parseFloat(discountMatch[1]);
       console.log(`🎯 Smart Discount detected from AI response: ${parsedDiscount}%`);
     }
-  } else {
-    console.log(`🎯 Using discount from user prompt: ${parsedDiscount}%`);
   }
 
   const parseTextWithFormatting = (text: string) => {
@@ -3013,8 +3078,25 @@ Ask me questions to get business insights, such as:
 
       let hasValidSuggestedRoles = false;
       let parsedStructured: ArchitectSOW | null = null;
+      let extractedDiscount: number | undefined;
       
-      if (jsonMatch && jsonMatch[1]) {
+      // 🎯 PRIORITY 1: Try extracting [PRICING_JSON] block (The Architect v3.1 format)
+      const pricingJsonData = extractPricingJSON(content);
+      if (pricingJsonData && pricingJsonData.roles && pricingJsonData.roles.length > 0) {
+        suggestedRoles = pricingJsonData.roles;
+        extractedDiscount = pricingJsonData.discount;
+        hasValidSuggestedRoles = true;
+        // Remove the JSON block from markdown
+        if (jsonMatch) {
+          markdownPart = content.replace(jsonMatch[0], '').trim();
+        }
+        console.log(`✅ Using ${suggestedRoles.length} roles from [PRICING_JSON] with validated hours`);
+        if (extractedDiscount) {
+          console.log(`🎁 Using discount from [PRICING_JSON]: ${extractedDiscount}%`);
+        }
+      }
+      // PRIORITY 2: Legacy suggestedRoles or scopeItems format
+      else if (jsonMatch && jsonMatch[1]) {
         try {
           const parsedJson = JSON.parse(jsonMatch[1]);
           if (parsedJson.suggestedRoles) {
@@ -3022,7 +3104,7 @@ Ask me questions to get business insights, such as:
             suggestedRoles = [...suggestedRoles, ...parsedJson.suggestedRoles];
             // Remove the JSON block from the markdown content
             markdownPart = content.replace(jsonMatch[0], '').trim();
-            console.log(`✅ Parsed ${suggestedRoles.length} suggested roles from AI response.`);
+            console.log(`✅ Parsed ${suggestedRoles.length} suggested roles from AI response (legacy format).`);
             hasValidSuggestedRoles = suggestedRoles.length > 0;
           } else if (parsedJson.scopeItems) {
             // Architect structured JSON detected - save it for role derivation
@@ -3055,7 +3137,8 @@ Ask me questions to get business insights, such as:
       const convertOptions: ConvertOptions = { 
         strictRoles: false,
         userPromptBudget,
-        userPromptDiscount
+        userPromptDiscount,
+        jsonDiscount: extractedDiscount // Discount from [PRICING_JSON] takes priority
       };
       
       // CRITICAL: If no suggestedRoles provided from JSON, try extracting Architect structured JSON from the message body
@@ -3285,13 +3368,30 @@ Ask me questions to get business insights, such as:
           const jsonMatch = markdownPart.match(/```json\s*([\s\S]*?)\s*```/);
 
           let hasValidSuggestedRoles = false;
-          if (jsonMatch && jsonMatch[1]) {
+          let extractedDiscount: number | undefined;
+          
+          // 🎯 PRIORITY 1: Try extracting [PRICING_JSON] block (The Architect v3.1 format)
+          const pricingJsonData = extractPricingJSON(lastAIMessage.content);
+          if (pricingJsonData && pricingJsonData.roles && pricingJsonData.roles.length > 0) {
+            suggestedRoles = pricingJsonData.roles;
+            extractedDiscount = pricingJsonData.discount;
+            hasValidSuggestedRoles = true;
+            if (jsonMatch) {
+              markdownPart = markdownPart.replace(jsonMatch[0], '').trim();
+            }
+            console.log(`✅ Using ${suggestedRoles.length} roles from [PRICING_JSON] (insert command)`);
+            if (extractedDiscount) {
+              console.log(`🎁 Using discount from [PRICING_JSON]: ${extractedDiscount}%`);
+            }
+          }
+          // PRIORITY 2: Legacy format
+          else if (jsonMatch && jsonMatch[1]) {
             try {
               const parsedJson = JSON.parse(jsonMatch[1]);
               if (parsedJson.suggestedRoles) {
                 suggestedRoles = parsedJson.suggestedRoles;
                 markdownPart = markdownPart.replace(jsonMatch[0], '').trim();
-                console.log(`✅ Parsed ${suggestedRoles.length} roles from "insert" command.`);
+                console.log(`✅ Parsed ${suggestedRoles.length} roles from "insert" command (legacy format).`);
                 hasValidSuggestedRoles = suggestedRoles.length > 0;
               } else if (parsedJson.scopeItems) {
                 const derived = buildSuggestedRolesFromArchitectSOW(parsedJson as ArchitectSOW);
@@ -3320,7 +3420,8 @@ Ask me questions to get business insights, such as:
           const convertOptions: ConvertOptions = { 
             strictRoles: false,
             userPromptBudget,
-            userPromptDiscount
+            userPromptDiscount,
+            jsonDiscount: extractedDiscount // Discount from [PRICING_JSON] takes priority
           };
           
           let content;
