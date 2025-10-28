@@ -44,7 +44,69 @@ export class AnythingLLMService {
   }
 
   /**
-   * Create or get workspace for a client
+   * Create or get CLIENT-FACING workspace (for portal chat)
+   * Separate from generation workspace - uses helpful assistant prompt
+   */
+  async createOrGetClientFacingWorkspace(clientName: string): Promise<{id: string, slug: string, embedId?: string | number}> {
+    const baseSlug = clientName
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim();
+    
+    const slug = `${baseSlug}-client`; // Add -client suffix
+
+    try {
+      // Check if client workspace exists
+      const workspaces = await this.listWorkspaces();
+      const existing = workspaces.find((w: any) => w.slug === slug);
+      
+      if (existing) {
+        console.log(`✅ Using existing client workspace: ${slug}`);
+        // Ensure client-facing prompt is set
+        await this.setWorkspacePrompt(existing.slug, clientName, false); // false = client-facing
+        // Get embed ID
+        const embedId = await this.getOrCreateEmbedId(existing.slug);
+        return { id: existing.id, slug: existing.slug, embedId };
+      }
+
+      // Create new client-facing workspace
+      console.log(`🆕 Creating new client-facing workspace: ${slug}`);
+      const response = await fetch(`${this.baseUrl}/api/v1/workspace/new`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({
+          name: `${clientName} (Client Portal)`,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to create client workspace: ${response.statusText} - ${errorText}`);
+      }
+
+      const data: WorkspaceResponse = await response.json();
+      console.log(`✅ Client workspace created: ${data.workspace.slug}`);
+      
+      // Set client-facing prompt (NOT the Architect prompt)
+      await this.setWorkspacePrompt(data.workspace.slug, clientName, false);
+      
+      // Create default thread
+      await this.createThread(data.workspace.slug, undefined);
+      
+      // Get embed ID for portal
+      const embedId = await this.getOrCreateEmbedId(data.workspace.slug);
+      
+      return { id: data.workspace.id, slug: data.workspace.slug, embedId };
+    } catch (error) {
+      console.error('❌ Error creating client workspace:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create or get workspace for a client (GENERATION workspace)
    * One workspace per client (recommended approach)
    */
   async createOrGetClientWorkspace(clientName: string): Promise<{id: string, slug: string}> {

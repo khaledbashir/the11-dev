@@ -3434,11 +3434,19 @@ Ask me questions to get business insights, such as:
             const clientName = clientNameMatch[1].trim();
             console.log(`🏢 Detected client name from title: ${clientName}`);
             
-            // Create or get client-specific workspace
+            // Create or get client-specific workspace (FOR GENERATION)
             try {
               const clientWorkspace = await anythingLLM.createOrGetClientWorkspace(clientName);
               clientWorkspaceSlug = clientWorkspace.slug;
               console.log(`✅ Using client-specific workspace: ${clientWorkspaceSlug}`);
+              
+              // ALSO create client-facing workspace (FOR PORTAL CHAT)
+              try {
+                const clientFacingWorkspace = await anythingLLM.createOrGetClientFacingWorkspace(clientName);
+                console.log(`✅ Created client-facing workspace: ${clientFacingWorkspace.slug} (embed: ${clientFacingWorkspace.embedId})`);
+              } catch (clientError) {
+                console.warn(`⚠️ Could not create client-facing workspace (non-critical):`, clientError);
+              }
             } catch (wsError) {
               console.warn(`⚠️ Could not create client workspace, using default: ${clientWorkspaceSlug}`, wsError);
             }

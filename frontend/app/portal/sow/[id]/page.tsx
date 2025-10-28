@@ -196,12 +196,23 @@ export default function ClientPortalPage() {
             : '<p>Error loading content</p>';
         }
         
-        // Get or create embed ID for this client's workspace
+        // Get or create embed ID for CLIENT-FACING workspace (not generation workspace)
         let embedId = sowData.embed_id;
         if (!embedId) {
           try {
             const { anythingLLM } = await import('@/lib/anythingllm');
-            embedId = await anythingLLM.getOrCreateEmbedId(workspaceSlug) || undefined;
+            
+            // Try to get client-facing workspace first (with -client suffix)
+            const clientFacingSlug = `${workspaceSlug}-client`;
+            try {
+              const clientWorkspace = await anythingLLM.createOrGetClientFacingWorkspace(clientName);
+              embedId = clientWorkspace.embedId?.toString() || undefined;
+              console.log(`✅ Using client-facing workspace for portal: ${clientWorkspace.slug}`);
+            } catch (clientError) {
+              // Fallback to regular workspace if client-facing doesn't exist
+              console.warn(`⚠️ Client-facing workspace not found, falling back to generation workspace:`, clientError);
+              embedId = await anythingLLM.getOrCreateEmbedId(workspaceSlug) || undefined;
+            }
           } catch (error) {
             console.error('Error getting embed ID:', error);
           }
