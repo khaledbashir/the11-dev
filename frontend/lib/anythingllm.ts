@@ -1203,11 +1203,12 @@ When asked for analytics, provide clear, actionable insights with specific numbe
     sowContent: string
   ): Promise<boolean> {
     try {
-      console.log(`📊 Embedding SOW in both workspaces...`);
-      console.log(`   📁 Client workspace: ${clientWorkspaceSlug}`);
+      console.log(`📊 Embedding SOW in all workspaces...`);
+      console.log(`   📁 Client workspace (gen): ${clientWorkspaceSlug}`);
+      console.log(`   📁 Client workspace (portal): ${clientWorkspaceSlug}-client`);
       console.log(`   📈 Master dashboard: sow-master-dashboard`);
 
-      // Step 1: Embed in client workspace
+      // Step 1: Embed in client GENERATION workspace
       const clientEmbed = await this.embedSOWDocument(clientWorkspaceSlug, sowTitle, sowContent);
       
       if (!clientEmbed) {
@@ -1217,10 +1218,21 @@ When asked for analytics, provide clear, actionable insights with specific numbe
       
       console.log(`✅ SOW embedded in client workspace: ${clientWorkspaceSlug}`);
 
-      // Step 2: Ensure master dashboard exists
+      // Step 2: Embed in client PORTAL workspace (for client chat)
+      const clientPortalSlug = `${clientWorkspaceSlug}-client`;
+      const portalEmbed = await this.embedSOWDocument(clientPortalSlug, sowTitle, sowContent);
+      
+      if (!portalEmbed) {
+        console.warn(`⚠️ Failed to embed SOW in portal workspace: ${clientPortalSlug}`);
+        // Don't fail - portal workspace might not exist for old SOWs
+      } else {
+        console.log(`✅ SOW embedded in portal workspace: ${clientPortalSlug}`);
+      }
+
+      // Step 3: Ensure master dashboard exists
       const masterDashboardSlug = await this.getOrCreateMasterDashboard();
       
-      // Step 3: Embed in master dashboard
+      // Step 4: Embed in master dashboard
       const masterEmbed = await this.embedSOWDocument(
         masterDashboardSlug,
         `[${clientWorkspaceSlug.toUpperCase()}] ${sowTitle}`,
@@ -1233,11 +1245,11 @@ When asked for analytics, provide clear, actionable insights with specific numbe
       }
       
       console.log(`✅ SOW embedded in master dashboard for analytics`);
-      console.log(`✅✅ SOW successfully embedded in BOTH workspaces!`);
+      console.log(`✅✅✅ SOW successfully embedded in ALL workspaces!`);
       
       return true;
     } catch (error) {
-      console.error('❌ Error embedding SOW in both workspaces:', error);
+      console.error('❌ Error embedding SOW in workspaces:', error);
       return false;
     }
   }
@@ -1261,7 +1273,7 @@ When asked for analytics, provide clear, actionable insights with specific numbe
         status: 'current',
       };
 
-      // Client workspace
+      // Client GENERATION workspace
       const clientOk = await this.embedSOWDocument(
         clientWorkspaceSlug,
         sowTitle,
@@ -1270,6 +1282,20 @@ When asked for analytics, provide clear, actionable insights with specific numbe
       );
       if (!clientOk) return false;
 
+      // Client PORTAL workspace (for client chat)
+      const clientPortalSlug = `${clientWorkspaceSlug}-client`;
+      const portalOk = await this.embedSOWDocument(
+        clientPortalSlug,
+        sowTitle,
+        sowContent,
+        versionedMeta
+      );
+      if (!portalOk) {
+        console.warn(`⚠️ Failed to sync SOW in portal workspace: ${clientPortalSlug}`);
+        // Don't fail - portal workspace might not exist for old SOWs
+      }
+
+      // Master dashboard
       const masterDashboardSlug = await this.getOrCreateMasterDashboard();
       const masterOk = await this.embedSOWDocument(
         masterDashboardSlug,
@@ -1280,7 +1306,7 @@ When asked for analytics, provide clear, actionable insights with specific numbe
 
       return !!masterOk;
     } catch (e) {
-      console.error('❌ Error syncing updated SOW in both workspaces:', e);
+      console.error('❌ Error syncing updated SOW in all workspaces:', e);
       return false;
     }
   }
