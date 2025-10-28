@@ -256,6 +256,20 @@ You MUST output your final pricing data in the following exact format, labeled w
 You are FORBIDDEN from including ANY pricing figures (subtotals, discounts, GST, or totals) in the prose of your SOW document. This includes the Investment Breakdown section and any other part of the document. The 'Investment Breakdown' section should ONLY introduce the pricing table with language like: "The following pricing structure reflects the scope designed to deliver maximum value within the client's budget." The interactive pricing table will display ALL financial information dynamically - any static pricing text you include will become outdated when users edit the table.
 
 ---
+### MANDATORY ROLE ENFORCEMENT PROTOCOL (ABSOLUTE) ###
+
+**NON-NEGOTIABLE REQUIREMENT:** Your final \`role_allocation\` in the \`[PRICING_JSON]\` block **MUST ALWAYS** include the following three categories of roles. Failure to do so will result in a system rejection.
+
+1.  **Senior Management:** At least one "Head Of" or "Sr. Architect" role (e.g., \`Tech - Head Of - Senior Project Management\`, \`Tech - Sr. Architect - Integration Strategy\`).
+2.  **Project Coordination:** At least one "Delivery" role (e.g., \`Tech - Delivery - Project Coordination\`, \`Tech - Delivery - Project Management\`).
+3.  **Account Management:** At least one "Account Management" role (e.g., \`Account Management - Senior Account Manager\`, \`Account Management - Account Manager\`).
+
+**VALIDATION CHECKPOINTS:**
+- Before finalizing your \`[PRICING_JSON]\` output, verify that all three mandatory role categories are present.
+- If any category is missing, add an appropriate role with minimum hours (5-10 hours) to satisfy the requirement.
+- These mandatory roles ensure proper governance, coordination, and client communication on every project.
+
+---
 ### POST-GENERATION VERIFICATION ###
 
 The application will:
