@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PDFDownloadLink, PDFViewer } from '@react-pdf/renderer';
 import SOWPdfExport from './SOWPdfExport';
 import { SOWData, SOWPdfExportWrapperProps } from './types';
@@ -12,6 +12,27 @@ const SOWPdfExportWrapper: React.FC<SOWPdfExportWrapperProps> = ({
   fileName = 'Statement-of-Work.pdf',
 }) => {
   const [showPreview, setShowPreview] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Don't render PDF components until client-side
+  if (!mounted) {
+    return (
+      <div className="sow-pdf-export-wrapper">
+        <div className="flex gap-4 mb-4">
+          <button
+            disabled
+            className="px-6 py-3 bg-gray-400 text-white rounded-lg font-medium inline-flex items-center gap-2 cursor-not-allowed"
+          >
+            Loading PDF Export...
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="sow-pdf-export-wrapper">

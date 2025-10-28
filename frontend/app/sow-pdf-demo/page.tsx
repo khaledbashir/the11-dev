@@ -1,13 +1,46 @@
 'use client';
 
-import React from 'react';
-import { SOWPdfExportExample } from '@/components/sow';
+import React, { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
+
+// Dynamically import to avoid SSR issues with @react-pdf/renderer
+const SOWPdfExportExample = dynamic(
+  () => import('@/components/sow/SOWPdfExportExample'),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+          <p className="text-gray-600">Loading PDF Export Demo...</p>
+        </div>
+      </div>
+    )
+  }
+);
 
 /**
  * Demo page for testing the new SOW PDF Export functionality
  * Navigate to /sow-pdf-demo to see it in action
  */
 export default function SOWPdfDemoPage() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto py-8 px-4">
