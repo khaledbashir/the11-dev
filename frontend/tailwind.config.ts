@@ -25,7 +25,7 @@ const config = {
       },
       colors: {
         // Social Garden Brand Colors
-        'sg-dark': '#0e2e33',
+        'sg-dark': '#0E0F0F',
         'sg-green': '#20e28f',
         
         border: "hsl(var(--border))",

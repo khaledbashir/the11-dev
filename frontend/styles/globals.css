@@ -5,7 +5,7 @@
 @layer base {
   :root {
     /* Social Garden Brand Colors - used as accents */
-    --sg-dark: 185 56% 13%;        /* #0e2e33 */
+    --sg-dark: 0 0% 6%;            /* #0E0F0F */
     --sg-green: 159 75% 51%;       /* #20e28f */
     --sg-gray: 210 11% 15%;
     --sg-gray-light: 210 11% 25%;
