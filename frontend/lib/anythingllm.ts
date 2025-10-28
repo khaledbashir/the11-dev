@@ -1255,8 +1255,21 @@ When asked for analytics, provide clear, actionable insights with specific numbe
       
       console.log(`✅ SOW embedded in client workspace: ${clientWorkspaceSlug}`);
 
-      // Step 2: Embed in client PORTAL workspace (for client chat)
+      // Step 2: Ensure client PORTAL workspace exists, then embed
       const clientPortalSlug = `${clientWorkspaceSlug}-client`;
+      
+      // Create/get portal workspace (safe to call multiple times - it checks if exists)
+      try {
+        // Extract client name from workspace slug (format: "client-name" or "client-name-gen")
+        const clientName = clientWorkspaceSlug.replace(/-gen$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        console.log(`📝 Ensuring client portal workspace exists: ${clientPortalSlug} for client: ${clientName}`);
+        await this.createOrGetClientFacingWorkspace(clientName);
+        console.log(`✅ Client portal workspace ready: ${clientPortalSlug}`);
+      } catch (error) {
+        console.warn(`⚠️ Could not ensure portal workspace exists:`, error);
+        // Continue anyway - embedding will fail gracefully if workspace doesn't exist
+      }
+      
       const portalEmbed = await this.embedSOWDocument(clientPortalSlug, sowTitle, sowContent);
       
       if (!portalEmbed) {
