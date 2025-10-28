@@ -575,9 +575,9 @@ ${sow.htmlContent}
                   <p className="text-xs text-gray-500">Start Date</p>
                 </div>
 
-                <div className="bg-gradient-to-br from-purple-500/20 to-pink-500/10 border border-purple-500/30 rounded-xl p-6 hover:scale-105 transition-transform">
+                <div className="bg-gradient-to-br from-[#0B2529]/40 to-[#0B2529]/20 border border-[#0B2529]/50 rounded-xl p-6 hover:scale-105 transition-transform">
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 bg-purple-500/20 rounded-lg">
+                    <div className="p-2 bg-[#0B2529]/30 rounded-lg">
                       <Target className="w-6 h-6 text-purple-400" />
                     </div>
                     <span className="text-gray-400 text-sm font-medium">Status</span>
@@ -708,9 +708,9 @@ ${sow.htmlContent}
 
                 <button
                   onClick={handleDownloadPDF}
-                  className="p-6 bg-[#1A1A1D] border border-[#2A2A2D] rounded-xl hover:border-pink-500 transition-all group"
+                  className="p-6 bg-[#1A1A1D] border border-[#2A2A2D] rounded-xl hover:border-[#0B2529] transition-all group"
                 >
-                  <Download className="w-8 h-8 text-pink-400 mb-3 group-hover:scale-110 transition-transform" />
+                  <Download className="w-8 h-8 text-[#0B2529] mb-3 group-hover:scale-110 transition-transform" />
                   <h3 className="text-white font-bold mb-2">Download PDF</h3>
                   <p className="text-sm text-gray-400">Save for your records</p>
                 </button>
@@ -752,8 +752,8 @@ ${sow.htmlContent}
                 </div>
 
                 <div className="flex items-start gap-4">
-                  <div className="p-3 bg-pink-500/10 rounded-lg flex-shrink-0">
-                    <TrendingUp className="w-6 h-6 text-pink-400" />
+                  <div className="p-3 bg-[#0B2529]/20 rounded-lg flex-shrink-0">
+                    <TrendingUp className="w-6 h-6 text-[#0B2529]" />
                   </div>
                   <div>
                     <h3 className="text-white font-bold mb-2">Proven Track Record</h3>
@@ -1205,9 +1205,9 @@ ${sow.htmlContent}
                 </div>
 
                 {/* Original Proposal Comparison */}
-                <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-xl p-4">
+                <div className="bg-gradient-to-br from-[#0B2529]/20 to-[#0B2529]/10 border border-[#0B2529]/40 rounded-xl p-4">
                   <h4 className="text-sm font-bold text-white mb-2">Original Proposal</h4>
-                  <p className="text-2xl font-bold text-purple-400 mb-1">
+                  <p className="text-2xl font-bold text-[#0B2529] mb-1">
                     ${sow.totalInvestment.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
                   </p>
                   <p className="text-xs text-gray-400">
@@ -1221,9 +1221,9 @@ ${sow.htmlContent}
 
             {/* AI-Recommended Add-Ons Section */}
             {recommendations.length > 0 && (
-              <div className="bg-gradient-to-br from-purple-500/10 via-pink-500/10 to-blue-500/10 border-2 border-purple-500/30 rounded-2xl p-8 mt-12">
+              <div className="bg-gradient-to-br from-[#0B2529]/20 via-[#0B2529]/15 to-[#0E0F0F]/10 border-2 border-[#0B2529]/40 rounded-2xl p-8 mt-12">
                 <div className="flex items-start gap-4 mb-6">
-                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 bg-gradient-to-br from-[#0B2529] to-[#0E0F0F] rounded-xl flex items-center justify-center flex-shrink-0">
                     <Sparkles className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
@@ -1337,7 +1337,7 @@ ${sow.htmlContent}
 
                     <button
                       onClick={() => setShowChat(true)}
-                      className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2"
+                      className="w-full py-3 bg-gradient-to-r from-[#0B2529] to-[#0E0F0F] hover:from-[#0B2529]/80 hover:to-[#0E0F0F]/80 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2"
                     >
                       <MessageCircle className="w-5 h-5" />
                       Request Custom Quote for Selected Add-Ons
@@ -1518,7 +1518,7 @@ ${sow.htmlContent}
               onClick={() => setShowChat(!showChat)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
                 showChat 
-                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/20' 
+                  ? 'bg-gradient-to-r from-[#0B2529] to-[#0E0F0F] text-white shadow-lg shadow-[#0B2529]/30' 
                   : 'text-gray-400 hover:bg-[#2A2A2D] hover:text-white'
               }`}
             >
