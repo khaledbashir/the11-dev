@@ -3138,6 +3138,7 @@ Ask me questions to get business insights, such as:
       let extractedDiscount: number | undefined;
 
       const jsonBlocks = Array.from(filteredContent.matchAll(/```json\s*([\s\S]*?)\s*```/gi));
+      console.log(`🔍 [JSON Extraction] Found ${jsonBlocks.length} JSON blocks in content`);
       if (jsonBlocks.length > 0) {
         // Rebuild markdown by replacing only qualifying pricing JSON blocks with placeholders
         let rebuilt = '';
@@ -3152,30 +3153,47 @@ Ask me questions to get business insights, such as:
           lastIndex = end;
           try {
             const obj = JSON.parse(body);
+            console.log('📦 [JSON Block] Parsed object:', { 
+              hasRoles: Array.isArray(obj?.roles),
+              hasSuggestedRoles: Array.isArray(obj?.suggestedRoles),
+              hasScopeItems: Array.isArray(obj?.scopeItems),
+              rolesLength: obj?.roles?.length,
+              suggestedRolesLength: obj?.suggestedRoles?.length,
+              scopeItemsLength: obj?.scopeItems?.length,
+              keys: Object.keys(obj)
+            });
             let rolesArr: any[] = [];
             let discountVal: number | undefined = undefined;
             if (Array.isArray(obj?.roles)) {
               rolesArr = obj.roles;
+              console.log(`✅ Using ${rolesArr.length} roles from obj.roles`);
             } else if (Array.isArray(obj?.suggestedRoles)) {
               rolesArr = obj.suggestedRoles;
+              console.log(`✅ Using ${rolesArr.length} roles from obj.suggestedRoles`);
             } else if (Array.isArray(obj?.scopeItems)) {
               const derived = buildSuggestedRolesFromArchitectSOW(obj as ArchitectSOW);
               rolesArr = derived;
+              console.log(`✅ Derived ${rolesArr.length} roles from obj.scopeItems`);
+            } else {
+              console.warn('⚠️ JSON block has no roles, suggestedRoles, or scopeItems arrays');
             }
             if (typeof obj?.discount === 'number') {
               discountVal = obj.discount;
             }
             if (rolesArr.length > 0) {
+              console.log(`✅ Adding ${rolesArr.length} roles to queue`);
               tablesRolesQueue.push(rolesArr);
               tablesDiscountsQueue.push(discountVal ?? 0);
               // Insert placeholder where the JSON block was
               rebuilt += '\n[editablePricingTable]\n';
             } else {
               // Not a pricing JSON; keep original content
+              console.warn(`⚠️ JSON block found but rolesArr is empty - keeping original JSON in content`);
               rebuilt += full;
             }
-          } catch {
+          } catch (e) {
             // Not valid JSON; keep original content
+            console.error('❌ Failed to parse JSON block:', e);
             rebuilt += full;
           }
         }
@@ -3266,16 +3284,22 @@ Ask me questions to get business insights, such as:
       
       // CRITICAL: If no suggestedRoles provided from JSON, try extracting Architect structured JSON from the message body
   let convertedContent;
+  console.log(`🔍 [Validation] hasValidSuggestedRoles=${hasValidSuggestedRoles}, tablesRolesQueue.length=${tablesRolesQueue.length}`);
   if (!hasValidSuggestedRoles) {
+        console.log('⚠️ No valid suggested roles from JSON blocks, attempting fallback extraction...');
         // Try to extract structured JSON from cleaned markdown (if not already parsed above)
         let structured = parsedStructured;
         if (!structured) {
+          console.log('🔍 Attempting to extract structured JSON from markdownPart...');
           structured = extractSOWStructuredJson(markdownPart);
+          console.log('📊 Extracted structured JSON:', structured ? 'Found' : 'Not found');
         }
         let derived = buildSuggestedRolesFromArchitectSOW(structured);
+        console.log(`📊 Derived ${derived?.length || 0} roles from structured JSON`);
 
         // Final fallback: use structuredSow captured from the streamed response (if available)
         if ((!derived || derived.length === 0) && structuredSow) {
+          console.log('🔍 Attempting to use structuredSow from state...');
           const fromState = buildSuggestedRolesFromArchitectSOW(structuredSow);
           if (fromState.length > 0) {
             console.log(`✅ Using ${fromState.length} roles derived from captured structured JSON state.`);
@@ -3290,6 +3314,14 @@ Ask me questions to get business insights, such as:
           convertedContent = convertMarkdownToNovelJSON(cleanedContent, sanitized, convertOptions);
         } else {
           console.error('❌ CRITICAL ERROR: AI did not provide suggestedRoles JSON or scopeItems. The application requires one of these.');
+          console.error('📊 Debug info:', { 
+            hasValidSuggestedRoles, 
+            tablesRolesQueueLength: tablesRolesQueue.length,
+            parsedStructured: !!parsedStructured,
+            structured: !!structured,
+            derivedLength: derived?.length || 0,
+            structuredSow: !!structuredSow
+          });
           const blockedMessage: ChatMessage = {
             id: `msg${Date.now()}`,
             role: 'assistant',
