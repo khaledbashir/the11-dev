@@ -1,5 +1,22 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Enable standalone output for smaller Docker images
+  output: 'standalone',
+  
+  // Disable source maps in production to speed up builds
+  productionBrowserSourceMaps: false,
+  
+  // Skip type checking and linting during build (do it in CI separately)
+  typescript: {
+    ignoreBuildErrors: false, // Set to true if type errors are blocking
+  },
+  eslint: {
+    ignoreDuringBuilds: true, // Skip ESLint during build
+  },
+  
+  // Enable SWC minification (faster than Terser)
+  swcMinify: true,
+  
   redirects: async () => {
     return [
       {
