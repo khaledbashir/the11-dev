@@ -118,16 +118,26 @@ export default function ClientPortalPage() {
   const handlePortalChatSend = async (message: string) => {
     if (!message.trim() || !sow?.workspaceSlug) return;
     
-    const clientWorkspaceSlug = `${sow.workspaceSlug}-client`;
     const apiUrl = process.env.NEXT_PUBLIC_ANYTHINGLLM_URL || 'https://ahmad-anything-llm.840tjq.easypanel.host';
     const apiKey = process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY;
-    
-    console.log('🎯 Portal Chat Send:', { clientWorkspaceSlug, apiUrl, hasApiKey: !!apiKey });
     
     try {
       setPortalChatLoading(true);
       setPortalChatMessages(prev => [...prev, { role: 'user', content: message }]);
       setPortalChatInput('');
+
+      // Get the actual client workspace - it has a suffix like -client-portal-{randomId}
+      // We need to find it by listing all workspaces and finding one that starts with our slug + "-client"
+      const { anythingLLM } = await import('@/lib/anythingllm');
+      const clientWorkspace = await anythingLLM.createOrGetClientFacingWorkspace(sow.clientName);
+      const clientWorkspaceSlug = clientWorkspace.slug;
+      
+      console.log('🎯 Portal Chat Send:', { 
+        generationSlug: sow.workspaceSlug,
+        clientWorkspaceSlug, 
+        apiUrl, 
+        hasApiKey: !!apiKey 
+      });
 
       const response = await fetch(
         `${apiUrl}/api/v1/workspace/${clientWorkspaceSlug}/chat`,
