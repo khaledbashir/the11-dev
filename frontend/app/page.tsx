@@ -3157,14 +3157,21 @@ Ask me questions to get business insights, such as:
               hasRoles: Array.isArray(obj?.roles),
               hasSuggestedRoles: Array.isArray(obj?.suggestedRoles),
               hasScopeItems: Array.isArray(obj?.scopeItems),
+              hasRoleAllocation: Array.isArray(obj?.role_allocation),
               rolesLength: obj?.roles?.length,
               suggestedRolesLength: obj?.suggestedRoles?.length,
               scopeItemsLength: obj?.scopeItems?.length,
+              roleAllocationLength: obj?.role_allocation?.length,
               keys: Object.keys(obj)
             });
             let rolesArr: any[] = [];
             let discountVal: number | undefined = undefined;
-            if (Array.isArray(obj?.roles)) {
+            
+            // Check for role_allocation (new [PRICING_JSON] format)
+            if (Array.isArray(obj?.role_allocation)) {
+              rolesArr = obj.role_allocation;
+              console.log(`✅ Using ${rolesArr.length} roles from obj.role_allocation ([PRICING_JSON] format)`);
+            } else if (Array.isArray(obj?.roles)) {
               rolesArr = obj.roles;
               console.log(`✅ Using ${rolesArr.length} roles from obj.roles`);
             } else if (Array.isArray(obj?.suggestedRoles)) {
@@ -3175,10 +3182,16 @@ Ask me questions to get business insights, such as:
               rolesArr = derived;
               console.log(`✅ Derived ${rolesArr.length} roles from obj.scopeItems`);
             } else {
-              console.warn('⚠️ JSON block has no roles, suggestedRoles, or scopeItems arrays');
+              console.warn('⚠️ JSON block has no roles, suggestedRoles, scopeItems, or role_allocation arrays');
             }
+            
+            // Check for discount in various formats
             if (typeof obj?.discount === 'number') {
               discountVal = obj.discount;
+            } else if (typeof obj?.discount_percentage === 'number') {
+              discountVal = obj.discount_percentage;
+            } else if (typeof obj?.project_details?.discount_percentage === 'number') {
+              discountVal = obj.project_details.discount_percentage;
             }
             if (rolesArr.length > 0) {
               console.log(`✅ Adding ${rolesArr.length} roles to queue`);
