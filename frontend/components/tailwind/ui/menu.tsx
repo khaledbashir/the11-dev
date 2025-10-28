@@ -64,7 +64,8 @@ export default function Menu({ onExportPDF, onExportExcel }: MenuProps) {
           Export PDF
         </Button>
       )}
-      {onExportExcel && (
+      {/* Excel Export - HIDDEN for now (kept for future use) */}
+      {onExportExcel && false && (
         <Button
           variant="outline"
           size="sm"

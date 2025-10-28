@@ -142,7 +142,8 @@ export function DocumentStatusBar({
             </Button>
           )}
           
-          {onExportExcel && (
+          {/* Excel Export - HIDDEN for now (kept for future use) */}
+          {onExportExcel && false && (
             <Button
               onClick={onExportExcel}
               variant="outline"
