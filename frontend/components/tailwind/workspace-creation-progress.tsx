@@ -25,7 +25,7 @@ export default function WorkspaceCreationProgress({
   completedSteps = [],
 }: WorkspaceCreationProgressProps) {
   const [steps, setSteps] = useState<ProgressStep[]>([
-    { id: 0, label: "Creating workspace in AnythingLLM", completed: false, loading: false },
+    { id: 0, label: "Creating workspace in backend", completed: false, loading: false },
     { id: 1, label: "Saving workspace to database", completed: false, loading: false },
     { id: 2, label: "Creating AI assistant thread", completed: false, loading: false },
     { id: 3, label: "Embedding knowledge base", completed: false, loading: false },
@@ -94,7 +94,7 @@ export default function WorkspaceCreationProgress({
                 </p>
                 {step.loading && (
                   <p className="text-xs text-gray-300 mt-1 italic">
-                    {index === 0 && "🔗 Connecting to AnythingLLM..."}
+                    {index === 0 && "🔗 Connecting to backend..."}
                     {index === 1 && "💾 Storing workspace details..."}
                     {index === 2 && "💬 Setting up chat thread..."}
                     {index === 3 && "📚 Embedding your knowledge base..."}
