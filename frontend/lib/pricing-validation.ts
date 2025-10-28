@@ -30,8 +30,8 @@ export type ValidationResult = {
 // Policy constants (kept minimal and in sync with policy.ts where possible)
 const MANDATORY_ROLES = [
   "Tech - Head Of - Senior Project Management",
-  "Project Coordination",
-  "Account Management",
+  "Tech - Delivery - Project Coordination",
+  "Account Management - Senior Account Manager",
 ];
 
 // QA baseline: 5% of total execution hours, minimum 4 hours
@@ -123,11 +123,11 @@ export function proposeAdjustments(scopes: ScopeBlock[]) {
       payload: { role: "Tech - Head Of - Senior Project Management", hours: 3, rate: 365, description: "Strategic oversight" },
     });
   }
-  if (!has("Project Coordination")) {
-    suggestions.push({ action: "add-role", payload: { role: "Project Coordination", hours: 6, description: "Delivery coordination" } });
+  if (!has("Tech - Delivery - Project Coordination")) {
+    suggestions.push({ action: "add-role", payload: { role: "Tech - Delivery - Project Coordination", hours: 6, rate: 110, description: "Delivery coordination" } });
   }
-  if (!has("Account Management")) {
-    suggestions.push({ action: "add-role", payload: { role: "Account Management", hours: 8, description: "Client comms & governance" } });
+  if (!has("Account Management - Senior Account Manager")) {
+    suggestions.push({ action: "add-role", payload: { role: "Account Management - Senior Account Manager", hours: 8, rate: 210, description: "Client comms & governance" } });
   }
 
   // QA baseline suggestion if needed

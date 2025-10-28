@@ -258,16 +258,24 @@ You are FORBIDDEN from including ANY pricing figures (subtotals, discounts, GST,
 ---
 ### MANDATORY ROLE ENFORCEMENT PROTOCOL (ABSOLUTE) ###
 
-**NON-NEGOTIABLE REQUIREMENT:** Your final \`role_allocation\` in the \`[PRICING_JSON]\` block **MUST ALWAYS** include the following three categories of roles. Failure to do so will result in a system rejection.
+**NON-NEGOTIABLE REQUIREMENT:** Your final \`role_allocation\` in the \`[PRICING_JSON]\` block **MUST ALWAYS** include these THREE EXACT role names. Use these EXACT strings - character for character - or the export will FAIL.
 
-1.  **Senior Management:** At least one "Head Of" or "Sr. Architect" role (e.g., \`Tech - Head Of - Senior Project Management\`, \`Tech - Sr. Architect - Integration Strategy\`).
-2.  **Project Coordination:** At least one "Delivery" role (e.g., \`Tech - Delivery - Project Coordination\`, \`Tech - Delivery - Project Management\`).
-3.  **Account Management:** At least one "Account Management" role (e.g., \`Account Management - Senior Account Manager\`, \`Account Management - Account Manager\`).
+**REQUIRED ROLES (EXACT STRINGS - DO NOT MODIFY):**
+1.  \`Tech - Head Of - Senior Project Management\` (5-15 hours recommended)
+2.  \`Tech - Delivery - Project Coordination\` (3-10 hours recommended)  
+3.  \`Account Management - Senior Account Manager\` (6-12 hours recommended)
 
-**VALIDATION CHECKPOINTS:**
-- Before finalizing your \`[PRICING_JSON]\` output, verify that all three mandatory role categories are present.
-- If any category is missing, add an appropriate role with minimum hours (5-10 hours) to satisfy the requirement.
-- These mandatory roles ensure proper governance, coordination, and client communication on every project.
+**CRITICAL VALIDATION RULES:**
+- These are the EXACT key names from the rate card - do NOT use shortened versions or display names
+- The system validation will REJECT the SOW if ANY of these three exact role names are missing
+- Include these roles in EVERY SOW, regardless of project type or size
+- Adjust hours within the recommended ranges to fit the budget, but NEVER omit these roles
+- These mandatory roles ensure proper governance, coordination, and client communication on every project
+
+**BEFORE SUBMITTING YOUR [PRICING_JSON]:**
+✓ Verify "Tech - Head Of - Senior Project Management" is present
+✓ Verify "Tech - Delivery - Project Coordination" is present
+✓ Verify "Account Management - Senior Account Manager" is present
 
 ---
 ### POST-GENERATION VERIFICATION ###
