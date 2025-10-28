@@ -65,16 +65,22 @@ export function InlineEditor({ onGenerate, editor: editorProp }: InlineEditorPro
 
   // Log editor status
   useEffect(() => {
-    console.log("🔍 [FloatingAIBar] Component mounted, editor:", editor ? "available" : "not available");
+    console.log("🔍 [InlineEditor] Component mounted, editor:", editor ? "available" : "not available");
+    console.log("🔍 [InlineEditor] Editor instance:", editor);
   }, [editor]);
 
   // Monitor text selection - Show toolbar only when text is selected
   useEffect(() => {
-    if (!editor) return;
+    if (!editor) {
+      console.log("❌ [InlineEditor] Editor not available for selection monitoring");
+      return;
+    }
 
     const updateSelection = () => {
       const { from, to } = editor.state.selection;
       const hasText = from !== to;
+      
+      console.log("📝 [InlineEditor] Selection update:", { from, to, hasText, isVisible });
       
       // Store the selection when text is selected
       if (hasText) {
@@ -88,10 +94,12 @@ export function InlineEditor({ onGenerate, editor: editorProp }: InlineEditorPro
       }
     };
 
+    console.log("✅ [InlineEditor] Adding selection update listeners");
     editor.on('selectionUpdate', updateSelection);
     editor.on('update', updateSelection);
 
     return () => {
+      console.log("🧹 [InlineEditor] Removing selection update listeners");
       editor.off('selectionUpdate', updateSelection);
       editor.off('update', updateSelection);
     };
@@ -99,10 +107,14 @@ export function InlineEditor({ onGenerate, editor: editorProp }: InlineEditorPro
 
   // Monitor for /ai command - Opens full floating bar
   useEffect(() => {
-    if (!editor) return;
+    if (!editor) {
+      console.log("❌ [InlineEditor] Editor not available for event listener");
+      return;
+    }
 
     // Listen for custom event from slash command
     const handleOpenAIBar = (evt: Event) => {
+      console.log("🎯 [InlineEditor] open-ai-bar event received!", evt);
       // Open the full floating bar in slash mode
       setTriggerSource('slash');
       setShowToolbar(false);
@@ -113,9 +125,11 @@ export function InlineEditor({ onGenerate, editor: editorProp }: InlineEditorPro
       setCompletion("");
     };
 
+    console.log("✅ [InlineEditor] Adding event listener for open-ai-bar");
     window.addEventListener('open-ai-bar', handleOpenAIBar as EventListener);
 
     return () => {
+      console.log("🧹 [InlineEditor] Removing event listener for open-ai-bar");
       window.removeEventListener('open-ai-bar', handleOpenAIBar as EventListener);
     };
   }, [editor]);
@@ -150,6 +164,7 @@ export function InlineEditor({ onGenerate, editor: editorProp }: InlineEditorPro
 
   // Handler for toolbar "Ask AI" button
   const handleToolbarAskAI = () => {
+    console.log("🎯 [InlineEditor] Ask AI button clicked from toolbar");
     setShowToolbar(false); // Hide toolbar
     setTriggerSource('selection'); // Mark as selection mode
     setIsVisible(true); // Show full bar
