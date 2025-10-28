@@ -1443,10 +1443,11 @@ export default function ClientPortalPage() {
             Download PDF
           </Button>
 
+          {/* Excel button - HIDDEN for now (kept for future use) */}
           <Button
             onClick={handleDownloadExcel}
             variant="outline"
-            className="w-full gap-2 border-gray-600 text-gray-300 hover:bg-[#2A2A2D] hover:text-white"
+            className="w-full gap-2 border-gray-600 text-gray-300 hover:bg-[#2A2A2D] hover:text-white hidden"
           >
             <FileSpreadsheet className="w-4 h-4" />
             Download Excel
@@ -1508,11 +1509,12 @@ export default function ClientPortalPage() {
                 PDF
               </Button>
 
+              {/* Excel button - HIDDEN for now (kept for future use) */}
               <Button
                 onClick={handleDownloadExcel}
                 variant="outline"
                 size="sm"
-                className="gap-2 border-gray-600 text-gray-300 hover:bg-[#2A2A2D] hover:border-blue-500"
+                className="gap-2 border-gray-600 text-gray-300 hover:bg-[#2A2A2D] hover:border-blue-500 hidden"
               >
                 <FileSpreadsheet className="w-4 h-4" />
                 Excel
