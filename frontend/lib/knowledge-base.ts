@@ -256,26 +256,34 @@ You MUST output your final pricing data in the following exact format, labeled w
 You are FORBIDDEN from including ANY pricing figures (subtotals, discounts, GST, or totals) in the prose of your SOW document. This includes the Investment Breakdown section and any other part of the document. The 'Investment Breakdown' section should ONLY introduce the pricing table with language like: "The following pricing structure reflects the scope designed to deliver maximum value within the client's budget." The interactive pricing table will display ALL financial information dynamically - any static pricing text you include will become outdated when users edit the table.
 
 ---
-### MANDATORY ROLE ENFORCEMENT PROTOCOL (ABSOLUTE) ###
+### ⚠️ MANDATORY ROLE ENFORCEMENT PROTOCOL (ABSOLUTE - EXPORT WILL FAIL WITHOUT THESE) ⚠️ ###
 
-**NON-NEGOTIABLE REQUIREMENT:** Your final \`role_allocation\` in the \`[PRICING_JSON]\` block **MUST ALWAYS** include these THREE EXACT role names. Use these EXACT strings - character for character - or the export will FAIL.
+**🚨 CRITICAL: YOUR RESPONSE WILL BE REJECTED IF THESE 3 ROLES ARE MISSING! 🚨**
 
-**REQUIRED ROLES (EXACT STRINGS - DO NOT MODIFY):**
-1.  \`Tech - Head Of - Senior Project Management\` (5-15 hours recommended)
-2.  \`Tech - Delivery - Project Coordination\` (3-10 hours recommended)  
-3.  \`Account Management - Senior Account Manager\` (6-12 hours recommended)
+**REQUIRED ROLES - COPY THESE EXACTLY INTO YOUR [PRICING_JSON]:**
+- "Tech - Head Of - Senior Project Management"
+- "Tech - Delivery - Project Coordination"  
+- "Account Management - Senior Account Manager"
 
-**CRITICAL VALIDATION RULES:**
-- These are the EXACT key names from the rate card - do NOT use shortened versions or display names
-- The system validation will REJECT the SOW if ANY of these three exact role names are missing
-- Include these roles in EVERY SOW, regardless of project type or size
-- Adjust hours within the recommended ranges to fit the budget, but NEVER omit these roles
-- These mandatory roles ensure proper governance, coordination, and client communication on every project
+**⚠️ VALIDATION CHECKPOINT - BEFORE YOU RESPOND:**
+1. Have you included "Tech - Head Of - Senior Project Management"? YES / NO
+2. Have you included "Tech - Delivery - Project Coordination"? YES / NO
+3. Have you included "Account Management - Senior Account Manager"? YES / NO
 
-**BEFORE SUBMITTING YOUR [PRICING_JSON]:**
-✓ Verify "Tech - Head Of - Senior Project Management" is present
-✓ Verify "Tech - Delivery - Project Coordination" is present
-✓ Verify "Account Management - Senior Account Manager" is present
+If ANY answer is NO, DO NOT SUBMIT YOUR RESPONSE. Add the missing role(s) first.
+
+**WHY THIS MATTERS:**
+- These EXACT strings are validated server-side before export
+- Even one character difference = EXPORT FAILURE
+- Missing ANY of these three = User cannot export Excel/PDF
+- Client cannot use the SOW you generate
+
+**RECOMMENDED HOURS:**
+- Tech - Head Of - Senior Project Management: 5-15h (strategic oversight)
+- Tech - Delivery - Project Coordination: 3-10h (delivery coordination)
+- Account Management - Senior Account Manager: 6-12h (client communication)
+
+Adjust hours to fit budget, but NEVER omit these roles.
 
 ---
 ### POST-GENERATION VERIFICATION ###

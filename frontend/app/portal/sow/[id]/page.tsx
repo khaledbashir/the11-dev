@@ -107,12 +107,53 @@ export default function ClientPortalPage() {
     loadRecommendations();
   }, [sowId]);
 
-  // 🔥 SWITCHED TO OPENROUTER - Direct AI chat without document embedding
-  // AnythingLLM was showing "no relevant information" because workspace was empty
-  // OpenRouter gives instant responses about SOW content without needing RAG
-  const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
-  const [chatInput, setChatInput] = useState('');
-  const [isChatLoading, setIsChatLoading] = useState(false);
+  // No custom chat state needed - WorkspaceChat handles everything!
+
+  // Portal Chat State - Direct AnythingLLM integration
+  const [portalChatMessages, setPortalChatMessages] = useState<Array<{role: 'user' | 'assistant'; content: string}>>([]);
+  const [portalChatInput, setPortalChatInput] = useState('');
+  const [portalChatLoading, setPortalChatLoading] = useState(false);
+
+  // Send chat message to client workspace
+  const handlePortalChatSend = async (message: string) => {
+    if (!message.trim() || !sow?.workspaceSlug) return;
+    
+    const clientWorkspaceSlug = `${sow.workspaceSlug}-client`;
+    
+    try {
+      setPortalChatLoading(true);
+      setPortalChatMessages(prev => [...prev, { role: 'user', content: message }]);
+      setPortalChatInput('');
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_ANYTHINGLLM_API_URL}/api/v1/workspace/${clientWorkspaceSlug}/chat`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message,
+            mode: 'chat',
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to chat with workspace');
+      }
+
+      const data = await response.json();
+      setPortalChatMessages(prev => [...prev, { role: 'assistant', content: data.textResponse || 'No response' }]);
+    } catch (error) {
+      console.error('❌ Portal chat error:', error);
+      toast.error('Failed to send message');
+      setPortalChatMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I encountered an error.' }]);
+    } finally {
+      setPortalChatLoading(false);
+    }
+  };
 
   // Load dynamic services from admin panel
   useEffect(() => {
@@ -392,154 +433,6 @@ export default function ClientPortalPage() {
   const grandTotalBeforeRounding = (subtotal + gst) - discountAmount;
   // Round to nearest $5,000
   const grandTotal = Math.round(grandTotalBeforeRounding / 5000) * 5000;
-
-  // 🔥 SEND QUICK QUESTION - For preset buttons
-  const sendQuickQuestion = useCallback(async (question: string) => {
-    if (!sow) return;
-    
-    try {
-      setIsChatLoading(true);
-      
-      // Add user message to chat
-      const newMessages = [
-        ...chatMessages,
-        { role: 'user' as const, content: question }
-      ];
-      setChatMessages(newMessages);
-      
-      try {
-        // Call OpenRouter API with SOW context
-        const response = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'google/gemini-2.0-flash-exp:free',
-            messages: [
-              {
-                role: 'system',
-                content: `You are the Social Garden AI Assistant for ${sow.clientName}'s proposal.
-
-**Your SOW Document:**
-${sow.htmlContent}
-
-**Key Details:**
-- Client: ${sow.clientName}
-- Total Investment: $${sow.totalInvestment.toLocaleString('en-AU', { minimumFractionDigits: 2 })} AUD
-- Title: ${sow.title}
-
-**Instructions:**
-- Answer questions about this specific SOW
-- Be professional, friendly, and helpful
-- Cite specific details from the SOW when relevant
-- If asked about pricing, deliverables, or timeline, extract from the SOW content above
-- Keep responses concise and clear`
-              },
-              ...newMessages
-            ]
-          })
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to get AI response');
-        }
-        
-        const data = await response.json();
-        const assistantMessage = data.choices[0].message.content;
-        
-        setChatMessages([
-          ...newMessages,
-          { role: 'assistant' as const, content: assistantMessage }
-        ]);
-      } catch (error) {
-        console.error('Error sending chat message:', error);
-        toast.error('Failed to get AI response. Please try again.');
-        setChatMessages([
-          ...newMessages,
-          { role: 'assistant' as const, content: 'Sorry, I encountered an error. Please try again.' }
-        ]);
-      } finally {
-        setIsChatLoading(false);
-      }
-    } catch (outerError) {
-      console.error('Outer error in sendQuickQuestion:', outerError);
-      setIsChatLoading(false);
-    }
-  }, [sow, chatMessages]);
-
-  // 🔥 OPENROUTER CHAT HANDLER - Direct AI without RAG
-  const handleSendChatMessage = useCallback(async () => {
-    if (!chatInput.trim() || !sow) return;
-    
-    try {
-      const userMessage = chatInput.trim();
-      setChatInput('');
-      setIsChatLoading(true);
-      
-      // Add user message to chat
-      const newMessages = [
-        ...chatMessages,
-        { role: 'user' as const, content: userMessage }
-      ];
-      setChatMessages(newMessages);
-      
-      try {
-        // Call OpenRouter API with SOW context
-        const response = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'google/gemini-2.0-flash-exp:free', // 🆓 FREE on OpenRouter!
-            messages: [
-              {
-                role: 'system',
-                content: `You are the Social Garden AI Assistant for ${sow.clientName}'s proposal.
-
-**Your SOW Document:**
-${sow.htmlContent}
-
-**Key Details:**
-- Client: ${sow.clientName}
-- Total Investment: $${sow.totalInvestment.toLocaleString('en-AU', { minimumFractionDigits: 2 })} AUD
-- Title: ${sow.title}
-
-**Instructions:**
-- Answer questions about this specific SOW
-- Be professional, friendly, and helpful
-- Cite specific details from the SOW when relevant
-- If asked about pricing, deliverables, or timeline, extract from the SOW content above
-- Keep responses concise and clear`
-              },
-              ...newMessages
-            ]
-          })
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to get AI response');
-        }
-        
-        const data = await response.json();
-        const assistantMessage = data.choices[0].message.content;
-        
-        setChatMessages([
-          ...newMessages,
-          { role: 'assistant' as const, content: assistantMessage }
-        ]);
-      } catch (error) {
-        console.error('Error sending chat message:', error);
-        toast.error('Failed to get AI response. Please try again.');
-        setChatMessages([
-          ...newMessages,
-          { role: 'assistant' as const, content: 'Sorry, I encountered an error. Please try again.' }
-        ]);
-      } finally {
-        setIsChatLoading(false);
-      }
-    } catch (outerError) {
-      console.error('Outer error in handleSendChatMessage:', outerError);
-      setIsChatLoading(false);
-    }
-  }, [chatInput, sow, chatMessages]);
 
   // 🔥 RENDER TAB CONTENT - Memoized
   const renderTabContent = useCallback(() => {
@@ -1643,157 +1536,151 @@ ${sow.htmlContent}
         </div>
       </main>
 
-      {/* 🔥 AI CHAT PANEL - Responsive sidebar (no overlay on desktop) */}
-      <aside 
-        className={`fixed right-0 top-0 bottom-0 bg-[#1A1A1D] border-l border-[#2A2A2D] flex flex-col shadow-2xl transition-all duration-300 z-50 ${
-          showChat ? 'w-[450px]' : 'w-0'
-        } overflow-hidden`}
-      >
-        {/* Chat Header */}
-        <div className="p-6 border-b border-[#2A2A2D] bg-gradient-to-r from-[#1CBF79]/10 to-[#15965E]/10 flex-shrink-0">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-lg flex items-center justify-center shadow-lg shadow-[#1CBF79]/30">
-                <Sparkles className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h3 className="text-white font-bold text-lg">AI Assistant</h3>
-                <p className="text-xs text-gray-400">Powered by Social Garden</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setShowChat(false)}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          <p className="text-sm text-gray-400">Ask me anything about this proposal - pricing, timeline, deliverables, or scope.</p>
-        </div>
-
-        {/* Chat Content - Scrollable */}
-        <div className="flex-1 overflow-y-auto p-6 bg-[#0E0F0F] space-y-4">
-          {chatMessages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center">
-              <div className="w-20 h-20 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-2xl flex items-center justify-center mb-6 shadow-xl shadow-[#1CBF79]/30">
-                <Sparkles className="w-10 h-10 text-white" />
-              </div>
-              <p className="text-white font-semibold text-lg mb-2">AI Assistant Ready!</p>
-              <p className="text-sm text-gray-400 mb-6">Ask me anything about your proposal</p>
-              <div className="space-y-2 w-full max-w-xs">
-                <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Try asking:</p>
-                <div className="text-left space-y-1 text-sm text-gray-400">
-                  <p>• "What's the total investment?"</p>
-                  <p>• "What deliverables are included?"</p>
-                  <p>• "When does the project start?"</p>
+      {/* 🔥 AI CHAT PANEL - Direct AnythingLLM Workspace Chat */}
+      {showChat && sow?.workspaceSlug && (
+        <aside className="fixed right-0 top-0 bottom-0 w-[450px] bg-[#1A1A1D] border-l border-[#2A2A2D] flex flex-col shadow-2xl z-50">
+          {/* Chat Header */}
+          <div className="p-6 border-b border-[#2A2A2D] bg-gradient-to-r from-[#1CBF79]/10 to-[#15965E]/10 flex-shrink-0">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-lg flex items-center justify-center shadow-lg shadow-[#1CBF79]/30">
+                  <Sparkles className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-white font-bold text-lg">AI Assistant</h3>
+                  <p className="text-xs text-gray-400">Powered by Social Garden</p>
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {chatMessages.map((msg, idx) => (
-                <div
-                  key={idx}
-                  className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  {msg.role === 'assistant' && (
-                    <div className="w-8 h-8 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Sparkles className="w-5 h-5 text-white" />
-                    </div>
-                  )}
-                  <div
-                    className={`max-w-[80%] rounded-lg p-4 ${
-                      msg.role === 'user'
-                        ? 'bg-[#1CBF79] text-white'
-                        : 'bg-[#1A1A1D] text-gray-200 border border-[#2A2A2D]'
-                    }`}
-                  >
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                  </div>
-                  {msg.role === 'user' && (
-                    <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <span className="text-white font-bold text-sm">You</span>
-                    </div>
-                  )}
-                </div>
-              ))}
-              {isChatLoading && (
-                <div className="flex gap-3 justify-start">
-                  <div className="w-8 h-8 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Sparkles className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="bg-[#1A1A1D] border border-[#2A2A2D] rounded-lg p-4">
-                    <div className="flex gap-1">
-                      <div className="w-2 h-2 bg-[#1CBF79] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                      <div className="w-2 h-2 bg-[#1CBF79] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                      <div className="w-2 h-2 bg-[#1CBF79] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Suggested Questions + Text Input */}
-        <div className="border-t border-[#2A2A2D] bg-[#1A1A1D] flex-shrink-0">
-          <div className="p-4">
-            {chatMessages.length === 0 && (
-              <>
-                <p className="text-xs text-gray-500 mb-2 font-semibold uppercase tracking-wider">Quick Questions</p>
-                <div className="space-y-2 mb-4">
-                  {[
-                    { icon: DollarSign, text: "What's the total investment?" },
-                    { icon: Clock, text: "Timeline for deliverables?" },
-                    { icon: FileText, text: "What's included in the scope?" },
-                  ].map((q, i) => (
-                    <button
-                      key={i}
-                      onClick={() => {
-                        // Send message directly without setting input state first
-                        sendQuickQuestion(q.text);
-                      }}
-                      className="w-full text-left text-xs p-2 rounded-lg bg-[#2A2A2D] hover:bg-[#3A3A3D] text-gray-300 transition-all border border-gray-700 hover:border-[#1CBF79] flex items-center gap-2 group"
-                    >
-                      <q.icon className="w-3 h-3 text-gray-500 group-hover:text-[#1CBF79] transition-colors" />
-                      <span>{q.text}</span>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-            
-            {/* Text Input Field */}
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Type your question here..."
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                className="w-full px-4 py-3 pr-12 bg-[#0E0F0F] border border-[#2A2A2D] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#1CBF79] transition-colors"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey && chatInput.trim()) {
-                    e.preventDefault();
-                    handleSendChatMessage();
-                  }
-                }}
-                disabled={isChatLoading}
-              />
-              <button 
-                onClick={handleSendChatMessage}
-                disabled={isChatLoading || !chatInput.trim()}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-[#1CBF79] hover:bg-[#15a366] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              <button
+                onClick={() => setShowChat(false)}
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
               >
-                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
+            <p className="text-sm text-gray-400">Ask me anything about this proposal - pricing, timeline, deliverables, or scope.</p>
           </div>
-        </div>
-      </aside>
+
+          {/* Chat Messages */}
+          <div className="flex-1 overflow-y-auto p-6 bg-[#0E0F0F] space-y-4">
+            {portalChatMessages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-center">
+                <div className="w-20 h-20 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-2xl flex items-center justify-center mb-6 shadow-xl shadow-[#1CBF79]/30">
+                  <Sparkles className="w-10 h-10 text-white" />
+                </div>
+                <p className="text-white font-semibold text-lg mb-2">AI Assistant Ready!</p>
+                <p className="text-sm text-gray-400 mb-6">Ask me anything about your proposal</p>
+                <div className="space-y-2 w-full max-w-xs">
+                  <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Try asking:</p>
+                  <div className="text-left space-y-1 text-sm text-gray-400">
+                    <p>• "What's the total investment?"</p>
+                    <p>• "What deliverables are included?"</p>
+                    <p>• "When does the project start?"</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {portalChatMessages.map((msg, idx) => (
+                  <div
+                    key={idx}
+                    className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    {msg.role === 'assistant' && (
+                      <div className="w-8 h-8 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Sparkles className="w-5 h-5 text-white" />
+                      </div>
+                    )}
+                    <div
+                      className={`max-w-[80%] rounded-lg p-4 ${
+                        msg.role === 'user'
+                          ? 'bg-[#1CBF79] text-white'
+                          : 'bg-[#1A1A1D] text-gray-200 border border-[#2A2A2D]'
+                      }`}
+                    >
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                    </div>
+                    {msg.role === 'user' && (
+                      <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <span className="text-white font-bold text-sm">You</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {portalChatLoading && (
+                  <div className="flex gap-3 justify-start">
+                    <div className="w-8 h-8 bg-gradient-to-br from-[#1CBF79] to-[#15965E] rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Sparkles className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="bg-[#1A1A1D] border border-[#2A2A2D] rounded-lg p-4">
+                      <div className="flex gap-1">
+                        <div className="w-2 h-2 bg-[#1CBF79] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                        <div className="w-2 h-2 bg-[#1CBF79] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                        <div className="w-2 h-2 bg-[#1CBF79] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Chat Input */}
+          <div className="border-t border-[#2A2A2D] bg-[#1A1A1D] flex-shrink-0">
+            <div className="p-4">
+              {portalChatMessages.length === 0 && (
+                <>
+                  <p className="text-xs text-gray-500 mb-2 font-semibold uppercase tracking-wider">Quick Questions</p>
+                  <div className="space-y-2 mb-4">
+                    {[
+                      { icon: DollarSign, text: "What's the total investment?" },
+                      { icon: Clock, text: "Timeline for deliverables?" },
+                      { icon: FileText, text: "What's included in the scope?" },
+                    ].map((q, i) => (
+                      <button
+                        key={i}
+                        onClick={() => handlePortalChatSend(q.text)}
+                        className="w-full text-left text-xs p-2 rounded-lg bg-[#2A2A2D] hover:bg-[#3A3A3D] text-gray-300 transition-all border border-gray-700 hover:border-[#1CBF79] flex items-center gap-2 group"
+                      >
+                        <q.icon className="w-3 h-3 text-gray-500 group-hover:text-[#1CBF79] transition-colors" />
+                        <span>{q.text}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+              
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Type your question here..."
+                  value={portalChatInput}
+                  onChange={(e) => setPortalChatInput(e.target.value)}
+                  className="w-full px-4 py-3 pr-12 bg-[#0E0F0F] border border-[#2A2A2D] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#1CBF79] transition-colors"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey && portalChatInput.trim()) {
+                      e.preventDefault();
+                      handlePortalChatSend(portalChatInput);
+                    }
+                  }}
+                  disabled={portalChatLoading}
+                />
+                <button 
+                  onClick={() => handlePortalChatSend(portalChatInput)}
+                  disabled={portalChatLoading || !portalChatInput.trim()}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-[#1CBF79] hover:bg-[#15a366] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </aside>
+      )}
       
       {/* Add animation keyframes */}
       <style jsx global>{`
