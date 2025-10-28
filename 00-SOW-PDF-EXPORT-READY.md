@@ -10,10 +10,14 @@
 ## 🚀 Quick Access
 
 ### View the Demo
-Open your browser and navigate to:
+**EasyPanel Auto-Deploy:** This branch will auto-deploy when you configure EasyPanel to track it.
+
+Navigate to your EasyPanel deployment URL:
 ```
-http://localhost:3000/sow-pdf-demo
+https://your-easypanel-url.com/sow-pdf-demo
 ```
+
+Or configure EasyPanel to deploy this branch: `feature/sow-pdf-export`
 
 ### File Locations
 
@@ -90,9 +94,21 @@ git diff enterprise-grade-ux --stat
 git checkout enterprise-grade-ux
 git merge feature/sow-pdf-export
 
-# Dev server (already running):
-cd frontend && npm run dev
+# Push changes (EasyPanel will auto-deploy):
+git push origin feature/sow-pdf-export
 ```
+
+## 🌐 EasyPanel Deployment
+
+**Status:** ✅ All changes pushed to GitHub
+**Branch:** `feature/sow-pdf-export`
+**Auto-Deploy:** Will trigger when EasyPanel detects the push
+
+**To deploy this branch on EasyPanel:**
+1. Go to your EasyPanel dashboard
+2. Update the branch setting to `feature/sow-pdf-export`
+3. EasyPanel will auto-build and deploy
+4. Visit `/sow-pdf-demo` on your deployed URL
 
 ## 📦 Branch Contents
 
