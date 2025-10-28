@@ -61,12 +61,6 @@ export function validatePricing(scopes: ScopeBlock[]): ValidationResult {
   const violations: Violation[] = [];
   const allRoles = aggregateRoles(scopes);
 
-  // Debug logging - show what roles we actually have
-  console.log('[Pricing Validation] All roles found:', allRoles.map(r => r.role));
-  console.log('[Pricing Validation] Normalized roles:', allRoles.map(r => normalize(r.role)));
-  console.log('[Pricing Validation] Required roles:', MANDATORY_ROLES);
-  console.log('[Pricing Validation] Normalized required:', MANDATORY_ROLES.map(normalize));
-
   // 1) Mandatory roles must exist
   for (const mr of MANDATORY_ROLES) {
     const exists = allRoles.some((r) => normalize(r.role) === normalize(mr));
