@@ -4,8 +4,30 @@
 
 **Branch:** `feature/sow-pdf-export` (active)
 **Package:** @react-pdf/renderer v4.3.1 (installed)
-**Status:** Ready to use
+**Status:** ✅ INTEGRATED & READY TO DEPLOY
 **Pushed to GitHub:** ✅ Yes
+**Latest Commit:** a9d899c - Professional PDF button added to portal
+
+## 🎯 WHERE TO FIND IT
+
+### On Your SOW Portal Pages
+
+When EasyPanel deploys this branch, you'll see the **new PDF export button** on every SOW page at:
+
+```
+/portal/sow/[id]
+```
+
+**Look for:** "Download Professional PDF" button (green accent, larger, spans 2 columns)
+
+**Location:** In the "Quick Actions" grid on the Overview tab, below the other 4 buttons
+
+**Features:**
+- ✅ Labeled "Download Professional PDF" 
+- ✅ Shows "BBUBU-style format with tables" description
+- ✅ Loading state: "Generating Professional PDF..."
+- ✅ Green icon (FilePlus)
+- ✅ Spans full width at bottom of quick actions grid
 
 ## 🚀 Quick Access
 
