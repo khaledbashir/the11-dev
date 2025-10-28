@@ -1880,12 +1880,13 @@ Ask me questions to get business insights, such as:
       console.log('✅ AnythingLLM workspace created:', workspace.slug);
       
       // 🎯 STEP 1.5: Create client-facing workspace for portal chat
+      console.log('🔥🔥🔥 [NEW CODE] About to create client-facing workspace for portal...');
       try {
         console.log('🎯 Creating client-facing workspace for portal...');
         const clientWorkspace = await anythingLLM.createOrGetClientFacingWorkspace(workspaceName);
-        console.log(`✅ Client-facing workspace created: ${clientWorkspace.slug} (embed: ${clientWorkspace.embedId})`);
+        console.log(`✅✅✅ [SUCCESS] Client-facing workspace created: ${clientWorkspace.slug} (embed: ${clientWorkspace.embedId})`);
       } catch (clientError) {
-        console.warn('⚠️ Could not create client-facing workspace:', clientError);
+        console.error('❌❌❌ [FAILED] Could not create client-facing workspace:', clientError);
       }
       
       // 🧠 STEP 1b: Configure workspace with The Architect system prompt (SOW type only)
