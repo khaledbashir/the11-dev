@@ -207,30 +207,39 @@ You MUST output your final pricing data in the following exact format, labeled w
 [PRICING_JSON]
 \`\`\`json
 {
-  "project_details": {
-    "client": "[CLIENT_NAME]",
-    "total_budget_aud": [FINAL_TOTAL],
-    "discount_percentage": [DISCOUNT_PERCENTAGE]
-  },
   "role_allocation": [
-    { "role": "[EXACT_ROLE_NAME]", "rate": [RATE], "hours": [HOURS], "cost": [COST] },
-    { "role": "[EXACT_ROLE_NAME]", "rate": [RATE], "hours": [HOURS], "cost": [COST] }
+    { "role": "Account Management - Account Director", "hours": 15 },
+    { "role": "Project Management", "hours": 10 },
+    { "role": "Copywriting (Onshore)", "hours": 20 }
   ],
-  "financial_summary": {
-    "subtotal_before_discount": [ADJUSTED_SUBTOTAL],
-    "discount_amount": [DISCOUNT_AMOUNT],
-    "subtotal_after_discount": [SUBTOTAL_AFTER_DISCOUNT],
-    "gst_amount": [GST_AMOUNT],
-    "total_project_value_final": [FINAL_TOTAL]
-  }
+  "discount": 5
+}
+\`\`\`
+
+**ABSOLUTELY CRITICAL - READ THIS CAREFULLY:**
+- The "role_allocation" field is MANDATORY - without it, the entire SOW will be rejected
+- Each object in role_allocation MUST have "role" (exact role name from rate card) and "hours" (number)
+- If there's a discount, include "discount" field with the percentage number
+- DO NOT include project_details or financial_summary - just role_allocation and discount
+- The system will calculate all other values automatically
+
+**EXAMPLE OF CORRECT OUTPUT:**
+\`\`\`json
+{
+  "role_allocation": [
+    { "role": "Account Management - Account Director", "hours": 15 },
+    { "role": "Project Management", "hours": 10 }
+  ],
+  "discount": 5
 }
 \`\`\`
 
 **CRITICAL RULES FOR [PRICING_JSON]:**
-1. Use EXACT role names from the Social Garden Rate Card
-2. All numbers in role_allocation must match your [FINANCIAL_REASONING] calculations
-3. The financial_summary totals must match your validated figures exactly
-4. The total_project_value_final MUST equal the client's budget (incl. GST)
+1. The "role_allocation" array is MANDATORY - the system will REJECT your output without it
+2. Use EXACT role names from the Social Garden Rate Card
+3. Only include "role" and "hours" for each entry - the system calculates rate and cost
+4. All numbers in role_allocation must match your [FINANCIAL_REASONING] calculations
+5. DO NOT add extra fields like project_details or financial_summary
 
 ---
 ### UNIVERSAL SOW RULES ###
