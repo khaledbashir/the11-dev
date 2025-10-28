@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, AlertCircle, Loader2, Download, FileSpreadsheet, Share2 } from "lucide-react";
+import { Check, AlertCircle, Loader2, Download, FileSpreadsheet, Share2, Eye, EyeOff } from "lucide-react";
 import { Button } from "./ui/button";
 
 interface DocumentStatusBarProps {
@@ -15,6 +15,8 @@ interface DocumentStatusBarProps {
   serviceLine?: string; // 📊 Social Garden BI
   onVerticalChange?: (vertical: string) => void; // 📊 Social Garden BI
   onServiceLineChange?: (serviceLine: string) => void; // 📊 Social Garden BI
+  isGrandTotalVisible?: boolean; // 👁️ Toggle grand total visibility
+  onToggleGrandTotal?: () => void; // 👁️ Toggle grand total visibility
 }
 
 export function DocumentStatusBar({
@@ -29,6 +31,8 @@ export function DocumentStatusBar({
   serviceLine,
   onVerticalChange,
   onServiceLineChange,
+  isGrandTotalVisible,
+  onToggleGrandTotal,
 }: DocumentStatusBarProps) {
   const statusConfig = {
     unsaved: {
@@ -104,6 +108,28 @@ export function DocumentStatusBar({
         
         {/* Export Buttons */}
         <div className="flex items-center gap-2">
+          {onToggleGrandTotal && (
+            <Button
+              onClick={onToggleGrandTotal}
+              variant="outline"
+              size="sm"
+              className="bg-[#1A1A1D] hover:bg-[#2A2A2D] text-gray-300 hover:text-white border-[#2A2A2D] transition-colors"
+              title={isGrandTotalVisible ? "Hide combined total" : "Show combined total"}
+            >
+              {isGrandTotalVisible ? (
+                <>
+                  <EyeOff className="w-4 h-4 mr-2" />
+                  Hide Total
+                </>
+              ) : (
+                <>
+                  <Eye className="w-4 h-4 mr-2" />
+                  Show Total
+                </>
+              )}
+            </Button>
+          )}
+          
           {onExportPDF && (
             <Button
               onClick={onExportPDF}

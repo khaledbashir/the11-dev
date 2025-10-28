@@ -857,6 +857,7 @@ export default function Page() {
   } | null>(null);
   const [showGuidedSetup, setShowGuidedSetup] = useState(false);
   const [viewMode, setViewMode] = useState<'editor' | 'dashboard'>('dashboard'); // NEW: View mode - START WITH DASHBOARD
+  const [isGrandTotalVisible, setIsGrandTotalVisible] = useState(true); // 👁️ Toggle grand total visibility
   
   // Workspace & SOW state (NEW) - Start empty, load from AnythingLLM
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
@@ -4258,6 +4259,8 @@ Ask me questions to get business insights, such as:
                       d.id === currentDocId ? { ...d, serviceLine } : d
                     ));
                   }}
+                  isGrandTotalVisible={isGrandTotalVisible}
+                  onToggleGrandTotal={() => setIsGrandTotalVisible(!isGrandTotalVisible)}
                   onExportPDF={handleExportPDF}
                   onExportExcel={handleExportExcel}
                   onSharePortal={async () => {
@@ -4328,7 +4331,7 @@ Ask me questions to get business insights, such as:
               )}
               
               {/* Main Content Area */}
-              <div className="flex-1 overflow-auto">
+              <div className="flex-1 overflow-auto" data-show-totals={isGrandTotalVisible}>
                 {currentDoc ? (
                   <div className="w-full h-full">
                     <TailwindAdvancedEditor
