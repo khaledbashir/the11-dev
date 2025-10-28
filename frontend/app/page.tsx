@@ -3428,30 +3428,29 @@ Ask me questions to get business insights, such as:
           // SOW title format: "SOW - ClientName - ServiceType" or "Scope of Work: ClientName"
           let clientWorkspaceSlug = getWorkspaceForAgent(currentAgentId); // Default fallback
           
-          // Try to extract client name from document title
+          // Extract client name from document title OR use workspace name as fallback
           const clientNameMatch = docTitle.match(/(?:SOW|Scope of Work)[:\s-]+([^-:]+)/i);
-          if (clientNameMatch && clientNameMatch[1]) {
-            const clientName = clientNameMatch[1].trim();
-            console.log(`🏢 Detected client name from title: ${clientName}`);
+          const clientName = clientNameMatch && clientNameMatch[1] 
+            ? clientNameMatch[1].trim() 
+            : getWorkspaceForAgent(currentAgentId); // Use workspace name as fallback
             
-            // Create or get client-specific workspace (FOR GENERATION)
+          console.log(`🏢 Using client name: ${clientName} (from ${clientNameMatch ? 'title' : 'workspace'})`);
+          
+          // ALWAYS create client-specific workspace (FOR GENERATION)
+          try {
+            const clientWorkspace = await anythingLLM.createOrGetClientWorkspace(clientName);
+            clientWorkspaceSlug = clientWorkspace.slug;
+            console.log(`✅ Using client-specific workspace: ${clientWorkspaceSlug}`);
+            
+            // ALWAYS create client-facing workspace (FOR PORTAL CHAT)
             try {
-              const clientWorkspace = await anythingLLM.createOrGetClientWorkspace(clientName);
-              clientWorkspaceSlug = clientWorkspace.slug;
-              console.log(`✅ Using client-specific workspace: ${clientWorkspaceSlug}`);
-              
-              // ALSO create client-facing workspace (FOR PORTAL CHAT)
-              try {
-                const clientFacingWorkspace = await anythingLLM.createOrGetClientFacingWorkspace(clientName);
-                console.log(`✅ Created client-facing workspace: ${clientFacingWorkspace.slug} (embed: ${clientFacingWorkspace.embedId})`);
-              } catch (clientError) {
-                console.warn(`⚠️ Could not create client-facing workspace (non-critical):`, clientError);
-              }
-            } catch (wsError) {
-              console.warn(`⚠️ Could not create client workspace, using default: ${clientWorkspaceSlug}`, wsError);
+              const clientFacingWorkspace = await anythingLLM.createOrGetClientFacingWorkspace(clientName);
+              console.log(`✅ Created client-facing workspace: ${clientFacingWorkspace.slug} (embed: ${clientFacingWorkspace.embedId})`);
+            } catch (clientError) {
+              console.warn(`⚠️ Could not create client-facing workspace:`, clientError);
             }
-          } else {
-            console.log(`⚠️ Could not extract client name from title: "${docTitle}", using default workspace`);
+          } catch (wsError) {
+            console.warn(`⚠️ Could not create client workspace, using default: ${clientWorkspaceSlug}`, wsError);
           }
           
           const success = await anythingLLM.embedSOWInBothWorkspaces(clientWorkspaceSlug, docTitle, cleanedContent);
