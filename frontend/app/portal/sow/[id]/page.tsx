@@ -5,12 +5,20 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { 
   Sparkles, Download, CheckCircle, MessageCircle, ArrowLeft, 
   FileText, DollarSign, Calendar, Eye, Share2, Clock,
-  Target, TrendingUp, Users, Zap, Home, FileSpreadsheet
+  Target, TrendingUp, Users, Zap, Home, FileSpreadsheet, FilePlus
 } from 'lucide-react';
 import { Button } from '@/components/tailwind/ui/button';
 import { toast } from 'sonner';
 import { exportToExcel } from '@/lib/export-utils';
 import { SocialGardenHeader } from '@/components/header/sg-header';
+import { PDFDownloadLink } from '@react-pdf/renderer';
+import dynamic from 'next/dynamic';
+
+// Dynamically import the SOW PDF components to avoid SSR issues
+const SOWPdfExport = dynamic(
+  () => import('@/components/sow/SOWPdfExport'),
+  { ssr: false }
+);
 
 interface SOWData {
   id: string;
@@ -425,6 +433,57 @@ export default function ClientPortalPage() {
     }
   };
 
+  // Convert current SOW data to new PDF format
+  const prepareSOWForNewPDF = () => {
+    if (!sow) return null;
+
+    // Parse HTML to extract scope information (simplified - you may need to enhance this)
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(sow.htmlContent, 'text/html');
+    
+    // Try to extract scopes from the HTML content
+    // This is a basic implementation - adjust based on your actual HTML structure
+    const scopes = [{
+      id: 1,
+      title: sow.title || 'Project Scope',
+      description: 'This scope covers the services outlined in the statement of work.',
+      items: [
+        {
+          description: 'Complete project delivery as per specifications',
+          role: 'Project Team',
+          hours: 40,
+          cost: sow.totalInvestment || 0,
+        },
+      ],
+      deliverables: [
+        'Complete project delivery',
+        'Documentation and support',
+        'Quality assurance',
+      ],
+      assumptions: [
+        'Client will provide timely feedback',
+        'All required resources will be available',
+        'Scope assumes standard implementation',
+      ],
+    }];
+
+    return {
+      company: {
+        name: 'Social Garden',
+        logoUrl: '/logo.png', // Update with your actual logo path
+      },
+      clientName: sow.clientName,
+      projectTitle: sow.title,
+      projectSubtitle: 'ADVISORY & CONSULTATION | SERVICES',
+      projectOverview: `${sow.vertical || 'Professional'} services for ${sow.clientName}`,
+      budgetNotes: `Total investment: $${sow.totalInvestment?.toLocaleString() || '0'}. Payment terms available upon request.`,
+      scopes: scopes,
+      currency: 'USD',
+      gstApplicable: true,
+      generatedDate: new Date().toLocaleDateString(),
+    };
+  };
+
   // Calculate totals for Excel export (same as pricing display)
   const baseServicesTotal = useMemo(() => {
     const serviceOptions = dynamicServices.length > 0 ? dynamicServices : [
@@ -634,9 +693,34 @@ export default function ClientPortalPage() {
                   className="p-6 bg-[#1A1A1D] border border-[#2A2A2D] rounded-xl hover:border-[#0B2529] transition-all group"
                 >
                   <Download className="w-8 h-8 text-[#0B2529] mb-3 group-hover:scale-110 transition-transform" />
-                  <h3 className="text-white font-bold mb-2">Download PDF</h3>
-                  <p className="text-sm text-gray-400">Save for your records</p>
+                  <h3 className="text-white font-bold mb-2">Download PDF (Legacy)</h3>
+                  <p className="text-sm text-gray-400">Original format</p>
                 </button>
+
+                {/* NEW: React-PDF Export Button */}
+                <div className="p-6 bg-[#1A1A1D] border border-[#2A2A2D] rounded-xl hover:border-green-500 transition-all group col-span-2">
+                  {sow && prepareSOWForNewPDF() && (
+                    <PDFDownloadLink
+                      document={<SOWPdfExport sowData={prepareSOWForNewPDF()!} />}
+                      fileName={`${sow.clientName}-SOW-Professional.pdf`}
+                      className="flex items-center justify-center gap-3 w-full h-full"
+                    >
+                      {({ blob, url, loading, error }) => (
+                        <div className="flex items-center justify-center gap-3 w-full">
+                          <FilePlus className="w-8 h-8 text-green-400 group-hover:scale-110 transition-transform" />
+                          <div className="text-left">
+                            <h3 className="text-white font-bold mb-1">
+                              {loading ? 'Generating Professional PDF...' : 'Download Professional PDF'}
+                            </h3>
+                            <p className="text-sm text-gray-400">
+                              {loading ? 'Please wait...' : 'BBUBU-style format with tables'}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </PDFDownloadLink>
+                  )}
+                </div>
               </div>
             </div>
 
