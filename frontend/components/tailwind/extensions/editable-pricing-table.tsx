@@ -33,6 +33,96 @@ interface PricingRow {
   rate: number;
 }
 
+// Separate component for each sortable row to comply with Rules of Hooks
+const SortableRow = ({ 
+  row, 
+  updateRow, 
+  removeRow, 
+  canRemove 
+}: { 
+  row: PricingRow; 
+  updateRow: (id: string, field: keyof PricingRow, value: string | number) => void;
+  removeRow: (id: string) => void;
+  canRemove: boolean;
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id: row.id });
+  
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <tr key={row.id} ref={setNodeRef} style={style} className="pricing-row hover:bg-muted dark:bg-gray-800" {...attributes}>
+      <td className="border border-border p-2" style={{ width: '20%' }}>
+        <div className="flex items-center gap-2">
+          <span {...listeners} className="drag-handle text-gray-400 select-none text-lg cursor-grab active:cursor-grabbing" title="Drag to reorder">⋮⋮</span>
+          <select
+            value={row.role}
+            onChange={(e) => updateRow(row.id, 'role', e.target.value)}
+            className="w-full text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#1CBF79] focus:border-[#1CBF79] hover:border-gray-400 dark:hover:border-gray-600"
+          >
+            <option className="bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200" value="">Select role...</option>
+            {ROLES.map((role) => (
+              <option key={role.name} value={role.name} className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+                {role.name} - ${role.rate}/hr
+              </option>
+            ))}
+          </select>
+        </div>
+      </td>
+      <td className="border border-border p-2" style={{ width: '30%' }}>
+        <input
+          type="text"
+          value={row.description}
+          onChange={(e) => updateRow(row.id, 'description', e.target.value)}
+          placeholder="Description..."
+          className="w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-[#1CBF79] text-sm"
+        />
+      </td>
+      <td className="border border-border p-2" style={{ width: '15%' }}>
+        <input
+          type="number"
+          value={row.hours || ''}
+          onChange={(e) => updateRow(row.id, 'hours', parseFloat(e.target.value) || 0)}
+          placeholder="0"
+          min="0"
+          step="0.5"
+          className="w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-[#1CBF79] text-sm text-right"
+        />
+      </td>
+      <td className="border border-border p-2" style={{ width: '15%' }}>
+        <input
+          type="number"
+          value={row.rate || ''}
+          onChange={(e) => updateRow(row.id, 'rate', parseFloat(e.target.value) || 0)}
+          placeholder="$0"
+          min="0"
+          className="w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-[#1CBF79] text-sm text-right"
+        />
+      </td>
+      <td className="border border-border px-3 py-2 text-right text-sm font-semibold" style={{ width: '15%' }}>
+        ${(row.hours * row.rate).toFixed(2)}
+      </td>
+      <td className="border border-border p-2 text-center" style={{ width: '5%' }}>
+        <button
+          onClick={() => removeRow(row.id)}
+          disabled={!canRemove}
+          className="text-red-600 hover:text-red-800 disabled:text-gray-400 disabled:cursor-not-allowed text-lg"
+        >
+          ✕
+        </button>
+      </td>
+    </tr>
+  );
+};
+
 const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
   const [rows, setRows] = useState<PricingRow[]>(
     (node.attrs.rows || [{ role: '', description: '', hours: 0, rate: 0 }]).map((row: any, idx: number) => ({
@@ -152,82 +242,15 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
               </thead>
               <SortableContext items={rows.map(r => r.id)} strategy={verticalListSortingStrategy}>
                 <tbody>
-                  {rows.map((row) => {
-                    const {
-                      attributes,
-                      listeners,
-                      setNodeRef,
-                      transform,
-                      transition,
-                    } = useSortable({ id: row.id });
-                    const style: React.CSSProperties = {
-                      transform: CSS.Transform.toString(transform),
-                      transition,
-                    };
-                    return (
-                      <tr key={row.id} ref={setNodeRef} style={style} className="pricing-row hover:bg-muted dark:bg-gray-800" {...attributes}>
-                        <td className="border border-border p-2" style={{ width: '20%' }}>
-                          <div className="flex items-center gap-2">
-                            <span {...listeners} className="drag-handle text-gray-400 select-none text-lg cursor-grab active:cursor-grabbing" title="Drag to reorder">⋮⋮</span>
-                            <select
-                              value={row.role}
-                              onChange={(e) => updateRow(row.id, 'role', e.target.value)}
-                              className="w-full text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#1CBF79] focus:border-[#1CBF79] hover:border-gray-400 dark:hover:border-gray-600"
-                            >
-                              <option className="bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200" value="">Select role...</option>
-                              {ROLES.map((role) => (
-                                <option key={role.name} value={role.name} className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-                                  {role.name} - ${role.rate}/hr
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </td>
-                        <td className="border border-border p-2" style={{ width: '30%' }}>
-                          <input
-                            type="text"
-                            value={row.description}
-                            onChange={(e) => updateRow(row.id, 'description', e.target.value)}
-                            placeholder="Description..."
-                            className="w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-[#1CBF79] text-sm"
-                          />
-                        </td>
-                        <td className="border border-border p-2" style={{ width: '15%' }}>
-                          <input
-                            type="number"
-                            value={row.hours || ''}
-                            onChange={(e) => updateRow(row.id, 'hours', parseFloat(e.target.value) || 0)}
-                            placeholder="0"
-                            min="0"
-                            step="0.5"
-                            className="w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-[#1CBF79] text-sm text-right"
-                          />
-                        </td>
-                        <td className="border border-border p-2" style={{ width: '15%' }}>
-                          <input
-                            type="number"
-                            value={row.rate || ''}
-                            onChange={(e) => updateRow(row.id, 'rate', parseFloat(e.target.value) || 0)}
-                            placeholder="$0"
-                            min="0"
-                            className="w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-[#1CBF79] text-sm text-right"
-                          />
-                        </td>
-                        <td className="border border-border px-3 py-2 text-right text-sm font-semibold" style={{ width: '15%' }}>
-                          ${(row.hours * row.rate).toFixed(2)}
-                        </td>
-                        <td className="border border-border p-2 text-center" style={{ width: '5%' }}>
-                          <button
-                            onClick={() => removeRow(row.id)}
-                            disabled={rows.length === 1}
-                            className="text-red-600 hover:text-red-800 disabled:text-gray-400 disabled:cursor-not-allowed text-lg"
-                          >
-                            ✕
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {rows.map((row) => (
+                    <SortableRow 
+                      key={row.id}
+                      row={row}
+                      updateRow={updateRow}
+                      removeRow={removeRow}
+                      canRemove={rows.length > 1}
+                    />
+                  ))}
                 </tbody>
               </SortableContext>
             </table>
