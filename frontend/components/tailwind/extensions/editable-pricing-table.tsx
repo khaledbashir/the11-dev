@@ -167,7 +167,7 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
           </div>
           <button
             onClick={addRow}
-            className="px-3 py-1 bg-[#0e2e33] text-white rounded text-sm hover:bg-[#0a2328] transition-colors"
+            className="px-3 py-1 bg-[#0E0F0F] text-white rounded text-sm hover:bg-[#0E0F0F]/80 transition-colors"
           >
             + Add Role
           </button>
@@ -175,7 +175,7 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
         <div className="overflow-x-auto mb-4">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-[#0e2e33] text-white">
+              <tr className="bg-[#0E0F0F] text-white">
                 <th className="border border-border px-3 py-2 text-left text-sm">Role</th>
                 <th className="border border-border px-3 py-2 text-left text-sm">Description</th>
                 <th className="border border-border px-3 py-2 text-left text-sm w-24">Hours</th>
