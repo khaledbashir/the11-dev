@@ -119,6 +119,10 @@ export default function ClientPortalPage() {
     if (!message.trim() || !sow?.workspaceSlug) return;
     
     const clientWorkspaceSlug = `${sow.workspaceSlug}-client`;
+    const apiUrl = process.env.NEXT_PUBLIC_ANYTHINGLLM_URL || 'https://ahmad-anything-llm.840tjq.easypanel.host';
+    const apiKey = process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY;
+    
+    console.log('🎯 Portal Chat Send:', { clientWorkspaceSlug, apiUrl, hasApiKey: !!apiKey });
     
     try {
       setPortalChatLoading(true);
@@ -126,11 +130,11 @@ export default function ClientPortalPage() {
       setPortalChatInput('');
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_ANYTHINGLLM_API_URL}/api/v1/workspace/${clientWorkspaceSlug}/chat`,
+        `${apiUrl}/api/v1/workspace/${clientWorkspaceSlug}/chat`,
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY}`,
+            'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -140,11 +144,16 @@ export default function ClientPortalPage() {
         }
       );
 
+      console.log('📡 Portal Chat Response:', { status: response.status, ok: response.ok });
+
       if (!response.ok) {
-        throw new Error('Failed to chat with workspace');
+        const errorText = await response.text();
+        console.error('❌ Portal Chat Error:', errorText);
+        throw new Error(`Failed to chat with workspace: ${response.status}`);
       }
 
       const data = await response.json();
+      console.log('✅ Portal Chat Success:', data);
       setPortalChatMessages(prev => [...prev, { role: 'assistant', content: data.textResponse || 'No response' }]);
     } catch (error) {
       console.error('❌ Portal chat error:', error);
