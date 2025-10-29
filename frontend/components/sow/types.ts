@@ -106,6 +106,9 @@ export interface SOWPdfExportWrapperProps {
   
   /** Optional custom filename for the PDF download */
   fileName?: string;
+  
+  /** Variant style: 'default' for demo/standalone, 'portal' for SOW portal page, 'editor' for main editor */
+  variant?: 'default' | 'portal' | 'editor';
 }
 
 /**

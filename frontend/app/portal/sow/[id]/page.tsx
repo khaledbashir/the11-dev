@@ -11,12 +11,11 @@ import { Button } from '@/components/tailwind/ui/button';
 import { toast } from 'sonner';
 import { exportToExcel } from '@/lib/export-utils';
 import { SocialGardenHeader } from '@/components/header/sg-header';
-import { PDFDownloadLink } from '@react-pdf/renderer';
 import dynamic from 'next/dynamic';
 
-// Dynamically import the SOW PDF components to avoid SSR issues
-const SOWPdfExport = dynamic(
-  () => import('@/components/sow/SOWPdfExport'),
+// Dynamically import the SOW PDF wrapper to avoid SSR issues
+const SOWPdfExportWrapper = dynamic(
+  () => import('@/components/sow/SOWPdfExportWrapper'),
   { ssr: false }
 );
 
@@ -698,27 +697,13 @@ export default function ClientPortalPage() {
                 </button>
 
                 {/* NEW: React-PDF Export Button */}
-                <div className="p-6 bg-[#1A1A1D] border border-[#2A2A2D] rounded-xl hover:border-green-500 transition-all group col-span-2">
+                <div className="col-span-2">
                   {sow && prepareSOWForNewPDF() && (
-                    <PDFDownloadLink
-                      document={<SOWPdfExport sowData={prepareSOWForNewPDF()!} />}
+                    <SOWPdfExportWrapper 
+                      sowData={prepareSOWForNewPDF()!}
                       fileName={`${sow.clientName}-SOW-Professional.pdf`}
-                      className="flex items-center justify-center gap-3 w-full h-full"
-                    >
-                      {({ blob, url, loading, error }) => (
-                        <div className="flex items-center justify-center gap-3 w-full">
-                          <FilePlus className="w-8 h-8 text-green-400 group-hover:scale-110 transition-transform" />
-                          <div className="text-left">
-                            <h3 className="text-white font-bold mb-1">
-                              {loading ? 'Generating Professional PDF...' : 'Download Professional PDF'}
-                            </h3>
-                            <p className="text-sm text-gray-400">
-                              {loading ? 'Please wait...' : 'BBUBU-style format with tables'}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </PDFDownloadLink>
+                      variant="portal"
+                    />
                   )}
                 </div>
               </div>

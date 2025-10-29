@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PDFDownloadLink, PDFViewer } from '@react-pdf/renderer';
 import SOWPdfExport from './SOWPdfExport';
 import { SOWData, SOWPdfExportWrapperProps } from './types';
+import { FilePlus } from 'lucide-react';
 
 /**
  * Wrapper component for the SOW PDF Export
@@ -10,6 +11,7 @@ import { SOWData, SOWPdfExportWrapperProps } from './types';
 const SOWPdfExportWrapper: React.FC<SOWPdfExportWrapperProps> = ({
   sowData,
   fileName = 'Statement-of-Work.pdf',
+  variant = 'default',
 }) => {
   const [showPreview, setShowPreview] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -20,6 +22,19 @@ const SOWPdfExportWrapper: React.FC<SOWPdfExportWrapperProps> = ({
 
   // Don't render PDF components until client-side
   if (!mounted) {
+    if (variant === 'portal') {
+      return (
+        <div className="p-6 bg-[#1A1A1D] border border-[#2A2A2D] rounded-xl">
+          <div className="flex items-center justify-center gap-3">
+            <FilePlus className="w-8 h-8 text-gray-400" />
+            <div className="text-left">
+              <h3 className="text-white font-bold mb-1">Loading...</h3>
+              <p className="text-sm text-gray-400">Please wait</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="sow-pdf-export-wrapper">
         <div className="flex gap-4 mb-4">
@@ -31,6 +46,31 @@ const SOWPdfExportWrapper: React.FC<SOWPdfExportWrapperProps> = ({
           </button>
         </div>
       </div>
+    );
+  }
+
+  // Portal variant (for SOW portal page)
+  if (variant === 'portal') {
+    return (
+      <PDFDownloadLink
+        document={<SOWPdfExport sowData={sowData} />}
+        fileName={fileName}
+        className="block p-6 bg-[#1A1A1D] border border-[#2A2A2D] rounded-xl hover:border-green-500 transition-all group"
+      >
+        {({ blob, url, loading, error }) => (
+          <div className="flex items-center justify-center gap-3 w-full">
+            <FilePlus className="w-8 h-8 text-green-400 group-hover:scale-110 transition-transform" />
+            <div className="text-left">
+              <h3 className="text-white font-bold mb-1">
+                {loading ? 'Generating Professional PDF...' : 'Download Professional PDF'}
+              </h3>
+              <p className="text-sm text-gray-400">
+                {loading ? 'Please wait...' : 'BBUBU-style format with tables'}
+              </p>
+            </div>
+          </div>
+        )}
+      </PDFDownloadLink>
     );
   }
 
