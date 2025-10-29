@@ -42,18 +42,10 @@ import { getWorkspaceForAgent } from "@/lib/workspace-config";
 import { prepareSOWForNewPDF } from "@/lib/sow-pdf-utils";
 
 // Dynamically import PDF components to avoid SSR issues
-const SOWPdfExport = dynamic(
-  () => import('@/components/sow/SOWPdfExport'),
+const SOWPdfExportWrapper = dynamic(
+  () => import('@/components/sow/SOWPdfExportWrapper'),
   { ssr: false }
 );
-
-// For inline PDF generation in the editor
-let PDFDownloadLink: any = null;
-if (typeof window !== 'undefined') {
-  import('@react-pdf/renderer').then(module => {
-    PDFDownloadLink = module.PDFDownloadLink;
-  });
-}
 
 // API key is now handled server-side in /api/chat route
 
@@ -4580,19 +4572,17 @@ Ask me questions to get business insights, such as:
       )}
 
       {/* NEW: Professional PDF Download Modal */}
-      {showNewPDFModal && newPDFData && PDFDownloadLink && (
+      {showNewPDFModal && newPDFData && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-[#1A1A1D] border border-green-600 rounded-xl p-8 max-w-md">
             <h3 className="text-xl font-bold text-white mb-4">Professional PDF Ready!</h3>
             <p className="text-gray-400 mb-6">Your BBUBU-style PDF is ready to download.</p>
             <div className="flex gap-4">
-              <PDFDownloadLink
-                document={<SOWPdfExport sowData={newPDFData} />}
+              <SOWPdfExportWrapper 
+                sowData={newPDFData}
+                variant="editor"
                 fileName={`${currentDoc?.title || 'SOW'}-Professional.pdf`}
-                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
-              >
-                {({ loading }) => (loading ? 'Generating...' : 'Download PDF')}
-              </PDFDownloadLink>
+              />
               <button
                 onClick={() => {
                   setShowNewPDFModal(false);
