@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PDFDownloadLink, PDFViewer } from '@react-pdf/renderer';
+import { PDFDownloadLink, PDFViewer, pdf } from '@react-pdf/renderer';
 import SOWPdfExport from './SOWPdfExport';
 import { SOWData, SOWPdfExportWrapperProps } from './types';
 import { FilePlus } from 'lucide-react';
@@ -15,6 +15,7 @@ const SOWPdfExportWrapper: React.FC<SOWPdfExportWrapperProps> = ({
 }) => {
   const [showPreview, setShowPreview] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -76,53 +77,76 @@ const SOWPdfExportWrapper: React.FC<SOWPdfExportWrapperProps> = ({
 
   // Editor variant (for inline modals in editor)
   if (variant === 'editor') {
+    const handleEditorDownload = async () => {
+      if (isDownloading) return;
+      try {
+        setIsDownloading(true);
+        const instance = pdf(<SOWPdfExport sowData={sowData} />);
+        const blob = await instance.toBlob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Error generating professional PDF:', error);
+      } finally {
+        setIsDownloading(false);
+      }
+    };
+
     return (
-      <PDFDownloadLink
-        document={<SOWPdfExport sowData={sowData} />}
-        fileName={fileName}
-        className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium inline-flex items-center gap-2"
+      <button
+        onClick={handleEditorDownload}
+        disabled={isDownloading}
+        className={`px-6 py-3 rounded-lg transition-colors font-medium inline-flex items-center gap-2 ${
+          isDownloading
+            ? 'bg-green-800 text-white cursor-not-allowed'
+            : 'bg-green-600 text-white hover:bg-green-700'
+        }`}
       >
-        {({ blob, url, loading, error }) =>
-          loading ? (
-            <>
-              <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                  fill="none"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
-              Generating...
-            </>
-          ) : (
-            <>
-              <svg
-                className="w-5 h-5"
-                fill="none"
+        {isDownloading ? (
+          <>
+            <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
                 stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
-              Download PDF
-            </>
-          )
-        }
-      </PDFDownloadLink>
+                strokeWidth="4"
+                fill="none"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              />
+            </svg>
+            Creating PDF...
+          </>
+        ) : (
+          <>
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+            Download PDF
+          </>
+        )}
+      </button>
     );
   }
 
