@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import TailwindAdvancedEditor from "@/components/tailwind/advanced-editor";
 import SidebarNav from "@/components/tailwind/sidebar-nav";
 import DashboardChat from "@/components/tailwind/dashboard-chat";
@@ -38,6 +39,21 @@ import { anythingLLM } from "@/lib/anythingllm";
 import { ROLES } from "@/lib/rateCard";
 import { calculatePricingTable } from "@/lib/pricingCalculator";
 import { getWorkspaceForAgent } from "@/lib/workspace-config";
+import { prepareSOWForNewPDF } from "@/lib/sow-pdf-utils";
+
+// Dynamically import PDF components to avoid SSR issues
+const SOWPdfExport = dynamic(
+  () => import('@/components/sow/SOWPdfExport'),
+  { ssr: false }
+);
+
+// For inline PDF generation in the editor
+let PDFDownloadLink: any = null;
+if (typeof window !== 'undefined') {
+  import('@react-pdf/renderer').then(module => {
+    PDFDownloadLink = module.PDFDownloadLink;
+  });
+}
 
 // API key is now handled server-side in /api/chat route
 
@@ -2585,6 +2601,36 @@ Ask me questions to get business insights, such as:
     }
   };
 
+  // NEW: Professional PDF Export Handler
+  const [showNewPDFModal, setShowNewPDFModal] = useState(false);
+  const [newPDFData, setNewPDFData] = useState<any>(null);
+
+  const handleExportNewPDF = async () => {
+    if (!currentDoc) {
+      toast.error('❌ No document selected');
+      return;
+    }
+
+    toast.info('📄 Preparing professional PDF...');
+    
+    try {
+      const sowData = prepareSOWForNewPDF(currentDoc);
+      
+      if (!sowData) {
+        toast.error('❌ Unable to generate PDF from current document');
+        return;
+      }
+
+      setNewPDFData(sowData);
+      setShowNewPDFModal(true);
+      toast.success('✅ PDF ready! Click to download.');
+      
+    } catch (error) {
+      console.error('Error preparing new PDF:', error);
+      toast.error(`❌ Error preparing PDF: ${error.message}`);
+    }
+  };
+
   const handleExportExcel = async () => {
     if (!currentDoc) {
       toast.error('❌ No document selected');
@@ -4279,6 +4325,7 @@ Ask me questions to get business insights, such as:
                   isGrandTotalVisible={isGrandTotalVisible}
                   onToggleGrandTotal={() => setIsGrandTotalVisible(!isGrandTotalVisible)}
                   onExportPDF={handleExportPDF}
+                  onExportNewPDF={handleExportNewPDF}
                   onExportExcel={handleExportExcel}
                   onSharePortal={async () => {
                     if (!currentDoc) {
@@ -4530,6 +4577,34 @@ Ask me questions to get business insights, such as:
           firstShared={shareModalData.firstShared}
           lastShared={shareModalData.lastShared}
         />
+      )}
+
+      {/* NEW: Professional PDF Download Modal */}
+      {showNewPDFModal && newPDFData && PDFDownloadLink && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-[#1A1A1D] border border-green-600 rounded-xl p-8 max-w-md">
+            <h3 className="text-xl font-bold text-white mb-4">Professional PDF Ready!</h3>
+            <p className="text-gray-400 mb-6">Your BBUBU-style PDF is ready to download.</p>
+            <div className="flex gap-4">
+              <PDFDownloadLink
+                document={<SOWPdfExport sowData={newPDFData} />}
+                fileName={`${currentDoc?.title || 'SOW'}-Professional.pdf`}
+                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+              >
+                {({ loading }) => (loading ? 'Generating...' : 'Download PDF')}
+              </PDFDownloadLink>
+              <button
+                onClick={() => {
+                  setShowNewPDFModal(false);
+                  setNewPDFData(null);
+                }}
+                className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Workspace Creation Progress Modal */}

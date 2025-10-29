@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, AlertCircle, Loader2, Download, FileSpreadsheet, Share2, Eye, EyeOff } from "lucide-react";
+import { Check, AlertCircle, Loader2, Download, FileSpreadsheet, Share2, Eye, EyeOff, FilePlus } from "lucide-react";
 import { Button } from "./ui/button";
 
 interface DocumentStatusBarProps {
@@ -9,6 +9,7 @@ interface DocumentStatusBarProps {
   onSave?: () => void;
   isSaving?: boolean;
   onExportPDF?: () => void;
+  onExportNewPDF?: () => void; // NEW: Professional PDF export
   onExportExcel?: () => void;
   onSharePortal?: () => void;
   vertical?: string; // 📊 Social Garden BI
@@ -25,6 +26,7 @@ export function DocumentStatusBar({
   onSave,
   isSaving = false,
   onExportPDF,
+  onExportNewPDF,
   onExportExcel,
   onSharePortal,
   vertical,
@@ -138,7 +140,19 @@ export function DocumentStatusBar({
               className="bg-[#1A1A1D] hover:bg-[#2A2A2D] text-gray-300 hover:text-white border-[#2A2A2D] transition-colors"
             >
               <Download className="w-4 h-4 mr-2" />
-              Export PDF
+              Export PDF (Legacy)
+            </Button>
+          )}
+          
+          {onExportNewPDF && (
+            <Button
+              onClick={onExportNewPDF}
+              variant="outline"
+              size="sm"
+              className="bg-[#1A1A1D] hover:bg-green-600 text-green-400 hover:text-white border-green-600 transition-colors"
+            >
+              <FilePlus className="w-4 h-4 mr-2" />
+              Export Professional PDF
             </Button>
           )}
           
