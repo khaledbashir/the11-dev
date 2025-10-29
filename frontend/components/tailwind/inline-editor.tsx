@@ -15,7 +15,8 @@ import {
   MessageCircle,
   List,
   FileText,
-  RotateCcw
+  RotateCcw,
+  CircleHelp
 } from "lucide-react";
 import { toast } from "sonner";
 import { SelectionToolbar } from "./selection-toolbar";
@@ -44,6 +45,7 @@ export function InlineEditor({ onGenerate, editor: editorProp }: InlineEditorPro
   const [completion, setCompletion] = useState("");
   const [showActions, setShowActions] = useState(false);
   const [showActionsDropdown, setShowActionsDropdown] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   
   const inputRef = useRef<HTMLInputElement>(null);
   const selectionRef = useRef<{ from: number; to: number } | null>(null);
@@ -416,7 +418,7 @@ Please generate content that fits naturally at the cursor position, considering 
           toast.success('Text improved - ready to apply');
         }
       } else {
-        toast.error('Please select text first to improve it');
+        toast.error('Please select text or provide a command');
       }
     } catch (e) {
       console.error('Enhancement failed:', e);
@@ -424,6 +426,63 @@ Please generate content that fits naturally at the cursor position, considering 
     } finally {
       setIsEnhancing(false);
     }
+  };
+
+  const handleImproveCompletion = async () => {
+    if (!completion.trim()) {
+      toast.error('No AI output to improve yet');
+      return;
+    }
+    setIsEnhancing(true);
+    try {
+      const resp = await fetch('/api/ai/inline-editor-enhance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: completion })
+      });
+      if (!resp.ok) {
+        const msg = await resp.text().catch(() => '');
+        throw new Error(msg || `Enhancement error ${resp.status}`);
+      }
+      const data = await resp.json();
+      const improved = (data?.enhancedText || data?.improvedText || '').toString().trim();
+      if (!improved) {
+        toast.error('No changes returned');
+        return;
+      }
+      setCompletion(improved);
+      toast.success('Response refined');
+    } catch (e) {
+      console.error('Completion improvement failed:', e);
+      toast.error('Unable to refine response');
+    } finally {
+      setIsEnhancing(false);
+    }
+  };
+
+  const handleExecute = async () => {
+    const hasPrompt = !!prompt.trim();
+
+    if (triggerSource === 'selection' && hasSelection) {
+      if (hasPrompt) {
+        await handleGenerate();
+      } else {
+        await handleEnhance();
+      }
+      return;
+    }
+
+    if (hasPrompt) {
+      await handleGenerate();
+      return;
+    }
+
+    if (completion.trim()) {
+      await handleImproveCompletion();
+      return;
+    }
+
+    toast.message('Add a command, select text, or use a quick action to get started.');
   };
 
   if (!editor) {
@@ -462,6 +521,14 @@ Please generate content that fits naturally at the cursor position, considering 
                       Context Mode
                     </span>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => setShowHelp(!showHelp)}
+                    className="p-1 rounded-full hover:bg-[#1FE18E]/15 transition-colors"
+                    title="How Execute works"
+                  >
+                    <CircleHelp className="h-4 w-4 text-[#0e2e33]" />
+                  </button>
                 </div>
                 <button
                   onClick={() => setIsVisible(false)}
@@ -471,6 +538,17 @@ Please generate content that fits naturally at the cursor position, considering 
                   <X className="h-4 w-4 text-[#0e2e33]" />
                 </button>
               </div>
+
+              {showHelp && (
+                <div className="mb-4 text-xs text-[#0e2e33] bg-white/70 border border-[#1FE18E]/30 rounded-xl p-3 leading-relaxed">
+                  <p className="font-semibold mb-1">Execute button</p>
+                  <p>
+                    • Selection highlighted → Execute transforms only that text.<br />
+                    • Slash command → Execute generates using full document context near your cursor.<br />
+                    • No command but an AI reply is visible → Execute refines the latest output.
+                  </p>
+                </div>
+              )}
 
               {/* QUICK ACTIONS Dropdown */}
               {showActions && settings.quickActionsEnabled && (
@@ -536,33 +614,23 @@ Please generate content that fits naturally at the cursor position, considering 
                   className="w-full px-4 py-3 text-sm bg-white/60 text-[#0e2e33] placeholder-[#0e2e33]/40 border border-[#1FE18E]/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1FE18E] focus:border-transparent disabled:opacity-50 pr-24 backdrop-blur-sm"
                 />
                 
-                {/* Generate + Enhance Buttons */}
+                {/* Unified Execute Control */}
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
                   <button
-                    onClick={() => handleGenerate()}
-                    disabled={!prompt.trim() || isLoading}
+                    onClick={handleExecute}
+                    disabled={isLoading || isEnhancing || (!prompt.trim() && !hasSelection && !completion.trim())}
                     className="px-3 py-2 bg-[#1FE18E] hover:bg-[#1FE18E]/90 disabled:bg-gray-300 text-[#0e2e33] rounded-lg transition-colors disabled:opacity-50 font-medium text-sm flex items-center gap-2"
-                    title={triggerSource === 'selection' ? "Generate improvement for selected text" : "Generate with AI"}
+                    title={triggerSource === 'selection' && hasSelection ? "Execute on selected text" : prompt.trim() ? "Execute with full context" : "Refine last AI output"}
                   >
-                    {isLoading ? (
+                    {isLoading || isEnhancing ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <>
                         <Sparkles className="h-4 w-4" />
-                        <span>Send</span>
+                        <span>Execute</span>
                       </>
                     )}
                   </button>
-                  {triggerSource === 'selection' && (
-                    <button
-                      onClick={handleEnhance}
-                      disabled={isEnhancing || !hasSelection}
-                      className="px-3 py-2 bg-white/70 hover:bg-white/90 text-[#0e2e33] rounded-lg transition-colors disabled:opacity-50 border border-[#1FE18E]/50 text-xs font-medium flex items-center gap-1"
-                      title={hasSelection ? "Improve selected text with AI" : "Select text first"}
-                    >
-                      {isEnhancing ? <Loader2 className="h-4 w-4 animate-spin" /> : <>✨ Improve</>}
-                    </button>
-                  )}
                 </div>
               </div>
             </div>

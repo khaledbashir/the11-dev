@@ -335,6 +335,52 @@ export function cleanSOWContent(content: string): string {
  * Attempt to extract Architect structured JSON from a markdown/string blob.
  * Looks for JSON code fences first; returns object if it contains scopeItems[].
  */
+const findJsonObjectContainingKey = (text: string, rawKey: string): string | null => {
+  if (!text) return null;
+  const normalizedKey = rawKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`"${normalizedKey}"`, 'gi');
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(text)) !== null) {
+    const matchIndex = match.index;
+    const braceStart = (() => {
+      for (let i = matchIndex; i >= 0; i--) {
+        const char = text[i];
+        if (char === '{') return i;
+        if (char === '}') break;
+      }
+      return -1;
+    })();
+    if (braceStart === -1) continue;
+    let depth = 0;
+    let inString = false;
+    let isEscaped = false;
+    for (let cursor = braceStart; cursor < text.length; cursor++) {
+      const char = text[cursor];
+      if (isEscaped) {
+        isEscaped = false;
+        continue;
+      }
+      if (char === '\\') {
+        isEscaped = true;
+        continue;
+      }
+      if (char === '"') {
+        inString = !inString;
+      }
+      if (!inString) {
+        if (char === '{') depth++;
+        else if (char === '}') {
+          depth--;
+          if (depth === 0) {
+            return text.slice(braceStart, cursor + 1);
+          }
+        }
+      }
+    }
+  }
+  return null;
+};
+
 export function extractSOWStructuredJson(text: string): ArchitectSOW | null {
   if (!text) return null;
   // 1) Try language-tagged JSON blocks
@@ -357,6 +403,26 @@ export function extractSOWStructuredJson(text: string): ArchitectSOW | null {
       const obj = JSON.parse(body);
       if (obj && Array.isArray(obj.scopeItems)) {
         return obj as ArchitectSOW;
+      }
+    } catch {}
+  }
+  // 3) Attempt to locate embedded JSON objects that contain scopeItems/scope_items
+  const candidates = [
+    findJsonObjectContainingKey(text, 'scopeItems'),
+    findJsonObjectContainingKey(text, 'scope_items'),
+  ].filter(Boolean) as string[];
+  for (const snippet of candidates) {
+    try {
+      const raw = JSON.parse(snippet);
+      if (!raw) continue;
+      const normalized = raw as ArchitectSOW & { scope_items?: ArchitectSOW['scopeItems'] };
+      const scopeItems = Array.isArray(normalized.scopeItems)
+        ? normalized.scopeItems
+        : Array.isArray(normalized.scope_items)
+          ? normalized.scope_items
+          : undefined;
+      if (scopeItems) {
+        return { ...normalized, scopeItems } as ArchitectSOW;
       }
     } catch {}
   }
