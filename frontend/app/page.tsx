@@ -2606,7 +2606,11 @@ Ask me questions to get business insights, such as:
     toast.info('📄 Preparing professional PDF...');
     
     try {
-      const sowData = prepareSOWForNewPDF(currentDoc);
+      const editorJSON = editorRef.current?.getContent?.() || latestEditorJSON || currentDoc.content;
+      const sowData = prepareSOWForNewPDF({
+        ...currentDoc,
+        content: editorJSON,
+      });
       
       if (!sowData) {
         toast.error('❌ Unable to generate PDF from current document');
