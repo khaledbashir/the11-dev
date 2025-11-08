@@ -18,9 +18,15 @@ load_dotenv()
 app = FastAPI(title="Social Garden PDF & Sheets Service")
 
 # Enable CORS for frontend requests
+# 🔒 Security: Only allow requests from our frontend domain
+# For local dev, add "http://localhost:3000" to the list
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://sow-generator.socialgarden.com.au",
+        "https://sow.qandu.me",  # Production frontend
+        "http://localhost:3000",  # Local development
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -29,6 +35,9 @@ app.add_middleware(
 class PDFRequest(BaseModel):
     html_content: str
     filename: str = "document"
+    show_pricing_summary: bool = True  # 🎯 Smart PDF Export: flag to control pricing summary visibility
+    content: Optional[Dict[str, Any]] = None  # TipTap JSON content for enforcement checks
+    final_investment_target_text: Optional[str] = None  # 🎯 Authoritative final price to display in PDF
 
 class SheetRequest(BaseModel):
     client_name: str
@@ -64,6 +73,18 @@ SOW_TEMPLATE = """
 
         <div class="sow-content">
             {{ html_content }}
+            {% if final_investment_target_text %}
+            <h4 style="margin-top: 20px;">Summary</h4>
+            <table class="summary-table">
+                <tr>
+                    <td style="text-align: right; padding-right: 12px;"><strong>Final Project Value:</strong></td>
+                    <td class="num" style="color: #2C823D; font-size: 18px;">
+                        <strong>{{ final_investment_target_text }}</strong>
+                    </td>
+                </tr>
+            </table>
+            <p style="color:#6b7280; font-size: 0.85em; margin-top: 4px;">This final project value is authoritative and supersedes any computed totals.</p>
+            {% endif %}
         </div>
 
         <div class="sow-footer">
@@ -349,23 +370,46 @@ hr {
 @app.post("/generate-pdf")
 async def generate_pdf(request: PDFRequest):
     try:
-        print("=== DEBUG: Received HTML Content ===")
-        print(request.html_content[:500] if len(request.html_content) > 500 else request.html_content)
+        print("=== DEBUG: PDF Generation Request ===")
+        print(f"📄 Filename: {request.filename}")
+        print(f"🎯 Show Pricing Summary: {request.show_pricing_summary}")
+        print(f"� Final Investment Target: {request.final_investment_target_text}")
+        print(f"�📊 HTML Content Length: {len(request.html_content)}")
         print("=== Has table tag:", "<table" in request.html_content.lower(), "===")
+        
+        # 🎯 CRITICAL FIX: When final_investment_target_text is provided,
+        # strip any computed summary sections from the HTML to avoid duplicates
+        html_content = request.html_content
+        if request.final_investment_target_text:
+            import re
+            # Remove any <h4>Summary</h4> section and its following table/paragraph
+            # This regex removes: <h4...>Summary</h4> + following <table...>...</table> + optional disclaimer <p>
+            html_content = re.sub(
+                r'<h4[^>]*>\s*Summary\s*</h4>\s*<table[^>]*>.*?</table>\s*(<p[^>]*>.*?</p>)?',
+                '',
+                html_content,
+                flags=re.IGNORECASE | re.DOTALL
+            )
+            print("✅ Stripped computed summary section from HTML (final_investment_target_text provided)")
         
         # Load and encode the Social Garden logo
         logo_base64 = ""
-        logo_path = Path(__file__).parent / "social-garden-logo-dark.png"
+        # Use the newer logo file that matches frontend branding
+        logo_path = Path(__file__).parent / "social-garden-logo-dark-new.png"
         if logo_path.exists():
             with open(logo_path, "rb") as logo_file:
                 logo_base64 = base64.b64encode(logo_file.read()).decode('utf-8')
+            print(f"✅ Logo loaded successfully from {logo_path}")
+        else:
+            print(f"⚠️ Logo file not found at {logo_path}")
         
         # Render the HTML template with Jinja2
         template = Template(SOW_TEMPLATE)
         full_html = template.render(
-            html_content=request.html_content,
+            html_content=html_content,
             css_content=DEFAULT_CSS,
-            logo_base64=logo_base64
+            logo_base64=logo_base64,
+            final_investment_target_text=request.final_investment_target_text,
         )
         
         # Generate PDF with WeasyPrint
@@ -473,6 +517,116 @@ class SheetRequestOAuth(BaseModel):
     assumptions: Optional[str] = ""
     timeline: Optional[str] = ""
     access_token: str
+
+class SOWItem(BaseModel):
+    description: str
+    role: str
+    hours: float
+    cost: float
+
+class SOWScope(BaseModel):
+    id: int
+    title: str
+    description: str
+    items: list[SOWItem]
+    deliverables: list[str]
+    assumptions: list[str]
+
+class ProfessionalPDFRequest(BaseModel):
+    company: dict
+    clientName: str
+    projectTitle: str
+    projectSubtitle: str
+    projectOverview: str
+    budgetNotes: str
+    scopes: list[SOWScope]
+    currency: str
+    gstApplicable: bool
+    generatedDate: str
+    discount: Optional[float] = 0
+
+@app.post("/generate-professional-pdf")
+async def generate_professional_pdf(request: ProfessionalPDFRequest):
+    try:
+        print("=== DEBUG: Professional PDF Generation Request ===")
+        
+        # Load and encode the Social Garden logo
+        logo_base64 = ""
+        logo_path = Path(__file__).parent / "social-garden-logo-dark-new.png"
+        if logo_path.exists():
+            with open(logo_path, "rb") as logo_file:
+                logo_base64 = base64.b64encode(logo_file.read()).decode('utf-8')
+        
+        # Load the template
+        template_path = Path(__file__).parent / "multiscope_template.html"
+        with open(template_path, "r") as f:
+            template_str = f.read()
+        
+        template = Template(template_str)
+        
+        # Calculate financial totals in Python instead of Jinja2
+        subtotal = 0.0
+        scope_totals = []
+        
+        for scope in request.scopes:
+            scope_total = sum(item.cost for item in scope.items)
+            scope_totals.append({
+                'title': scope.title,
+                'total': scope_total,
+                'items': scope.items
+            })
+            subtotal += scope_total
+        
+        discount_amount = 0.0
+        if request.discount and request.discount > 0:
+            discount_amount = subtotal * (request.discount / 100)
+        
+        total_after_discount = subtotal - discount_amount
+        
+        # Render the HTML with calculated values
+        full_html = template.render(
+            css_content=DEFAULT_CSS,
+            logo_base64=logo_base64,
+            company=request.company,
+            clientName=request.clientName,
+            projectTitle=request.projectTitle,
+            projectSubtitle=request.projectSubtitle,
+            projectOverview=request.projectOverview,
+            budgetNotes=request.budgetNotes,
+            scopes=request.scopes,
+            scope_totals=scope_totals,
+            subtotal=subtotal,
+            discount=request.discount,
+            discount_amount=discount_amount,
+            total_after_discount=total_after_discount,
+            currency=lambda x: f"${x:,.2f}",
+            generatedDate=request.generatedDate,
+            gstApplicable=request.gstApplicable,
+            currency_symbol=request.currency
+        )
+        
+        # Generate PDF
+        html_doc = weasyprint.HTML(string=full_html)
+        pdf_bytes = html_doc.write_pdf()
+        
+        output_dir = Path("/tmp/pdfs")
+        output_dir.mkdir(exist_ok=True)
+        pdf_path = output_dir / f"{request.projectTitle.replace(' ', '_')}.pdf"
+        
+        with open(pdf_path, 'wb') as f:
+            f.write(pdf_bytes)
+            
+        return FileResponse(
+            pdf_path,
+            media_type='application/pdf',
+            filename=f"{request.projectTitle}.pdf"
+        )
+        
+    except Exception as e:
+        import traceback
+        error_detail = f"Professional PDF generation failed: {str(e)}\n{traceback.format_exc()}"
+        print(error_detail)
+        raise HTTPException(status_code=500, detail=error_detail)
 
 @app.post("/create-sheet-oauth")
 async def create_sheet_oauth(request: SheetRequestOAuth):
