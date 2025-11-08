@@ -2,7 +2,7 @@
 // Handles workspace creation, document embedding, and chat integration
 
 import SOCIAL_GARDEN_KNOWLEDGE_BASE from './social-garden-knowledge-base';
-import { THE_ARCHITECT_V2_PROMPT } from './knowledge-base';
+import { THE_ARCHITECT_V4_PROMPT } from './knowledge-base';
 import { ROLES } from './rateCard';
 
 // Get AnythingLLM URL from environment (NEXT_PUBLIC_ANYTHINGLLM_URL must be set in .env)
@@ -637,10 +637,10 @@ Metadata:
    * This prompt is used in the embed widget on the client portal
    */
   async setWorkspacePrompt(workspaceSlug: string, clientName?: string, isSOWWorkspace: boolean = true): Promise<boolean> {
-    // For SOW workspaces: Use The Architect prompt with dynamically injected rate card
+    // For SOW workspaces: Use The Architect v4.1 prompt with in-prompt rate card
     // For other workspaces: Use client-facing prompt for Q&A
     const prompt = isSOWWorkspace 
-      ? THE_ARCHITECT_V2_PROMPT
+      ? THE_ARCHITECT_V4_PROMPT
       : this.getClientFacingPrompt(clientName);
 
     // 🎯 STRATEGIC LOGGING: Prove prompt injection is working
@@ -648,11 +648,12 @@ Metadata:
     console.log(`🎯 [PROMPT INJECTION VERIFICATION]`);
     console.log(`   Workspace: ${workspaceSlug}`);
     console.log(`   Client: ${clientName || 'N/A'}`);
-    console.log(`   Type: ${isSOWWorkspace ? 'SOW (The Architect)' : 'Client Q&A'}`);
+    console.log(`   Type: ${isSOWWorkspace ? 'SOW (The Architect v4.1)' : 'Client Q&A'}`);
     console.log(`   Prompt Length: ${prompt.length} characters`);
-    console.log(`   Contains "Tech - Head Of - Senior Project Management": ${prompt.includes('Tech - Head Of - Senior Project Management')}`);
-    console.log(`   Contains "EXACTLY 5 hours": ${prompt.includes('EXACTLY 5 hours')}`);
-    console.log(`   Contains "non-negotiable": ${prompt.includes('non-negotiable')}`);
+    console.log(`   Contains "Tech - Head Of- Senior Project Management": ${prompt.includes('Tech - Head Of- Senior Project Management')}`);
+    console.log(`   Contains "[OFFICIAL_RATE_CARD]": ${prompt.includes('[OFFICIAL_RATE_CARD]')}`);
+    console.log(`   Contains "[FINANCIAL_REASONING]": ${prompt.includes('[FINANCIAL_REASONING]')}`);
+    console.log(`   Contains "v4.1 - MULTI-SCOPE": ${prompt.includes('v4.1 - MULTI-SCOPE')}`);
     console.log(`${'='.repeat(80)}\n`);
 
     try {
