@@ -24,6 +24,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://sow-generator.socialgarden.com.au",
+        "https://sow.qandu.me",  # Production frontend
         "http://localhost:3000",  # Local development
     ],
     allow_credentials=True,
