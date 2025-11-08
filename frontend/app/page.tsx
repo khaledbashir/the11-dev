@@ -36,7 +36,7 @@ import {
 import type { ArchitectSOW } from "@/lib/export-utils";
 import { extractSOWStructuredJson } from "@/lib/export-utils";
 import { anythingLLM } from "@/lib/anythingllm";
-import { ROLES } from "@/lib/rateCard";
+import { ROLES, getRateForRole } from "@/lib/rateCard";
 import { calculatePricingTable } from "@/lib/pricingCalculator";
 import { getWorkspaceForAgent } from "@/lib/workspace-config";
 import { prepareSOWForNewPDF, prepareProfessionalSOWData } from "@/lib/sow-pdf-utils";
@@ -133,6 +133,51 @@ const extractBudgetAndDiscount = (prompt: string): { budget: number; discount: n
   }
   
   return { budget, discount };
+};
+
+// 🎯 V4.1 UTILITY: Transform v4.1 scopes array to backend professional PDF format
+const transformScopesToPDFFormat = (scopes: any[], projectTitle: string = "Statement of Work"): any => {
+  if (!scopes || scopes.length === 0) {
+    return null;
+  }
+
+  // Transform each scope to backend format
+  const transformedScopes = scopes.map((scope: any) => {
+    // Extract deliverables (array of strings or single string)
+    let deliverables: string[] = [];
+    if (Array.isArray(scope.deliverables)) {
+      deliverables = scope.deliverables;
+    } else if (typeof scope.deliverables === 'string') {
+      deliverables = scope.deliverables.split('\n').filter(d => d.trim());
+    }
+
+    // Transform role_allocation to items with cost calculations
+    const items = (scope.role_allocation || []).map((role: any) => {
+      const rate = getRateForRole(role.role) || role.rate || 0;
+      const hours = role.hours || 0;
+      const cost = hours * rate;
+      
+      return {
+        role: role.role,
+        hours: hours,
+        rate: rate,
+        cost: cost
+      };
+    });
+
+    return {
+      title: scope.scope_name || scope.title || "Scope",
+      description: scope.scope_description || scope.description || "",
+      deliverables: deliverables,
+      items: items
+    };
+  });
+
+  return {
+    projectTitle: projectTitle,
+    projectSubtitle: "Statement of Work",
+    scopes: transformedScopes
+  };
 };
 
 // 🎯 UTILITY: Extract and parse [PRICING_JSON] or [PRICING/JSON] block from The Architect v3.1
@@ -1068,6 +1113,14 @@ export default function Page() {
   ]);
   // Structured SOW from AI (Architect modular JSON)
   const [structuredSow, setStructuredSow] = useState<ArchitectSOW | null>(null);
+  
+  // 🎯 V4.1 Multi-Scope Pricing Data (for professional PDF export)
+  const [multiScopePricingData, setMultiScopePricingData] = useState<{
+    scopes: any[] | null;
+    discount: number;
+    projectTitle: string;
+    extractedAt: number;
+  } | null>(null);
   
   // 🛡️ CRITICAL FIX: Guard flag to prevent race condition on chat history restoration
   const [isHistoryRestored, setIsHistoryRestored] = useState(false);
@@ -2665,7 +2718,65 @@ Ask me questions to get business insights, such as:
       const editorJSON = editorRef.current?.getContent?.() || latestEditorJSON || currentDoc.content;
       console.log('📝 [PDF Export] Editor JSON:', JSON.stringify(editorJSON, null, 2));
       
-      // Convert TipTap JSON to HTML
+      // 🎯 V4.1: Check if we have multi-scope pricing data
+      if (multiScopePricingData && multiScopePricingData.scopes && multiScopePricingData.scopes.length > 0) {
+        console.log(`✅ [PDF Export] Using multi-scope professional format (${multiScopePricingData.scopes.length} scopes)`);
+        
+        // Transform scopes to backend format
+        const transformed = transformScopesToPDFFormat(
+          multiScopePricingData.scopes,
+          multiScopePricingData.projectTitle || currentDoc.title || 'Statement of Work'
+        );
+        
+        // Call the professional PDF endpoint with structured data
+        const response = await fetch('/api/generate-professional-pdf', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            projectTitle: transformed.projectTitle,
+            projectSubtitle: transformed.projectSubtitle,
+            scopes: transformed.scopes,
+            discount: multiScopePricingData.discount || 0,
+            clientName: currentDoc.title || 'Client',
+            projectOverview: 'Statement of Work',
+            budgetNotes: '',
+            currency: 'AUD',
+            gstApplicable: true,
+            generatedDate: new Date().toLocaleDateString('en-AU', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            }),
+            company: {
+              name: 'Social Garden Pty Ltd',
+              email: 'marketing@socialgarden.com.au',
+              website: 'www.socialgarden.com.au'
+            }
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'PDF generation failed');
+        }
+
+        // Download the PDF
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${currentDoc.title || 'Statement-of-Work'}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        toast.success('✅ Professional multi-scope PDF downloaded!');
+        return;
+      }
+      
+      // Fallback: Use simple HTML conversion for non-multi-scope documents
+      console.log('📄 [PDF Export] Using standard HTML conversion (no multi-scope data)');
       const html = convertNovelToHTML(editorJSON);
       console.log('🔄 [PDF Export] Converted HTML length:', html.length);
       console.log('🔍 [PDF Export] HTML preview (first 500 chars):', html.substring(0, 500));
@@ -2699,9 +2810,9 @@ Ask me questions to get business insights, such as:
 
       toast.success('✅ PDF downloaded successfully!');
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error preparing new PDF:', error);
-      toast.error(`❌ Error preparing PDF: ${error.message}`);
+      toast.error(`❌ Error preparing PDF: ${error?.message || 'Unknown error'}`);
     } finally {
       setIsGeneratingProPDF(false);
     }
@@ -3520,6 +3631,19 @@ Ask me questions to get business insights, such as:
         tablesDiscounts: tablesDiscountsQueue,
         scopes: extractedScopes, // V4.0: Multi-scope support
       };
+      
+      // 🎯 V4.1: Store multi-scope pricing data for professional PDF export
+      if (extractedScopes && extractedScopes.length > 0) {
+        const titleMatch = markdownPart.match(/^#\s+(.+)$/m);
+        const projectTitle = titleMatch ? titleMatch[1] : "Statement of Work";
+        setMultiScopePricingData({
+          scopes: extractedScopes,
+          discount: extractedDiscount || userPromptDiscount || 0,
+          projectTitle,
+          extractedAt: Date.now()
+        });
+        console.log(`✅ Stored multi-scope pricing data: ${extractedScopes.length} scopes, ${extractedDiscount}% discount`);
+      }
       
       // CRITICAL: If no suggestedRoles provided from JSON, try extracting Architect structured JSON from the message body
   let convertedContent;

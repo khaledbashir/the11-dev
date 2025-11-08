@@ -4,8 +4,41 @@ async function handleProfessionalPDFGeneration(body: any) {
   const pdfServiceUrl = process.env.NEXT_PUBLIC_PDF_SERVICE_URL || 'http://localhost:8000';
   
   try {
-    // Body already contains html_content and filename from the frontend
-    // Just forward it to the backend PDF service
+    // 🎯 V4.1: Check if this is a multi-scope professional PDF request
+    const isMultiScope = body.scopes && Array.isArray(body.scopes) && body.scopes.length > 0;
+    
+    if (isMultiScope) {
+      console.log(`✅ [PDF Service] Using multi-scope professional endpoint (${body.scopes.length} scopes)`);
+      
+      // Call the professional PDF endpoint with structured data
+      const response = await fetch(`${pdfServiceUrl}/generate-professional-pdf`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+      
+      if (!response.ok) {
+        const error = await response.text();
+        console.error('❌ [PDF Service] Multi-scope error response:', error);
+        return NextResponse.json({ error: `PDF service error: ${error}` }, { status: response.status });
+      }
+      
+      const pdfBlob = await response.blob();
+      console.log('✅ [PDF Service] Multi-scope professional PDF generated successfully');
+      
+      return new NextResponse(pdfBlob, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${body.projectTitle || 'document'}.pdf"`,
+        },
+      });
+    }
+    
+    // Fallback: Simple HTML-based PDF generation
+    console.log('📄 [PDF Service] Using standard HTML-based endpoint');
     const response = await fetch(`${pdfServiceUrl}/generate-pdf`, {
       method: 'POST',
       headers: {
