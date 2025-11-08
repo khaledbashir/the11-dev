@@ -94,16 +94,21 @@
             </tbody>
             <tfoot>
                 <tr>
-                    <td><strong>Subtotal</strong></td>
+                    <td><strong>Subtotal (before discount)</strong></td>
                     <td><strong>{{ currency(subtotal) }}</strong></td>
                 </tr>
-                {% if discount > 0 %}
+                {% if discount and discount > 0 %}
                 <tr>
                     <td><strong>Discount ({{ discount }}%)</strong></td>
                     <td><strong>-{{ currency(discount_amount) }}</strong></td>
                 </tr>
                 <tr>
-                    <td><strong>Total after Discount</strong></td>
+                    <td><strong>Subtotal (after discount)</strong></td>
+                    <td><strong>{{ currency(total_after_discount) }}</strong></td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td><strong>Subtotal (after discount)</strong></td>
                     <td><strong>{{ currency(total_after_discount) }}</strong></td>
                 </tr>
                 {% endif %}
@@ -112,11 +117,11 @@
                     <td><strong>GST (10%)</strong></td>
                     <td><strong>{{ currency(gst_amount) }}</strong></td>
                 </tr>
+                {% endif %}
                 <tr>
                     <td><strong>Final Total (Incl. GST)</strong></td>
                     <td><strong>{{ currency(final_total) }}</strong></td>
                 </tr>
-                {% endif %}
             </tfoot>
         </table>
         <p>{{ budgetNotes }}</p>
