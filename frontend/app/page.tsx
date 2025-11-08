@@ -4442,10 +4442,206 @@ Ask me questions to get business insights, such as:
             }
           } catch {}
 
-          // ⚠️ REMOVED TWO-STEP AUTO-CORRECT LOGIC
-          // The AI should now return complete SOW narrative + JSON in a single response
-          // No follow-up prompt is needed if the initial prompt is clear enough
-          console.log('✅ Single-step AI generation complete - no follow-up needed');
+          // 🎯 TWO-GUY SYSTEM: Automatic orchestration of Architect → @agent → Accountant → Final SOW
+          const pricingData = extractPricingJSON(accumulatedContent);
+          
+          if (pricingData && (pricingData.scopes?.length || pricingData.roles?.length)) {
+            console.log('🎯 [TWO-GUY SYSTEM] Detected [PRICING_JSON] - initiating automatic orchestration');
+            console.log(`📊 Scopes: ${pricingData.scopes?.length || 0}, Roles: ${pricingData.roles?.length || 0}, Discount: ${pricingData.discount || 0}%`);
+            
+            try {
+              // STEP 2: Automatically call @agent with the pricing JSON
+              setIsChatLoading(true);
+              const agentCallMessage = `@agent ${JSON.stringify({ json: pricingData })}`;
+              
+              console.log('🤖 [STEP 2] Calling @agent with pricing data...');
+              
+              // Add user message (simulated @agent call)
+              const agentUserMsg: ChatMessage = {
+                id: `msg${Date.now()}`,
+                role: 'user',
+                content: agentCallMessage,
+                timestamp: Date.now(),
+              };
+              setChatMessages(prev => [...prev, agentUserMsg]);
+
+              // Call AnythingLLM stream endpoint with @agent command
+              const agentResponse = await fetch(streamEndpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  model: effectiveAgent.model,
+                  workspace: workspaceSlug,
+                  threadSlug: threadSlugToUse,
+                  mode: 'chat',
+                  messages: [...newMessages, { role: 'user', content: agentCallMessage }],
+                }),
+              });
+
+              if (!agentResponse.ok) {
+                throw new Error(`Agent call failed: ${agentResponse.statusText}`);
+              }
+
+              // Read accountant's response
+              const agentReader = agentResponse.body?.getReader();
+              const agentDecoder = new TextDecoder();
+              let accountantOutput = '';
+              
+              if (agentReader) {
+                let agentBuffer = '';
+                const agentMsgId = `msg${Date.now() + 1}`;
+                
+                // Create message for accountant response
+                const accountantMsg: ChatMessage = {
+                  id: agentMsgId,
+                  role: 'assistant',
+                  content: '',
+                  timestamp: Date.now(),
+                };
+                setChatMessages(prev => [...prev, accountantMsg]);
+                setStreamingMessageId(agentMsgId);
+
+                while (true) {
+                  const { done, value } = await agentReader.read();
+                  if (done) break;
+
+                  agentBuffer += agentDecoder.decode(value, { stream: true });
+                  const lines = agentBuffer.split('\n');
+                  agentBuffer = lines.pop() || '';
+
+                  for (const line of lines) {
+                    if (!line.trim() || !line.startsWith('data: ')) continue;
+                    
+                    try {
+                      const jsonStr = line.substring(6);
+                      const data = JSON.parse(jsonStr);
+                      
+                      if (data.type === 'textResponseChunk' && data.textResponse) {
+                        accountantOutput += data.textResponse;
+                        setChatMessages(prev =>
+                          prev.map(msg =>
+                            msg.id === agentMsgId ? { ...msg, content: accountantOutput } : msg
+                          )
+                        );
+                      } else if (data.type === 'textResponse') {
+                        accountantOutput = data.content || data.textResponse || '';
+                        setChatMessages(prev =>
+                          prev.map(msg =>
+                            msg.id === agentMsgId ? { ...msg, content: accountantOutput } : msg
+                          )
+                        );
+                      }
+                    } catch (parseError) {
+                      console.error('Failed to parse agent SSE data:', parseError);
+                    }
+                  }
+                }
+                
+                setStreamingMessageId(null);
+                console.log('✅ [STEP 2] Accountant responded:', accountantOutput.substring(0, 200));
+
+                // STEP 3: Send accountant's result back to Architect for final SOW completion
+                console.log('📝 [STEP 3] Sending financials back to Architect for SOW completion...');
+                
+                const finalizationPrompt = `Please add the pricing tables to the SOW using these validated financials from the accountant:\n\n${accountantOutput}`;
+                
+                const finalUserMsg: ChatMessage = {
+                  id: `msg${Date.now() + 2}`,
+                  role: 'user',
+                  content: finalizationPrompt,
+                  timestamp: Date.now(),
+                };
+                setChatMessages(prev => [...prev, finalUserMsg]);
+
+                // Final call to Architect
+                const finalResponse = await fetch(streamEndpoint, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    model: effectiveAgent.model,
+                    workspace: workspaceSlug,
+                    threadSlug: threadSlugToUse,
+                    mode: 'chat',
+                    messages: [...newMessages, 
+                      { role: 'user', content: agentCallMessage },
+                      { role: 'assistant', content: accountantOutput },
+                      { role: 'user', content: finalizationPrompt }
+                    ],
+                  }),
+                });
+
+                if (!finalResponse.ok) {
+                  throw new Error(`Final Architect call failed: ${finalResponse.statusText}`);
+                }
+
+                // Stream final SOW with pricing
+                const finalReader = finalResponse.body?.getReader();
+                const finalDecoder = new TextDecoder();
+                let finalContent = '';
+                
+                if (finalReader) {
+                  let finalBuffer = '';
+                  const finalMsgId = `msg${Date.now() + 3}`;
+                  
+                  const finalMsg: ChatMessage = {
+                    id: finalMsgId,
+                    role: 'assistant',
+                    content: '',
+                    timestamp: Date.now(),
+                  };
+                  setChatMessages(prev => [...prev, finalMsg]);
+                  setStreamingMessageId(finalMsgId);
+
+                  while (true) {
+                    const { done, value } = await finalReader.read();
+                    if (done) break;
+
+                    finalBuffer += finalDecoder.decode(value, { stream: true });
+                    const lines = finalBuffer.split('\n');
+                    finalBuffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                      if (!line.trim() || !line.startsWith('data: ')) continue;
+                      
+                      try {
+                        const jsonStr = line.substring(6);
+                        const data = JSON.parse(jsonStr);
+                        
+                        if (data.type === 'textResponseChunk' && data.textResponse) {
+                          finalContent += data.textResponse;
+                          setChatMessages(prev =>
+                            prev.map(msg =>
+                              msg.id === finalMsgId ? { ...msg, content: finalContent } : msg
+                            )
+                          );
+                        } else if (data.type === 'textResponse') {
+                          finalContent = data.content || data.textResponse || '';
+                          setChatMessages(prev =>
+                            prev.map(msg =>
+                              msg.id === finalMsgId ? { ...msg, content: finalContent } : msg
+                            )
+                          );
+                        }
+                      } catch (parseError) {
+                        console.error('Failed to parse final SSE data:', parseError);
+                      }
+                    }
+                  }
+                  
+                  setStreamingMessageId(null);
+                  console.log('🎉 [STEP 3] Complete SOW with pricing generated!');
+                }
+              }
+              
+            } catch (orchestrationError) {
+              console.error('❌ Two-Guy System orchestration failed:', orchestrationError);
+              // Don't block the UI - the Architect's initial response is still valid
+            } finally {
+              setIsChatLoading(false);
+            }
+          } else {
+            console.log('✅ Single-step AI generation complete - no pricing JSON detected');
+          }
         } else {
           // 📦 NON-STREAMING MODE: Standard fetch for OpenRouter
           const lastUserMessage = newMessages[newMessages.length - 1]?.content || '';
