@@ -549,6 +549,14 @@ class ProfessionalPDFRequest(BaseModel):
 async def generate_professional_pdf(request: ProfessionalPDFRequest):
     try:
         print("=== DEBUG: Professional PDF Generation Request ===")
+        try:
+            print(f"📌 Client: {request.clientName} | Project: {request.projectTitle}")
+            print(f"📅 Date: {request.generatedDate} | GST Applicable: {request.gstApplicable}")
+            print(f"💸 Incoming discount (raw): {request.discount}")
+            print(f"🧩 Scopes received: {len(request.scopes)}")
+        except Exception as _log_e:
+            # Ensure logging never breaks the request
+            print(f"⚠️ Logging error: {_log_e}")
         
         # Load and encode the Social Garden logo
         logo_base64 = ""
@@ -564,34 +572,59 @@ async def generate_professional_pdf(request: ProfessionalPDFRequest):
         
         template = Template(template_str)
         
-        # Calculate financial totals in Python instead of Jinja2
-        subtotal = 0.0
-        scope_totals = []
+    # Calculate financial totals in Python instead of Jinja2
+    subtotal = 0.0
+    scope_totals = []
 
         # Build enriched scope_totals list with per-scope totals
         for scope in request.scopes:
-            scope_total = sum(item.cost for item in scope.items)
+            # Sum costs robustly, ensuring float and ignoring None
+            scope_total = 0.0
+            for item in scope.items:
+                try:
+                    scope_total += float(item.cost or 0.0)
+                except Exception:
+                    # If a value is non-numeric, treat as zero and continue
+                    scope_total += 0.0
             scope_totals.append({
                 'title': scope.title,
-                'total': scope_total,
+                'total': round(scope_total, 2),
                 'description': scope.description,
                 'deliverables': scope.deliverables,
                 'assumptions': scope.assumptions,
                 'items': scope.items
             })
             subtotal += scope_total
-        
-        discount_amount = 0.0
-        if request.discount and request.discount > 0:
-            discount_amount = subtotal * (request.discount / 100)
 
-        total_after_discount = subtotal - discount_amount
+        # Normalize subtotal to 2 decimals
+        subtotal = round(subtotal, 2)
+        
+        # Normalize discount to a safe float percent
+        try:
+            discount_percent = float(request.discount or 0.0)
+        except Exception:
+            discount_percent = 0.0
+
+        discount_amount = 0.0
+        if discount_percent > 0:
+            discount_amount = round(subtotal * (discount_percent / 100.0), 2)
+
+        total_after_discount = round(subtotal - discount_amount, 2)
 
         # GST and final total calculations (if applicable)
         gst_amount = 0.0
         if request.gstApplicable:
-            gst_amount = total_after_discount * 0.10
-        final_total = total_after_discount + gst_amount
+            gst_amount = round(total_after_discount * 0.10, 2)
+        final_total = round(total_after_discount + gst_amount, 2)
+
+        # Debug print the financial pipeline to trace issues end-to-end
+        print("=== DEBUG: Financial Summary (Computed in backend) ===")
+        print(f"Subtotal (before discount): {subtotal}")
+        print(f"Discount %: {discount_percent}")
+        print(f"Discount amount: {discount_amount}")
+        print(f"Subtotal (after discount): {total_after_discount}")
+        print(f"GST amount (10% if applicable): {gst_amount}")
+        print(f"Final total (incl. GST): {final_total}")
         
         # Render the HTML with calculated values
         full_html = template.render(
@@ -606,7 +639,7 @@ async def generate_professional_pdf(request: ProfessionalPDFRequest):
             scopes=request.scopes,
             scope_totals=scope_totals,
             subtotal=subtotal,
-            discount=request.discount,
+            discount=discount_percent,
             discount_amount=discount_amount,
             total_after_discount=total_after_discount,
             gst_amount=gst_amount,
