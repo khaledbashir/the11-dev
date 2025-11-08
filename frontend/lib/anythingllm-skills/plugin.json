@@ -1,0 +1,49 @@
+{
+  "name": "Social Garden Accountant",
+  "slug": "accountant",
+  "version": "1.0.0",
+  "description": "Deterministic financial calculator for multi-scope SOWs using official rate card.",
+  "entry": "accountant.js",
+  "author": "Social Garden",
+  "permissions": [],
+  "env": {},
+  "schema": {
+    "type": "object",
+    "properties": {
+      "json": {
+        "type": "object",
+        "description": "Canonical hours-only multi-scope pricing JSON from Architect"
+      }
+    },
+    "required": ["json"]
+  },
+  "examples": [
+    {
+      "call": "@accountant {\n  \"json\": {\n    \"discount\": 10,\n    \"scopes\": [\n      {\n        \"scope_name\": \"Phase 1: Strategy & Research\",\n        \"scope_description\": \"Discovery and research activities\",\n        \"deliverables\": [\"Research summary\"],\n        \"role_allocation\": [\n          { \"role\": \"Tech - Sr. Consultant - Strategy\", \"hours\": 8 },\n          { \"role\": \"Content - Keyword Research (Onshore)\", \"hours\": 6 }\n        ]\n      }\n    ]\n  }\n}",
+      "response": {
+        "success": true,
+        "data": {
+          "version": "4.2-financial",
+          "discount": 10,
+          "scopes": [
+            {
+              "scope_name": "Phase 1: Strategy & Research",
+              "items": [
+                {"role": "Tech - Sr. Consultant - Strategy", "hours": 8, "rate": 295, "cost": 2360},
+                {"role": "Content - Keyword Research (Onshore)", "hours": 6, "rate": 150, "cost": 900}
+              ],
+              "scope_total": 3260
+            }
+          ],
+          "financials": {
+            "subtotal": 3260,
+            "discount_amount": 326,
+            "total_after_discount": 2934,
+            "gst_amount": 293.4,
+            "final_total": 3227.4
+          }
+        }
+      }
+    }
+  ]
+}
