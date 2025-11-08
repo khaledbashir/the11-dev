@@ -583,6 +583,13 @@ async def generate_professional_pdf(request: ProfessionalPDFRequest):
         
         total_after_discount = subtotal - discount_amount
         
+        # Calculate GST on the post-discount amount (correct logic)
+        gst_amount = 0.0
+        if request.gstApplicable:
+            gst_amount = total_after_discount * 0.10  # 10% GST
+        
+        final_total = total_after_discount + gst_amount
+        
         # Render the HTML with calculated values
         full_html = template.render(
             css_content=DEFAULT_CSS,
@@ -599,6 +606,8 @@ async def generate_professional_pdf(request: ProfessionalPDFRequest):
             discount=request.discount,
             discount_amount=discount_amount,
             total_after_discount=total_after_discount,
+            gst_amount=gst_amount,
+            final_total=final_total,
             currency=lambda x: f"${x:,.2f}",
             generatedDate=request.generatedDate,
             gstApplicable=request.gstApplicable,
