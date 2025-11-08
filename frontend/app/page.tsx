@@ -2621,9 +2621,12 @@ Ask me questions to get business insights, such as:
     try {
       // Get current editor content
       const editorJSON = editorRef.current?.getContent?.() || latestEditorJSON || currentDoc.content;
+      console.log('📝 [PDF Export] Editor JSON:', JSON.stringify(editorJSON, null, 2));
       
       // Convert TipTap JSON to HTML
       const html = convertNovelToHTML(editorJSON);
+      console.log('🔄 [PDF Export] Converted HTML length:', html.length);
+      console.log('🔍 [PDF Export] HTML preview (first 500 chars):', html.substring(0, 500));
       
       // Call the PDF generation API
       const response = await fetch('/api/generate-professional-pdf', {
