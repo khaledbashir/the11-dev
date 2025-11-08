@@ -14,6 +14,11 @@
       "openFiles": [
         "pages/index.js"
       ]
+    },
+    "vscode": {
+      "extensions": [
+        "johnny-zhao.oai-compatible-copilot"
+      ]
     }
   },
   "portsAttributes": {

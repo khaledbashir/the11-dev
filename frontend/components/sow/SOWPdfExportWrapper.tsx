@@ -81,8 +81,17 @@ const SOWPdfExportWrapper: React.FC<SOWPdfExportWrapperProps> = ({
       if (isDownloading) return;
       try {
         setIsDownloading(true);
-        const instance = pdf(<SOWPdfExport sowData={sowData} />);
-        const blob = await instance.toBlob();
+        const response = await fetch('/api/generate-professional-pdf', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(sowData),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to generate professional PDF');
+        }
+
+        const blob = await response.blob();
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;

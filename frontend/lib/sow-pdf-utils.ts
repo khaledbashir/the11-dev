@@ -359,3 +359,48 @@ export function prepareSOWForNewPDF(currentDoc: any): SOWData | null {
     return null;
   }
 }
+
+export function prepareProfessionalSOWData(parsedJson: any, currentDoc: any): SOWData | null {
+  if (!parsedJson || !currentDoc) return null;
+
+  try {
+    const { scopes, discount } = parsedJson;
+
+    const sowData: SOWData = {
+      company: {
+        name: 'Social Garden',
+      },
+      clientName: extractClientName(currentDoc) || 'Client',
+      projectTitle: currentDoc.title || 'Statement of Work',
+      projectSubtitle: 'PROFESSIONAL SERVICES',
+      projectOverview: 'Comprehensive project delivery as outlined in this proposal.',
+      budgetNotes: '',
+      scopes: [],
+      currency: (currentDoc.currency || 'AUD').toString().toUpperCase(),
+      gstApplicable: (currentDoc.currency || 'AUD').toString().toUpperCase() === 'AUD',
+      generatedDate: new Date().toISOString(),
+    };
+
+    if (scopes && Array.isArray(scopes)) {
+      sowData.scopes = scopes.map((scope: any, index: number) => {
+        const items = scope.role_allocation.map(rowToItem);
+        return {
+          id: index + 1,
+          title: scope.scope_title,
+          description: scope.scope_overview,
+          items: items,
+          deliverables: scope.deliverables,
+          assumptions: [], // TODO: Extract assumptions if available
+        };
+      });
+    }
+
+    // TODO: Handle discount
+    // TODO: Consolidate budget notes
+
+    return sowData;
+  } catch (error) {
+    console.error('Error preparing professional SOW data:', error);
+    return null;
+  }
+}

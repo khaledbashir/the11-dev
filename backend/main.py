@@ -517,6 +517,82 @@ class SheetRequestOAuth(BaseModel):
     timeline: Optional[str] = ""
     access_token: str
 
+class SOWItem(BaseModel):
+    description: str
+    role: str
+    hours: float
+    cost: float
+
+class SOWScope(BaseModel):
+    id: int
+    title: str
+    description: str
+    items: list[SOWItem]
+    deliverables: list[str]
+    assumptions: list[str]
+
+class ProfessionalPDFRequest(BaseModel):
+    company: dict
+    clientName: str
+    projectTitle: str
+    projectSubtitle: str
+    projectOverview: str
+    budgetNotes: str
+    scopes: list[SOWScope]
+    currency: str
+    gstApplicable: bool
+    generatedDate: str
+    discount: Optional[float] = 0
+
+@app.post("/generate-professional-pdf")
+async def generate_professional_pdf(request: ProfessionalPDFRequest):
+    try:
+        print("=== DEBUG: Professional PDF Generation Request ===")
+        
+        # Load and encode the Social Garden logo
+        logo_base64 = ""
+        logo_path = Path(__file__).parent / "social-garden-logo-dark-new.png"
+        if logo_path.exists():
+            with open(logo_path, "rb") as logo_file:
+                logo_base64 = base64.b64encode(logo_file.read()).decode('utf-8')
+        
+        # Load the template
+        template_path = Path(__file__).parent / "multiscope_template.html"
+        with open(template_path, "r") as f:
+            template_str = f.read()
+        
+        template = Template(template_str)
+        
+        # Render the HTML
+        full_html = template.render(
+            css_content=DEFAULT_CSS,
+            logo_base64=logo_base64,
+            **request.dict()
+        )
+        
+        # Generate PDF
+        html_doc = weasyprint.HTML(string=full_html)
+        pdf_bytes = html_doc.write_pdf()
+        
+        output_dir = Path("/tmp/pdfs")
+        output_dir.mkdir(exist_ok=True)
+        pdf_path = output_dir / f"{request.projectTitle.replace(' ', '_')}.pdf"
+        
+        with open(pdf_path, 'wb') as f:
+            f.write(pdf_bytes)
+            
+        return FileResponse(
+            pdf_path,
+            media_type='application/pdf',
+            filename=f"{request.projectTitle}.pdf"
+        )
+        
+    except Exception as e:
+        import traceback
+        error_detail = f"Professional PDF generation failed: {str(e)}\n{traceback.format_exc()}"
+        print(error_detail)
+        raise HTTPException(status_code=500, detail=error_detail)
+
 @app.post("/create-sheet-oauth")
 async def create_sheet_oauth(request: SheetRequestOAuth):
     """Create a formatted Google Sheet using OAuth token"""

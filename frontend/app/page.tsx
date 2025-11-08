@@ -39,7 +39,8 @@ import { anythingLLM } from "@/lib/anythingllm";
 import { ROLES } from "@/lib/rateCard";
 import { calculatePricingTable } from "@/lib/pricingCalculator";
 import { getWorkspaceForAgent } from "@/lib/workspace-config";
-import { prepareSOWForNewPDF } from "@/lib/sow-pdf-utils";
+import { prepareSOWForNewPDF, prepareProfessionalSOWData } from "@/lib/sow-pdf-utils";
+import { THE_ARCHITECT_V4_PROMPT } from "@/lib/knowledge-base";
 
 // Dynamically import PDF components to avoid SSR issues
 const SOWPdfExportWrapper = dynamic(
@@ -74,6 +75,16 @@ const extractClientName = (prompt: string): string | null => {
   }
   
   return null;
+};
+
+const textFromNode = (node: any): string => {
+  if (!node) return '';
+  if (node.type === 'text') return node.text || '';
+  if (node.type === 'hardBreak') return '\n';
+  if (Array.isArray(node.content)) {
+    return node.content.map(textFromNode).join('');
+  }
+  return '';
 };
 
 // 🎯 UTILITY: Extract budget and discount from user prompt
@@ -2596,6 +2607,7 @@ Ask me questions to get business insights, such as:
   // NEW: Professional PDF Export Handler
   const [showNewPDFModal, setShowNewPDFModal] = useState(false);
   const [newPDFData, setNewPDFData] = useState<any>(null);
+  const [isGeneratingProPDF, setIsGeneratingProPDF] = useState(false);
 
   const handleExportNewPDF = async () => {
     if (!currentDoc) {
@@ -2603,27 +2615,63 @@ Ask me questions to get business insights, such as:
       return;
     }
 
-    toast.info('📄 Preparing professional PDF...');
-    
+    setIsGeneratingProPDF(true);
+    toast.info('🚀 Generating professional PDF with AI...');
+
     try {
       const editorJSON = editorRef.current?.getContent?.() || latestEditorJSON || currentDoc.content;
-      const sowData = prepareSOWForNewPDF({
-        ...currentDoc,
-        content: editorJSON,
+      const editorText = textFromNode(editorJSON);
+
+      // Call the AI with the v4.0 prompt
+      const response = await fetch('/api/anythingllm/stream-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'anythingllm',
+          workspace: currentDoc.workspaceSlug,
+          threadSlug: currentDoc.threadSlug,
+          mode: 'chat',
+          messages: [
+            { role: 'system', content: THE_ARCHITECT_V4_PROMPT },
+            { role: 'user', content: `Generate a BBUBU-style multi-scope SOW from the following content:\n\n${editorText}` }
+          ],
+        }),
       });
-      
-      if (!sowData) {
-        toast.error('❌ Unable to generate PDF from current document');
-        return;
+
+      if (!response.ok) {
+        throw new Error('AI generation failed');
       }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedContent = '';
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          accumulatedContent += decoder.decode(value, { stream: true });
+        }
+      }
+
+      // Extract the nested JSON from the AI response
+      const pricingJsonMatch = accumulatedContent.match(/\[PRICING_JSON\]\s*```json\s*([\s\S]*?)\s*```/i);
+      if (!pricingJsonMatch || !pricingJsonMatch[1]) {
+        throw new Error('Could not find [PRICING_JSON] in AI response.');
+      }
+
+      const parsedJson = JSON.parse(pricingJsonMatch[1]);
+
+      const sowData = prepareProfessionalSOWData(parsedJson, currentDoc);
 
       setNewPDFData(sowData);
       setShowNewPDFModal(true);
       toast.success('✅ PDF ready! Click to download.');
-      
+
     } catch (error) {
       console.error('Error preparing new PDF:', error);
       toast.error(`❌ Error preparing PDF: ${error.message}`);
+    } finally {
+      setIsGeneratingProPDF(false);
     }
   };
 

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ projectTitle }}</title>
+    <style>
+        {{ css_content }}
+    </style>
+</head>
+<body>
+    <div class="sow-document">
+        <div class="sow-header">
+            {% if logo_base64 %}
+            <img src="data:image/png;base64,{{ logo_base64 }}" alt="Company Logo" class="sow-logo">
+            {% endif %}
+        </div>
+
+        <h1>{{ projectTitle }}</h1>
+        <h2>{{ projectSubtitle }}</h2>
+        <p><strong>Client:</strong> {{ clientName }}</p>
+        <p><strong>Date:</strong> {{ generatedDate }}</p>
+
+        <hr>
+
+        <h3>Project Overview</h3>
+        <p>{{ projectOverview }}</p>
+
+        {% for scope in scopes %}
+        <div class="scope-section">
+            <h3>{{ scope.title }}</h3>
+            <p>{{ scope.description }}</p>
+            
+            <h4>Deliverables</h4>
+            <ul>
+                {% for deliverable in scope.deliverables %}
+                <li>{{ deliverable }}</li>
+                {% endfor %}
+            </ul>
+
+            <h4>Investment for this Scope</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Role</th>
+                        <th>Hours</th>
+                        <th>Cost</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in scope.items %}
+                    <tr>
+                        <td>{{ item.role }}</td>
+                        <td>{{ item.hours }}</td>
+                        <td>{{ item.cost | currency }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endfor %}
+
+        <hr>
+
+        <h3>Overall Project Summary</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Scope</th>
+                    <th>Total Cost</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for scope in scopes %}
+                <tr>
+                    <td>{{ scope.title }}</td>
+                    <td>{{ scope.items | sum(attribute='cost') | currency }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td><strong>Subtotal</strong></td>
+                    <td><strong>{{ scopes | sum(attribute='items') | sum(attribute='cost') | currency }}</strong></td>
+                </tr>
+                {% if discount > 0 %}
+                <tr>
+                    <td><strong>Discount ({{ discount }}%)</strong></td>
+                    <td><strong>-{{ (scopes | sum(attribute='items') | sum(attribute='cost')) * (discount / 100) | currency }}</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>Total after Discount</strong></td>
+                    <td><strong>{{ (scopes | sum(attribute='items') | sum(attribute='cost')) * (1 - (discount / 100)) | currency }}</strong></td>
+                </tr>
+                {% endif %}
+            </tfoot>
+        </table>
+        <p>{{ budgetNotes }}</p>
+
+        <div class="sow-footer">
+            <hr>
+            <p><strong>Social Garden Pty Ltd</strong></p>
+            <p>marketing@socialgarden.com.au | www.socialgarden.com.au</p>
+        </div>
+    </div>
+</body>
+</html>
