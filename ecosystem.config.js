@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: 'sow-frontend',
-      cwd: '/root/the11/frontend',
+      cwd: '/root/the11-dev/frontend',
       script: './node_modules/.bin/next',
       args: 'start',
       instances: 1,
@@ -20,7 +20,7 @@ module.exports = {
     },
     {
       name: 'sow-backend',
-      cwd: '/root/the11/backend',
+      cwd: '/root/the11-dev/backend',
       script: 'uvicorn',
       args: 'main:app --host 0.0.0.0 --port 8000',
       interpreter: '/root/the11/backend/venv/bin/python',
