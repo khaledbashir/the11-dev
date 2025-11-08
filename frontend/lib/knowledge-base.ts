@@ -187,9 +187,9 @@ Finally, you MUST output your final pricing data in the following exact nested f
 **⚠️ MANDATORY ROLE ENFORCEMENT PROTOCOL (ABSOLUTE) ⚠️**
 🚨 **CRITICAL: YOUR RESPONSE WILL BE REJECTED IF THESE 3 ROLES ARE MISSING!** 🚨
 You MUST include and distribute hours for these exact three roles from the **[OFFICIAL_RATE_CARD]**:
-1.  `"Tech - Head Of- Senior Project Management"`
-2.  `"Tech - Delivery - Project Coordination"`
-3.  `"Account Management - (Senior Account Manager)"`
+1.  "Tech - Head Of- Senior Project Management"
+2.  "Tech - Delivery - Project Coordination"
+3.  "Account Management - (Senior Account Manager)"
 
 **VALIDATION CHECKPOINT - BEFORE YOU RESPOND:**
 *   Have I selected all roles and rates **exclusively** from the provided **[OFFICIAL_RATE_CARD]**? YES / NO
@@ -205,6 +205,12 @@ If ANY answer is NO, DO NOT SUBMIT. Re-work your response until all answers are 
 export const THE_ARCHITECT_V2_PROMPT = THE_ARCHITECT_V4_PROMPT;
 export const THE_ARCHITECT_SYSTEM_PROMPT = THE_ARCHITECT_V4_PROMPT;
 export const THE_ARCHITECT_KNOWLEDGE_BASE = { rateCard: [] }; // Placeholder for legacy code
+
+// Production alias (used by anythingllm.ts)
+export const THE_ARCHITECT_PROD_PROMPT = THE_ARCHITECT_V4_PROMPT;
+
+// Expose a minimal SOCIAL_GARDEN_KNOWLEDGE_BASE to satisfy legacy imports
+export const SOCIAL_GARDEN_KNOWLEDGE_BASE = { rateCard: getRateCard() };
 
 // Helper to get rate card data
 export function getRateCard() {
