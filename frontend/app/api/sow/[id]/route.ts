@@ -103,10 +103,10 @@ export async function GET(
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id: sowId } = await params;
+    const { id: sowId } = params;
     console.log(`🔍 [PUT /api/sow/${sowId}] Request received`);
     
     const body = await req.json();
