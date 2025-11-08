@@ -3893,7 +3893,7 @@ Ask me questions to get business insights, such as:
       );
       
       // Save to database
-      fetch('/api/sow/update', {
+      fetch(`/api/sow/${currentDocId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
