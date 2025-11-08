@@ -101,6 +101,8 @@ export async function DELETE(
     // Step 2: Delete AnythingLLM workspace and cascade delete all threads
     if (workspaceSlug) {
       console.log(`🏢 Attempting to delete AnythingLLM workspace: ${workspaceSlug}`);
+      console.log(`🔗 API URL: ${ANYTHINGLLM_URL}/api/v1/workspace/${workspaceSlug}`);
+      console.log(`🔑 API Key (first 10 chars): ${ANYTHINGLLM_API_KEY.substring(0, 10)}...`);
       
       try {
         const deleteResponse = await fetch(
@@ -113,6 +115,8 @@ export async function DELETE(
             },
           }
         );
+        
+        console.log(`📊 Response status: ${deleteResponse.status} ${deleteResponse.statusText}`);
         
         if (deleteResponse.ok) {
           console.log(`✅ AnythingLLM workspace deleted: ${workspaceSlug}`);
