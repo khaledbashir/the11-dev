@@ -2,7 +2,7 @@
 // Handles workspace creation, document embedding, and chat integration
 
 import SOCIAL_GARDEN_KNOWLEDGE_BASE from './social-garden-knowledge-base';
-import { THE_ARCHITECT_V4_PROMPT } from './knowledge-base';
+import { THE_ARCHITECT_V4_PROMPT, THE_ARCHITECT_PROD_PROMPT } from './knowledge-base';
 import { ROLES } from './rateCard';
 
 // Get AnythingLLM URL from environment (NEXT_PUBLIC_ANYTHINGLLM_URL must be set in .env)
@@ -640,7 +640,7 @@ Metadata:
     // For SOW workspaces: Use The Architect v4.1 prompt with in-prompt rate card
     // For other workspaces: Use client-facing prompt for Q&A
     const prompt = isSOWWorkspace 
-      ? THE_ARCHITECT_V4_PROMPT
+      ? (THE_ARCHITECT_PROD_PROMPT || THE_ARCHITECT_V4_PROMPT)
       : this.getClientFacingPrompt(clientName);
 
     // 🎯 STRATEGIC LOGGING: Prove prompt injection is working
@@ -677,6 +677,21 @@ Metadata:
       }
 
       console.log(`✅ ${isSOWWorkspace ? 'Architect' : 'Client-facing'} prompt set for workspace: ${workspaceSlug}`);
+
+      // For SOW workspaces, also enforce the production LLM provider/model (openrouter/k2)
+      if (isSOWWorkspace) {
+        try {
+          const llmOk = await this.setWorkspaceLLMProvider(workspaceSlug, 'openrouter', 'k2');
+          if (!llmOk) {
+            console.warn(`⚠️ Failed to configure workspace LLM provider/model for ${workspaceSlug}`);
+          } else {
+            console.log(`✅ Workspace LLM set to openrouter/k2 for ${workspaceSlug}`);
+          }
+        } catch (e) {
+          console.warn(`⚠️ Error setting workspace LLM provider:`, e);
+        }
+      }
+
       return true;
     } catch (error) {
       console.error('❌ Error setting workspace prompt:', error);
