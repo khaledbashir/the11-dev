@@ -181,6 +181,35 @@ DB_NAME=socialgarden_sow
   2. Official rate card has 88 roles with exact names
   3. Check console: AI should use exact names from `[OFFICIAL_RATE_CARD]`
 
+**Problem**: PDF generation returns 404 "Not Found" error (CRITICAL - Nov 8, 2025)
+- **Error**: `❌ [PDF Service] Multi-scope error response: {"detail":"Not Found"}`
+- **Cause**: Backend on EasyPanel not running latest code with `/generate-professional-pdf` endpoint
+- **How to diagnose**:
+  ```bash
+  # Check backend health
+  curl https://ahmad-socialgarden-backend.840tjq.easypanel.host/health
+  
+  # Check which branch you're on
+  git branch
+  
+  # Verify endpoint exists in code
+  grep -n "generate-professional-pdf" backend/main.py
+  ```
+- **Fix**: Trigger EasyPanel backend redeploy
+  ```bash
+  # Switch to backend branch
+  git checkout backend-service
+  
+  # Create empty commit to trigger redeploy
+  git commit --allow-empty -m "chore: trigger backend redeploy"
+  
+  # Push to trigger EasyPanel auto-deploy
+  git push origin backend-service
+  
+  # Wait 5-10 minutes for deployment
+  ```
+- **Verify fix**: Check backend logs in EasyPanel UI for "generate-professional-pdf" route registration
+
 ### Database Connection Issues
 - **ALWAYS** use `ahmad-mysql-database` (internal hostname)
 - **NEVER** use `localhost` or external IPs
@@ -501,6 +530,8 @@ User downloads professional multi-scope PDF
 
 ## 🔍 Debug Console Logs (What to Look For)
 
+**Frontend Console Logs (Browser F12):**
+
 **Good Flow (Multi-Scope Working)**:
 ```
 🎯 [PROMPT INJECTION VERIFICATION] 
@@ -532,3 +563,39 @@ User downloads professional multi-scope PDF
 📄 [PDF Service] Using standard HTML-based endpoint
    → Backend using wrong template
 ```
+
+**Backend Server Logs (Terminal/EasyPanel):**
+
+**What to look for when debugging PDF issues:**
+```bash
+# Good - Multi-scope endpoint receiving request
+🔍 [POST /api/generate-professional-pdf] Request received
+📄 [POST /api/generate-professional-pdf] Request body: {
+  projectTitle: 'Statement of Work',
+  scopes: [ ... ]
+}
+✅ [PDF Service] Using multi-scope professional endpoint (3 scopes)
+
+# Bad - 404 error means endpoint doesn't exist
+❌ [PDF Service] Multi-scope error response: {"detail":"Not Found"}
+   → Backend needs redeployment (see troubleshooting above)
+
+# Bad - Pydantic validation errors mean missing required fields
+❌ [PDF Service] Multi-scope error response: {"detail":[{"type":"missing","loc":["body","scopes",0,"id"]...
+   → Frontend not sending complete data structure
+   → Check transformScopesToPDFFormat() function
+```
+
+**How to read server logs:**
+1. **Local development**: Check terminal where `npm run dev` or `python main.py` is running
+2. **Production (EasyPanel)**: 
+   - Login to EasyPanel
+   - Select service (frontend or backend)
+   - Click "Logs" tab
+   - Look for errors around the time of PDF export
+
+**Critical log patterns to search for:**
+- `generate-professional-pdf` - Shows if endpoint is being called
+- `Multi-scope error response` - Shows backend errors
+- `PRICING_JSON` - Shows if frontend detected scopes
+- `transformScopesToPDFFormat` - Shows if data transformation happened
