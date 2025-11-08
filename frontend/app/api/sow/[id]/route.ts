@@ -126,6 +126,11 @@ export async function PUT(
       serviceLine,
     } = body;
     
+    // Ensure the sowId from the URL is used, not from the body.
+    if (body.id) {
+        console.warn(`Body contained an id field (${body.id}), but we are using the id from the URL (${sowId})`);
+    }
+    
     // Deterministic pricing and PM selection are handled on the frontend. No server-side role enforcement.
 
     // Build update query dynamically based on provided fields
