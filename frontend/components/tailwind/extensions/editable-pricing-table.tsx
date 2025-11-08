@@ -323,6 +323,12 @@ export const EditablePricingTable = Node.create({
       discount: {
         default: 0,
       },
+      scopeTitle: {
+        default: '',
+      },
+      showTotal: {
+        default: true,
+      },
     };
   },
 

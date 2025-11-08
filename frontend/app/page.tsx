@@ -136,7 +136,7 @@ const extractBudgetAndDiscount = (prompt: string): { budget: number; discount: n
 };
 
 // 🎯 UTILITY: Extract and parse [PRICING_JSON] or [PRICING/JSON] block from The Architect v3.1
-const extractPricingJSON = (content: string): { roles: any[]; discount?: number } | null => {
+const extractPricingJSON = (content: string): { roles: any[]; discount?: number; scopes?: any[] } | null => {
   // Look for explicit [PRICING_JSON] or [PRICING/JSON] blocks, else fallback to first JSON code fence
   const pricingJsonMatch = content.match(/\[PRICING[\/_]JSON\]\s*```json\s*([\s\S]*?)\s*```/i) ||
                            content.match(/```json\s*([\s\S]*?)\s*```/);
@@ -144,6 +144,21 @@ const extractPricingJSON = (content: string): { roles: any[]; discount?: number 
   if (pricingJsonMatch && pricingJsonMatch[1]) {
     try {
       const parsedJson = JSON.parse(pricingJsonMatch[1]);
+      
+      // 🎯 V4 FORMAT: Check for scopes array (multi-scope structure)
+      if (parsedJson.scopes && Array.isArray(parsedJson.scopes) && parsedJson.scopes.length > 0) {
+        console.log('📊 [PRICING_JSON] V4.0 Multi-Scope Format Detected');
+        console.log(`✅ Found ${parsedJson.scopes.length} scopes`);
+        
+        // Extract discount from project_details if available
+        let discount = 0;
+        if (parsedJson.project_details && parsedJson.project_details.discount_percentage) {
+          discount = parsedJson.project_details.discount_percentage;
+          console.log(`🎁 Discount extracted: ${discount}%`);
+        }
+        
+        return { roles: [], discount, scopes: parsedJson.scopes };
+      }
       
       // Check for role_allocation array (The Architect v3.1 format)
       if (parsedJson.role_allocation && Array.isArray(parsedJson.role_allocation)) {
@@ -242,6 +257,8 @@ type ConvertOptions = {
   // NEW: Support multiple pricing tables insertion in a single document
   tablesRoles?: any[][]; // Queue of roles arrays, one per [PRICING_JSON] block
   tablesDiscounts?: number[]; // Optional per-table discounts aligned with tablesRoles
+  // V4.0: Multi-scope support
+  scopes?: any[]; // Array of scope objects with scope_title, scope_overview, deliverables, role_allocation
 };
 
 // Build suggestedRoles[] from Architect structured JSON (scopeItems[].roles)
@@ -279,6 +296,9 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
   const strictRoles = !!options.strictRoles;
   const tablesQueue: any[][] = Array.isArray(options.tablesRoles) ? [...options.tablesRoles] : [];
   const discountQueue: number[] = Array.isArray(options.tablesDiscounts) ? [...options.tablesDiscounts] : [];
+  
+  // 🎯 Track current scope/phase for multi-scope pricing tables
+  let currentScopeTitle = '';
   
   // 🎯 SMART DISCOUNT FEATURE: Priority cascade for discount extraction
   // Priority 1: JSON discount from [PRICING_JSON] block (most authoritative)
@@ -598,11 +618,18 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
     console.log('✅ Inserting EditablePricingTable with', pricingRows.length, 'roles.');
     // Use per-table discount if provided; otherwise fall back to parsed/global discount
     const tableDiscount = (discountQueue.length > 0 ? (discountQueue.shift() || 0) : undefined);
+    
+    // 🎯 Determine if this pricing table should show totals
+    // Only the LAST pricing table in a multi-scope document should show the grand total
+    const showTotal = pricingTablesInsertedCount === 0; // First table shows total by default
+    
     content.push({
       type: 'editablePricingTable',
       attrs: {
         rows: pricingRows,
         discount: (tableDiscount !== undefined && tableDiscount >= 0) ? tableDiscount : parsedDiscount, // 🎯 Smart Discount hierarchy
+        scopeTitle: currentScopeTitle, // 🎯 Multi-scope support
+        showTotal: showTotal, // 🎯 Control whether to show financial summary
       },
     });
   };
@@ -652,6 +679,16 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
     } else if (line.startsWith('## ')) {
       const textContent = parseTextWithFormatting(line.substring(3));
       if (textContent.length > 0) {
+        // 🎯 Track H2 headings as scope titles for multi-scope pricing tables
+        const headingText = textContent.map((node: any) => node.text || '').join('').trim();
+        // Only track headings that look like scope/phase titles (exclude "Investment", "Assumptions", etc.)
+        const isScopeHeading = /^(phase|scope|stage|part)\s+\d+/i.test(headingText) || 
+                               (headingText && !/(investment|assumptions|overview|summary|deliverables|timeline)/i.test(headingText));
+        if (isScopeHeading) {
+          currentScopeTitle = headingText;
+          console.log(`🎯 Scope detected: "${currentScopeTitle}"`);
+        }
+        
         content.push({
           type: 'heading',
           attrs: { level: 2 },
@@ -2799,6 +2836,9 @@ Ask me questions to get business insights, such as:
     if (!content || !content.content) return '';
 
   let html = '';
+  
+  // 🎯 Collect all pricing tables for Investment Overview
+  const pricingTables: any[] = [];
 
     const processTextNode = (textNode: any): string => {
       if (!textNode) return '';
@@ -3017,12 +3057,32 @@ Ask me questions to get business insights, such as:
           html += '<hr />';
           break;
         case 'editablePricingTable':
-          // Render editable pricing table as HTML table for PDF export
+          // 🎯 MULTI-SCOPE PRICING: Render pricing table with scope-specific heading
           const rows = node.attrs?.rows || [];
           const discount = node.attrs?.discount || 0;
+          const scopeTitle = node.attrs?.scopeTitle || '';
           const showTotal = node.attrs?.showTotal !== undefined ? node.attrs.showTotal : true;
           
-          html += '<h3>Project Pricing</h3>';
+          // Calculate subtotal for this scope
+          let scopeSubtotal = 0;
+          rows.forEach((row: any) => {
+            scopeSubtotal += row.hours * row.rate;
+          });
+          
+          // Store scope data for Investment Overview
+          pricingTables.push({
+            title: scopeTitle || 'Project Pricing',
+            subtotal: scopeSubtotal,
+            rows: rows
+          });
+          
+          // Add scope heading if present
+          if (scopeTitle) {
+            html += `<h3>${scopeTitle}</h3>`;
+          } else {
+            html += '<h3>Project Pricing</h3>';
+          }
+          
           html += '<table>';
           html += '<tr><th>Role</th><th>Description</th><th>Hours</th><th>Rate (AUD)</th><th class="num">Cost (AUD, ex GST)</th></tr>';
           
@@ -3073,6 +3133,38 @@ Ask me questions to get business insights, such as:
           }
       }
     });
+
+    // 🎯 ADD INVESTMENT OVERVIEW TABLE (Multi-Scope Support)
+    // Only add if there are multiple pricing tables (scopes)
+    if (pricingTables.length > 1) {
+      html += '<h2>Investment Overview</h2>';
+      html += '<table>';
+      html += '<thead><tr><th>Scope</th><th>Hours</th><th>Cost (ex GST)</th></tr></thead>';
+      html += '<tbody>';
+      
+      let totalHours = 0;
+      let totalCost = 0;
+      
+      pricingTables.forEach((table: any) => {
+        const scopeHours = table.rows.reduce((sum: number, row: any) => sum + (row.hours || 0), 0);
+        const scopeCost = table.subtotal;
+        totalHours += scopeHours;
+        totalCost += scopeCost;
+        
+        html += '<tr>';
+        html += `<td>${table.title}</td>`;
+        html += `<td class="num">${scopeHours}</td>`;
+        html += `<td class="num">${formatCurrency(scopeCost)}</td>`;
+        html += '</tr>';
+      });
+      
+      html += '<tr style="border-top: 2px solid #2C823D; font-weight: bold;">';
+      html += '<td>Total</td>';
+      html += `<td class="num">${totalHours}</td>`;
+      html += `<td class="num">${formatCurrency(totalCost)}</td>`;
+      html += '</tr>';
+      html += '</tbody></table>';
+    }
 
     // Append concluding marker required by rubric
     html += '<p><em>*** This concludes the Scope of Work document. ***</em></p>';
@@ -3227,6 +3319,7 @@ Ask me questions to get business insights, such as:
       let parsedStructured: ArchitectSOW | null = null;
       let hasValidSuggestedRoles = false;
       let extractedDiscount: number | undefined;
+      let extractedScopes: any[] | undefined; // V4.0 multi-scope support
 
       const jsonBlocks = Array.from(filteredContent.matchAll(/```json\s*([\s\S]*?)\s*```/gi));
       console.log(`🔍 [JSON Extraction] Found ${jsonBlocks.length} JSON blocks in content`);
@@ -3311,15 +3404,30 @@ Ask me questions to get business insights, such as:
       } else {
         // Backward compatibility: single-block helpers
         const single = extractPricingJSON(filteredContent);
-        if (single && single.roles && single.roles.length > 0) {
-          suggestedRoles = single.roles;
-          extractedDiscount = single.discount;
-          hasValidSuggestedRoles = true;
-          // Remove first JSON block occurrence if any
-          const jm = filteredContent.match(/```json\s*[\s\S]*?\s*```/i);
-          if (jm) markdownPart = filteredContent.replace(jm[0], '').trim();
-          console.log(`✅ Using ${suggestedRoles.length} roles from [PRICING_JSON] (single-block)`);
-        } else {
+        if (single) {
+          // V4.0: Check for scopes array (multi-scope format)
+          if (single.scopes && single.scopes.length > 0) {
+            // Multi-scope format detected - convert to markdown with scopes
+            console.log(`✅ V4.0 Multi-Scope Format: ${single.scopes.length} scopes detected`);
+            extractedScopes = single.scopes;
+            extractedDiscount = single.discount;
+            hasValidSuggestedRoles = true; // Flag as valid
+            // Remove first JSON block
+            const jm = filteredContent.match(/```json\s*[\s\S]*?\s*```/i);
+            if (jm) markdownPart = filteredContent.replace(jm[0], '').trim();
+          } else if (single.roles && single.roles.length > 0) {
+            // V3.1 single pricing table format
+            suggestedRoles = single.roles;
+            extractedDiscount = single.discount;
+            hasValidSuggestedRoles = true;
+            // Remove first JSON block occurrence if any
+            const jm = filteredContent.match(/```json\s*[\s\S]*?\s*```/i);
+            if (jm) markdownPart = filteredContent.replace(jm[0], '').trim();
+            console.log(`✅ Using ${suggestedRoles.length} roles from [PRICING_JSON] (single-block)`);
+          }
+        }
+        
+        if (!hasValidSuggestedRoles) {
           // Legacy: attempt to parse first JSON block for roles/scopeItems
           const legacyMatch = filteredContent.match(/```json\s*([\s\S]*?)\s*```/);
           if (legacyMatch && legacyMatch[1]) {
@@ -3384,6 +3492,7 @@ Ask me questions to get business insights, such as:
         jsonDiscount: extractedDiscount, // Discount from [PRICING_JSON] takes priority
         tablesRoles: tablesRolesQueue,
         tablesDiscounts: tablesDiscountsQueue,
+        scopes: extractedScopes, // V4.0: Multi-scope support
       };
       
       // CRITICAL: If no suggestedRoles provided from JSON, try extracting Architect structured JSON from the message body
