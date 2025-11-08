@@ -136,19 +136,31 @@ const extractBudgetAndDiscount = (prompt: string): { budget: number; discount: n
 };
 
 // 🎯 V4.1 UTILITY: Transform v4.1 scopes array to backend professional PDF format
+// Backend expects (see backend/main.py):
+//   SOWScope { id:int, title:str, description:str, deliverables:str[], assumptions:str[], items:SOWItem[] }
+//   SOWItem  { description:str, role:str, hours:float, cost:float }
+// Missing any of these will cause Pydantic validation errors.
 const transformScopesToPDFFormat = (scopes: any[], projectTitle: string = "Statement of Work"): any => {
   if (!scopes || scopes.length === 0) {
     return null;
   }
 
   // Transform each scope to backend format
-  const transformedScopes = scopes.map((scope: any) => {
+  const transformedScopes = scopes.map((scope: any, idx: number) => {
     // Extract deliverables (array of strings or single string)
     let deliverables: string[] = [];
     if (Array.isArray(scope.deliverables)) {
       deliverables = scope.deliverables;
     } else if (typeof scope.deliverables === 'string') {
       deliverables = scope.deliverables.split('\n').filter(d => d.trim());
+    }
+
+    // Extract assumptions (array of strings or single string); fallback to empty array
+    let assumptions: string[] = [];
+    if (Array.isArray(scope.assumptions)) {
+      assumptions = scope.assumptions;
+    } else if (typeof scope.assumptions === 'string') {
+      assumptions = scope.assumptions.split('\n').filter((a: string) => a.trim());
     }
 
     // Transform role_allocation to items with cost calculations
@@ -158,17 +170,23 @@ const transformScopesToPDFFormat = (scopes: any[], projectTitle: string = "State
       const cost = hours * rate;
       
       return {
+        // Backend requires description; use role name as sensible default
+        description: role.description || role.task || role.role || 'No description provided',
         role: role.role,
         hours: hours,
+        // Keep rate for template display; backend ignores unknown fields safely
         rate: rate,
         cost: cost
       };
     });
 
     return {
+      // Backend requires numeric id per scope
+      id: typeof scope.id === 'number' ? scope.id : (idx + 1),
       title: scope.scope_name || scope.title || "Scope",
       description: scope.scope_description || scope.description || "",
       deliverables: deliverables,
+      assumptions: assumptions, // Now correctly included
       items: items
     };
   });
