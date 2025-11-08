@@ -121,8 +121,13 @@ export const THE_ARCHITECT_PROD_PROMPT = THE_ARCHITECT_V4_PROMPT;
 // Expose a minimal SOCIAL_GARDEN_KNOWLEDGE_BASE to satisfy legacy imports
 export const SOCIAL_GARDEN_KNOWLEDGE_BASE = { rateCard: getRateCard() };
 
-// Helper to get rate card data
+// Helper to get rate card data as object (for legacy calculator compatibility)
 export function getRateCard() {
-  // Return the official rate card from rateCard.ts
-  return ROLES;
+  // Convert ROLES array to object for Object.entries() compatibility
+  // Note: Calculator expects 'role' property, but RoleRate uses 'name'
+  const rateCardObject: Record<string, { role: string; rate: number }> = {};
+  ROLES.forEach((item, index) => {
+    rateCardObject[`role_${index}`] = { role: item.name, rate: item.rate };
+  });
+  return rateCardObject;
 }
