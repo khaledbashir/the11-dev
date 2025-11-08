@@ -3347,19 +3347,40 @@ Ask me questions to get business insights, such as:
               hasSuggestedRoles: Array.isArray(obj?.suggestedRoles),
               hasScopeItems: Array.isArray(obj?.scopeItems),
               hasRoleAllocation: Array.isArray(obj?.role_allocation),
+              hasScopes: Array.isArray(obj?.scopes), // V4.1 format
               rolesLength: obj?.roles?.length,
               suggestedRolesLength: obj?.suggestedRoles?.length,
               scopeItemsLength: obj?.scopeItems?.length,
               roleAllocationLength: obj?.role_allocation?.length,
+              scopesLength: obj?.scopes?.length,
               keys: Object.keys(obj)
             });
             let rolesArr: any[] = [];
             let discountVal: number | undefined = undefined;
             
-            // Check for role_allocation (new [PRICING_JSON] format)
-            if (Array.isArray(obj?.role_allocation)) {
+            // 🎯 V4.1 FORMAT: Check for scopes array (multi-scope with role_allocation per scope)
+            if (Array.isArray(obj?.scopes) && obj.scopes.length > 0) {
+              console.log(`🎯 [V4.1 MULTI-SCOPE] Found ${obj.scopes.length} scopes`);
+              // Flatten all role_allocation arrays from all scopes into one array
+              rolesArr = [];
+              obj.scopes.forEach((scope: any, idx: number) => {
+                if (Array.isArray(scope.role_allocation)) {
+                  console.log(`   Scope ${idx + 1} (${scope.scope_name || scope.scope_title}): ${scope.role_allocation.length} roles`);
+                  rolesArr.push(...scope.role_allocation);
+                }
+              });
+              console.log(`✅ Flattened ${rolesArr.length} total roles from ${obj.scopes.length} scopes ([PRICING_JSON] v4.1)`);
+              
+              // Store the scopes array for later use (to extract scope titles, deliverables, etc.)
+              if (!extractedScopes) {
+                extractedScopes = obj.scopes;
+                console.log(`📊 Stored ${extractedScopes.length} scopes for multi-scope rendering`);
+              }
+            }
+            // Check for role_allocation (v3.1 [PRICING_JSON] format - flat array)
+            else if (Array.isArray(obj?.role_allocation)) {
               rolesArr = obj.role_allocation;
-              console.log(`✅ Using ${rolesArr.length} roles from obj.role_allocation ([PRICING_JSON] format)`);
+              console.log(`✅ Using ${rolesArr.length} roles from obj.role_allocation ([PRICING_JSON] v3.1)`);
             } else if (Array.isArray(obj?.roles)) {
               rolesArr = obj.roles;
               console.log(`✅ Using ${rolesArr.length} roles from obj.roles`);
@@ -3371,7 +3392,7 @@ Ask me questions to get business insights, such as:
               rolesArr = derived;
               console.log(`✅ Derived ${rolesArr.length} roles from obj.scopeItems`);
             } else {
-              console.warn('⚠️ JSON block has no roles, suggestedRoles, scopeItems, or role_allocation arrays');
+              console.warn('⚠️ JSON block has no roles, suggestedRoles, scopeItems, role_allocation, or scopes arrays');
             }
             
             // Check for discount in various formats
