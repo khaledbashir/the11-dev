@@ -147,14 +147,19 @@ const extractPricingJSON = (content: string): { roles: any[]; discount?: number;
       
       // 🎯 V4 FORMAT: Check for scopes array (multi-scope structure)
       if (parsedJson.scopes && Array.isArray(parsedJson.scopes) && parsedJson.scopes.length > 0) {
-        console.log('📊 [PRICING_JSON] V4.0 Multi-Scope Format Detected');
+        console.log('📊 [PRICING_JSON] V4.0/V4.1 Multi-Scope Format Detected');
         console.log(`✅ Found ${parsedJson.scopes.length} scopes`);
         
-        // Extract discount from project_details if available
+        // Extract discount - check multiple locations for backward compatibility
         let discount = 0;
-        if (parsedJson.project_details && parsedJson.project_details.discount_percentage) {
+        if (typeof parsedJson.discount === 'number') {
+          // V4.1 format: discount at top level
+          discount = parsedJson.discount;
+          console.log(`🎁 Discount extracted (v4.1): ${discount}%`);
+        } else if (parsedJson.project_details && parsedJson.project_details.discount_percentage) {
+          // V4.0 format: discount in project_details
           discount = parsedJson.project_details.discount_percentage;
-          console.log(`🎁 Discount extracted: ${discount}%`);
+          console.log(`🎁 Discount extracted (v4.0): ${discount}%`);
         }
         
         return { roles: [], discount, scopes: parsedJson.scopes };
