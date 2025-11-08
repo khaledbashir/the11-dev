@@ -51,7 +51,7 @@
                     <tr>
                         <td>{{ item.role }}</td>
                         <td>{{ item.hours }}</td>
-                        <td>{{ item.cost | currency }}</td>
+                        <td>{{ currency(item.cost) }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -73,23 +73,23 @@
                 {% for scope in scopes %}
                 <tr>
                     <td>{{ scope.title }}</td>
-                    <td>{{ scope.items | sum(attribute='cost') | currency }}</td>
+                    <td>{{ currency(scope_total.total) }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
             <tfoot>
                 <tr>
                     <td><strong>Subtotal</strong></td>
-                    <td><strong>{{ scopes | sum(attribute='items') | sum(attribute='cost') | currency }}</strong></td>
+                    <td><strong>{{ currency(subtotal) }}</strong></td>
                 </tr>
                 {% if discount > 0 %}
                 <tr>
                     <td><strong>Discount ({{ discount }}%)</strong></td>
-                    <td><strong>-{{ (scopes | sum(attribute='items') | sum(attribute='cost')) * (discount / 100) | currency }}</strong></td>
+                    <td><strong>-{{ currency(discount_amount) }}</strong></td>
                 </tr>
                 <tr>
                     <td><strong>Total after Discount</strong></td>
-                    <td><strong>{{ (scopes | sum(attribute='items') | sum(attribute='cost')) * (1 - (discount / 100)) | currency }}</strong></td>
+                    <td><strong>{{ currency(total_after_discount) }}</strong></td>
                 </tr>
                 {% endif %}
             </tfoot>

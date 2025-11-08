@@ -564,11 +564,45 @@ async def generate_professional_pdf(request: ProfessionalPDFRequest):
         
         template = Template(template_str)
         
-        # Render the HTML
+        # Calculate financial totals in Python instead of Jinja2
+        subtotal = 0.0
+        scope_totals = []
+        
+        for scope in request.scopes:
+            scope_total = sum(item.cost for item in scope.items)
+            scope_totals.append({
+                'title': scope.title,
+                'total': scope_total,
+                'items': scope.items
+            })
+            subtotal += scope_total
+        
+        discount_amount = 0.0
+        if request.discount and request.discount > 0:
+            discount_amount = subtotal * (request.discount / 100)
+        
+        total_after_discount = subtotal - discount_amount
+        
+        # Render the HTML with calculated values
         full_html = template.render(
             css_content=DEFAULT_CSS,
             logo_base64=logo_base64,
-            **request.dict()
+            company=request.company,
+            clientName=request.clientName,
+            projectTitle=request.projectTitle,
+            projectSubtitle=request.projectSubtitle,
+            projectOverview=request.projectOverview,
+            budgetNotes=request.budgetNotes,
+            scopes=request.scopes,
+            scope_totals=scope_totals,
+            subtotal=subtotal,
+            discount=request.discount,
+            discount_amount=discount_amount,
+            total_after_discount=total_after_discount,
+            currency=lambda x: f"${x:,.2f}",
+            generatedDate=request.generatedDate,
+            gstApplicable=request.gstApplicable,
+            currency_symbol=request.currency
         )
         
         # Generate PDF
