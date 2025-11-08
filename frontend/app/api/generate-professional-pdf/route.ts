@@ -4,7 +4,7 @@ async function handleProfessionalPDFGeneration(body: any) {
   const pdfServiceUrl = process.env.NEXT_PUBLIC_PDF_SERVICE_URL || 'http://localhost:8000';
   
   try {
-    const response = await fetch(`${pdfServiceUrl}/generate-professional-pdf`, {
+    const response = await fetch(`${pdfServiceUrl}/generate-pdf`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
