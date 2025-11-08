@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>{{ projectTitle }}</title>
     <style>
-        {{ css_content }}
+        {{ css_content | safe }}
     </style>
 </head>
 <body>
@@ -27,20 +27,20 @@
 
         {% for scope_total in scope_totals %}
         <div class="scope-section">
-            <h3>{{ scope_total.title }}</h3>
-            <p>{{ scope_total.description }}</p>
+            <h3>{{ scope_total['title'] }}</h3>
+            <p>{{ scope_total['description'] }}</p>
 
             <h4>Deliverables</h4>
             <ul>
-                {% for deliverable in scope_total.deliverables %}
+                {% for deliverable in scope_total['deliverables'] %}
                 <li>{{ deliverable }}</li>
                 {% endfor %}
             </ul>
 
-            {% if scope_total.assumptions and scope_total.assumptions|length > 0 %}
+            {% if scope_total['assumptions'] and scope_total['assumptions']|length > 0 %}
             <h4>Assumptions</h4>
             <ul>
-                {% for assumption in scope_total.assumptions %}
+                {% for assumption in scope_total['assumptions'] %}
                 <li>{{ assumption }}</li>
                 {% endfor %}
             </ul>
@@ -56,18 +56,18 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for item in scope_total.items %}
+                    {% for item in scope_total['items'] %}
                     <tr>
-                        <td>{{ item.role }}</td>
-                        <td>{{ item.hours }}</td>
-                        <td>{{ currency(item.cost) }}</td>
+                        <td>{{ item['role'] }}</td>
+                        <td>{{ item['hours'] }}</td>
+                        <td>{{ currency(item['cost']) }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
                 <tfoot>
                     <tr>
                         <td colspan="2"><strong>Scope Total</strong></td>
-                        <td><strong>{{ currency(scope_total.total) }}</strong></td>
+                        <td><strong>{{ currency(scope_total['total']) }}</strong></td>
                     </tr>
                 </tfoot>
             </table>
@@ -87,8 +87,8 @@
             <tbody>
                 {% for scope_total in scope_totals %}
                 <tr>
-                    <td>{{ scope_total.title }}</td>
-                    <td>{{ currency(scope_total.total) }}</td>
+                    <td>{{ scope_total['title'] }}</td>
+                    <td>{{ currency(scope_total['total']) }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
