@@ -2616,56 +2616,43 @@ Ask me questions to get business insights, such as:
     }
 
     setIsGeneratingProPDF(true);
-    toast.info('🚀 Generating professional PDF with AI...');
+    toast.info('🚀 Generating professional PDF...');
 
     try {
+      // Get current editor content
       const editorJSON = editorRef.current?.getContent?.() || latestEditorJSON || currentDoc.content;
-      const editorText = textFromNode(editorJSON);
-
-      // Call the AI with the v4.0 prompt
-      const response = await fetch('/api/anythingllm/stream-chat', {
+      
+      // Convert TipTap JSON to HTML
+      const html = convertNovelToHTML(editorJSON);
+      
+      // Call the PDF generation API
+      const response = await fetch('/api/generate-professional-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'anythingllm',
-          workspace: currentDoc.workspaceSlug,
-          threadSlug: currentDoc.threadSlug,
-          mode: 'chat',
-          messages: [
-            { role: 'system', content: THE_ARCHITECT_V4_PROMPT },
-            { role: 'user', content: `Generate a BBUBU-style multi-scope SOW from the following content:\n\n${editorText}` }
-          ],
+          html_content: html,
+          filename: currentDoc.title || 'Statement-of-Work',
+          projectTitle: currentDoc.title || 'Statement-of-Work'
         }),
       });
 
       if (!response.ok) {
-        throw new Error('AI generation failed');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'PDF generation failed');
       }
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let accumulatedContent = '';
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          accumulatedContent += decoder.decode(value, { stream: true });
-        }
-      }
+      // Download the PDF
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${currentDoc.title || 'Statement-of-Work'}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
 
-      // Extract the nested JSON from the AI response
-      const pricingJsonMatch = accumulatedContent.match(/\[PRICING_JSON\]\s*```json\s*([\s\S]*?)\s*```/i);
-      if (!pricingJsonMatch || !pricingJsonMatch[1]) {
-        throw new Error('Could not find [PRICING_JSON] in AI response.');
-      }
-
-      const parsedJson = JSON.parse(pricingJsonMatch[1]);
-
-      const sowData = prepareProfessionalSOWData(parsedJson, currentDoc);
-
-      setNewPDFData(sowData);
-      setShowNewPDFModal(true);
-      toast.success('✅ PDF ready! Click to download.');
+      toast.success('✅ PDF downloaded successfully!');
 
     } catch (error) {
       console.error('Error preparing new PDF:', error);
