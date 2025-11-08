@@ -103,10 +103,10 @@ export async function GET(
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id: sowId } = await params;
+    const { id: sowId } = params;
     console.log(`🔍 [PUT /api/sow/${sowId}] Request received`);
     
     const body = await req.json();
@@ -125,11 +125,6 @@ export async function PUT(
       vertical,
       serviceLine,
     } = body;
-    
-    // Ensure the sowId from the URL is used, not from the body.
-    if (body.id) {
-        console.warn(`Body contained an id field (${body.id}), but we are using the id from the URL (${sowId})`);
-    }
     
     // Deterministic pricing and PM selection are handled on the frontend. No server-side role enforcement.
 
