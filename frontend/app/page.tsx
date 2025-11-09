@@ -3880,6 +3880,143 @@ Ask me questions to get business insights, such as:
 
     setIsChatLoading(true);
 
+    // 🤖 AGENT INVOCATION DETECTION
+    // If message starts with @agent, use WebSocket-based agent system
+    if (message.trim().startsWith('@agent')) {
+      console.log('🤖 [AGENT] Detected @agent invocation, using WebSocket handler');
+      
+      // Determine workspace and thread
+      let workspaceSlug: string | undefined;
+      let threadSlug: string | undefined;
+
+      if (isDashboardMode) {
+        workspaceSlug = dashboardChatTarget;
+        // Dashboard doesn't use threads for @agent (workspace-level)
+      } else if (currentDocId) {
+        const currentSOW = documents.find(d => d.id === currentDocId);
+        workspaceSlug = currentSOW?.workspaceSlug;
+        threadSlug = threadSlugParam || currentSOW?.threadSlug;
+      }
+
+      if (!workspaceSlug) {
+        console.error('❌ [AGENT] No workspace available for agent invocation');
+        toast.error('No workspace available for agent invocation');
+        setIsChatLoading(false);
+        return;
+      }
+
+      // Add user message to chat
+      const userMessage: ChatMessage = {
+        id: `msg${Date.now()}`,
+        role: 'user',
+        content: message,
+        timestamp: Date.now(),
+      };
+      setChatMessages(prev => [...prev, userMessage]);
+
+      // Create AI message for streaming agent responses
+      const aiMessageId = `msg${Date.now() + 1}`;
+      const aiMessage: ChatMessage = {
+        id: aiMessageId,
+        role: 'assistant',
+        content: '🤖 Agent is thinking...',
+        timestamp: Date.now(),
+      };
+      setChatMessages(prev => [...prev, aiMessage]);
+
+      try {
+        // Import agent handler dynamically
+        const { AgentHandler } = await import('@/lib/agent-handler');
+        const agent = new AgentHandler();
+
+        let accumulatedContent = '';
+        let toolCallsLog: string[] = [];
+
+        // Set up message handler
+        agent.onMessage((agentMessage) => {
+          console.log('📨 [AGENT] Message:', agentMessage.type, agentMessage);
+
+          if (agentMessage.type === 'statusResponse' && agentMessage.content) {
+            // Status updates (e.g., "Agent is searching the web...")
+            accumulatedContent += `\n\n*${agentMessage.content}*\n`;
+            setChatMessages(prev =>
+              prev.map(msg =>
+                msg.id === aiMessageId
+                  ? { ...msg, content: accumulatedContent }
+                  : msg
+              )
+            );
+          } else if (agentMessage.type === 'toolCall' && agentMessage.tool) {
+            // Tool execution started
+            const toolLog = `\n\n**🔧 Tool:** ${agentMessage.tool}\n**Arguments:** ${JSON.stringify(agentMessage.arguments, null, 2)}\n`;
+            toolCallsLog.push(toolLog);
+            accumulatedContent += toolLog;
+            setChatMessages(prev =>
+              prev.map(msg =>
+                msg.id === aiMessageId
+                  ? { ...msg, content: accumulatedContent }
+                  : msg
+              )
+            );
+          } else if (agentMessage.type === 'toolResult' && agentMessage.result) {
+            // Tool execution completed
+            const resultLog = `\n**📊 Result:**\n${typeof agentMessage.result === 'string' ? agentMessage.result : JSON.stringify(agentMessage.result, null, 2)}\n`;
+            accumulatedContent += resultLog;
+            setChatMessages(prev =>
+              prev.map(msg =>
+                msg.id === aiMessageId
+                  ? { ...msg, content: accumulatedContent }
+                  : msg
+              )
+            );
+          } else if (agentMessage.textResponse) {
+            // Final text response from agent
+            accumulatedContent = agentMessage.textResponse;
+            setChatMessages(prev =>
+              prev.map(msg =>
+                msg.id === aiMessageId
+                  ? { ...msg, content: accumulatedContent }
+                  : msg
+              )
+            );
+          }
+        });
+
+        agent.onClose(() => {
+          console.log('🏁 [AGENT] Agent invocation completed');
+          setIsChatLoading(false);
+        });
+
+        agent.onError((error) => {
+          console.error('❌ [AGENT] Error:', error);
+          setChatMessages(prev =>
+            prev.map(msg =>
+              msg.id === aiMessageId
+                ? { ...msg, content: `❌ Agent error: ${error.message}` }
+                : msg
+            )
+          );
+          setIsChatLoading(false);
+        });
+
+        // Start the agent invocation
+        await agent.invoke(message, workspaceSlug, threadSlug);
+
+      } catch (error) {
+        console.error('❌ [AGENT] Failed to invoke agent:', error);
+        setChatMessages(prev =>
+          prev.map(msg =>
+            msg.id === aiMessageId
+              ? { ...msg, content: `❌ Failed to invoke agent: ${error instanceof Error ? error.message : 'Unknown error'}` }
+              : msg
+          )
+        );
+        setIsChatLoading(false);
+      }
+
+      return; // Exit early - agent handling complete
+    }
+
     // Check for insert command (only relevant in editor mode)
     if (!isDashboardMode && (
         message.toLowerCase().includes('insert into editor') ||

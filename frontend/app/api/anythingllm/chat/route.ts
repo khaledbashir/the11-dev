@@ -45,6 +45,18 @@ export async function POST(request: NextRequest) {
     // Preserving the raw message allows @agent mentions and other syntax to work
     const messageToSend = lastMessage.content;
 
+    // 🤖 CHECK FOR @agent INVOCATION
+    // If message starts with @agent, return instruction to use WebSocket
+    if (messageToSend.trim().startsWith('@agent')) {
+      console.log('🤖 [AnythingLLM API] @agent detected - client should use WebSocket');
+      return NextResponse.json({
+        requiresAgent: true,
+        message: 'This message requires agent invocation. Please use the agent WebSocket handler.',
+        workspaceSlug: effectiveWorkspaceSlug,
+        threadSlug: threadSlug,
+      });
+    }
+
     // Determine the endpoint based on whether this is thread-based chat
     let endpoint: string;
     if (threadSlug) {
