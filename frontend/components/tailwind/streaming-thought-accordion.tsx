@@ -28,8 +28,19 @@ export function StreamingThoughtAccordion({
   // Build the full insert payload: original content with internal-only sections removed,
   // preserving the original order of the visible narrative and any JSON blocks.
   const buildInsertPayload = useMemo(() => {
-    if (!content || typeof content !== 'string') return '';
-    let cleaned = content;
+    // Handle case where content might be an object or other type
+    let stringContent = '';
+    if (typeof content === 'string') {
+      stringContent = content;
+    } else if (content && typeof content === 'object') {
+      // If content is an object, try to extract string from it
+      stringContent = content.content || content.message || JSON.stringify(content);
+    } else {
+      stringContent = String(content || '');
+    }
+    
+    if (!stringContent) return '';
+    let cleaned = stringContent;
     // Remove internal-only blocks but leave JSON in place to preserve order
     const variants = [
       { open: /<thinking>/gi, close: /<\/thinking>/gi },
