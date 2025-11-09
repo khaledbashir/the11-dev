@@ -141,24 +141,26 @@ export function cleanSOWContent(content: string) {
   // Remove <think>...</think> tags and their content (AI's internal reasoning)
   // This prevents the AI's planning notes from appearing in client-facing SOWs
   let cleaned = content
-    // Remove <AI_THINK> tags
-    .replace(/<AI_THINK>[\s\S]*?<\/AI_THINK>/gi, '')
+    // Remove <AI_THINK> tags (case insensitive, multiline, greedy)
+    .replace(/<AI_THINK>[\s\S]*?<\/AI_THINK>/gis, '')
     // Remove <thinking> tags (additional variant)
-    .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
-    // Remove <think> tags
-    .replace(/<think>[\s\S]*?<\/think>/gi, '')
-    // Remove any orphaned think tags
+    .replace(/<thinking>[\s\S]*?<\/thinking>/gis, '')
+    // Remove <think> tags - AGGRESSIVE (match even unclosed tags)
+    .replace(/<think>[\s\S]*?(?:<\/think>|$)/gis, '')
+    // Remove any orphaned opening/closing think tags
     .replace(/<\/?think>/gi, '')
+    .replace(/<\/?thinking>/gi, '')
+    .replace(/<\/?AI_THINK>/gi, '')
     // Remove <tool_call> tags
-    .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '')
+    .replace(/<tool_call>[\s\S]*?<\/tool_call>/gis, '')
     // Remove HTML comments
-    .replace(/<!-- .*? -->/gi, '')
+    .replace(/<!-- .*? -->/gis, '')
     // Remove conversational intro phrases (non-client-facing)
     .replace(/^(?:Of course[.,]?|Here (?:is|are)|I have prepared|I've prepared|Let me (?:present|provide)|Below (?:is|are))[\s\S]*?(?=(?:\*\*Client:?\*\*|Client:|# |## ))/im, '')
     // Remove "Here is the proposed plan" type lines
     .replace(/^Here is the proposed plan\.?\s*/im, '')
     // Remove standalone JSON summary blocks that shouldn't render (project_summary at end)
-    .replace(/```json\s*\{[\s\S]*?"project_summary"[\s\S]*?\}\s*```/gi, '')
+    .replace(/```json\s*\{[\s\S]*?"project_summary"[\s\S]*?\}\s*```/gis, '')
     // Clean up extra whitespace that might be left behind
     .replace(/\n\n\n+/g, '\n\n')
     .trim();
