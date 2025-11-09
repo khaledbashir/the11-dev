@@ -549,7 +549,6 @@ class ProfessionalPDFRequest(BaseModel):
 async def generate_professional_pdf(request: ProfessionalPDFRequest):
     try:
         print("=== DEBUG: Professional PDF Generation Request ===")
-        try:
             print(f"📌 Client: {request.clientName} | Project: {request.projectTitle}")
             print(f"📅 Date: {request.generatedDate} | GST Applicable: {request.gstApplicable}")
             print(f"💸 Incoming discount (raw): {request.discount}")
