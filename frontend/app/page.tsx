@@ -4543,10 +4543,58 @@ Ask me questions to get business insights, such as:
                 setStreamingMessageId(null);
                 console.log('✅ [STEP 2] Accountant responded:', accountantOutput.substring(0, 200));
 
+                // 🔧 ROBUST ACCOUNTANT RESPONSE PARSER
+                // The Accountant should return JSON, but if it returns prose, we extract the data
+                let parsedFinancials: any = null;
+                let financialDataForArchitect = accountantOutput;
+
+                try {
+                  // ATTEMPT 1: Try to parse as JSON first (expected behavior)
+                  parsedFinancials = JSON.parse(accountantOutput);
+                  console.log('✅ [Accountant Parser] Successfully parsed JSON response');
+                  financialDataForArchitect = JSON.stringify(parsedFinancials, null, 2);
+                } catch (jsonError) {
+                  // ATTEMPT 2: JSON parsing failed - Accountant returned prose instead
+                  console.warn('⚠️ [Accountant Parser] JSON parsing failed, attempting regex extraction from prose...');
+                  
+                  // Extract financial figures from prose using regex patterns
+                  const subtotalMatch = accountantOutput.match(/(?:subtotal|sub[\s-]?total)[\s:$]*?([\d,]+(?:\.\d{2})?)/i);
+                  const discountMatch = accountantOutput.match(/(?:discount)[\s:$]*?([\d,]+(?:\.\d{2})?)/i);
+                  const gstMatch = accountantOutput.match(/(?:gst|tax)[\s:$]*?([\d,]+(?:\.\d{2})?)/i);
+                  const totalMatch = accountantOutput.match(/(?:final[\s-]?total|total)[\s:$]*?([\d,]+(?:\.\d{2})?)/i);
+                  
+                  if (subtotalMatch || discountMatch || gstMatch || totalMatch) {
+                    // Successfully extracted at least some financial data
+                    parsedFinancials = {
+                      subtotal: subtotalMatch ? parseFloat(subtotalMatch[1].replace(/,/g, '')) : 0,
+                      discountAmount: discountMatch ? parseFloat(discountMatch[1].replace(/,/g, '')) : 0,
+                      gstAmount: gstMatch ? parseFloat(gstMatch[1].replace(/,/g, '')) : 0,
+                      finalTotal: totalMatch ? parseFloat(totalMatch[1].replace(/,/g, '')) : 0,
+                      _extractedFromProse: true,
+                    };
+                    
+                    console.log('✅ [Accountant Parser] Successfully extracted financial data from prose:', parsedFinancials);
+                    financialDataForArchitect = JSON.stringify(parsedFinancials, null, 2);
+                  } else {
+                    // ATTEMPT 3: Could not extract financial data - pass raw response to Architect
+                    console.error('❌ [Accountant Parser] Could not extract financial data from response');
+                    console.error('Raw Accountant response:', accountantOutput);
+                    
+                    // Create a structured error object for the Architect to handle
+                    parsedFinancials = {
+                      error: 'Accountant returned prose without extractable financial data',
+                      rawResponse: accountantOutput.substring(0, 500),
+                      _fallbackMode: true,
+                    };
+                    
+                    financialDataForArchitect = `⚠️ WARNING: Accountant did not return valid JSON. Please generate pricing based on the original brief.\n\nRaw Accountant Response:\n${accountantOutput}`;
+                  }
+                }
+
                 // STEP 3: Send accountant's result back to Architect for final SOW completion
                 console.log('📝 [STEP 3] Sending financials back to Architect for SOW completion...');
                 
-                const finalizationPrompt = `Please add the pricing tables to the SOW using these validated financials from the accountant:\n\n${accountantOutput}`;
+                const finalizationPrompt = `Please add the pricing tables to the SOW using these validated financials from the accountant:\n\n${financialDataForArchitect}`;
                 
                 const finalUserMsg: ChatMessage = {
                   id: `msg${Date.now() + 2}`,
