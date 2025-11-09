@@ -577,15 +577,21 @@ async def generate_professional_pdf(request: ProfessionalPDFRequest):
         scope_totals = []
 
         # Build enriched scope_totals list with per-scope totals
-        for scope in request.scopes:
+        print("=== DETAILED SCOPE CALCULATION ===")
+        for i, scope in enumerate(request.scopes):
+            print(f"Processing Scope {i+1}: '{scope.title}'")
             # Sum costs robustly, ensuring float and ignoring None
             scope_total = 0.0
-            for item in scope.items:
+            for j, item in enumerate(scope.items):
                 try:
-                    scope_total += float(item.cost or 0.0)
-                except Exception:
-                    # If a value is non-numeric, treat as zero and continue
+                    item_cost = float(item.cost or 0.0)
+                    scope_total += item_cost
+                    print(f"  - Item {j+1}: '{item.role}' | Cost: {item_cost:.2f} | Cumulative Scope Total: {scope_total:.2f}")
+                except Exception as e:
+                    print(f"  - Item {j+1}: '{item.role}' | Invalid cost value. Error: {e}. Treating as 0.0")
                     scope_total += 0.0
+            
+            print(f"✅ Final Calculated Total for Scope '{scope.title}': {scope_total:.2f}")
             scope_totals.append({
                 'title': scope.title,
                 'total': round(scope_total, 2),
@@ -595,6 +601,7 @@ async def generate_professional_pdf(request: ProfessionalPDFRequest):
                 'items': scope.items
             })
             subtotal += scope_total
+            print(f"💰 Cumulative Project Subtotal after Scope '{scope.title}': {subtotal:.2f}")
 
         # Normalize subtotal to 2 decimals
         subtotal = round(subtotal, 2)
@@ -636,8 +643,7 @@ async def generate_professional_pdf(request: ProfessionalPDFRequest):
             projectSubtitle=request.projectSubtitle,
             projectOverview=request.projectOverview,
             budgetNotes=request.budgetNotes,
-            scopes=request.scopes,
-            scope_totals=scope_totals,
+            scopes=scope_totals,
             subtotal=subtotal,
             discount=discount_percent,
             discount_amount=discount_amount,
