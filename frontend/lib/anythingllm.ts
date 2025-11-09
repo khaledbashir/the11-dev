@@ -653,7 +653,8 @@ Metadata:
     console.log(`   Contains "Tech - Head Of- Senior Project Management": ${prompt.includes('Tech - Head Of- Senior Project Management')}`);
     console.log(`   Contains "[OFFICIAL_RATE_CARD]": ${prompt.includes('[OFFICIAL_RATE_CARD]')}`);
     console.log(`   Contains "[FINANCIAL_REASONING]": ${prompt.includes('[FINANCIAL_REASONING]')}`);
-    console.log(`   Contains "v4.1 - MULTI-SCOPE": ${prompt.includes('v4.1 - MULTI-SCOPE')}`);
+    console.log(`   Contains "v4.1 - Self-Contained Multi-Scope": ${prompt.includes('v4.1 - Self-Contained Multi-Scope')}`);
+    console.log(`   Contains "DO NOT include conversational phrases": ${prompt.includes('DO NOT include conversational phrases')}`);
     console.log(`${'='.repeat(80)}\n`);
 
     try {

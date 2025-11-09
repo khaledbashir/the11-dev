@@ -215,18 +215,9 @@ export function StreamingThoughtAccordion({
             <span className="text-xs text-gray-400 ml-auto">Pricing Data</span>
           </summary>
           <div className="px-4 py-3 bg-[#000000]/50 border-t border-[#20e28f]/30">
-            <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap break-words max-h-[400px] overflow-y-auto mb-3">
+            <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap break-all max-w-full max-h-[400px] overflow-y-auto overflow-x-hidden">
               {JSON.stringify(jsonBlock, null, 2)}
             </pre>
-            <Button
-              onClick={() => {
-                // Insert the full visible payload (which, in this case, is just the JSON block)
-                onInsertClick?.(buildInsertPayload);
-              }}
-              className="w-full bg-[#20e28f] hover:bg-[#1db876] text-black font-semibold py-2 px-3 rounded"
-            >
-              ✅ Insert into Editor
-            </Button>
           </div>
         </details>
       </div>
@@ -377,19 +368,10 @@ export function StreamingThoughtAccordion({
                 <span>Structured JSON - Pricing Data</span>
                 <span className="text-xs text-gray-400 ml-auto">Click to expand</span>
               </summary>
-              <div className="px-4 py-3 bg-[#000000]/50 border-t border-[#20e28f]/30 space-y-3">
-                <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap break-words max-h-[400px] overflow-y-auto">
+              <div className="px-4 py-3 bg-[#000000]/50 border-t border-[#20e28f]/30">
+                <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap break-all max-w-full max-h-[400px] overflow-y-auto overflow-x-hidden">
                   {JSON.stringify(jsonBlock, null, 2)}
                 </pre>
-                <Button
-                  onClick={() => {
-                    // Insert the entire AI response payload (narrative + JSON), minus hidden thinking
-                    onInsertClick?.(buildInsertPayload);
-                  }}
-                  className="w-full bg-[#20e28f] hover:bg-[#1db876] text-black font-semibold py-2 px-3 rounded"
-                >
-                  ✅ Insert into Editor
-                </Button>
               </div>
             </details>
           )}
