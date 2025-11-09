@@ -395,7 +395,7 @@ async def generate_pdf(request: PDFRequest):
         # Load and encode the Social Garden logo
         logo_base64 = ""
         # Use the newer logo file that matches frontend branding
-        logo_path = Path(__file__).parent / "social-garden-logo.svg"
+        logo_path = Path(__file__).parent / "social-garden-logo-dark.png"
         if logo_path.exists():
             with open(logo_path, "rb") as logo_file:
                 logo_base64 = base64.b64encode(logo_file.read()).decode('utf-8')
@@ -560,7 +560,7 @@ async def generate_professional_pdf(request: ProfessionalPDFRequest):
         
         # Load and encode the Social Garden logo
         logo_base64 = ""
-        logo_path = Path(__file__).parent / "social-garden-logo.svg"
+        logo_path = Path(__file__).parent / "social-garden-logo-dark.png"
         if logo_path.exists():
             with open(logo_path, "rb") as logo_file:
                 logo_base64 = base64.b64encode(logo_file.read()).decode('utf-8')
