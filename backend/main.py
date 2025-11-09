@@ -572,9 +572,9 @@ async def generate_professional_pdf(request: ProfessionalPDFRequest):
         
         template = Template(template_str)
         
-    # Calculate financial totals in Python instead of Jinja2
-    subtotal = 0.0
-    scope_totals = []
+        # Calculate financial totals in Python instead of Jinja2
+        subtotal = 0.0
+        scope_totals = []
 
         # Build enriched scope_totals list with per-scope totals
         for scope in request.scopes:
