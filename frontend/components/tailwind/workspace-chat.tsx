@@ -610,18 +610,7 @@ export default function WorkspaceChat({
                     
                     <div className="flex gap-2 mt-4 items-center sticky bottom-0 z-10 bg-[#0E2E33]/85 backdrop-blur-sm px-2 py-1 rounded-md border-t border-[#1b5e5e]">
                       <p className="text-xs mt-1 opacity-70 flex-1">{formatTimestamp(msg.timestamp)}</p>
-                      {/* Insert button for assistant messages */}
-                      {shouldShowButton && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 px-2 text-xs border-[#1b5e5e] text-gray-200 hover:text-white hover:bg-[#124847]"
-                          title="Insert full SOW (narrative + pricing)"
-                          onClick={() => onInsertToEditor(msg.content)}
-                        >
-                          ✅ Insert SOW
-                        </Button>
-                      )}
+                      {/* Removed per-message insert button - use sticky bottom bar instead */}
                     </div>
                   </div>
                 </div>
@@ -636,15 +625,15 @@ export default function WorkspaceChat({
             if (!lastAssistant) return null;
             return (
               <div className="sticky bottom-0 left-0 right-0 z-20 mt-4">
-                <div className="flex items-center justify-end gap-2 bg-[#0E2E33]/90 backdrop-blur-md border border-[#1b5e5e] rounded-md px-3 py-2 shadow-lg">
+                <div className="flex items-center justify-end gap-2 bg-gradient-to-r from-[#0E2E33]/95 to-[#124847]/95 backdrop-blur-md border border-[#1b5e5e] rounded-lg px-4 py-3 shadow-xl">
+                  <span className="text-xs text-gray-400 mr-auto">Latest AI Response Ready</span>
                   <Button
                     size="sm"
-                    variant="outline"
-                    className="h-8 px-3 text-xs border-[#1b5e5e] text-gray-200 hover:text-white hover:bg-[#124847]"
-                    title="Insert the latest AI draft into the editor"
+                    className="h-9 px-4 text-sm font-medium bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-500 hover:to-green-600 shadow-md transition-all duration-200 border-0"
+                    title="Insert the complete SOW (narrative + pricing tables) into the editor"
                     onClick={() => onInsertToEditor(lastAssistant.content)}
                   >
-                    ✅ Insert into Editor
+                    ✅ Insert to Editor
                   </Button>
                 </div>
               </div>

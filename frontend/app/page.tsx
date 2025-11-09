@@ -4445,15 +4445,17 @@ Ask me questions to get business insights, such as:
             }
           } catch {}
 
-          // 🎯 TWO-GUY SYSTEM: Automatic orchestration of Architect → @agent → Accountant → Final SOW
+          // 🚫 TWO-GUY SYSTEM DISABLED: The Architect now does all calculations with embedded rate card
+          // This orchestration is temporarily disabled - the v4.1 prompt is self-contained
           const pricingData = extractPricingJSON(accumulatedContent);
           
-          if (pricingData && (pricingData.scopes?.length || pricingData.roles?.length)) {
+          if (false && pricingData && (pricingData.scopes?.length || pricingData.roles?.length)) {
+            // DISABLED: No longer calling @agent - self-contained prompt handles everything
             console.log('🎯 [TWO-GUY SYSTEM] Detected [PRICING_JSON] - initiating automatic orchestration');
             console.log(`📊 Scopes: ${pricingData.scopes?.length || 0}, Roles: ${pricingData.roles?.length || 0}, Discount: ${pricingData.discount || 0}%`);
             
             try {
-              // STEP 2: Automatically call @agent with the pricing JSON
+              // DISABLED: STEP 2: Automatically call @agent with the pricing JSON
               setIsChatLoading(true);
               const agentCallMessage = `@agent ${JSON.stringify({ json: pricingData })}`;
               

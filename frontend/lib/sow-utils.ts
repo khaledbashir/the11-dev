@@ -153,6 +153,12 @@ export function cleanSOWContent(content: string) {
     .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '')
     // Remove HTML comments
     .replace(/<!-- .*? -->/gi, '')
+    // Remove conversational intro phrases (non-client-facing)
+    .replace(/^(?:Of course[.,]?|Here (?:is|are)|I have prepared|I've prepared|Let me (?:present|provide)|Below (?:is|are))[\s\S]*?(?=(?:\*\*Client:?\*\*|Client:|# |## ))/im, '')
+    // Remove "Here is the proposed plan" type lines
+    .replace(/^Here is the proposed plan\.?\s*/im, '')
+    // Remove standalone JSON summary blocks that shouldn't render (project_summary at end)
+    .replace(/```json\s*\{[\s\S]*?"project_summary"[\s\S]*?\}\s*```/gi, '')
     // Clean up extra whitespace that might be left behind
     .replace(/\n\n\n+/g, '\n\n')
     .trim();
