@@ -3424,7 +3424,9 @@ Ask me questions to get business insights, such as:
     console.log('📄 Current doc ID:', currentDocId);
     
     // 🎯 Extract and log [FINANCIAL_REASONING] block for transparency
-    extractFinancialReasoning(content);
+    if (content && typeof content === 'string') {
+      extractFinancialReasoning(content);
+    }
     
     if (!editorRef.current) {
       console.error("Editor not initialized, cannot insert content.");
@@ -3890,16 +3892,17 @@ Ask me questions to get business insights, such as:
       // Find the last AI response in chat history (excluding confirmation messages)
       const lastAIMessage = [...chatMessages].reverse().find(msg => 
         msg.role === 'assistant' && 
+        msg.content && typeof msg.content === 'string' &&
         !msg.content.includes('✅ SOW has been inserted') &&
         !msg.content.includes('Ready to insert')
       );
       
-      console.log('📋 Found AI message:', lastAIMessage?.content.substring(0, 100));
+      console.log('📋 Found AI message:', lastAIMessage?.content?.substring(0, 100) || 'No content');
       console.log('📝 Editor ref exists:', !!editorRef.current);
       console.log('📄 Current doc ID:', currentDocId);
       
       // 🎯 Extract and log [FINANCIAL_REASONING] block for transparency
-      if (lastAIMessage) {
+      if (lastAIMessage && lastAIMessage.content && typeof lastAIMessage.content === 'string') {
         extractFinancialReasoning(lastAIMessage.content);
       }
       

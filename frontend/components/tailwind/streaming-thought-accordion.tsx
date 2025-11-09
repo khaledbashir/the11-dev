@@ -28,7 +28,7 @@ export function StreamingThoughtAccordion({
   // Build the full insert payload: original content with internal-only sections removed,
   // preserving the original order of the visible narrative and any JSON blocks.
   const buildInsertPayload = useMemo(() => {
-    if (!content) return '';
+    if (!content || typeof content !== 'string') return '';
     let cleaned = content;
     // Remove internal-only blocks but leave JSON in place to preserve order
     const variants = [
@@ -49,6 +49,15 @@ export function StreamingThoughtAccordion({
   // ⚠️ CRITICAL FIX: Extract thinking ONCE per actual content change
   // useMemo ensures this only runs when content actually changes, not on every render/re-stream chunk
   const { thinking, actualContent, jsonBlock } = useMemo(() => {
+    // Guard against non-string content
+    if (!content || typeof content !== 'string') {
+      return {
+        thinking: '',
+        actualContent: content || '',
+        jsonBlock: null,
+      };
+    }
+
     console.log('🔍 [Accordion] Processing content:', {
       contentLength: content?.length || 0,
       contentPreview: content?.substring(0, 100) || '',
@@ -61,9 +70,7 @@ export function StreamingThoughtAccordion({
       { pattern: /<thinking>([\s\S]*?)<\/thinking>/gi, name: 'thinking' },
       { pattern: /<think>([\s\S]*?)<\/think>/gi, name: 'think' },
       { pattern: /<AI_THINK>([\s\S]*?)<\/AI_THINK>/gi, name: 'ai_think' },
-    ];
-
-    // Collect all thinking contents in order
+    ];    // Collect all thinking contents in order
     let extractedThinkingParts: string[] = [];
     let cleanedContent = content;
 
