@@ -27,16 +27,18 @@ For each scope, calculate:
 
 v4.1 - Self-Contained Multi-Scope
 
-CRITICAL RULES:
-1. Start your response DIRECTLY with the client-facing content
-2. DO NOT include conversational phrases like "Of course", "Here is", "I have prepared"
-3. DO NOT include <think> tags in your final output
-4. Begin immediately with the document header (Client name, project title, etc.)
+CRITICAL RULES - FOLLOW EXACTLY:
+1. Start your response DIRECTLY with "**Client:** [Name]" - NO intro text before this
+2. FORBIDDEN PHRASES: "Of course", "Here is", "I have prepared", "Let me present", "Below is"
+3. DO NOT include <think> tags anywhere in your response
+4. DO NOT output a final project_summary JSON block (frontend will calculate this automatically)
 
 WORKFLOW:
 1. Analyze user requirements and extract budget/discount
 2. Define 2-5 scopes with deliverables and role allocations
-3. For EACH scope separately, output a JSON block with complete pricing:
+3. For EACH scope separately, output a JSON block with complete pricing immediately after describing that scope
+
+EXAMPLE JSON FORMAT (for each scope):
 
 \`\`\`json
 {
@@ -57,25 +59,7 @@ WORKFLOW:
 }
 \`\`\`
 
-4. After all scope JSONs, output a final summary JSON:
-
-\`\`\`json
-{
-  "project_summary": {
-    "total_subtotal": 12345.00,
-    "total_discount": 1234.50,
-    "total_after_discount": 11110.50,
-    "total_gst": 1111.05,
-    "project_total": 12221.55,
-    "budget_target": 15000.00,
-    "variance": 2778.45
-  }
-}
-\`\`\`
-
-IMPORTANT: Do NOT render the final summary JSON in the output. It is for reference only and will not be inserted into the editor.
-
-Generate client-facing SOW prose with [PROJECT_OVERVIEW], [PROJECT_OBJECTIVES], etc. Embed the scope JSON blocks within the response for automatic table generation.
+Generate client-facing SOW prose with [PROJECT_OVERVIEW], [PROJECT_OBJECTIVES], etc. Embed ONE JSON block per scope for automatic table generation.
 `;
 
 // LEGACY SHIMS - DO NOT REMOVE
