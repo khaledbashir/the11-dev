@@ -74,9 +74,17 @@ export function extractPricingFromContent(content: any): PricingRow[] {
           if (row?.type !== 'tableRow' || !Array.isArray(row.content)) continue;
           const cells = row.content;
           const role = readText(cells[0] || {}).trim();
-          const hours = parseFloat((readText(cells[1] || {}) || '0').replace(/[^\d.]/g, '')) || 0;
-          const rate = parseFloat((readText(cells[2] || {}) || '0').replace(/[^\d.]/g, '')) || 0;
-          let total = parseFloat((readText(cells[3] || {}) || '0').replace(/[^\d.]/g, '')) || 0;
+          const rawHoursText = readText(cells[1] || {}) || '0';
+          const hoursText = typeof rawHoursText === 'string' ? rawHoursText : String(rawHoursText);
+          const hours = parseFloat(hoursText.replace(/[^\d.]/g, '')) || 0;
+
+          const rawRateText = readText(cells[2] || {}) || '0';
+          const rateText = typeof rawRateText === 'string' ? rawRateText : String(rawRateText);
+          const rate = parseFloat(rateText.replace(/[^\d.]/g, '')) || 0;
+
+          const rawTotalText = readText(cells[3] || {}) || '0';
+          const totalText = typeof rawTotalText === 'string' ? rawTotalText : String(rawTotalText);
+          let total = parseFloat(totalText.replace(/[^\d.]/g, '')) || 0;
           if (!total && hours && rate) total = hours * rate;
           if (role && !/total|role/i.test(role) && hours > 0 && rate > 0) {
             rows.push({ role, hours, rate, total });
@@ -323,9 +331,29 @@ export function formatCurrency(amount: number, showGST: boolean = true): string 
 /**
  * Clean SOW content by removing non-client-facing elements
  */
-export function cleanSOWContent(content: string): string {
+/**
+ * Clean SOW content by removing non-client-facing elements.
+ * This function is defensive: it will coerce non-string inputs to string
+ * to avoid runtime errors when callers pass objects/arrays.
+ */
+export function cleanSOWContent(content: any): string {
+  // Coerce to string safely (handles objects, arrays, null/undefined)
+  let text: string;
+  if (typeof content === 'string') {
+    text = content;
+  } else if (content === null || content === undefined) {
+    text = '';
+  } else {
+    try {
+      // If it's TipTap JSON or an object, stringify to preserve readable form
+      text = typeof content === 'object' ? JSON.stringify(content) : String(content);
+    } catch (e) {
+      text = String(content);
+    }
+  }
+
   // Remove any internal comments, thinking tags, etc.
-  return content
+  return text
     .replace(/<think>[\s\S]*?<\/think>/gi, '')
     .replace(/<!-- .*? -->/gi, '')
     .trim();
