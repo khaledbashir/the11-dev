@@ -34,7 +34,7 @@ export function StreamingThoughtAccordion({
       stringContent = content;
     } else if (content && typeof content === 'object') {
       // If content is an object, try to extract string from it
-      stringContent = content.content || content.message || JSON.stringify(content);
+      stringContent = (content as any).content || (content as any).message || JSON.stringify(content);
     } else {
       stringContent = String(content || '');
     }
