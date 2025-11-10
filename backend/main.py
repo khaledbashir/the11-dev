@@ -579,8 +579,11 @@ async def generate_professional_pdf(request: ProfessionalPDFRequest):
             scope_total = sum(item.cost for item in scope.items)
             scope_totals.append({
                 'title': scope.title,
+                'description': scope.description,
+                'deliverables': scope.deliverables if hasattr(scope, 'deliverables') else [],
+                'assumptions': scope.assumptions if hasattr(scope, 'assumptions') else [],
                 'total': scope_total,
-                'items': scope.items
+                'items': [item.dict() if hasattr(item, 'dict') else item for item in scope.items]
             })
             subtotal += scope_total
         
