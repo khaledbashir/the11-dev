@@ -62,14 +62,14 @@ SOW_TEMPLATE = """
 <body>
     <div class="sow-document">
         <div class="sow-header">
-            {% if logo_base64 %}
+            {% if logo_base64 %>
             <img src="data:image/png;base64,{{ logo_base64 }}" alt="Company Logo" class="sow-logo">
-            {% endif %}
+            {% endif %>
         </div>
 
         <div class="sow-content">
             {{ html_content }}
-            {% if final_investment_target_text %}
+            {% if final_investment_target_text %>
             <h4 style="margin-top: 20px;">Summary</h4>
             <table class="summary-table">
                 <tr>
@@ -80,7 +80,7 @@ SOW_TEMPLATE = """
                 </tr>
             </table>
             <p style="color:#6b7280; font-size: 0.85em; margin-top: 4px;">This final project value is authoritative and supersedes any computed totals.</p>
-            {% endif %}
+            {% endif %>
         </div>
 
         <div class="sow-footer">
@@ -369,8 +369,8 @@ async def generate_pdf(request: PDFRequest):
         print("=== DEBUG: PDF Generation Request ===")
         print(f"📄 Filename: {request.filename}")
         print(f"🎯 Show Pricing Summary: {request.show_pricing_summary}")
-        print(f"� Final Investment Target: {request.final_investment_target_text}")
-        print(f"�📊 HTML Content Length: {len(request.html_content)}")
+        print(f"💰 Final Investment Target: {request.final_investment_target_text}")
+        print(f"📝 HTML Content Length: {len(request.html_content)}")
         print("=== Has table tag:", "<table" in request.html_content.lower(), "===")
         
         # 🎯 CRITICAL FIX: When final_investment_target_text is provided,
@@ -391,7 +391,7 @@ async def generate_pdf(request: PDFRequest):
         # Load and encode the Social Garden logo
         logo_base64 = ""
         # Use the newer logo file that matches frontend branding
-        logo_path = Path(__file__).parent / "social-garden-logo-dark.png"
+        logo_path = Path(__file__).parent / "social-garden-logo-dark-new.png"
         if logo_path.exists():
             with open(logo_path, "rb") as logo_file:
                 logo_base64 = base64.b64encode(logo_file.read()).decode('utf-8')
@@ -545,17 +545,10 @@ class ProfessionalPDFRequest(BaseModel):
 async def generate_professional_pdf(request: ProfessionalPDFRequest):
     try:
         print("=== DEBUG: Professional PDF Generation Request ===")
-            print(f"📌 Client: {request.clientName} | Project: {request.projectTitle}")
-            print(f"📅 Date: {request.generatedDate} | GST Applicable: {request.gstApplicable}")
-            print(f"💸 Incoming discount (raw): {request.discount}")
-            print(f"🧩 Scopes received: {len(request.scopes)}")
-        except Exception as _log_e:
-            # Ensure logging never breaks the request
-            print(f"⚠️ Logging error: {_log_e}")
         
         # Load and encode the Social Garden logo
         logo_base64 = ""
-        logo_path = Path(__file__).parent / "social-garden-logo-dark.png"
+        logo_path = Path(__file__).parent / "social-garden-logo-dark-new.png"
         if logo_path.exists():
             with open(logo_path, "rb") as logo_file:
                 logo_base64 = base64.b64encode(logo_file.read()).decode('utf-8')
@@ -570,63 +563,28 @@ async def generate_professional_pdf(request: ProfessionalPDFRequest):
         # Calculate financial totals in Python instead of Jinja2
         subtotal = 0.0
         scope_totals = []
-
-        # Build enriched scope_totals list with per-scope totals
-        print("=== DETAILED SCOPE CALCULATION ===")
-        for i, scope in enumerate(request.scopes):
-            print(f"Processing Scope {i+1}: '{scope.title}'")
-            # Sum costs robustly, ensuring float and ignoring None
-            scope_total = 0.0
-            for j, item in enumerate(scope.items):
-                try:
-                    item_cost = float(item.cost or 0.0)
-                    scope_total += item_cost
-                    print(f"  - Item {j+1}: '{item.role}' | Cost: {item_cost:.2f} | Cumulative Scope Total: {scope_total:.2f}")
-                except Exception as e:
-                    print(f"  - Item {j+1}: '{item.role}' | Invalid cost value. Error: {e}. Treating as 0.0")
-                    scope_total += 0.0
-            
-            print(f"✅ Final Calculated Total for Scope '{scope.title}': {scope_total:.2f}")
+        
+        for scope in request.scopes:
+            scope_total = sum(item.cost for item in scope.items)
             scope_totals.append({
                 'title': scope.title,
-                'total': round(scope_total, 2),
-                'description': scope.description,
-                'deliverables': scope.deliverables,
-                'assumptions': scope.assumptions,
+                'total': scope_total,
                 'items': scope.items
             })
             subtotal += scope_total
-            print(f"💰 Cumulative Project Subtotal after Scope '{scope.title}': {subtotal:.2f}")
-
-        # Normalize subtotal to 2 decimals
-        subtotal = round(subtotal, 2)
         
-        # Normalize discount to a safe float percent
-        try:
-            discount_percent = float(request.discount or 0.0)
-        except Exception:
-            discount_percent = 0.0
-
         discount_amount = 0.0
-        if discount_percent > 0:
-            discount_amount = round(subtotal * (discount_percent / 100.0), 2)
-
-        total_after_discount = round(subtotal - discount_amount, 2)
-
-        # GST and final total calculations (if applicable)
+        if request.discount and request.discount > 0:
+            discount_amount = subtotal * (request.discount / 100)
+        
+        total_after_discount = subtotal - discount_amount
+        
+        # Calculate GST on the post-discount amount (correct logic)
         gst_amount = 0.0
         if request.gstApplicable:
-            gst_amount = round(total_after_discount * 0.10, 2)
-        final_total = round(total_after_discount + gst_amount, 2)
-
-        # Debug print the financial pipeline to trace issues end-to-end
-        print("=== DEBUG: Financial Summary (Computed in backend) ===")
-        print(f"Subtotal (before discount): {subtotal}")
-        print(f"Discount %: {discount_percent}")
-        print(f"Discount amount: {discount_amount}")
-        print(f"Subtotal (after discount): {total_after_discount}")
-        print(f"GST amount (10% if applicable): {gst_amount}")
-        print(f"Final total (incl. GST): {final_total}")
+            gst_amount = total_after_discount * 0.10  # 10% GST
+        
+        final_total = total_after_discount + gst_amount
         
         # Render the HTML with calculated values
         full_html = template.render(
@@ -638,9 +596,10 @@ async def generate_professional_pdf(request: ProfessionalPDFRequest):
             projectSubtitle=request.projectSubtitle,
             projectOverview=request.projectOverview,
             budgetNotes=request.budgetNotes,
-            scopes=scope_totals,
+            scopes=request.scopes,
+            scope_totals=scope_totals,
             subtotal=subtotal,
-            discount=discount_percent,
+            discount=request.discount,
             discount_amount=discount_amount,
             total_after_discount=total_after_discount,
             gst_amount=gst_amount,
