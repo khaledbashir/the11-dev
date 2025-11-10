@@ -64,9 +64,9 @@ SOW_TEMPLATE = """
 <body>
     <div class="sow-document">
         <div class="sow-header">
-            {% if logo_base64 %>
-            <img src="data:image/png;base64,{{ logo_base64 }}" alt="Company Logo" class="sow-logo">
-            {% endif %>
+            {% if logo_base64 %}
+            <img src="data:image/png;base64,{{ logo_base64|safe }}" alt="Company Logo" class="sow-logo">
+            {% endif %}
         </div>
 
         <div class="sow-content">
