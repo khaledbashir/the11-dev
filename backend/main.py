@@ -71,7 +71,7 @@ SOW_TEMPLATE = """
 
         <div class="sow-content">
             {{ html_content }}
-            {% if final_investment_target_text %>
+            {% if final_investment_target_text %}
             <h4 style="margin-top: 20px;">Summary</h4>
             <table class="summary-table">
                 <tr>
@@ -82,7 +82,7 @@ SOW_TEMPLATE = """
                 </tr>
             </table>
             <p style="color:#6b7280; font-size: 0.85em; margin-top: 4px;">This final project value is authoritative and supersedes any computed totals.</p>
-            {% endif %>
+            {% endif %}
         </div>
 
         <div class="sow-footer">
