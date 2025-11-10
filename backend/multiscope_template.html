@@ -25,6 +25,31 @@
         <h3>Project Overview</h3>
         <p>{{ projectOverview }}</p>
 
+        <!-- Summary table required by THE_WHAT_SAM_WANTS_CHECKLIST -->
+        <h3>Scope & Price Overview</h3>
+        <table class="summary-table">
+            <thead>
+                <tr>
+                    <th>Scope</th>
+                    <th>Investment (ex. GST)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for scope_total in scope_totals %}
+                <tr>
+                    <td>{{ scope_total['title'] }}</td>
+                    <td>{{ currency(scope_total['total']) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td><strong>Grand Total</strong></td>
+                    <td><strong>{{ currency(subtotal) }}</strong></td>
+                </tr>
+            </tfoot>
+        </table>
+
         {% for scope_total in scope_totals %}
         <div class="scope-section">
             <h3>{{ scope_total['title'] }}</h3>
