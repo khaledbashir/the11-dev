@@ -369,10 +369,10 @@ hr {
 async def generate_pdf(request: PDFRequest):
     try:
         print("=== DEBUG: PDF Generation Request ===")
-    print(f"📄 Filename: {request.filename}")
-    print(f"🎯 Show Pricing Summary: {request.show_pricing_summary}")
-    print(f" Final Investment Target: {request.final_investment_target_text}")
-    print(f"📊 HTML Content Length: {len(request.html_content)}")
+        print(f"📄 Filename: {request.filename}")
+        print(f"🎯 Show Pricing Summary: {request.show_pricing_summary}")
+        print(f" Final Investment Target: {request.final_investment_target_text}")
+        print(f"📊 HTML Content Length: {len(request.html_content)}")
         print("=== Has table tag:", "<table" in request.html_content.lower(), "===")
 
         # 🎯 When final_investment_target_text is provided, strip computed summary sections
