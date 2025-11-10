@@ -1302,9 +1302,8 @@ export default function Page() {
       // Clear chat messages for clean state when switching to new workspace
       setChatMessages([]);
       
-      toast.success(`✅ Workspace "${workspaceName}" created with AnythingLLM integration!`);
-      
-      toast.success(`✅ Created workspace "${workspaceName}" with blank SOW ready to edit!`);
+  toast.success(`✅ Workspace "${workspaceName}" created!`);
+  toast.success(`✅ Created workspace "${workspaceName}" with blank SOW ready to edit!`);
       
       // Close progress modal and navigate to SOW editor
       setTimeout(() => {
