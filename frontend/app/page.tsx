@@ -425,7 +425,8 @@ export default function Page() {
     lastShared?: string;
   } | null>(null);
   const [showGuidedSetup, setShowGuidedSetup] = useState(false);
-  const [viewMode, setViewMode] = useState<'editor' | 'dashboard' | 'gardner-studio' | 'ai-management'>('dashboard'); // NEW: View mode - START WITH DASHBOARD
+  // TEMP: Hide dashboard, default to editor view
+  const [viewMode, setViewMode] = useState<'editor' | 'dashboard' | 'gardner-studio' | 'ai-management'>('editor'); // TEMP: Hide dashboard, default to editor
   
   // Workspace & SOW state (NEW) - Start empty, load from AnythingLLM
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
@@ -2772,7 +2773,8 @@ export default function Page() {
               </div>
             </div>
           ) : viewMode === 'dashboard' ? (
-            <EnhancedDashboard />
+            /* Dashboard temporarily hidden for now */
+            <div style={{display:'none'}} />
           ) : viewMode === 'ai-management' ? (
             <div className="w-full h-full bg-[#0E0F0F]">
               <iframe
