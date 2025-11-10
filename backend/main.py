@@ -4,6 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import weasyprint
 from jinja2 import Template
+from markupsafe import Markup
+import time
 import base64
 import os
 from pathlib import Path
@@ -367,19 +369,16 @@ hr {
 async def generate_pdf(request: PDFRequest):
     try:
         print("=== DEBUG: PDF Generation Request ===")
-        print(f"📄 Filename: {request.filename}")
-        print(f"🎯 Show Pricing Summary: {request.show_pricing_summary}")
-        print(f"💰 Final Investment Target: {request.final_investment_target_text}")
-        print(f"📝 HTML Content Length: {len(request.html_content)}")
+    print(f"📄 Filename: {request.filename}")
+    print(f"🎯 Show Pricing Summary: {request.show_pricing_summary}")
+    print(f" Final Investment Target: {request.final_investment_target_text}")
+    print(f"📊 HTML Content Length: {len(request.html_content)}")
         print("=== Has table tag:", "<table" in request.html_content.lower(), "===")
-        
-        # 🎯 CRITICAL FIX: When final_investment_target_text is provided,
-        # strip any computed summary sections from the HTML to avoid duplicates
+
+        # 🎯 When final_investment_target_text is provided, strip computed summary sections
         html_content = request.html_content
         if request.final_investment_target_text:
             import re
-            # Remove any <h4>Summary</h4> section and its following table/paragraph
-            # This regex removes: <h4...>Summary</h4> + following <table...>...</table> + optional disclaimer <p>
             html_content = re.sub(
                 r'<h4[^>]*>\s*Summary\s*</h4>\s*<table[^>]*>.*?</table>\s*(<p[^>]*>.*?</p>)?',
                 '',
@@ -387,10 +386,9 @@ async def generate_pdf(request: PDFRequest):
                 flags=re.IGNORECASE | re.DOTALL
             )
             print("✅ Stripped computed summary section from HTML (final_investment_target_text provided)")
-        
-        # Load and encode the Social Garden logo
+
+        # Load and encode the logo
         logo_base64 = ""
-        # Use the newer logo file that matches frontend branding
         logo_path = Path(__file__).parent / "social-garden-logo-dark-new.png"
         if logo_path.exists():
             with open(logo_path, "rb") as logo_file:
@@ -398,29 +396,32 @@ async def generate_pdf(request: PDFRequest):
             print(f"✅ Logo loaded successfully from {logo_path}")
         else:
             print(f"⚠️ Logo file not found at {logo_path}")
-        
+
         # Render the HTML template with Jinja2
+        if isinstance(html_content, str):
+            html_content = html_content.replace('\x00', '')
         template = Template(SOW_TEMPLATE)
+        safe_html = Markup(html_content)
         full_html = template.render(
-            html_content=html_content,
+            html_content=safe_html,
             css_content=DEFAULT_CSS,
             logo_base64=logo_base64,
             final_investment_target_text=request.final_investment_target_text,
         )
-        
+
         # Generate PDF with WeasyPrint
         html_doc = weasyprint.HTML(string=full_html)
-        
+
         # Create output directory if it doesn't exist
         output_dir = Path("/tmp/pdfs")
         output_dir.mkdir(exist_ok=True)
-        
+
         # Generate PDF
         pdf_path = output_dir / f"{request.filename}.pdf"
-        
+
         # Write PDF to bytes then to file
         pdf_bytes = html_doc.write_pdf()
-        
+
         # Write to file
         with open(pdf_path, 'wb') as f:
             f.write(pdf_bytes)
@@ -436,6 +437,16 @@ async def generate_pdf(request: PDFRequest):
         import traceback
         error_detail = f"PDF generation failed: {str(e)}\n{traceback.format_exc()}"
         print(error_detail)  # Log to console
+        # Dump a short debug HTML file for inspection when errors occur
+        try:
+            debug_dir = Path('/tmp/pdf_debug')
+            debug_dir.mkdir(exist_ok=True)
+            debug_file = debug_dir / f"debug_{int(time.time())}.html"
+            with open(debug_file, 'w', encoding='utf-8') as fh:
+                fh.write(full_html[:200000])
+            print(f"✅ Wrote debug HTML to: {debug_file}")
+        except Exception as _e:
+            print('⚠️ Failed to write debug HTML file:', _e)
         raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
 
 @app.get("/health")
