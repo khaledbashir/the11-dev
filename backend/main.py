@@ -375,8 +375,10 @@ async def generate_pdf(request: PDFRequest):
         print(f"📊 HTML Content Length: {len(request.html_content)}")
         print("=== Has table tag:", "<table" in request.html_content.lower(), "===")
 
-        # 🎯 When final_investment_target_text is provided, strip computed summary sections
+        # Defensive step: start with incoming HTML
         html_content = request.html_content
+
+        # 🎯 When final_investment_target_text is provided, strip computed summary sections
         if request.final_investment_target_text:
             import re
             html_content = re.sub(
@@ -386,6 +388,25 @@ async def generate_pdf(request: PDFRequest):
                 flags=re.IGNORECASE | re.DOTALL
             )
             print("✅ Stripped computed summary section from HTML (final_investment_target_text provided)")
+
+        # Defensive redaction: remove any explicit timeline phrasing that uses weeks/months
+        # This enforces the negative constraint at render-time in case the model or frontend included it.
+        try:
+            import re
+            timeline_pattern = re.compile(r"\b(week|weeks|month|months|day|days)\b", flags=re.IGNORECASE)
+            # Only redact within headings and list items to avoid false positives in prose
+            def redact_timelines(html: str) -> str:
+                # Remove lines that look like timeline bullets (e.g., 'Phase 1: 3-4 Weeks')
+                redacted = re.sub(r"<h[1-6][^>]*>[^<]*(?:timeline|timelines)[^<]*</h[1-6]>", "<h4>TIMELINE REDACTED</h4>", html, flags=re.IGNORECASE)
+                redacted = re.sub(r"<li[^>]*>[^<]*\\d+[^<]*(?:week|weeks|month|months|day|days)[^<]*</li>", "<li><em>Timeline removed</em></li>", redacted, flags=re.IGNORECASE)
+                # Also redact inline durations like '3-4 weeks' or '4 weeks'
+                redacted = timeline_pattern.sub(lambda m: '<span class="redacted">[REDACTED]</span>', redacted)
+                return redacted
+
+            html_content = redact_timelines(html_content)
+            print("✅ Applied timeline redaction to HTML content to enforce negative constraints")
+        except Exception as _e:
+            print("⚠️ Timeline redaction failed:", _e)
 
         # Load and encode the logo
         logo_base64 = ""
@@ -400,6 +421,35 @@ async def generate_pdf(request: PDFRequest):
         # Render the HTML template with Jinja2
         if isinstance(html_content, str):
             html_content = html_content.replace('\x00', '')
+        # If show_pricing_summary is False, attempt to auto-detect pricing scopes and insert an Investment Overview
+        try:
+            if not request.show_pricing_summary:
+                # Simple heuristic: look for monetary values in the HTML and scope headings
+                import re
+                money_matches = re.findall(r"\$\s?[0-9,]+(?:\.[0-9]{2})?", html_content)
+                scope_heads = re.findall(r"<h[1-6][^>]*>([^<]{3,200}?)</h[1-6]>", html_content, flags=re.IGNORECASE)
+                if money_matches and scope_heads:
+                    # Build a minimal Investment Overview table from first few detected scopes/matches
+                    try:
+                        overview_rows = []
+                        # Pair up scope headings and monetary matches where possible
+                        for i, amount in enumerate(money_matches[: len(scope_heads)]):
+                            title = scope_heads[i]
+                            overview_rows.append(f"<tr><td>{title}</td><td class=\"num\">{amount}</td></tr>")
+
+                        investment_table = (
+                            "<h4>Investment Overview</h4>"
+                            "<table class=\"summary-table\"><thead><tr><th>Scope</th><th>Cost</th></tr></thead><tbody>"
+                            + "".join(overview_rows)
+                            + "</tbody></table>"
+                        )
+                        # Prepend the investment_table after the first heading in the document
+                        html_content = re.sub(r"(<h1[^>]*>.*?</h1>)", r"\1" + investment_table, html_content, count=1, flags=re.IGNORECASE | re.DOTALL)
+                        print("✅ Auto-inserted Investment Overview table into HTML because pricing info was detected but show_pricing_summary was False")
+                    except Exception as _e:
+                        print("⚠️ Failed to auto-insert investment overview:", _e)
+        except Exception as _e:
+            print("⚠️ Pricing summary detection failed:", _e)
         template = Template(SOW_TEMPLATE)
         safe_html = Markup(html_content)
         full_html = template.render(
