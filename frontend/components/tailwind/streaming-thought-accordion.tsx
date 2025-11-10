@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { ChevronDown } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -10,6 +10,7 @@ interface StreamingThoughtAccordionProps {
   isStreaming?: boolean; // Whether this message is currently streaming
   messageId?: string; // Unique message ID for tracking
   onThinkingExtracted?: (thinking: string) => void;
+  onInsertClick?: (content: string) => void;
 }
 
 export function StreamingThoughtAccordion({
@@ -17,54 +18,45 @@ export function StreamingThoughtAccordion({
   isStreaming = false,
   messageId,
   onThinkingExtracted,
+  onInsertClick,
 }: StreamingThoughtAccordionProps) {
   const [thinking, setThinking] = useState<string>("");
   const [actualContent, setActualContent] = useState<string>("");
   const [isOpen, setIsOpen] = useState(false);
   const [displayedThinking, setDisplayedThinking] = useState<string>("");
 
-  // Extract thinking tags and stream the display
   useEffect(() => {
-    const thinkingMatch = content.match(/<think>([\s\S]*?)<\/think>/i);
-    const extractedThinking = thinkingMatch ? thinkingMatch[1].trim() : "";
-    const cleanedContent = content.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
-
-    // DEBUG: Log extraction
-    if (extractedThinking) {
-      console.log('🎯 [Accordion] THINKING EXTRACTED:', {
-        thinkingLength: extractedThinking.length,
-        thinkingPreview: extractedThinking.substring(0, 100),
-        hasThinkingContent: extractedThinking.length > 0
-      });
-    }
-
-    setThinking(extractedThinking);
-    setActualContent(cleanedContent);
-
-    if (onThinkingExtracted && extractedThinking) {
-      onThinkingExtracted(extractedThinking);
-    }
-
-    // Stream the thinking display character by character
-    if (extractedThinking && isStreaming) {
-      setDisplayedThinking("");
-      let currentIndex = 0;
-
-      const streamThinking = () => {
-        if (currentIndex < extractedThinking.length) {
-          setDisplayedThinking((prev) => prev + extractedThinking[currentIndex]);
-          currentIndex++;
-          // Typing speed - adjust for faster/slower effect
-          const delay = Math.random() * 20 + 10; // 10-30ms between chars
-          setTimeout(streamThinking, delay);
+    console.log(`🔍 [Accordion] Processing content:`, { messageId, isStreaming });
+  
+    const processContent = () => {
+      const thinkingMatch = content.match(/<think>([\s\S]*?)<\/think>/i);
+      const extractedThinking = thinkingMatch ? thinkingMatch[1].trim() : "";
+      const cleanedContent = content.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+  
+      if (extractedThinking) {
+        console.log('🎯 [Accordion] THINKING EXTRACTED (messageId: %s):', messageId, {
+          thinkingLength: extractedThinking.length,
+          hasThinkingContent: extractedThinking.length > 0,
+        });
+        setThinking(extractedThinking);
+        setActualContent(cleanedContent);
+        if (onThinkingExtracted) {
+          onThinkingExtracted(extractedThinking);
         }
-      };
-
-      streamThinking();
-    } else if (extractedThinking) {
-      setDisplayedThinking(extractedThinking);
-    }
-  }, [content, isStreaming, onThinkingExtracted]);
+        setDisplayedThinking(extractedThinking); // Display immediately
+      } else {
+        console.log(`⚠️ [Accordion] NO THINKING EXTRACTED (messageId: ${messageId})`);
+        setThinking(""); // Clear thinking if no tag is found
+        setActualContent(cleanedContent);
+      }
+      
+      console.log('📄 [Accordion] Cleaned content:', { messageId, cleanedContent: cleanedContent.substring(0, 100) });
+    };
+  
+    // Process content on every render to catch streaming updates
+    processContent();
+  
+  }, [content, isStreaming, messageId, onThinkingExtracted]);
 
   if (!thinking) {
     // No thinking tags, just return the content with proper markdown rendering
@@ -155,9 +147,24 @@ export function StreamingThoughtAccordion({
         </summary>
         <div className="px-4 py-3 bg-[#000000]/50 border-t border-[#1b5e5e]/30">
           <div className="text-xs text-gray-300 whitespace-pre-wrap font-mono leading-relaxed max-h-[300px] overflow-y-auto">
-            {/* Show streamed thinking with typing effect */}
-            <span>{displayedThinking}</span>
-            {isStreaming && displayedThinking.length < thinking.length && (
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                h1: ({node, ...props}) => <h1 className="text-base font-bold mt-2 mb-1 text-yellow-300" {...props} />,
+                h2: ({node, ...props}) => <h2 className="text-sm font-bold mt-2 mb-1 text-yellow-200" {...props} />,
+                p: ({node, ...props}) => <p className="text-xs text-gray-300 mb-2" {...props} />,
+                ul: ({node, ...props}) => <ul className="list-disc list-inside text-xs text-gray-300 mb-2 pl-2" {...props} />,
+                li: ({node, ...props}) => <li className="text-xs text-gray-300 mb-1" {...props} />,
+                strong: ({node, ...props}) => <strong className="font-bold text-yellow-400" {...props} />,
+                code: ({node, className, children, ...props}: any) => (
+                  <code className="bg-black text-yellow-300 px-1 rounded-sm text-xs" {...props}>{children}</code>
+                ),
+              }}
+              className="prose prose-invert max-w-none"
+            >
+              {thinking}
+            </ReactMarkdown>
+            {isStreaming && thinking && (
               <span className="animate-pulse text-gray-500">_</span>
             )}
           </div>
@@ -225,6 +232,21 @@ export function StreamingThoughtAccordion({
           >
             {actualContent}
           </ReactMarkdown>
+          
+          {/* Insert to Editor Button */}
+          {onInsertClick && (
+            <div className="mt-3 flex justify-end">
+              <button
+                onClick={() => onInsertClick(actualContent)}
+                className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-[#1b5e5e] hover:bg-[#20e28f] hover:text-black rounded-md transition-colors border border-[#1b5e5e] hover:border-[#20e28f]"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Insert to Editor
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

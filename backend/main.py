@@ -22,11 +22,7 @@ app = FastAPI(title="Social Garden PDF & Sheets Service")
 # For local dev, add "http://localhost:3000" to the list
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://sow-generator.socialgarden.com.au",
-        "https://sow.qandu.me",  # Production frontend
-        "http://localhost:3000",  # Local development
-    ],
+    allow_origins=["*"], # Allow all origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
