@@ -324,11 +324,29 @@ export function formatCurrency(amount: number, showGST: boolean = true): string 
  * Clean SOW content by removing non-client-facing elements
  */
 export function cleanSOWContent(content: string): string {
-  // Remove any internal comments, thinking tags, etc.
-  return content
+  if (!content) return '';
+  // Remove any internal comments, thinking tags, and tool_call blocks so
+  // client-facing SOWs never contain the AI's internal reasoning.
+  let cleaned = String(content)
+    // Remove <AI_THINK>...</AI_THINK>
+    .replace(/<AI_THINK>[\s\S]*?<\/AI_THINK>/gi, '')
+    // Remove <thinking>...</thinking>
+    .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
+    // Remove <think>...</think>
     .replace(/<think>[\s\S]*?<\/think>/gi, '')
-    .replace(/<!-- .*? -->/gi, '')
+    // Remove any orphaned think-like tags
+    .replace(/<\/?think>/gi, '')
+    .replace(/<\/?thinking>/gi, '')
+    .replace(/<\/?AI_THINK>/gi, '')
+    // Remove tool_call wrappers
+    .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '')
+    // Remove HTML comments
+    .replace(/<!--[\s\S]*?-->/gi, '')
+    // Collapse excessive blank lines left behind
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
+
+  return cleaned;
 }
 
 /**

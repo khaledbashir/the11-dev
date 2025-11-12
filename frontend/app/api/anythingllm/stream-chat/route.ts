@@ -190,9 +190,11 @@ export async function POST(request: NextRequest) {
       // Workspace-level streaming chat (legacy behavior)
       endpoint = `${ANYTHINGLLM_URL}/api/v1/workspace/${effectiveWorkspaceSlug}/stream-chat`;
     }
-    
+
+    const requestStartTime = Date.now();
     console.log('');
     console.log('=== ABOUT TO SEND TO ANYTHINGLLM ===');
+    console.log('⏱️ Request Start Time:', new Date(requestStartTime).toISOString());
     console.log('Endpoint:', endpoint);
     console.log('Workspace:', effectiveWorkspaceSlug);
     console.log('Mode:', mode);
@@ -208,6 +210,9 @@ export async function POST(request: NextRequest) {
     console.log('=== END DEBUG ===');
     console.log('');
     
+    const fetchStartTime = Date.now();
+    console.log(`⏱️ [TIMING] Fetch started at ${new Date(fetchStartTime).toISOString()}`);
+
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -219,6 +224,9 @@ export async function POST(request: NextRequest) {
         mode, // 'chat' or 'query' (provided by caller)
       }),
     });
+
+    const fetchEndTime = Date.now();
+    console.log(`⏱️ [TIMING] Fetch completed in ${fetchEndTime - fetchStartTime}ms`);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -274,21 +282,32 @@ export async function POST(request: NextRequest) {
           return;
         }
 
+        const streamStartTime = Date.now();
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
         let totalChunks = 0;
         let totalBytes = 0;
+        let firstChunkTime: number | null = null;
 
-        console.log('🌊 [STREAM] Starting to read from AnythingLLM...');
+        console.log(`🌊 [STREAM] Starting to read from AnythingLLM at ${new Date(streamStartTime).toISOString()}...`);
 
         while (true) {
           const { done, value } = await reader.read();
 
           if (done) {
-            console.log(`✅ [STREAM] Complete - ${totalChunks} chunks, ${totalBytes} bytes total`);
+            const streamEndTime = Date.now();
+            console.log(`✅ [STREAM] Complete - ${totalChunks} chunks, ${totalBytes} bytes total, took ${streamEndTime - streamStartTime}ms`);
+            if (firstChunkTime) {
+              console.log(`⏱️ [TIMING] First chunk received after ${firstChunkTime - streamStartTime}ms`);
+            }
             await writer.close();
             break;
+          }
+
+          if (!firstChunkTime) {
+            firstChunkTime = Date.now();
+            console.log(`⏱️ [TIMING] First chunk received after ${firstChunkTime - streamStartTime}ms`);
           }
 
           totalChunks++;

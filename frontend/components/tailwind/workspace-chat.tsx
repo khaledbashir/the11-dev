@@ -614,7 +614,7 @@ export default function WorkspaceChat({
                           content={msg.content}
                           messageId={msg.id}
                           isStreaming={streamingMessageId === msg.id}
-                          onInsertClick={(content) => onInsertToEditor(content)}
+                          onInsertClick={(content) => onInsertToEditor(cleanSOWContent(content))}
                         />
                       </div>
                     )}
@@ -653,12 +653,12 @@ export default function WorkspaceChat({
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                     Latest AI response ready
                   </div>
-                  <Button
+                    <Button
                     size="sm"
                     variant="outline"
                     className="h-8 px-4 text-xs font-medium border-[#1CBF79] text-[#1CBF79] hover:text-white hover:bg-[#1CBF79] transition-all duration-200"
                     title="Insert the latest AI response into your SOW editor"
-                    onClick={() => onInsertToEditor(lastAssistant.content)}
+                    onClick={() => onInsertToEditor(cleanSOWContent(lastAssistant.content))}
                   >
                     <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />

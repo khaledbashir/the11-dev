@@ -4307,6 +4307,9 @@ Ask me questions to get business insights, such as:
     // 🎯 EXTRACT BUDGET AND DISCOUNT from user prompt for pricing calculator
     setLastUserPrompt(message); // Store for later use when AI responds
 
+    const messageStartTime = Date.now();
+    console.log(`⏱️ [MESSAGE] User message sent at ${new Date(messageStartTime).toISOString()}`);
+
     const userMessage: ChatMessage = {
       id: `msg${Date.now()}`,
       role: 'user',
@@ -4392,6 +4395,9 @@ Ask me questions to get business insights, such as:
           let accumulatedContent = '';
 
           // Create initial empty AI message
+          const apiCallStartTime = Date.now();
+          console.log(`⏱️ [API] About to call streaming endpoint at ${new Date(apiCallStartTime).toISOString()}`);
+
           const initialAIMessage: ChatMessage = {
             id: aiMessageId,
             role: 'assistant',
@@ -4485,6 +4491,9 @@ Ask me questions to get business insights, such as:
           }
 
           // Read the SSE stream
+          const streamStartTime = Date.now();
+          console.log(`⏱️ [FRONTEND] Stream reading started at ${new Date(streamStartTime).toISOString()}`);
+
           const reader = response.body?.getReader();
           const decoder = new TextDecoder();
 
@@ -4496,13 +4505,24 @@ Ask me questions to get business insights, such as:
 
           try {
             let buffer = '';
+            let firstChunkTime: number | null = null;
+
             while (true) {
               const { done, value } = await reader.read();
 
               if (done) {
-                console.log('✅ Stream complete');
+                const streamEndTime = Date.now();
+                console.log(`✅ Stream complete - took ${streamEndTime - streamStartTime}ms`);
+                if (firstChunkTime) {
+                  console.log(`⏱️ [FRONTEND] First chunk received after ${firstChunkTime - streamStartTime}ms`);
+                }
                 setStreamingMessageId(null);
                 break;
+              }
+
+              if (!firstChunkTime) {
+                firstChunkTime = Date.now();
+                console.log(`⏱️ [FRONTEND] First chunk received after ${firstChunkTime - streamStartTime}ms`);
               }
 
               buffer += decoder.decode(value, { stream: true });
