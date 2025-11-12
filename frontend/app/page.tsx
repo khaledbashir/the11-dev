@@ -1560,7 +1560,7 @@ Ask me questions to get business insights, such as:
           try {
             console.log('💬 Loading chat history for thread:', doc.threadSlug);
             // 🎯 Use the workspace where the SOW was created (where its thread lives)
-            const history = await anythingLLM.getThreadChats(doc.workspaceSlug || 'sow-generator', doc.threadSlug);
+            const history = await anythingLLM.getThreadChats(doc.workspaceSlug || 'generate', doc.threadSlug);
 
             if (history && history.length > 0) {
               // Convert AnythingLLM history format to our ChatMessage format
@@ -2458,7 +2458,7 @@ Ask me questions to get business insights, such as:
         title: sowName,
         content: defaultEditorContent,
         folderId: workspaceId,
-        workspaceSlug: 'sow-generator', // Use the master workspace slug
+        workspaceSlug: 'generate', // Use the master workspace slug
         threadSlug: tempThreadSlug,
         syncedAt: new Date().toISOString(),
       };

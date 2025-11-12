@@ -4,7 +4,7 @@
 export const WORKSPACE_CONFIG = {
   // Sidebar AI - For generating SOWs
   sidebar: {
-    slug: 'sow-generator',
+    slug: 'generate',
     name: 'SOW Generator',
     description: 'Main workspace for AI-generated SOWs',
     purpose: 'Generate complete Statements of Work',
@@ -52,7 +52,7 @@ export function getWorkspaceForAgent(agentId: string): string {
   switch (agentId) {
     case 'architect':
     case 'strategist':
-    case 'sow-generator':
+    case 'generate':
       return WORKSPACE_CONFIG.sidebar.slug;
     
     case 'editor-assistant':

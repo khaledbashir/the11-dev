@@ -26,7 +26,7 @@ interface ServiceOption {
 
 export default function LandingPage() {
   // Core service (always selected, cannot be unchecked)
-  const [selectedServices, setSelectedServices] = useState<string[]>(['sow-generator']);
+  const [selectedServices, setSelectedServices] = useState<string[]>(['generate']);
   const [showFullFeatures, setShowFullFeatures] = useState(false);
   const [showExtensions, setShowExtensions] = useState(false);
   const [showRequirements, setShowRequirements] = useState(false);
@@ -35,7 +35,7 @@ export default function LandingPage() {
   const services: ServiceOption[] = [
     // CORE - CANNOT BE UNCHECKED (Includes multiple features)
     {
-      id: 'sow-generator',
+      id: 'generate',
       name: 'SOW Generator - Complete Platform',
       description: 'AI-powered editor with AI Writing Assistant, PDF export, streaming AI with visible reasoning, advanced sidebar navigation, and rich editor extensions (tables, pricing, equations, embeds)',
       price: 1200,

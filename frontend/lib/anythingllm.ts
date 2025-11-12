@@ -138,7 +138,7 @@ export class AnythingLLMService {
    */
   async getMasterSOWWorkspace(clientName: string): Promise<{id: string, slug: string}> {
     const masterName = 'SOW Generator';
-    const masterSlug = 'sow-generator'; // Generation "factory" workspace
+    const masterSlug = 'generate'; // Generation "factory" workspace
 
     try {
       // Check if master workspace exists by slug first, then by name
@@ -1261,7 +1261,7 @@ When asked for analytics, provide clear, actionable insights with specific numbe
     clientContext?: string
   ): Promise<boolean> {
     try {
-      const masterWorkspaceSlug = 'sow-generator';
+      const masterWorkspaceSlug = 'generate';
       const masterDashboardSlug = await this.getOrCreateMasterDashboard();
 
       console.log(`📊 Embedding SOW in workspaces...`);
@@ -1323,7 +1323,7 @@ When asked for analytics, provide clear, actionable insights with specific numbe
     metadata: Record<string, any> = {}
   ): Promise<boolean> {
     try {
-      const masterWorkspaceSlug = 'sow-generator';
+      const masterWorkspaceSlug = 'generate';
       const masterDashboardSlug = await this.getOrCreateMasterDashboard();
 
       const versionedMeta = {
