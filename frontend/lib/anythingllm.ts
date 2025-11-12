@@ -705,10 +705,11 @@ Metadata:
   /**
    * Configure LLM provider for a workspace (for testing/automation)
    * Note: This requires the provider to be available in AnythingLLM instance
+   * Uses correct AnythingLLM API field names: chatProvider and chatModel
    */
   async setWorkspaceLLMProvider(
     workspaceSlug: string,
-    provider: string = 'claude',
+    provider: string = 'openrouter',
     model: string = 'claude-3-5-sonnet-20241022'
   ): Promise<boolean> {
     try {
@@ -721,8 +722,8 @@ Metadata:
           method: 'POST',
           headers: this.getHeaders(),
           body: JSON.stringify({
-            llmProvider: provider,
-            llmModel: model,
+            chatProvider: provider,
+            chatModel: model,
           }),
         }
       );
