@@ -3524,6 +3524,10 @@ Ask me questions to get business insights, such as:
       filteredContent = filteredContent.replace(/\[BUDGET[\*_\s-]*NOTE[\*_\s-]*\][\s\S]*?(?=\n\s*\[|\n\s*##|\n\s*###|$)/gi, '');
       filteredContent = filteredContent.replace(/\[GENERATE\s+THE\s+SOW\]/gi, '');
 
+      // 🧠 Strip <think> tags (AI reasoning blocks)
+      filteredContent = filteredContent.replace(/<think>[\s\S]*?<\/think>/gi, '');
+      console.log('🧹 Stripped <think> tags from content');
+
       // 1) Extract ALL JSON code blocks and build per-table roles queue.
       //    Replace each JSON block with a [editablePricingTable] placeholder to preserve placement.
       let markdownPart = filteredContent;
@@ -4533,17 +4537,21 @@ Ask me questions to get business insights, such as:
                 // Use structured data from Architect response
                 console.log(`✅ Using structured SOW data with ${structured.scopeItems.length} scope items`);
                 const suggestedRoles = buildSuggestedRolesFromArchitectSOW(structured);
-                
+
                 // 🔒 Apply Account Management guardrail
                 const sanitized = sanitizeAccountManagementRoles(suggestedRoles);
-                const cleanedContent = accumulatedContent.replace(/\[PRICING_JSON\].*?\[\/PRICING_JSON\]/gs, '');
-                
+                let cleanedContent = accumulatedContent.replace(/\[PRICING_JSON\].*?\[\/PRICING_JSON\]/gs, '');
+                // 🧠 Strip <think> tags
+                cleanedContent = cleanedContent.replace(/<think>[\s\S]*?<\/think>/gi, '');
+
                 contentForEditor = convertMarkdownToNovelJSON(cleanedContent, sanitized);
                 docTitle = structured.title || `SOW - ${structured.client || 'Untitled Client'}`;
               } else {
                 // Fallback: convert markdown content without structured pricing
                 console.log('⚠️ No structured data found, converting markdown content only');
-                const cleanedContent = accumulatedContent.replace(/\[PRICING_JSON\].*?\[\/PRICING_JSON\]/gs, '');
+                let cleanedContent = accumulatedContent.replace(/\[PRICING_JSON\].*?\[\/PRICING_JSON\]/gs, '');
+                // 🧠 Strip <think> tags
+                cleanedContent = cleanedContent.replace(/<think>[\s\S]*?<\/think>/gi, '');
                 
                 contentForEditor = convertMarkdownToNovelJSON(cleanedContent);
                 docTitle = extractDocTitle(cleanedContent) || "New SOW";
@@ -4663,17 +4671,21 @@ Ask me questions to get business insights, such as:
                 // Use structured data from Architect response
                 console.log(`✅ Using structured SOW data with ${structured.scopeItems.length} scope items`);
                 const suggestedRoles = buildSuggestedRolesFromArchitectSOW(structured);
-                
+
                 // 🔒 Apply Account Management guardrail
                 const sanitized = sanitizeAccountManagementRoles(suggestedRoles);
-                const cleanedContent = aiMessage.content.replace(/\[PRICING_JSON\].*?\[\/PRICING_JSON\]/gs, '');
-                
+                let cleanedContent = aiMessage.content.replace(/\[PRICING_JSON\].*?\[\/PRICING_JSON\]/gs, '');
+                // 🧠 Strip <think> tags
+                cleanedContent = cleanedContent.replace(/<think>[\s\S]*?<\/think>/gi, '');
+
                 contentForEditor = convertMarkdownToNovelJSON(cleanedContent, sanitized);
                 docTitle = structured.title || `SOW - ${structured.client || 'Untitled Client'}`;
               } else {
                 // Fallback: convert markdown content without structured pricing
                 console.log('⚠️ No structured data found, converting markdown content only');
-                const cleanedContent = aiMessage.content.replace(/\[PRICING_JSON\].*?\[\/PRICING_JSON\]/gs, '');
+                let cleanedContent = aiMessage.content.replace(/\[PRICING_JSON\].*?\[\/PRICING_JSON\]/gs, '');
+                // 🧠 Strip <think> tags
+                cleanedContent = cleanedContent.replace(/<think>[\s\S]*?<\/think>/gi, '');
                 
                 contentForEditor = convertMarkdownToNovelJSON(cleanedContent);
                 docTitle = extractDocTitle(cleanedContent) || "New SOW";
