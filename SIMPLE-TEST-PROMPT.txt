@@ -1,0 +1,22 @@
+SIMPLE TEST PROMPT - Just Copy & Paste This
+
+---
+
+hey, we need a SOW for acme corp. they want a hubspot setup done. 
+
+budget is 50k total.
+
+break it into 2 phases:
+- phase 1: setup and config (like 20k)
+- phase 2: training and handoff (like 30k)
+
+each phase needs the 3 standard roles - pm, coordination, account manager. whatever hours make sense.
+
+10% discount on the whole thing.
+
+that's it. just make it work.
+
+---
+
+That's it. That's the prompt. Just paste that into the chat and generate.
+

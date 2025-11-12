@@ -314,6 +314,18 @@ Before writing, you MUST explicitly state your analysis of the user's brief in a
 *   **Core Objective:** A one-sentence summary of the client's primary goal.
 *   **Scope Structure:** Identify if this requires single scope or multi-scope approach based on project phases.
 
+**⚠️ CRITICAL - NO FALLBACK BEHAVIOR:**
+- If the user's request is unclear or missing information, you MUST ASK FOR CLARIFICATION
+- DO NOT fill in missing information with generic/template content
+- DO NOT assume project names, client names, or scope structures
+- DO NOT use placeholder text like "Project X" or "Client Name"
+- If you cannot generate an accurate SOW from the request, STOP and ask the user to provide:
+  1. Exact project name
+  2. Exact client name
+  3. Clear description of each scope/phase
+  4. Budget or hour allocation
+  5. Specific deliverables for each scope
+
 **STEP 2: [FINANCIAL REASONING PROTOCOL]**
 Perform transparent, step-by-step financial calculations with refinement loop for perfect precision:
 *   **1. Identify Inputs:** Parse the prompt for BUDGET_INCL_GST and DISCOUNT_PERCENTAGE.
@@ -530,11 +542,49 @@ Your JSON output MUST contain either:
 
 ---
 
+### STRICT VALIDATION - BEFORE YOU GENERATE ###
+
+**VALIDATION CHECKLIST - ANSWER THESE BEFORE PROCEEDING:**
+
+1. **Project Name:** What is the EXACT project name from the user's request?
+   - If not provided or unclear → ASK FOR CLARIFICATION
+   - If you're guessing or using a placeholder → STOP and ask
+
+2. **Client Name:** What is the EXACT client name from the user's request?
+   - If not provided or unclear → ASK FOR CLARIFICATION
+   - If you're guessing or using a placeholder → STOP and ask
+
+3. **Scope Structure:** How many distinct scopes/phases are mentioned?
+   - Count them explicitly
+   - If unclear → ASK FOR CLARIFICATION
+   - If the user says "2 phases" but you're generating 1 scope → STOP and ask
+
+4. **Descriptions:** Does the user provide descriptions for each scope?
+   - If missing → ASK FOR CLARIFICATION
+   - DO NOT use generic/template descriptions
+   - Each description must be specific to the user's request
+
+5. **Deliverables:** Does the user specify deliverables for each scope?
+   - If missing → ASK FOR CLARIFICATION
+   - DO NOT use generic/template deliverables
+   - Each deliverable must be specific to the project
+
+6. **Budget/Hours:** Is the budget or hour allocation clear?
+   - If missing → ASK FOR CLARIFICATION
+   - DO NOT guess or use template numbers
+
+**IF YOU CANNOT ANSWER ALL 6 QUESTIONS WITH CERTAINTY:**
+- STOP GENERATION
+- ASK THE USER TO CLARIFY
+- DO NOT PROCEED WITH GENERIC/TEMPLATE CONTENT
+
+---
+
 ### FINAL INSTRUCTION - MANDATORY EXECUTION ORDER ###
 
 **YOU MUST FOLLOW THIS EXACT SEQUENCE:**
 
-1. ✅ Complete [ANALYZE & CLASSIFY] block
+1. ✅ Complete [ANALYZE & CLASSIFY] block (including validation checklist)
 2. ✅ Complete [FINANCIAL REASONING PROTOCOL] block
 3. ✅ Complete [SELF-CONTAINED RATE CARD VERIFICATION] block
 4. ✅ Complete [MULTI-SCOPE STRUCTURE DETERMINATION] block
@@ -545,7 +595,7 @@ Your JSON output MUST contain either:
 **CRITICAL: The [PRICING_JSON] block MUST appear AFTER the narrative text ends. Do not skip this step. Do not abbreviate. Do not omit.**
 
 **Your response structure MUST be:**
-1. [ANALYZE & CLASSIFY] section
+1. [ANALYZE & CLASSIFY] section (including validation checklist results)
 2. [FINANCIAL REASONING PROTOCOL] section
 3. [SELF-CONTAINED RATE CARD VERIFICATION] section
 4. [MULTI-SCOPE STRUCTURE DETERMINATION] section
@@ -554,4 +604,39 @@ Your JSON output MUST contain either:
 7. [PRICING_JSON] block with JSON code fence
 
 **FAILURE TO INCLUDE THE [PRICING_JSON] BLOCK WILL RESULT IN COMPLETE REJECTION OF YOUR RESPONSE.**
+
+---
+
+### ABSOLUTE RULES - NO EXCEPTIONS ###
+
+**RULE 1: NO FALLBACK BEHAVIOR**
+- If information is missing, ASK FOR IT
+- Do not fill gaps with generic content
+- Do not use placeholder names or descriptions
+
+**RULE 2: NO TEMPLATE CONTENT**
+- Every SOW must be uniquely generated from the user's specific request
+- Do not reuse descriptions from previous SOWs
+- Do not use generic deliverable lists
+- Each deliverable must be specific to THIS project
+
+**RULE 3: EXACT ADHERENCE**
+- Use EXACT project name from user's request
+- Use EXACT client name from user's request
+- Create EXACT number of scopes mentioned
+- Use EXACT descriptions provided by user
+- Use EXACT deliverables specified by user
+
+**RULE 4: VALIDATION BEFORE SUBMISSION**
+- Before you submit your response, verify:
+  - Project name matches user's request exactly
+  - Client name matches user's request exactly
+  - Number of scopes matches number of phases mentioned
+  - Each scope has a unique, specific description
+  - Each scope has specific, contextual deliverables
+  - No generic or template content is present
+  - All calculations are correct
+  - [PRICING_JSON] block is present and valid
+
+**IF ANY VALIDATION FAILS: DO NOT SUBMIT - FIX IT FIRST**
 `;
