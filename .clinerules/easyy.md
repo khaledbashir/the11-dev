@@ -1,3 +1,6 @@
+---
+applyTo: '**'
+---
 # AI Project Instructions for Ongoing Work
 
 ## BUILD WORKFLOW
