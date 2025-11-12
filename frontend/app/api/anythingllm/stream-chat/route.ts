@@ -214,32 +214,8 @@ export async function POST(request: NextRequest) {
     const fetchStartTime = Date.now();
     console.log(`⏱️ [TIMING] Fetch started at ${new Date(fetchStartTime).toISOString()}`);
 
-    // 🔧 CRITICAL FIX: Configure LLM provider before streaming
-    // This ensures the workspace has a valid model configured
-    // Without this, AnythingLLM aborts the stream immediately
-    try {
-      console.log(`⚙️ [LLM Provider] Configuring for workspace: ${effectiveWorkspaceSlug}`);
-      const anythingLLM = new AnythingLLMService(ANYTHINGLLM_URL, ANYTHINGLLM_API_KEY);
-
-      // Use provided model or default to Claude 3.5 Sonnet
-      const modelToUse = model || 'claude-3-5-sonnet-20241022';
-      const providerToUse = 'openrouter'; // Default provider
-
-      const success = await anythingLLM.setWorkspaceLLMProvider(
-        effectiveWorkspaceSlug,
-        providerToUse,
-        modelToUse
-      );
-
-      if (!success) {
-        console.warn(`⚠️ [LLM Provider] Failed to configure provider, but proceeding with stream attempt`);
-      } else {
-        console.log(`✅ [LLM Provider] Successfully configured ${providerToUse}/${modelToUse}`);
-      }
-    } catch (providerError) {
-      console.warn(`⚠️ [LLM Provider] Error configuring provider:`, providerError);
-      // Continue anyway - the workspace might already have a provider configured
-    }
+    // 🔧 LLM provider is configured in AnythingLLM UI - no override here
+    // The workspace uses the provider/model set in AnythingLLM admin
 
     const response = await fetch(endpoint, {
       method: 'POST',

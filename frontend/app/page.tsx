@@ -4341,12 +4341,12 @@ Ask me questions to get business insights, such as:
       id: 'workspace',
       name: 'Workspace AI',
       systemPrompt: '',
-      model: 'openrouter/auto'
+      model: 'anythingllm'
     };
 
     if (effectiveAgent) {
       try {
-        const useAnythingLLM = effectiveAgent.model === 'openrouter/auto';
+        const useAnythingLLM = effectiveAgent.model === 'anythingllm';
 
         // 🎯 WORKSPACE ROUTING (AnythingLLM streaming):
         let endpoint: string;
