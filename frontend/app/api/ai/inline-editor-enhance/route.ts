@@ -68,6 +68,32 @@ export async function POST(req: NextRequest) {
     for (const slug of candidates) {
       const endpoint = `${anythingLLMURL.replace(/\/$/, '')}/api/v1/workspace/${slug}/stream-chat`;
       console.log('[inline-editor-enhance] Trying workspace:', slug, '→', endpoint);
+
+      // Configure LLM provider for this workspace
+      try {
+        console.log(`⚙️ [LLM Provider] Configuring for workspace: ${slug}`);
+        const anythingLLM = new AnythingLLMService(anythingLLMURL, anythingLLMKey);
+
+        // Use Claude 3.5 Sonnet as default
+        const modelToUse = 'claude-3-5-sonnet-20241022';
+        const providerToUse = 'openrouter';
+
+        const success = await anythingLLM.setWorkspaceLLMProvider(
+          slug,
+          providerToUse,
+          modelToUse
+        );
+
+        if (!success) {
+          console.warn(`⚠️ [LLM Provider] Failed to configure provider for ${slug}, but proceeding`);
+        } else {
+          console.log(`✅ [LLM Provider] Successfully configured ${providerToUse}/${modelToUse} for ${slug}`);
+        }
+      } catch (providerError) {
+        console.warn(`⚠️ [LLM Provider] Error configuring provider for ${slug}:`, providerError);
+        // Continue anyway - the workspace might already have a provider configured
+      }
+
       const attempt = await fetch(endpoint, {
         method: 'POST',
         headers: {
