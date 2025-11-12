@@ -220,6 +220,12 @@ const extractPricingJSON = (content: string): {
         console.log('📊 [PRICING_JSON] Block Detected - v3.1 Format');
         console.log(`✅ Extracted ${parsedJson.role_allocation.length} roles with validated hours/costs`);
 
+        // 🔍 CRITICAL DEBUG: Log each role being extracted
+        console.log('🔍 [ROLE EXTRACTION] Detailed role list:');
+        parsedJson.role_allocation.forEach((item: any, idx: number) => {
+          console.log(`   [${idx + 1}/${parsedJson.role_allocation.length}] ${item.role} | Hours: ${item.hours} | Rate: $${item.rate} | Cost: $${item.cost}`);
+        });
+
         // Transform role_allocation to suggestedRoles format
         const rolesWithHours = parsedJson.role_allocation.map((item: any) => ({
           role: item.role,
@@ -227,6 +233,12 @@ const extractPricingJSON = (content: string): {
           rate: item.rate || 0,
           cost: item.cost || (item.hours * item.rate)
         }));
+
+        // 🔍 CRITICAL DEBUG: Verify transformation
+        console.log(`🔍 [ROLE TRANSFORMATION] Transformed ${rolesWithHours.length} roles for editor`);
+        rolesWithHours.forEach((role: any, idx: number) => {
+          console.log(`   [${idx + 1}/${rolesWithHours.length}] ${role.role} | Hours: ${role.hours}`);
+        });
 
         // 🆕 CRITICAL: Validate mandatory roles are present
         const mandatoryCheck = validateMandatoryRoles(rolesWithHours);
@@ -635,6 +647,14 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
     }
     const effectiveRoles = (rolesSource && rolesSource.length > 0) ? rolesSource : suggestedRoles;
 
+    // 🔍 CRITICAL DEBUG: Log roles entering insertPricingTable
+    console.log(`🔍 [INSERT PRICING TABLE] Received ${effectiveRoles.length} roles`);
+    effectiveRoles.forEach((role: any, idx: number) => {
+      const roleStr = typeof role === 'string' ? role : role.role;
+      const hoursStr = typeof role === 'string' ? '?' : role.hours;
+      console.log(`   [${idx + 1}/${effectiveRoles.length}] ${roleStr} | Hours: ${hoursStr}`);
+    });
+
     let pricingRows: any[] = [];
     // Robust normalizer and canonical role finder to map AI role names to official rate card
     const norm = (s: string) => (s || '')
@@ -744,9 +764,20 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
   pricingTablesInsertedCount += 1;
 
     // 🔧 CRITICAL FIX: Filter out any empty/invalid roles BEFORE enforcement
+    const beforeFilter = pricingRows.length;
     pricingRows = pricingRows.filter(r => {
       const roleName = norm(r.role);
       return roleName && roleName !== 'select role' && roleName !== 'select role...' && roleName.length > 0;
+    });
+
+    // 🔍 CRITICAL DEBUG: Log filtering
+    if (beforeFilter !== pricingRows.length) {
+      console.log(`🔍 [FILTER] Filtered out ${beforeFilter - pricingRows.length} invalid roles. Remaining: ${pricingRows.length}`);
+    }
+
+    console.log(`🔍 [PRICING ROWS AFTER FILTER] ${pricingRows.length} roles:`);
+    pricingRows.forEach((row: any, idx: number) => {
+      console.log(`   [${idx + 1}/${pricingRows.length}] ${row.role} | Hours: ${row.hours}`);
     });
 
     // Deterministic PM selection is handled by calculatePricingTable when a budget is provided.
@@ -3953,6 +3984,12 @@ Ask me questions to get business insights, such as:
                   suggestedRoles = pricingJsonData.roles;
                   extractedDiscount = pricingJsonData.discount;
                   hasValidSuggestedRoles = true;
+
+                  // 🔍 CRITICAL DEBUG: Log roles being passed to editor
+                  console.log(`🔍 [INSERT COMMAND] Received ${suggestedRoles.length} roles from extractPricingJSON`);
+                  suggestedRoles.forEach((role: any, idx: number) => {
+                    console.log(`   [${idx + 1}/${suggestedRoles.length}] ${role.role} | Hours: ${role.hours}`);
+                  });
 
                   // 🎯 V4.1 Multi-Scope Data Storage
                   if (pricingJsonData.multiScopeData && pricingJsonData.multiScopeData.scopes) {
