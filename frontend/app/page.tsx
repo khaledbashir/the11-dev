@@ -3665,14 +3665,16 @@ Ask me questions to get business insights, such as:
         }
       }
 
-      // 2) Scrub remaining internal bracketed tags (preserve markdown links)
+      // 2) Scrub remaining internal bracketed tags (preserve markdown links AND pricing table placeholders)
       const scrubBracketTagsPreserveLinks = (txt: string) => {
         return txt.replace(/\[[^\]]+\]/g, (match, offset, str) => {
           const nextChar = str[(offset as number) + match.length];
           // If this is a markdown link like [text](...), keep it
           if (nextChar === '(') return match;
-          // Remove only if inside is likely an internal tag (primarily uppercase, digits, spaces, and symbols)
+          // 🎯 CRITICAL: Preserve [editablePricingTable] and [pricing_table] placeholders
           const inner = match.slice(1, -1);
+          if (/^editablePricingTable|pricing_table$/i.test(inner)) return match;
+          // Remove only if inside is likely an internal tag (primarily uppercase, digits, spaces, and symbols)
           if (/^[A-Z0-9 _\-\/&]+$/.test(inner)) return '';
           return match;
         });
