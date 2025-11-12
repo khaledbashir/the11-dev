@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { AnythingLLMService } from '@/lib/anythingllm';
 
 /**
  * Inline Editor Enhancement Proxy
  * Routes text improvement requests to the utility-inline-editor workspace in AnythingLLM
- * 
+ *
  * IMPORTANT: This is SEPARATE from the prompt enhancer (✨ Enhance button):
  * - ✨ Enhance button (workspace creation) → utility-prompt-enhancer workspace
  * - Inline editor (selection + slash /ai) → utility-inline-editor workspace
- * 
+ *
  * Each has different prompts optimized for their use case.
  */
 export async function POST(req: NextRequest) {
