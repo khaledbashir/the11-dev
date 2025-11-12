@@ -3519,6 +3519,20 @@ Ask me questions to get business insights, such as:
     }
 
     try {
+      // EXTRA SANITIZATION: Defensive remove of any thinking/tool tags that may have slipped
+      if (content && typeof content === 'string') {
+        content = content
+          .replace(/<AI_THINK>[\s\S]*?<\/AI_THINK>/gi, '')
+          .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
+          .replace(/<think>[\s\S]*?<\/think>/gi, '')
+          .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '')
+          .replace(/<\/?think>/gi, '')
+          .replace(/<\/?thinking>/gi, '')
+          .replace(/<\/?AI_THINK>/gi, '')
+          .replace(/<!--[\s\S]*?-->/gi, '')
+          .replace(/\n{3,}/g, '\n\n')
+          .trim();
+      }
       // 🧹 Filter out internal reasoning sections before processing
       let filteredContent = content;
 

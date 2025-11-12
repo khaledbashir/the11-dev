@@ -206,8 +206,18 @@ export function StreamingThoughtAccordion({
 
   // If no content at all, show nothing
   if (!actualContent && !thinking && !jsonBlock) {
+    console.log('🔍 [Accordion] No content to display - returning null');
     return null;
   }
+
+  // Debug: Log what we're about to render
+  console.log('🎯 [Accordion] Rendering with:', {
+    hasThinking: !!thinking,
+    hasActualContent: !!actualContent,
+    hasJsonBlock: !!jsonBlock,
+    thinkingLength: thinking?.length || 0,
+    actualContentLength: actualContent?.length || 0,
+  });
 
   // If only JSON block (no narrative), just show the accordion
   if (!actualContent && jsonBlock) {

@@ -610,7 +610,7 @@ export default function WorkspaceChat({
                     {/* Show thinking section with streaming support */}
                     {msg.role === 'assistant' && (
                       <div className="mb-4">
-                        <StreamingThoughtAccordion 
+                        <StreamingThoughtAccordion
                           content={msg.content}
                           messageId={msg.id}
                           isStreaming={streamingMessageId === msg.id}
