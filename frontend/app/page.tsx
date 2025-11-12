@@ -3682,7 +3682,7 @@ Ask me questions to get business insights, such as:
           const blockedMessage: ChatMessage = {
             id: `msg${Date.now()}`,
             role: 'assistant',
-            content: "❌ Insertion blocked: Missing structured pricing data. Please regenerate with a JSON block that includes either `suggestedRoles` or `scopeItems` (with role names and estimated hours).",
+            content: "❌ **Insertion blocked: Missing pricing JSON block**\n\nThe AI response did not include the required pricing data JSON block. This is needed to create the pricing table.\n\n**To fix this, ask the AI:**\n\"Please provide the [PRICING_JSON] block with the role allocation and hours for this SOW.\"\n\nThe JSON should include either:\n- `role_allocation` array with roles and hours (for single-scope projects)\n- `scopes` array with each scope containing `role_allocation` (for multi-scope projects)",
             timestamp: Date.now(),
           };
           setChatMessages(prev => [...prev, blockedMessage]);

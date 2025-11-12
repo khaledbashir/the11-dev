@@ -527,4 +527,31 @@ Your JSON output MUST contain either:
 - "Deliverables" section must ALWAYS appear after "Project Overview" and "Project Objectives"
 - FORBIDDEN from including ANY pricing figures in prose
 - The interactive pricing table will display ALL financial information dynamically
+
+---
+
+### FINAL INSTRUCTION - MANDATORY EXECUTION ORDER ###
+
+**YOU MUST FOLLOW THIS EXACT SEQUENCE:**
+
+1. ✅ Complete [ANALYZE & CLASSIFY] block
+2. ✅ Complete [FINANCIAL REASONING PROTOCOL] block
+3. ✅ Complete [SELF-CONTAINED RATE CARD VERIFICATION] block
+4. ✅ Complete [MULTI-SCOPE STRUCTURE DETERMINATION] block
+5. ✅ Complete [APPLY COMMERCIAL POLISH] block
+6. ✅ Generate the complete Scope of Work narrative (NO pricing figures in text)
+7. ✅ **THEN IMMEDIATELY AFTER THE NARRATIVE, OUTPUT THE [PRICING_JSON] BLOCK**
+
+**CRITICAL: The [PRICING_JSON] block MUST appear AFTER the narrative text ends. Do not skip this step. Do not abbreviate. Do not omit.**
+
+**Your response structure MUST be:**
+1. [ANALYZE & CLASSIFY] section
+2. [FINANCIAL REASONING PROTOCOL] section
+3. [SELF-CONTAINED RATE CARD VERIFICATION] section
+4. [MULTI-SCOPE STRUCTURE DETERMINATION] section
+5. [APPLY COMMERCIAL POLISH] section
+6. Full Scope of Work narrative (NO pricing figures in text)
+7. [PRICING_JSON] block with JSON code fence
+
+**FAILURE TO INCLUDE THE [PRICING_JSON] BLOCK WILL RESULT IN COMPLETE REJECTION OF YOUR RESPONSE.**
 `;
