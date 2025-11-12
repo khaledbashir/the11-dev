@@ -211,6 +211,18 @@ export async function POST(request: NextRequest) {
     console.log('=== END DEBUG ===');
     console.log('');
     
+    // 🔧 Handle message content: if JSON, extract the prompt
+    let finalMessage = messageToSend;
+    try {
+      const parsed = JSON.parse(messageToSend);
+      if (parsed && typeof parsed === 'object' && parsed.prompt) {
+        finalMessage = parsed.prompt;
+        console.log('📝 Extracted prompt from JSON:', finalMessage.substring(0, 200));
+      }
+    } catch (e) {
+      // Not JSON, use as-is
+    }
+    
     const fetchStartTime = Date.now();
     console.log(`⏱️ [TIMING] Fetch started at ${new Date(fetchStartTime).toISOString()}`);
 
@@ -224,7 +236,7 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        message: messageToSend,
+        message: finalMessage,
         mode, // 'chat' or 'query' (provided by caller)
       }),
     });
