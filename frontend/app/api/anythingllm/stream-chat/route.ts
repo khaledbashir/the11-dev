@@ -161,14 +161,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 🎯 CRITICAL: For sow-generator workspace, inject THE_ARCHITECT_V4_PROMPT
-    // This ensures the AI always uses the latest prompt version, even if workspace settings are stale
-    if (effectiveWorkspaceSlug === 'sow-generator') {
-      const { THE_ARCHITECT_V4_PROMPT } = await import('@/lib/knowledge-base');
-      messageToSend = `${THE_ARCHITECT_V4_PROMPT}\n\nUser Request: ${messageToSend}`;
-      console.log('🎯 [SOW-GENERATOR] Injected THE_ARCHITECT_V4_PROMPT into message');
-      console.log(`   Prompt length: ${THE_ARCHITECT_V4_PROMPT.length} characters`);
-    }
+    // ✅ REMOVED: Double prompt injection
+    // The workspace already has THE_ARCHITECT_V4_PROMPT set as its system prompt
+    // Injecting it again here wastes tokens and causes redundancy
+    // The AnythingLLM workspace will use its configured prompt automatically
 
     // 🎯 CRITICAL: For master dashboard workspace, inject live analytics data
     // This ensures the AI has access to the SAME data the UI shows
