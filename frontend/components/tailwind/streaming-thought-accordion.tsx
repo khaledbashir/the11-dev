@@ -53,8 +53,9 @@ export function StreamingThoughtAccordion({
       contentLength: content?.length || 0,
       contentPreview: content?.substring(0, 100) || '',
       hasThinkTag: content?.includes('<think>') || false,
+      hasAnalyzeBlock: content?.includes('[ANALYZE & CLASSIFY]') || false,
     });
-    
+
     // Support multiple internal thinking tag variants
     // CRITICAL: Build regex patterns correctly to match thinking tags
     const variants = [
@@ -81,8 +82,35 @@ export function StreamingThoughtAccordion({
       cleanedContent = cleanedContent.replace(v.pattern, '').trim();
     }
 
+    // 🆕 CRITICAL FIX: Extract reasoning blocks [ANALYZE & CLASSIFY], [FINANCIAL REASONING PROTOCOL], etc.
+    // These are the AI's internal reasoning that should be shown in the accordion
+    const reasoningBlockPatterns = [
+      /\[ANALYZE & CLASSIFY\]([\s\S]*?)(?=\[|$)/i,
+      /\[FINANCIAL REASONING PROTOCOL\]([\s\S]*?)(?=\[|$)/i,
+      /\[SELF-CONTAINED RATE CARD VERIFICATION\]([\s\S]*?)(?=\[|$)/i,
+      /\[MULTI-SCOPE STRUCTURE DETERMINATION\]([\s\S]*?)(?=\[|$)/i,
+      /\[APPLY COMMERCIAL POLISH\]([\s\S]*?)(?=\[|$)/i,
+      /\[BUDGET_NOTE\]([\s\S]*?)(?=\[|$)/i,
+    ];
+
+    for (const pattern of reasoningBlockPatterns) {
+      const match = cleanedContent.match(pattern);
+      if (match && match[1]) {
+        const blockContent = match[1].trim();
+        if (blockContent) {
+          extractedThinkingParts.push(match[0].trim());
+          console.log(`✅ [Accordion] Found reasoning block:`, match[0].substring(0, 50) + '...');
+        }
+      }
+    }
+
     // Also strip tool_call blocks from visible content
     cleanedContent = cleanedContent.replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '').trim();
+
+    // Remove all reasoning blocks from visible content
+    for (const pattern of reasoningBlockPatterns) {
+      cleanedContent = cleanedContent.replace(pattern, '').trim();
+    }
 
     const extractedThinking = extractedThinkingParts.join('\n\n');
 

@@ -125,6 +125,29 @@ const extractBudgetAndDiscount = (prompt: string): { budget: number; discount: n
 };
 
 // 🎯 UTILITY: Extract and parse V4.1 Multi-Scope JSON or v3.1 format
+// 🆕 CRITICAL: Validate that mandatory roles are present
+const validateMandatoryRoles = (roles: any[]): { valid: boolean; missing: string[] } => {
+  const MANDATORY_ROLES = [
+    'Tech - Head Of - Senior Project Management',
+    'Tech - Delivery - Project Coordination',
+    'Account Management - Senior Account Manager'
+  ];
+
+  const roleNames = roles.map(r => r.role || '');
+  const missing = MANDATORY_ROLES.filter(mandatoryRole =>
+    !roleNames.some(name => name.toLowerCase().includes(mandatoryRole.toLowerCase()))
+  );
+
+  if (missing.length > 0) {
+    console.warn('⚠️ [MANDATORY ROLES] Missing required roles:', missing);
+    console.warn('   Found roles:', roleNames);
+  } else {
+    console.log('✅ [MANDATORY ROLES] All 3 required roles present');
+  }
+
+  return { valid: missing.length === 0, missing };
+};
+
 const extractPricingJSON = (content: string): {
   roles: any[];
   discount?: number;
@@ -204,6 +227,13 @@ const extractPricingJSON = (content: string): {
           rate: item.rate || 0,
           cost: item.cost || (item.hours * item.rate)
         }));
+
+        // 🆕 CRITICAL: Validate mandatory roles are present
+        const mandatoryCheck = validateMandatoryRoles(rolesWithHours);
+        if (!mandatoryCheck.valid) {
+          console.error('❌ [MANDATORY ROLES] Missing required roles in JSON:', mandatoryCheck.missing);
+          console.error('   This will cause "Derived 0 roles" error in the editor');
+        }
 
         // Extract discount from project_details if available
         let discount = 0;
