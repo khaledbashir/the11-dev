@@ -820,7 +820,10 @@ const convertMarkdownToNovelJSON = (markdown: string, suggestedRoles: any[] = []
 
     // Check for explicit pricing table placeholder
     if (line.trim() === '[pricing_table]' || line.trim() === '[editablePricingTable]') {
+      console.log(`🎯 [PLACEHOLDER DETECTED] Found ${line.trim()} at line ${i}`);
+      console.log(`   tablesQueue.length: ${tablesQueue.length}, suggestedRoles.length: ${suggestedRoles.length}`);
       insertPricingTable();
+      pricingTablesInsertedCount++;
       i++;
       continue;
     }
@@ -3548,8 +3551,19 @@ Ask me questions to get business insights, such as:
           const body = m[1];
           const start = m.index || 0;
           const end = start + full.length;
-          // Append text before this block
-          rebuilt += filteredContent.slice(lastIndex, start);
+
+          // 🎯 CRITICAL FIX: Check if [PRICING_JSON] tag appears before this JSON block
+          // If so, remove it along with the JSON block to prevent raw text from appearing in SOW
+          let textBeforeBlock = filteredContent.slice(lastIndex, start);
+          const pricingJsonTagMatch = textBeforeBlock.match(/\[PRICING[\/_]JSON\]\s*$/i);
+          if (pricingJsonTagMatch) {
+            // Remove the [PRICING_JSON] tag from the text before the block
+            textBeforeBlock = textBeforeBlock.slice(0, -pricingJsonTagMatch[0].length);
+            console.log('🧹 Removed [PRICING_JSON] tag before JSON block');
+          }
+
+          // Append text before this block (with [PRICING_JSON] tag removed if present)
+          rebuilt += textBeforeBlock;
           lastIndex = end;
           try {
             const obj = JSON.parse(body);
@@ -3624,9 +3638,16 @@ Ask me questions to get business insights, such as:
           suggestedRoles = single.roles;
           extractedDiscount = single.discount;
           hasValidSuggestedRoles = true;
-          // Remove first JSON block occurrence if any
-          const jm = filteredContent.match(/```json\s*[\s\S]*?\s*```/i);
-          if (jm) markdownPart = filteredContent.replace(jm[0], '').trim();
+          // 🎯 CRITICAL FIX: Remove both [PRICING_JSON] tag AND the JSON block
+          let cleanedContent = filteredContent;
+          // First remove the [PRICING_JSON] tag and the JSON block together
+          cleanedContent = cleanedContent.replace(/\[PRICING[\/_]JSON\]\s*```json\s*[\s\S]*?\s*```/gi, '');
+          // Fallback: if the above didn't match, try removing just the JSON block
+          if (cleanedContent === filteredContent) {
+            const jm = filteredContent.match(/```json\s*[\s\S]*?\s*```/i);
+            if (jm) cleanedContent = filteredContent.replace(jm[0], '');
+          }
+          markdownPart = cleanedContent.trim();
           console.log(`✅ Using ${suggestedRoles.length} roles from [PRICING_JSON] (single-block)`);
 
           // 🎯 V4.1 Multi-Scope Data Storage
@@ -3645,7 +3666,12 @@ Ask me questions to get business insights, such as:
               const parsedJson = JSON.parse(legacyMatch[1]);
               if (parsedJson.suggestedRoles) {
                 suggestedRoles = [...suggestedRoles, ...parsedJson.suggestedRoles];
-                markdownPart = content.replace(legacyMatch[0], '').trim();
+                // 🎯 CRITICAL FIX: Remove both [PRICING_JSON] tag AND the JSON block
+                let cleanedContent = filteredContent.replace(/\[PRICING[\/_]JSON\]\s*```json\s*[\s\S]*?\s*```/gi, '');
+                if (cleanedContent === filteredContent) {
+                  cleanedContent = filteredContent.replace(legacyMatch[0], '');
+                }
+                markdownPart = cleanedContent.trim();
                 hasValidSuggestedRoles = suggestedRoles.length > 0;
                 console.log(`✅ Parsed ${suggestedRoles.length} suggested roles from legacy JSON.`);
               } else if (parsedJson.scopeItems) {
@@ -3653,7 +3679,12 @@ Ask me questions to get business insights, such as:
                 const derived = buildSuggestedRolesFromArchitectSOW(parsedStructured);
                 if (derived.length > 0) {
                   suggestedRoles = derived;
-                  markdownPart = content.replace(legacyMatch[0], '').trim();
+                  // 🎯 CRITICAL FIX: Remove both [PRICING_JSON] tag AND the JSON block
+                  let cleanedContent = filteredContent.replace(/\[PRICING[\/_]JSON\]\s*```json\s*[\s\S]*?\s*```/gi, '');
+                  if (cleanedContent === filteredContent) {
+                    cleanedContent = filteredContent.replace(legacyMatch[0], '');
+                  }
+                  markdownPart = cleanedContent.trim();
                   hasValidSuggestedRoles = true;
                   console.log(`✅ Derived ${suggestedRoles.length} roles from Architect structured JSON (legacy).`);
                 }
@@ -3679,11 +3710,26 @@ Ask me questions to get business insights, such as:
           return match;
         });
       };
+
+      // 🎯 CRITICAL DEBUG: Log content before and after scrubbing
+      const beforeScrub = markdownPart;
       markdownPart = scrubBracketTagsPreserveLinks(markdownPart)
         // Also directly strip explicit known tags variants
         .replace(/\[(?:PRICING[\/_ ]?JSON|ANALYZE(?:\s*&\s*CLASSIFY)?|FINANCIAL[_\s-]*REASONING|BUDGET[_\s-]*NOTE)\]/gi, '')
         .replace(/\n{3,}/g, '\n\n')
         .trim();
+
+      // Check if [PRICING_JSON] tag is still present
+      if (beforeScrub.includes('[PRICING_JSON]') && !markdownPart.includes('[PRICING_JSON]')) {
+        console.log('✅ [PRICING_JSON] tag successfully removed during scrubbing');
+      } else if (markdownPart.includes('[PRICING_JSON]')) {
+        console.warn('⚠️ WARNING: [PRICING_JSON] tag still present after scrubbing!');
+        console.warn('   This will appear as raw text in the SOW document');
+      }
+
+      // Check for [editablePricingTable] placeholders
+      const placeholderCount = (markdownPart.match(/\[editablePricingTable\]/gi) || []).length;
+      console.log(`📊 [PLACEHOLDER CHECK] Found ${placeholderCount} [editablePricingTable] placeholders in cleaned content`);
 
       // 2. Clean the markdown content
       console.log('🧹 Cleaning SOW content...');
@@ -3957,7 +4003,16 @@ Ask me questions to get business insights, such as:
                   const body = m[1];
                   const start = m.index || 0;
                   const end = start + full.length;
-                  rebuilt += markdownPart.slice(lastIndex, start);
+
+                  // 🎯 CRITICAL FIX: Check if [PRICING_JSON] tag appears before this JSON block
+                  let textBeforeBlock = markdownPart.slice(lastIndex, start);
+                  const pricingJsonTagMatch = textBeforeBlock.match(/\[PRICING[\/_]JSON\]\s*$/i);
+                  if (pricingJsonTagMatch) {
+                    textBeforeBlock = textBeforeBlock.slice(0, -pricingJsonTagMatch[0].length);
+                    console.log('🧹 Removed [PRICING_JSON] tag before JSON block (insert command)');
+                  }
+
+                  rebuilt += textBeforeBlock;
                   lastIndex = end;
                   try {
                     const obj = JSON.parse(body);
@@ -4006,21 +4061,36 @@ Ask me questions to get business insights, such as:
                     });
                   }
 
-                  if (legacyMatch) markdownPart = markdownPart.replace(legacyMatch[0], '').trim();
+                  // 🎯 CRITICAL FIX: Remove both [PRICING_JSON] tag AND the JSON block
+                  let cleanedContent = markdownPart.replace(/\[PRICING[\/_]JSON\]\s*```json\s*[\s\S]*?\s*```/gi, '');
+                  if (cleanedContent === markdownPart && legacyMatch) {
+                    cleanedContent = markdownPart.replace(legacyMatch[0], '');
+                  }
+                  markdownPart = cleanedContent.trim();
                   console.log(`✅ Using ${suggestedRoles.length} roles from [PRICING_JSON] (insert command)`);
                 } else if (legacyMatch && legacyMatch[1]) {
                   try {
                     const parsedJson = JSON.parse(legacyMatch[1]);
                     if (parsedJson.suggestedRoles) {
                       suggestedRoles = parsedJson.suggestedRoles;
-                      markdownPart = markdownPart.replace(legacyMatch[0], '').trim();
+                      // 🎯 CRITICAL FIX: Remove both [PRICING_JSON] tag AND the JSON block
+                      let cleanedContent = markdownPart.replace(/\[PRICING[\/_]JSON\]\s*```json\s*[\s\S]*?\s*```/gi, '');
+                      if (cleanedContent === markdownPart) {
+                        cleanedContent = markdownPart.replace(legacyMatch[0], '');
+                      }
+                      markdownPart = cleanedContent.trim();
                       hasValidSuggestedRoles = suggestedRoles.length > 0;
                       console.log(`✅ Parsed ${suggestedRoles.length} roles from "insert" command (legacy format).`);
                     } else if (parsedJson.scopeItems) {
                       const derived = buildSuggestedRolesFromArchitectSOW(parsedJson as ArchitectSOW);
                       if (derived.length > 0) {
                         suggestedRoles = derived;
-                        markdownPart = markdownPart.replace(legacyMatch[0], '').trim();
+                        // 🎯 CRITICAL FIX: Remove both [PRICING_JSON] tag AND the JSON block
+                        let cleanedContent = markdownPart.replace(/\[PRICING[\/_]JSON\]\s*```json\s*[\s\S]*?\s*```/gi, '');
+                        if (cleanedContent === markdownPart) {
+                          cleanedContent = markdownPart.replace(legacyMatch[0], '');
+                        }
+                        markdownPart = cleanedContent.trim();
                         hasValidSuggestedRoles = true;
                         console.log(`✅ Derived ${suggestedRoles.length} roles from Architect structured JSON (insert command).`);
                       }
