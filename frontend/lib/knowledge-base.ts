@@ -582,7 +582,7 @@ Your JSON output MUST contain either:
 
 ### FINAL INSTRUCTION - MANDATORY EXECUTION ORDER ###
 
-**YOU MUST FOLLOW THIS EXACT SEQUENCE:**
+**YOU MUST FOLLOW THIS EXACT SEQUENCE (INTERNALLY):**
 
 1. ✅ Complete [ANALYZE & CLASSIFY] block (including validation checklist)
 2. ✅ Complete [FINANCIAL REASONING PROTOCOL] block
@@ -590,20 +590,41 @@ Your JSON output MUST contain either:
 4. ✅ Complete [MULTI-SCOPE STRUCTURE DETERMINATION] block
 5. ✅ Complete [APPLY COMMERCIAL POLISH] block
 6. ✅ Generate the complete Scope of Work narrative (NO pricing figures in text)
-7. ✅ **THEN IMMEDIATELY AFTER THE NARRATIVE, OUTPUT THE [PRICING_JSON] BLOCK**
+7. ✅ Generate the [PRICING_JSON] block
 
-**CRITICAL: The [PRICING_JSON] block MUST appear AFTER the narrative text ends. Do not skip this step. Do not abbreviate. Do not omit.**
+**CRITICAL: Your OUTPUT structure MUST be:**
 
-**Your response structure MUST be:**
-1. [ANALYZE & CLASSIFY] section (including validation checklist results)
-2. [FINANCIAL REASONING PROTOCOL] section
-3. [SELF-CONTAINED RATE CARD VERIFICATION] section
-4. [MULTI-SCOPE STRUCTURE DETERMINATION] section
-5. [APPLY COMMERCIAL POLISH] section
-6. Full Scope of Work narrative (NO pricing figures in text)
-7. [PRICING_JSON] block with JSON code fence
+1. WRAP ALL REASONING IN <think> TAGS:
+   - <think>
+   - [ANALYZE & CLASSIFY]
+   - [FINANCIAL REASONING PROTOCOL]
+   - [SELF-CONTAINED RATE CARD VERIFICATION]
+   - [MULTI-SCOPE STRUCTURE DETERMINATION]
+   - [APPLY COMMERCIAL POLISH]
+   - </think>
 
-**FAILURE TO INCLUDE THE [PRICING_JSON] BLOCK WILL RESULT IN COMPLETE REJECTION OF YOUR RESPONSE.**
+2. OUTPUT PROFESSIONAL SOW DOCUMENT (Client-facing):
+   - # Project Title
+   - **Client:** [Client Name]
+   - **Date:** [Date]
+   - ## Scope & Price Overview (summary table)
+   - ## Scope 1: [Title] (with description, pricing table, deliverables, assumptions)
+   - ## Scope 2: [Title] (with description, pricing table, deliverables, assumptions)
+   - ## Project Overview
+   - ## Budget Notes
+
+3. OUTPUT [PRICING_JSON] BLOCK:
+   - JSON code fence with complete pricing data
+
+**CRITICAL RULES FOR OUTPUT:**
+
+1. **Wrap ALL reasoning blocks in think tags** - These are for transparency/accordion, NOT for client
+2. **Output a PROFESSIONAL SOW DOCUMENT** - This is what the client sees
+3. **Include [PRICING_JSON] block** - This powers the pricing table
+4. **NO reasoning blocks in the main document** - Keep them hidden in think tags
+5. **The SOW document must be complete and client-ready** - Professional tone, clear structure, no debug info
+
+**FAILURE TO FOLLOW THIS OUTPUT STRUCTURE WILL RESULT IN COMPLETE REJECTION OF YOUR RESPONSE.**
 
 ---
 
