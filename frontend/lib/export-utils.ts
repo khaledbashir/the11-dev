@@ -401,6 +401,7 @@ const findJsonObjectContainingKey = (text: string, rawKey: string): string | nul
 
 export function extractSOWStructuredJson(text: string): ArchitectSOW | null {
   if (!text) return null;
+  
   // 1) Try language-tagged JSON blocks
   const jsonBlocks = [...text.matchAll(/```json\s*([\s\S]*?)\s*```/gi)];
   for (const m of jsonBlocks) {
@@ -412,6 +413,7 @@ export function extractSOWStructuredJson(text: string): ArchitectSOW | null {
       }
     } catch {}
   }
+  
   // 2) Try generic code fences if they appear to include scopeItems
   const anyBlocks = [...text.matchAll(/```\s*([\s\S]*?)\s*```/g)];
   for (const m of anyBlocks) {
@@ -424,15 +426,81 @@ export function extractSOWStructuredJson(text: string): ArchitectSOW | null {
       }
     } catch {}
   }
-  // 3) Attempt to locate embedded JSON objects that contain scopeItems/scope_items
+  
+  // 3) NEW: Support for role_allocation format (from elpropt prompt structure)
+  const roleAllocationBlocks = [...text.matchAll(/```json\s*([\s\S]*?)\s*```/gi)];
+  for (const m of roleAllocationBlocks) {
+    const body = m[1];
+    try {
+      const obj = JSON.parse(body);
+      // Check for role_allocation structure
+      if (obj && Array.isArray(obj.role_allocation)) {
+        console.log('✅ Found role_allocation JSON structure');
+        // Transform to ArchitectSOW format
+        const scopeItems = [{
+          title: obj.scope_name || 'Project Scope',
+          description: obj.scope_description || 'Project description',
+          roles: obj.role_allocation.map((role: any) => ({
+            role: role.role,
+            hours: role.hours || 0
+          })),
+          deliverables: obj.deliverables || [],
+          assumptions: obj.assumptions || []
+        }];
+        
+        return {
+          title: obj.scope_name || 'SOW',
+          client: 'Client Name',
+          scopeItems,
+          projectDetails: {
+            totalInvestment: obj.scope_total || 0,
+            discountPercentage: obj.discount_percent || 0,
+            budgetTarget: obj.scope_total || 0
+          }
+        } as ArchitectSOW;
+      }
+      
+      // Check for scopes array format
+      if (obj && Array.isArray(obj.scopes)) {
+        console.log('✅ Found scopes JSON structure');
+        const scopeItems = obj.scopes.map((scope: any) => ({
+          title: scope.scope_name || 'Project Scope',
+          description: 'Project scope description',
+          roles: (scope.roles || []).map((role: any) => ({
+            role: role.role,
+            hours: role.hours || 0
+          })),
+          deliverables: [],
+          assumptions: []
+        }));
+        
+        return {
+          title: obj.scopes[0]?.scope_name || 'SOW',
+          client: 'Client Name',
+          scopeItems,
+          projectDetails: {
+            totalInvestment: obj.grand_total || 0,
+            discountPercentage: 0,
+            budgetTarget: obj.grand_total || 0
+          }
+        } as ArchitectSOW;
+      }
+    } catch {}
+  }
+  
+  // 4) Attempt to locate embedded JSON objects that contain scopeItems/scope_items
   const candidates = [
     findJsonObjectContainingKey(text, 'scopeItems'),
     findJsonObjectContainingKey(text, 'scope_items'),
+    findJsonObjectContainingKey(text, 'role_allocation'),
+    findJsonObjectContainingKey(text, 'scopes'),
   ].filter(Boolean) as string[];
   for (const snippet of candidates) {
     try {
       const raw = JSON.parse(snippet);
       if (!raw) continue;
+      
+      // Try scopeItems first
       const normalized = raw as ArchitectSOW & { scope_items?: ArchitectSOW['scopeItems'] };
       const scopeItems = Array.isArray(normalized.scopeItems)
         ? normalized.scopeItems
@@ -442,9 +510,62 @@ export function extractSOWStructuredJson(text: string): ArchitectSOW | null {
       if (scopeItems) {
         return { ...normalized, scopeItems } as ArchitectSOW;
       }
+      
+      // Try role_allocation format
+      if (Array.isArray(raw.role_allocation)) {
+        console.log('✅ Found role_allocation in embedded JSON');
+        const scopeItems = [{
+          title: raw.scope_name || 'Project Scope',
+          description: raw.scope_description || 'Project description',
+          roles: raw.role_allocation.map((role: any) => ({
+            role: role.role,
+            hours: role.hours || 0
+          })),
+          deliverables: raw.deliverables || [],
+          assumptions: raw.assumptions || []
+        }];
+        
+        return {
+          title: raw.scope_name || 'SOW',
+          client: 'Client Name',
+          scopeItems,
+          projectDetails: {
+            totalInvestment: raw.scope_total || 0,
+            discountPercentage: raw.discount_percent || 0,
+            budgetTarget: raw.scope_total || 0
+          }
+        } as ArchitectSOW;
+      }
+      
+      // Try scopes array format
+      if (Array.isArray(raw.scopes)) {
+        console.log('✅ Found scopes in embedded JSON');
+        const scopeItems = raw.scopes.map((scope: any) => ({
+          title: scope.scope_name || 'Project Scope',
+          description: 'Project scope description',
+          roles: (scope.roles || []).map((role: any) => ({
+            role: role.role,
+            hours: role.hours || 0
+          })),
+          deliverables: [],
+          assumptions: []
+        }));
+        
+        return {
+          title: raw.scopes[0]?.scope_name || 'SOW',
+          client: 'Client Name',
+          scopeItems,
+          projectDetails: {
+            totalInvestment: raw.grand_total || 0,
+            discountPercentage: 0,
+            budgetTarget: raw.grand_total || 0
+          }
+        } as ArchitectSOW;
+      }
     } catch {}
   }
-  // 3) Nothing found
+  
+  // 5) Nothing found
   return null;
 }
 
