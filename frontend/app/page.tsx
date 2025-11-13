@@ -38,7 +38,7 @@ import { extractSOWStructuredJson } from "@/lib/export-utils";
 import { anythingLLM } from "@/lib/anythingllm";
 import { ROLES } from "@/lib/rateCard";
 import { calculatePricingTable } from "@/lib/pricingCalculator";
-import { THE_ARCHITECT_V6_PROMPT } from "@/lib/knowledge-base";
+// System prompts are now managed in AnythingLLM workspace configuration (no client-side injection)
 import { getWorkspaceForAgent, WORKSPACE_CONFIG } from "@/lib/workspace-config";
 import { prepareSOWForNewPDF } from "@/lib/sow-pdf-utils";
 
@@ -4459,11 +4459,8 @@ Ask me questions to get business insights, such as:
               // Prefer query for dashboard analytics; fallback to chat for casual greetings
               mode: resolvedMode,
               attachments: attachments || [], // Include file attachments from sidebar
-              // Fix: Include system prompt in messages array for OpenAI-compatible endpoint
-              messages: [
-                { role: "system", content: THE_ARCHITECT_V6_PROMPT },
-                ...requestMessages
-              ],
+              // Perfect-mirror behavior: forward the user's messages as-is.
+              messages: requestMessages,
             }),
           });
 

@@ -23,15 +23,16 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
       id: row.id || `row-${idx}-${Date.now()}`
     }))
   );
-  const [discount, setDiscount] = useState(node.attrs.discount || 0);
+  const [discount, setDiscount] = useState<number>(node.attrs.discount || 0);
+  const [showTotals, setShowTotals] = useState<boolean>(node.attrs.showTotals !== false);
   const scopeName: string = node.attrs.scopeName || '';
   const scopeDescription: string = node.attrs.scopeDescription || '';
   const [draggedRowId, setDraggedRowId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
 
   useEffect(() => {
-    updateAttributes({ rows, discount });
-  }, [rows, discount]);
+    updateAttributes({ rows, discount, showTotals });
+  }, [rows, discount, showTotals]);
 
   const updateRow = (id: string, field: keyof PricingRow, value: string | number) => {
     setRows((prev) => prev.map((row) => {
@@ -114,20 +115,12 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
     return rows.reduce((sum, row) => sum + (row.hours * row.rate), 0);
   };
 
-  const calculateDiscount = () => {
-    return calculateSubtotal() * (discount / 100);
-  };
-
-  const calculateSubtotalAfterDiscount = () => {
-    return calculateSubtotal() - calculateDiscount();
-  };
-
   const calculateGST = () => {
-    return calculateSubtotalAfterDiscount() * 0.1;
+    return calculateSubtotal() * 0.1;
   };
 
   const calculateTotal = () => {
-    return calculateSubtotalAfterDiscount() + calculateGST();
+    return calculateSubtotal() + calculateGST();
   };
 
   return (
@@ -271,41 +264,61 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
         <div className="flex justify-end pricing-total-summary">
           <div className="w-full max-w-md">
             <div className="bg-muted dark:bg-gray-800 rounded-lg p-4 space-y-2">
-              <div className="flex justify-between items-center text-sm text-foreground dark:text-gray-100">
-                <span>Discount (%):</span>
-                <input
-                  type="number"
-                  value={discount}
-                  onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
-                  min="0"
-                  max="100"
-                  className="w-20 px-2 py-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded text-right"
-                />
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-sm text-foreground dark:text-gray-100">Totals</div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowTotals(!showTotals)}
+                    className="px-2 py-1 border rounded text-sm bg-white dark:bg-gray-900"
+                  >
+                    {showTotals ? 'Hide Totals' : 'Show Totals'}
+                  </button>
+                </div>
               </div>
-              <div className="flex justify-between text-sm text-foreground dark:text-gray-100">
-                <span>Subtotal:</span>
-                <span className="font-semibold">${calculateSubtotal().toFixed(2)}</span>
-              </div>
-              {discount > 0 && (
+
+              {showTotals && (
                 <>
-                  <div className="flex justify-between text-sm text-red-600">
-                    <span>Discount ({discount}%):</span>
-                    <span>-${calculateDiscount().toFixed(2)}</span>
-                  </div>
                   <div className="flex justify-between text-sm text-foreground dark:text-gray-100">
-                    <span>After Discount:</span>
-                    <span className="font-semibold">${calculateSubtotalAfterDiscount().toFixed(2)}</span>
+                    <span>Discount (%):</span>
+                    <input
+                      type="number"
+                      value={discount}
+                      onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
+                      min="0"
+                      max="100"
+                      className="w-20 px-2 py-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded text-right"
+                    />
+                  </div>
+
+                  <div className="flex justify-between text-sm text-foreground dark:text-gray-100">
+                    <span>Subtotal:</span>
+                    <span className="font-semibold">${calculateSubtotal().toFixed(2)}</span>
+                  </div>
+
+                  {discount > 0 && (
+                    <>
+                      <div className="flex justify-between text-sm text-red-600">
+                        <span>Discount ({discount}%):</span>
+                        <span>-${(calculateSubtotal() * (discount / 100)).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm text-foreground dark:text-gray-100">
+                        <span>After Discount:</span>
+                        <span className="font-semibold">${(calculateSubtotal() - (calculateSubtotal() * (discount / 100))).toFixed(2)}</span>
+                      </div>
+                    </>
+                  )}
+
+                  <div className="flex justify-between text-sm text-foreground dark:text-gray-100">
+                    <span>GST (10%):</span>
+                    <span>${( (calculateSubtotal() - (calculateSubtotal() * (discount / 100))) * 0.1 ).toFixed(2)}</span>
+                  </div>
+
+                  <div className="flex justify-between text-base font-bold text-foreground dark:text-gray-100 border-t border-border pt-2 mt-2">
+                    <span>Total Project Value:</span>
+                    <span className="text-[#0e2e33] dark:text-[#1CBF79]">${( (calculateSubtotal() - (calculateSubtotal() * (discount / 100))) * 1.1 ).toFixed(2)}</span>
                   </div>
                 </>
               )}
-              <div className="flex justify-between text-sm text-foreground dark:text-gray-100">
-                <span>GST (10%):</span>
-                <span>${calculateGST().toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-base font-bold text-foreground dark:text-gray-100 border-t border-border pt-2 mt-2">
-                <span>Total Project Value:</span>
-                <span className="text-[#0e2e33] dark:text-[#1CBF79]">${calculateTotal().toFixed(2)}</span>
-              </div>
             </div>
           </div>
         </div>
@@ -329,6 +342,9 @@ export const EditablePricingTable = Node.create({
       discount: {
         default: 0,
       },
+      showTotals: {
+        default: true,
+      },
       scopeName: {
         default: ''
       },
@@ -349,9 +365,9 @@ export const EditablePricingTable = Node.create({
   renderHTML({ node, HTMLAttributes }) {
     const rows: PricingRow[] = node.attrs.rows || [];
     const discount = node.attrs.discount || 0;
-    
+    const showTotals = node.attrs.showTotals !== false;
     const subtotal = rows.reduce((sum, row) => sum + (row.hours * row.rate), 0);
-    const discountAmount = (subtotal * discount) / 100;
+    const discountAmount = subtotal * (discount / 100);
     const subtotalAfterDiscount = subtotal - discountAmount;
     const gst = subtotalAfterDiscount * 0.10;
     const total = subtotalAfterDiscount + gst;
@@ -400,36 +416,39 @@ export const EditablePricingTable = Node.create({
       }
     }
 
-    const totalsSection: any[] = [
-      'div',
-      { style: 'margin-top:1.5rem; padding-top:1rem; border-top:2px solid #0e2e33;' },
-      [
+    let totalsSection: any[] = [];
+    if (showTotals) {
+      totalsSection = [
         'div',
-        { style: 'max-width:400px; margin-left:auto;' },
-        ['div', { style: 'display:flex; justify-content:space-between; padding:0.5rem 0;' },
-          ['span', { style: 'font-weight:600; color:#0e2e33;' }, 'Subtotal:'],
-          ['span', { style: 'font-weight:600; color:#0e2e33;' }, `$${subtotal.toFixed(2)}`]
-        ],
-        ...(discount > 0 ? [
-          ['div', { style: 'display:flex; justify-content:space-between; padding:0.5rem 0; color:#ef4444;' },
-            ['span', {}, `Discount (${discount}%):`],
-            ['span', {}, `-$${discountAmount.toFixed(2)}`]
-          ],
+        { style: 'margin-top:1.5rem; padding-top:1rem; border-top:2px solid #0e2e33;' },
+        [
+          'div',
+          { style: 'max-width:400px; margin-left:auto;' },
           ['div', { style: 'display:flex; justify-content:space-between; padding:0.5rem 0;' },
-            ['span', { style: 'font-weight:600;' }, 'Subtotal After Discount:'],
-            ['span', { style: 'font-weight:600;' }, `$${subtotalAfterDiscount.toFixed(2)}`]
+            ['span', { style: 'font-weight:600; color:#0e2e33;' }, 'Subtotal:'],
+            ['span', { style: 'font-weight:600; color:#0e2e33;' }, `$${subtotal.toFixed(2)}`]
+          ],
+          ...(discount > 0 ? [
+            ['div', { style: 'display:flex; justify-content:space-between; padding:0.5rem 0; color:#ef4444;' },
+              ['span', {}, `Discount (${discount}%):`],
+              ['span', {}, `-$${discountAmount.toFixed(2)}`]
+            ],
+            ['div', { style: 'display:flex; justify-content:space-between; padding:0.5rem 0;' },
+              ['span', { style: 'font-weight:600;' }, 'Subtotal After Discount:'],
+              ['span', { style: 'font-weight:600;' }, `$${subtotalAfterDiscount.toFixed(2)}`]
+            ]
+          ] : []),
+          ['div', { style: 'display:flex; justify-content:space-between; padding:0.5rem 0;' },
+            ['span', {}, 'GST (10%):'],
+            ['span', {}, `$${gst.toFixed(2)}`]
+          ],
+          ['div', { style: 'display:flex; justify-content:space-between; padding:0.75rem 0; border-top:2px solid #0e2e33; margin-top:0.5rem;' },
+            ['span', { style: 'font-size:1.25rem; font-weight:700; color:#0e2e33;' }, 'Total Investment:'],
+            ['span', { style: 'font-size:1.25rem; font-weight:700; color:#0e2e33;' }, `$${total.toFixed(2)}`]
           ]
-        ] : []),
-        ['div', { style: 'display:flex; justify-content:space-between; padding:0.5rem 0;' },
-          ['span', {}, 'GST (10%):'],
-          ['span', {}, `$${gst.toFixed(2)}`]
-        ],
-        ['div', { style: 'display:flex; justify-content:space-between; padding:0.75rem 0; border-top:2px solid #0e2e33; margin-top:0.5rem;' },
-          ['span', { style: 'font-size:1.25rem; font-weight:700; color:#0e2e33;' }, 'Total Investment:'],
-          ['span', { style: 'font-size:1.25rem; font-weight:700; color:#0e2e33;' }, `$${total.toFixed(2)}`]
         ]
-      ]
-    ];
+      ];
+    }
     
     return [
       'div',
