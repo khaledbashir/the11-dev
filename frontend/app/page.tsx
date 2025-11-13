@@ -1001,7 +1001,7 @@ export default function Page() {
               isLoading={isChatLoading}
               onInsertToEditor={handleInsertContent}
               streamingMessageId={streamingMessageId}
-              editorWorkspaceSlug={currentDoc?.workspaceSlug || ''}
+              editorWorkspaceSlug={currentDoc?.workspaceSlug || 'generate'}
               editorThreadSlug={currentDoc?.threadSlug || null}
               onEditorThreadChange={async (slug) => {
                 if (!currentDocId) return;
