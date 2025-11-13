@@ -440,4 +440,4 @@ export const StreamingThoughtAccordion = React.memo(function StreamingThoughtAcc
       )}
     </div>
   );
-}
+});

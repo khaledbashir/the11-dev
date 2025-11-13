@@ -4425,6 +4425,7 @@ Ask me questions to get business insights, such as:
             content: '',
             timestamp: Date.now(),
           };
+          
           setChatMessages(prev => [...prev, initialAIMessage]);
           setStreamingMessageId(aiMessageId);
 
@@ -4441,6 +4442,9 @@ Ask me questions to get business insights, such as:
             console.log('ℹ️ Temp thread detected; using workspace-level chat for first message');
             threadSlugToUse = undefined;
           }
+
+          // Initialize content accumulator for streaming responses
+          let accumulatedContent = '';
 
           const response = await fetch(streamEndpoint, {
             method: "POST",
