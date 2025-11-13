@@ -20,33 +20,56 @@ export async function POST(request: NextRequest) {
     const requestBody = await request.json();
     const { workspaceSlug, threadSlug, message } = requestBody;
 
-    // Validate required fields
+    // CRITICAL: Validate that message is a primitive string, reject any objects
     if (!workspaceSlug || typeof workspaceSlug !== 'string') {
+      console.error('❌ [Perfect Mirror] Invalid workspaceSlug:', typeof workspaceSlug);
       return new Response(
         JSON.stringify({ error: 'workspaceSlug is required and must be a string' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    if (!message || typeof message !== 'string' || message.trim() === '') {
+    if (!message) {
+      console.error('❌ [Perfect Mirror] Missing message field');
       return new Response(
-        JSON.stringify({ error: 'message is required and must be a non-empty string' }),
+        JSON.stringify({ error: 'message field is required' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    // Validate message is plain string (no JSON objects)
+    if (typeof message !== 'string') {
+      console.error('❌ [Perfect Mirror] Message is not a string:', typeof message, message);
+      return new Response(
+        JSON.stringify({ error: `message must be a primitive string, received ${typeof message}` }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (message.trim() === '') {
+      console.error('❌ [Perfect Mirror] Message is empty or whitespace only');
+      return new Response(
+        JSON.stringify({ error: 'message cannot be empty or whitespace' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // CRITICAL: Reject any JSON objects in message field
     const rawMessage = message.trim();
-    if (rawMessage.startsWith('{') && rawMessage.endsWith('}')) {
-      try {
-        JSON.parse(rawMessage);
-        return new Response(
-          JSON.stringify({ error: 'message must be plain text, not JSON' }),
-          { status: 400, headers: { 'Content-Type': 'application/json' } }
-        );
-      } catch {
-        // Not JSON, continue
-      }
+    if (rawMessage.startsWith('{') || rawMessage.startsWith('[')) {
+      console.error('❌ [Perfect Mirror] Rejecting JSON object/array in message field:', rawMessage.substring(0, 100));
+      return new Response(
+        JSON.stringify({ error: 'message must be plain text, not JSON objects or arrays' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Additional safety check: ensure it's a primitive string
+    if (typeof message !== 'string' || message.constructor !== String) {
+      console.error('❌ [Perfect Mirror] Message is not a primitive string:', message);
+      return new Response(
+        JSON.stringify({ error: 'message must be a primitive string type' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
     }
 
     console.log('✅ [Perfect Mirror] Input validation passed');

@@ -609,7 +609,15 @@ export default function WorkspaceChat({
                           content={msg.content}
                           messageId={msg.id}
                           isStreaming={streamingMessageId === msg.id}
-                          onInsertClick={(content) => onInsertToEditor(cleanSOWContent(content))}
+                          onInsertClick={(content) => {
+                            // 🎯 CRITICAL FIX: Ensure we extract raw text, not pass objects
+                            console.log('🔍 [Workspace Chat] Insert button clicked with content type:', typeof content, 'Length:', content?.length);
+                            if (typeof content === 'string') {
+                              onInsertToEditor(cleanSOWContent(content));
+                            } else {
+                              console.error('❌ [Workspace Chat] Invalid content type for insertion:', typeof content, content);
+                            }
+                          }}
                         />
                       </div>
                     )}

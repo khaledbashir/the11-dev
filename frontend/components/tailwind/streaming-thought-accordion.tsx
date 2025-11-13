@@ -14,7 +14,7 @@ interface StreamingThoughtAccordionProps {
   onInsertClick?: (content: string) => void; // Callback when Insert button clicked
 }
 
-export function StreamingThoughtAccordion({
+export const StreamingThoughtAccordion = React.memo(function StreamingThoughtAccordion({
   content,
   isStreaming = false,
   messageId,
