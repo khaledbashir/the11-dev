@@ -30,8 +30,11 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
 
   useEffect(() => {
-    updateAttributes({ rows, discount });
-  }, [rows, discount]);
+    // Defer updateAttributes to avoid flushSync during render cycle
+    queueMicrotask(() => {
+      updateAttributes({ rows, discount });
+    });
+  }, [rows, discount, updateAttributes]);
 
   const updateRow = (id: string, field: keyof PricingRow, value: string | number) => {
     setRows((prev) => prev.map((row) => {
@@ -203,13 +206,14 @@ const EditablePricingTableComponent = ({ node, updateAttributes }: any) => {
                   onDrop={handleDrop}
                   className={`pricing-row hover:bg-muted dark:bg-gray-800 ${dropTargetId === row.id ? 'drag-over' : ''} ${draggedRowId === row.id ? 'dragging' : ''}`}
                 >
-                  <td className="border border-border p-2" style={{ width: '20%' }}>
+                  <td className="border border-border p-2" style={{ width: '25%', minWidth: '250px' }}>
                     <div className="flex items-center gap-2">
                       <span className="drag-handle text-gray-400 select-none text-lg" title="Drag to reorder">⋮⋮</span>
                       <select
                         value={row.role}
                         onChange={(e) => updateRow(row.id, 'role', e.target.value)}
                         className="w-full text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#1CBF79] focus:border-[#1CBF79] hover:border-gray-400 dark:hover:border-gray-600"
+                        title={row.role || "Select a role"}
                       >
                         <option className="bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200" value="">Select role...</option>
                         {ROLES.map((role) => (

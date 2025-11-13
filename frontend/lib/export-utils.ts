@@ -399,6 +399,33 @@ const findJsonObjectContainingKey = (text: string, rawKey: string): string | nul
   return null;
 };
 
+/**
+ * Validate Architect SOW structure to prevent data corruption
+ */
+export function validateArchitectSOW(sow: any): sow is ArchitectSOW {
+  if (!sow || typeof sow !== 'object') return false;
+  if (!Array.isArray(sow.scopeItems)) return false;
+
+  // Validate each scope item
+  for (const item of sow.scopeItems) {
+    if (!item || typeof item !== 'object') return false;
+    if (typeof item.title !== 'string' && item.title !== undefined) return false;
+    if (typeof item.description !== 'string' && item.description !== undefined) return false;
+
+    if (Array.isArray(item.roles)) {
+      for (const role of item.roles) {
+        if (!role || typeof role !== 'object') return false;
+        if (typeof role.role !== 'string') return false;
+        if (typeof role.hours !== 'number' || role.hours < 0) return false;
+        if (typeof role.rate !== 'number' && role.rate !== undefined) return false;
+        if (typeof role.cost !== 'number' && role.cost !== undefined) return false;
+      }
+    }
+  }
+
+  return true;
+}
+
 export function extractSOWStructuredJson(text: string): ArchitectSOW | null {
   if (!text) return null;
   // 1) Try language-tagged JSON blocks
@@ -407,7 +434,7 @@ export function extractSOWStructuredJson(text: string): ArchitectSOW | null {
     const body = m[1];
     try {
       const obj = JSON.parse(body);
-      if (obj && Array.isArray(obj.scopeItems)) {
+      if (validateArchitectSOW(obj)) {
         return obj as ArchitectSOW;
       }
     } catch {}
@@ -419,7 +446,7 @@ export function extractSOWStructuredJson(text: string): ArchitectSOW | null {
     if (!/scopeItems\s*[:]/.test(body)) continue;
     try {
       const obj = JSON.parse(body);
-      if (obj && Array.isArray(obj.scopeItems)) {
+      if (validateArchitectSOW(obj)) {
         return obj as ArchitectSOW;
       }
     } catch {}
@@ -440,7 +467,10 @@ export function extractSOWStructuredJson(text: string): ArchitectSOW | null {
           ? normalized.scope_items
           : undefined;
       if (scopeItems) {
-        return { ...normalized, scopeItems } as ArchitectSOW;
+        const validatedSow = { ...normalized, scopeItems } as ArchitectSOW;
+        if (validateArchitectSOW(validatedSow)) {
+          return validatedSow;
+        }
       }
     } catch {}
   }

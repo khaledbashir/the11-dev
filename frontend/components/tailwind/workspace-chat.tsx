@@ -322,29 +322,15 @@ export default function WorkspaceChat({
   const handleSendMessage = async () => {
     if (!chatInput.trim() || isLoading) return;
 
-    // 🔥 CRITICAL FIX: Auto-create thread if none exists
-    let threadSlug = currentThreadSlug;
-    if (!threadSlug) {
-      console.log('🆕 No thread exists - creating one automatically before sending message');
-      threadSlug = await handleNewThread();
-      if (!threadSlug) {
-        toast.error('Failed to create chat thread');
-        return;
-      }
-    }
-
     console.log('📤 Sending message:', {
       message: chatInput,
       discount,
-      threadSlug,
+      threadSlug: currentThreadSlug,
       attachments: attachments.length,
       workspaceSlug: editorWorkspaceSlug,
     });
 
-    onSendMessage(JSON.stringify({
-      prompt: chatInput,
-      discount,
-    }), threadSlug, attachments);
+    onSendMessage(chatInput, currentThreadSlug, attachments);
     setChatInput("");
     setAttachments([]);
   };
@@ -484,7 +470,7 @@ export default function WorkspaceChat({
   };
 
   return (
-    <div className="h-full w-full min-w-0 bg-[#0e0f0f] border-l border-[#0E2E33] overflow-hidden flex flex-col">
+    <div className="h-full w-full min-w-0 bg-[#0e0f0f] border-l border-[#0E2E33] overflow-hidden overflow-x-hidden flex flex-col">
       {/* Header */}
       <div className="p-4 border-b border-[#0E2E33] bg-[#0e0f0f] flex-shrink-0">
         <div className="flex items-center justify-between gap-3">
@@ -615,21 +601,49 @@ export default function WorkspaceChat({
                           messageId={msg.id}
                           isStreaming={streamingMessageId === msg.id}
                           onInsertClick={(content) => onInsertToEditor(cleanSOWContent(content))}
+                          canInsert={!!editorWorkspaceSlug}
                         />
                       </div>
                     )}
                     
                     {/* Content rendering for user messages only */}
                     <div className="space-y-3">
-                      {segments.map((seg, i) => (
-                        <ReactMarkdown
-                          key={i}
-                          remarkPlugins={[remarkGfm]}
-                          className="prose prose-invert max-w-none text-sm break-words whitespace-pre-wrap prose-pre:whitespace-pre-wrap prose-pre:overflow-x-auto"
-                        >
-                          {seg.content}
-                        </ReactMarkdown>
-                      ))}
+                      {segments.map((seg, i) => {
+                        // Check if content is JSON and format it
+                        let displayContent = seg.content;
+                        let isJsonContent = false;
+                        
+                        try {
+                          // Try to parse as JSON
+                          const parsed = JSON.parse(seg.content.trim());
+                          if (parsed && typeof parsed === 'object') {
+                            displayContent = JSON.stringify(parsed, null, 2);
+                            isJsonContent = true;
+                          }
+                        } catch (e) {
+                          // Not JSON, use as-is
+                        }
+                        
+                        if (isJsonContent) {
+                          return (
+                            <div key={i} className="relative">
+                              <pre className="bg-gray-900 text-gray-100 p-3 rounded text-xs overflow-x-auto max-w-full whitespace-pre-wrap break-words">
+                                <code>{displayContent}</code>
+                              </pre>
+                            </div>
+                          );
+                        }
+                        
+                        return (
+                          <ReactMarkdown
+                            key={i}
+                            remarkPlugins={[remarkGfm]}
+                            className="prose prose-invert max-w-none text-sm break-words whitespace-pre-wrap prose-pre:whitespace-pre-wrap prose-pre:overflow-x-auto"
+                          >
+                            {displayContent}
+                          </ReactMarkdown>
+                        );
+                      })}
                     </div>
                     
                     <div className="flex gap-2 mt-4 items-center">
@@ -646,24 +660,50 @@ export default function WorkspaceChat({
           {(() => {
             const lastAssistant = [...chatMessages].reverse().find(m => m.role === 'assistant');
             if (!lastAssistant) return null;
+            
+            // Don't show insert button if this message is still streaming
+            // Also treat global isLoading as streaming to avoid premature 'ready' state
+            const isCurrentlyStreaming = (streamingMessageId === lastAssistant.id) || Boolean(isLoading);
+            
             return (
               <div className="sticky bottom-0 left-0 right-0 z-20 mt-4">
                 <div className="flex items-center justify-between gap-3 bg-[#0E2E33]/95 backdrop-blur-md border border-[#1b5e5e] rounded-lg px-4 py-3 shadow-lg">
                   <div className="flex items-center gap-2 text-xs text-gray-400">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    Latest AI response ready
+                    {isCurrentlyStreaming ? (
+                      <>
+                        <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+                        AI is writing...
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        Latest AI response ready
+                      </>
+                    )}
                   </div>
                     <Button
                     size="sm"
                     variant="outline"
-                    className="h-8 px-4 text-xs font-medium border-[#1CBF79] text-[#1CBF79] hover:text-white hover:bg-[#1CBF79] transition-all duration-200"
-                    title="Insert the latest AI response into your SOW editor"
-                    onClick={() => onInsertToEditor(cleanSOWContent(lastAssistant.content))}
+                    disabled={isCurrentlyStreaming}
+                    className={`h-8 px-4 text-xs font-medium transition-all duration-200 ${
+                      isCurrentlyStreaming 
+                        ? 'border-gray-600 text-gray-600 cursor-not-allowed' 
+                        : 'border-[#1CBF79] text-[#1CBF79] hover:text-white hover:bg-[#1CBF79]'
+                    }`}
+                    title={isCurrentlyStreaming ? "Wait for AI to finish writing" : "Insert the latest AI response into your SOW editor"}
+                    onClick={() => {
+                      if (!isCurrentlyStreaming) {
+                        console.log('🚀 Insert button clicked - processing content:', lastAssistant.content);
+                        const cleanedContent = cleanSOWContent(lastAssistant.content);
+                        console.log('🧹 Cleaned content:', cleanedContent);
+                        onInsertToEditor(cleanedContent);
+                      }
+                    }}
                   >
                     <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
-                    Insert SOW
+                    {isCurrentlyStreaming ? 'Writing...' : 'Insert SOW'}
                   </Button>
                 </div>
               </div>

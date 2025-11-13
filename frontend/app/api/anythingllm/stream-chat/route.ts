@@ -1,6 +1,188 @@
 import { NextRequest } from 'next/server';
 import { AnythingLLMService } from '@/lib/anythingllm';
 
+// 🎯 DATA INTEGRITY: JSON Schema validation and retry logic for AI responses
+interface StrictJSONSchema {
+  type: 'object';
+  properties: {
+    scopeItems?: any;
+    pricing?: any;
+    suggestedRoles?: any;
+    [key: string]: any;
+  };
+  required?: string[];
+}
+
+// JSON Schema for SOW generation responses
+const SOW_RESPONSE_SCHEMA: StrictJSONSchema = {
+  type: 'object',
+  properties: {
+    scopeItems: { type: 'array' },
+    pricing: {
+      type: 'object',
+      properties: {
+        role_allocation: { type: 'array' },
+        discount: { type: 'number' },
+        project_details: { type: 'object' }
+      }
+    },
+    suggestedRoles: { type: 'array' },
+    markdownContent: { type: 'string' },
+    financialReasoning: { type: 'string' }
+  }
+};
+
+// Data integrity validation function
+function validateJSONStructure(data: any, schema: StrictJSONSchema): { isValid: boolean; errors: string[] } {
+  const errors: string[] = [];
+  
+  try {
+    if (typeof data !== 'object' || data === null) {
+      errors.push('Response must be a valid JSON object');
+      return { isValid: false, errors };
+    }
+
+    // Check for required fields based on schema
+    if (schema.required) {
+      for (const field of schema.required) {
+        if (!(field in data)) {
+          errors.push(`Missing required field: ${field}`);
+        }
+      }
+    }
+
+    // Validate structure for SOW responses
+    if (data.scopeItems && !Array.isArray(data.scopeItems)) {
+      errors.push('scopeItems must be an array');
+    }
+    
+    if (data.pricing && typeof data.pricing !== 'object') {
+      errors.push('pricing must be an object');
+    }
+    
+    if (data.suggestedRoles && !Array.isArray(data.suggestedRoles)) {
+      errors.push('suggestedRoles must be an array');
+    }
+
+    return { isValid: errors.length === 0, errors };
+  } catch (error) {
+    errors.push(`Validation error: ${error}`);
+    return { isValid: false, errors };
+  }
+}
+
+// Enhanced message preparation for strict JSON output
+function prepareStrictJSONMessage(originalMessage: string, retryCount: number = 0): string {
+  const baseInstruction = `
+You are "The Architect" AI for SOW generation. CRITICAL: You MUST output ONLY valid JSON.
+
+JSON OUTPUT REQUIREMENTS:
+- Output ONLY valid JSON - no markdown, no explanations, no additional text
+- Structure: {"scopeItems": [...], "pricing": {...}, "markdownContent": "...", "financialReasoning": "..."}
+- All property names MUST be quoted
+- All strings MUST be properly escaped
+- No trailing commas
+- No unquoted property names
+
+${retryCount > 0 ? `RETRY ATTEMPT ${retryCount}: Previous response was invalid JSON. Please ensure strict JSON formatting.` : ''}
+
+Client Request: ${originalMessage}
+
+Respond with ONLY valid JSON in the specified structure.`;
+  
+  return baseInstruction;
+}
+
+// Validate and retry AI requests with strict JSON enforcement
+async function fetchWithJSONValidation(
+  endpoint: string,
+  message: string,
+  apiKey: string,
+  retryCount: number = 0
+): Promise<{ response: Response; rawContent: string; isValidJSON: boolean }> {
+  const maxRetries = 3;
+  
+  try {
+    // Prepare message with strict JSON requirements
+    const strictMessage = retryCount === 0 ?
+      prepareStrictJSONMessage(message, 0) :
+      prepareStrictJSONMessage(message, retryCount);
+    
+    console.log(`🔄 [DATA INTEGRITY] Attempt ${retryCount + 1}/${maxRetries + 1} - Sending strict JSON request`);
+    
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message: strictMessage,
+        mode: 'chat',
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    // Collect the entire response for validation
+    let rawContent = '';
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        rawContent += decoder.decode(value, { stream: true });
+      }
+    } else {
+      // Fallback for non-streaming responses
+      rawContent = await response.text();
+    }
+
+    console.log(`📋 [DATA INTEGRITY] Raw response length: ${rawContent.length} characters`);
+    console.log(`📋 [DATA INTEGRITY] Response preview: ${rawContent.substring(0, 200)}...`);
+
+    // Validate JSON structure
+    let isValidJSON = false;
+    try {
+      const parsed = JSON.parse(rawContent);
+      const validation = validateJSONStructure(parsed, SOW_RESPONSE_SCHEMA);
+      isValidJSON = validation.isValid;
+      
+      if (!isValidJSON) {
+        console.warn(`⚠️ [DATA INTEGRITY] JSON validation failed: ${validation.errors.join(', ')}`);
+      } else {
+        console.log('✅ [DATA INTEGRITY] JSON validation passed');
+      }
+    } catch (parseError) {
+      console.warn(`⚠️ [DATA INTEGRITY] JSON parse failed: ${parseError}`);
+      isValidJSON = false;
+    }
+
+    // Retry if invalid and we haven't exceeded max retries
+    if (!isValidJSON && retryCount < maxRetries) {
+      console.log(`🔄 [DATA INTEGRITY] Retrying with enhanced JSON enforcement (attempt ${retryCount + 1})`);
+      return await fetchWithJSONValidation(endpoint, message, apiKey, retryCount + 1);
+    }
+
+    return { response, rawContent, isValidJSON };
+    
+  } catch (error) {
+    console.error(`❌ [DATA INTEGRITY] Fetch failed on attempt ${retryCount + 1}:`, error);
+    
+    if (retryCount >= maxRetries) {
+      throw new Error(`Failed after ${maxRetries} retries: ${error}`);
+    }
+    
+    // Exponential backoff before retry
+    await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+    return await fetchWithJSONValidation(endpoint, message, apiKey, retryCount + 1);
+  }
+}
+
 // Prefer secure server-side env vars; fallback to NEXT_PUBLIC for flexibility in current deployments
 const ANYTHINGLLM_URL = process.env.ANYTHINGLLM_URL || process.env.NEXT_PUBLIC_ANYTHINGLLM_URL;
 const ANYTHINGLLM_API_KEY = process.env.ANYTHINGLLM_API_KEY || process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY;
@@ -148,10 +330,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 🔧 CRITICAL FIX: Include system message in the request for SOW generation
-    // The workspace prompt might not be properly configured, so we need to ensure
-    // the system instructions are included in the messages array
+    // 🔧 CRITICAL FIX: Parse JSON message content for SOW generation
+    // Frontend sends messages in format: {"prompt": "actual message", "discount": 0}
     let messageToSend: string = typeof lastMessage.content === 'string' ? lastMessage.content : '';
+    
+    // Try to parse as JSON and extract the prompt field
+    try {
+      const parsedContent = JSON.parse(messageToSend);
+      if (parsedContent && typeof parsedContent.prompt === 'string') {
+        messageToSend = parsedContent.prompt;
+        console.log('📝 Extracted prompt from JSON:', messageToSend.substring(0, 100) + '...');
+      }
+    } catch (e) {
+      // Not JSON, use as-is
+      console.log('📝 Message is plain text, using as-is');
+    }
     
     if (!messageToSend || typeof messageToSend !== 'string') {
       const errorMsg = 'Message content must be a non-empty string.';
@@ -161,36 +354,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 🔧 CRITICAL FIX: Use OpenAI-compatible endpoint for SOW generation
-    // The workspace chat endpoint doesn't properly handle system messages
+    // 🔧 CRITICAL FIX: Use workspace chat endpoint instead of OpenAI-compatible
+    // The OpenAI endpoint requires different permissions
     let endpoint: string;
-    if (effectiveWorkspaceSlug === 'generate') {
-      // Use OpenAI-compatible endpoint for SOW generation to ensure system prompt is included
-      endpoint = `${ANYTHINGLLM_URL}/api/v1/openai/chat/completions`;
-      console.log('🔧 Using OpenAI-compatible endpoint for SOW generation');
+    if (effectiveWorkspaceSlug === 'generate' && threadSlug) {
+      // Thread-based streaming chat for SOW generation (saves to thread)
+      endpoint = `${ANYTHINGLLM_URL}/api/v1/workspace/${effectiveWorkspaceSlug}/thread/${threadSlug}/stream-chat`;
+      console.log('🔧 Using thread-based endpoint for SOW generation');
     } else if (threadSlug) {
       // Thread-based streaming chat (saves to SOW's thread)
       endpoint = `${ANYTHINGLLM_URL}/api/v1/workspace/${effectiveWorkspaceSlug}/thread/${threadSlug}/stream-chat`;
     } else {
       // Workspace-level streaming chat (legacy behavior)
       endpoint = `${ANYTHINGLLM_URL}/api/v1/workspace/${effectiveWorkspaceSlug}/stream-chat`;
-    }
-
-    // 🔧 CRITICAL FIX: Always include system prompt for SOW generation workspace
-    // This ensures proper AI instructions regardless of workspace configuration
-    if (effectiveWorkspaceSlug === 'generate') {
-      // Import THE_ARCHITECT_V6_PROMPT (v6 placeholder is used until full v6 content provided)
-      const { THE_ARCHITECT_V6_PROMPT } = await import('@/lib/knowledge-base');
-      
-      // Always add system message at the beginning for generate workspace
-      messages = [
-        { role: 'system', content: THE_ARCHITECT_V6_PROMPT },
-        ...messages
-      ];
-      
-      console.log('🔧 [SYSTEM PROMPT] Added THE_ARCHITECT_V6_PROMPT to messages array');
-      console.log(`   Prompt length: ${THE_ARCHITECT_V6_PROMPT.length} characters`);
-      console.log(`   Contains "v6.0 (Hybrid)": ${THE_ARCHITECT_V6_PROMPT.includes('v6.0')}`);
     }
 
     // 🎯 CRITICAL: For master dashboard workspace, inject live analytics data
@@ -258,53 +434,70 @@ export async function POST(request: NextRequest) {
     // 🔧 LLM provider is configured in AnythingLLM UI - no override here
     // The workspace uses the provider/model set in AnythingLLM admin
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${ANYTHINGLLM_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        // 🔧 CRITICAL FIX: Use OpenAI-compatible format for generate workspace
-        ...(effectiveWorkspaceSlug === 'generate' ? {
-          model: "anythingllm",
-          messages: messages, // Include system prompt in messages array
-        } : {
-          message: finalMessage,
-          mode, // 'chat' or 'query' (provided by caller)
-        }),
+    // 🎯 DATA INTEGRITY: Use enhanced fetch with JSON validation and retry logic
+    console.log('🔄 [DATA INTEGRITY] Starting enhanced AI request with validation...');
+    
+    const validationResult = await fetchWithJSONValidation(
+      endpoint,
+      finalMessage,
+      ANYTHINGLLM_API_KEY,
+      0
+    );
+    
+    // Recreate response object for stream processing (since we collected the content)
+    const response = new Response(
+      new ReadableStream({
+        start(controller) {
+          const encoder = new TextEncoder();
+          // Stream the validated content back as SSE
+          const lines = validationResult.rawContent.split('\n');
+          for (const line of lines) {
+            if (line.trim()) {
+              controller.enqueue(encoder.encode(line + '\n'));
+            }
+          }
+          controller.close();
+        }
       }),
-    });
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache, no-transform',
+          'Connection': 'keep-alive',
+        }
+      }
+    );
+    
+    // Log validation results
+    if (validationResult.isValidJSON) {
+      console.log('✅ [DATA INTEGRITY] AI response passed JSON validation');
+    } else {
+      console.warn('⚠️ [DATA INTEGRITY] AI response failed JSON validation but proceeding with retry logic');
+    }
 
     const fetchEndTime = Date.now();
     console.log(`⏱️ [TIMING] Fetch completed in ${fetchEndTime - fetchStartTime}ms`);
 
+    // 🎯 DATA INTEGRITY: Enhanced error handling for validation system
     if (!response.ok) {
-      const errorText = await response.text();
-      
-      // 🔍 ENHANCED ERROR LOGGING
       console.error('❌ ❌ ❌ ANYTHINGLLM ERROR ❌ ❌ ❌');
       console.error('Status:', response.status, response.statusText);
       console.error('Endpoint:', endpoint);
       console.error('Workspace:', effectiveWorkspaceSlug);
       console.error('Thread Slug:', threadSlug);
       console.error('Mode:', mode);
-      console.error('Error Response:', errorText);
       console.error('❌ ❌ ❌ END ERROR ❌ ❌ ❌');
       
-      // Special logging for 401
-      if (response.status === 401) {
-        // Silently fail for 401 - do not expose auth details
-      }
-      
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: `AnythingLLM API error: ${response.statusText}`,
-          details: errorText.substring(0, 500), // Increased from 200 to 500
+          details: `Request failed after data integrity validation attempts`,
           status: response.status,
-          endpoint: endpoint, // Include endpoint in error response
+          endpoint: endpoint,
           workspace: effectiveWorkspaceSlug,
-          threadSlug: threadSlug
+          threadSlug: threadSlug,
+          dataIntegrityEnabled: true
         }),
         { status: response.status, headers: { 'Content-Type': 'application/json' } }
       );

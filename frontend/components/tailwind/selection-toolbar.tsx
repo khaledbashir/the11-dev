@@ -34,7 +34,11 @@ export function SelectionToolbar({ onAskAI, isVisible }: SelectionToolbarProps) 
 
     updatePosition();
     window.addEventListener("resize", updatePosition);
-    return () => window.removeEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition);
+    };
   }, [isVisible]);
 
   if (!isVisible) return null;

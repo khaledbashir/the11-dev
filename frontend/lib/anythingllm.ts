@@ -119,7 +119,7 @@ export class AnythingLLMService {
       await this.setWorkspacePrompt(data.workspace.slug, clientName, false);
 
       // Create default thread
-      await this.createThread(data.workspace.slug, undefined);
+      await this.createThread(data.workspace.slug);
 
       // Get embed ID for portal
       const embedId = await this.getOrCreateEmbedId(data.workspace.slug);
@@ -185,7 +185,7 @@ export class AnythingLLMService {
 
       // Create a default thread for general use
       console.log(`🧵 Creating default thread for master workspace...`);
-      await this.createThread(data.workspace.slug, undefined);
+      await this.createThread(data.workspace.slug);
       console.log(`✅ Default thread created in master workspace`);
 
       return { id: data.workspace.id, slug: data.workspace.slug };
@@ -834,43 +834,42 @@ You have access to the full SOW document that has been embedded in this workspac
    * Create a new thread in a workspace
    * Each SOW becomes a thread for isolated chat history
    */
-  async createThread(workspaceSlug: string, threadName?: string): Promise<{ slug: string; id: string } | null> {
+  async createThread(workspaceSlug: string): Promise<{ slug: string } | null> {
+    const endpoint = `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/thread/new`;
+    console.log(`🆕 Creating thread in workspace: ${workspaceSlug}`);
+
     try {
-      // Follow AnythingLLM pattern: threads auto-name based on first message
-      // Don't pre-name threads - let them be named by first chat content
-      // If no name provided, use a generic auto-name that will be replaced on first message
-      const autoThreadName = threadName || `Thread ${new Date().toLocaleString()}`;
-
-      console.log(`🆕 Creating thread in workspace: ${workspaceSlug} (will auto-name on first message)`);
-
-      const response = await this.fetchWithTimeout(
-        `${this.baseUrl}/api/v1/workspace/${workspaceSlug}/thread/new`,
-        {
-          method: 'POST',
-          headers: this.getHeaders(),
-          body: JSON.stringify({
-            name: autoThreadName,  // AnythingLLM will auto-update this on first chat message
-          }),
-        },
-        10000 // 10 second timeout for thread creation
-      );
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        // The API documentation states the body is optional for a default thread.
+        // We will send an empty object to be safe.
+        body: JSON.stringify({}),
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`❌ Failed to create thread: ${response.status} ${response.statusText}`);
+        console.error(`❌ Failed to create thread: ${response.status}`);
         console.error(`📝 Response: ${errorText}`);
+        // Return null to indicate failure, allowing the caller to handle it.
         return null;
       }
 
       const data = await response.json();
-      console.log(`✅ Thread created: ${data.thread.slug} (ID: ${data.thread.id}) - will auto-name on first message`);
 
-      return {
-        slug: data.thread.slug,
-        id: data.thread.id,
-      };
+      // CRITICAL: The slug is nested inside the 'thread' object.
+      const threadSlug = data?.thread?.slug;
+
+      if (!threadSlug) {
+        console.error("❌ API response for new thread did not contain a 'thread.slug'.", data);
+        return null;
+      }
+
+      console.log(`✅ Thread created: ${threadSlug}`);
+      return { slug: threadSlug };
+      
     } catch (error) {
-      console.error('❌ Error creating thread:', error);
+      console.error("❌ Network or parsing error in createThread:", error);
       return null;
     }
   }

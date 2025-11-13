@@ -12,10 +12,6 @@ interface DocumentStatusBarProps {
   onExportNewPDF?: () => void; // NEW: Professional PDF export
   onExportExcel?: () => void;
   onSharePortal?: () => void;
-  vertical?: string; // 📊 Social Garden BI
-  serviceLine?: string; // 📊 Social Garden BI
-  onVerticalChange?: (vertical: string) => void; // 📊 Social Garden BI
-  onServiceLineChange?: (serviceLine: string) => void; // 📊 Social Garden BI
   isGrandTotalVisible?: boolean; // 👁️ Toggle grand total visibility
   onToggleGrandTotal?: () => void; // 👁️ Toggle grand total visibility
 }
@@ -29,10 +25,6 @@ export function DocumentStatusBar({
   onExportNewPDF,
   onExportExcel,
   onSharePortal,
-  vertical,
-  serviceLine,
-  onVerticalChange,
-  onServiceLineChange,
   isGrandTotalVisible,
   onToggleGrandTotal,
 }: DocumentStatusBarProps) {
@@ -67,47 +59,6 @@ export function DocumentStatusBar({
 
       {/* Actions Section */}
       <div className="flex items-center gap-3">
-        {/* Social Garden BI Dropdowns */}
-        {(onVerticalChange || onServiceLineChange) && (
-          <div className="flex items-center gap-2 pr-3 border-r border-[#2A2A2D]">
-            {onVerticalChange && (
-              <select
-                value={vertical || ''}
-                onChange={(e) => onVerticalChange(e.target.value)}
-                className="h-8 px-3 text-sm bg-[#1A1A1D] border border-[#2A2A2D] text-gray-300 rounded-md hover:bg-[#2A2A2D] hover:border-[#1CBF79]/50 focus:outline-none focus:ring-2 focus:ring-[#1CBF79]/50 transition-colors"
-              >
-                <option value="">🏢 Select Vertical</option>
-                <option value="property">🏢 Property</option>
-                <option value="education">🎓 Higher Education</option>
-                <option value="finance">💰 Finance</option>
-                <option value="healthcare">🏥 Healthcare</option>
-                <option value="retail">🛍️ Retail</option>
-                <option value="hospitality">🏨 Hospitality</option>
-                <option value="professional-services">💼 Professional Services</option>
-                <option value="technology">💻 Technology</option>
-                <option value="other">📊 Other</option>
-              </select>
-            )}
-            
-            {onServiceLineChange && (
-              <select
-                value={serviceLine || ''}
-                onChange={(e) => onServiceLineChange(e.target.value)}
-                className="h-8 px-3 text-sm bg-[#1A1A1D] border border-[#2A2A2D] text-gray-300 rounded-md hover:bg-[#2A2A2D] hover:border-[#1CBF79]/50 focus:outline-none focus:ring-2 focus:ring-[#1CBF79]/50 transition-colors"
-              >
-                <option value="">🔧 Select Service</option>
-                <option value="crm-implementation">🔧 CRM Implementation</option>
-                <option value="marketing-automation">⚙️ Marketing Automation</option>
-                <option value="revops-strategy">📊 RevOps Strategy</option>
-                <option value="managed-services">🛠️ Managed Services</option>
-                <option value="consulting">💡 Consulting</option>
-                <option value="training">📚 Training</option>
-                <option value="other">🔹 Other</option>
-              </select>
-            )}
-          </div>
-        )}
-        
         {/* Export Buttons */}
         <div className="flex items-center gap-2">
           {onToggleGrandTotal && (

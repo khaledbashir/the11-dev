@@ -12,6 +12,7 @@ interface StreamingThoughtAccordionProps {
   messageId?: string; // Unique message ID for tracking
   onThinkingExtracted?: (thinking: string) => void;
   onInsertClick?: (content: string) => void; // Callback when Insert button clicked
+  canInsert?: boolean; // Whether insertion is currently possible (document open)
 }
 
 export function StreamingThoughtAccordion({
@@ -20,6 +21,7 @@ export function StreamingThoughtAccordion({
   messageId,
   onThinkingExtracted,
   onInsertClick,
+  canInsert = true,
 }: StreamingThoughtAccordionProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [displayedThinking, setDisplayedThinking] = useState<string>("");
@@ -238,15 +240,21 @@ export function StreamingThoughtAccordion({
             <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap break-words max-h-[400px] overflow-y-auto overflow-x-hidden mb-3 w-full max-w-full" style={{ wordBreak: 'break-all', overflowWrap: 'break-word' }}>
               {JSON.stringify(jsonBlock, null, 2)}
             </pre>
-            <Button
-              onClick={() => {
-                // Insert the full visible payload (which, in this case, is just the JSON block)
-                onInsertClick?.(buildInsertPayload);
-              }}
-              className="w-full bg-[#20e28f] hover:bg-[#1db876] text-black font-semibold py-2 px-3 rounded"
-            >
-              ✅ Insert into Editor
-            </Button>
+            {canInsert ? (
+              <Button
+                onClick={() => {
+                  // Insert the full visible payload (which, in this case, is just the JSON block)
+                  onInsertClick?.(buildInsertPayload);
+                }}
+                className="w-full bg-[#20e28f] hover:bg-[#1db876] text-black font-semibold py-2 px-3 rounded"
+              >
+                ✅ Insert into Editor
+              </Button>
+            ) : (
+              <div className="w-full bg-gray-600 text-gray-400 font-semibold py-2 px-3 rounded text-center text-sm">
+                Open a document to insert content
+              </div>
+            )}
           </div>
         </details>
       </div>
@@ -256,7 +264,7 @@ export function StreamingThoughtAccordion({
   // If only thinking (no narrative or JSON), show just the thinking accordion
   if (!actualContent && thinking) {
     return (
-      <div className="w-full max-w-full space-y-3 overflow-hidden">
+      <div className="w-full max-w-full space-y-3 overflow-hidden overflow-x-hidden">
         <details
           className="border border-[#1b5e5e] rounded-lg overflow-hidden bg-[#0a0a0a] group cursor-pointer w-full max-w-full"
           open={isOpen}
@@ -275,8 +283,8 @@ export function StreamingThoughtAccordion({
             </span>
             <span className="text-xs text-gray-400 ml-auto">Transparency Mode</span>
           </summary>
-          <div className="px-4 py-3 bg-[#000000]/50 border-t border-[#1b5e5e]/30">
-            <div className="text-xs text-gray-300 whitespace-pre-wrap font-mono leading-relaxed max-h-[300px] overflow-y-auto">
+          <div className="px-4 py-3 bg-[#000000]/50 border-t border-[#1b5e5e]/30 overflow-x-hidden">
+            <div className="text-xs text-gray-300 whitespace-pre-wrap font-mono leading-relaxed max-h-[300px] overflow-y-auto break-words overflow-x-hidden" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
               <span>{displayedThinking}</span>
               {isStreaming && displayedThinking.length < thinking.length && (
                 <span className="animate-pulse text-gray-500">_</span>
@@ -290,7 +298,7 @@ export function StreamingThoughtAccordion({
 
   // If thinking + narrative (with or without JSON): render full layout
   return (
-    <div className="w-full max-w-full space-y-3 overflow-hidden">
+    <div className="w-full max-w-full space-y-3 overflow-hidden overflow-x-hidden">
       {/* Thinking Accordion */}
       {thinking && (
         <details
@@ -311,8 +319,8 @@ export function StreamingThoughtAccordion({
             </span>
             <span className="text-xs text-gray-400 ml-auto">Transparency Mode</span>
           </summary>
-          <div className="px-4 py-3 bg-[#000000]/50 border-t border-[#1b5e5e]/30">
-            <div className="text-xs text-gray-300 whitespace-pre-wrap font-mono leading-relaxed max-h-[300px] overflow-y-auto">
+          <div className="px-4 py-3 bg-[#000000]/50 border-t border-[#1b5e5e]/30 overflow-x-hidden">
+            <div className="text-xs text-gray-300 whitespace-pre-wrap font-mono leading-relaxed max-h-[300px] overflow-y-auto break-words overflow-x-hidden" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
               <span>{displayedThinking}</span>
               {isStreaming && displayedThinking.length < thinking.length && (
                 <span className="animate-pulse text-gray-500">_</span>
@@ -372,7 +380,7 @@ export function StreamingThoughtAccordion({
                     }`} style={isJsonBlock ? { wordBreak: 'break-all', overflowWrap: 'break-word' } : {}} {...props}>
                       {children}
                     </code>
-                    {isJsonBlock && (
+                    {isJsonBlock && canInsert && (
                       <Button
                         onClick={() => {
                           // Extract JSON content and trigger insert
@@ -424,15 +432,21 @@ export function StreamingThoughtAccordion({
                 <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap break-words max-h-[400px] overflow-y-auto overflow-x-hidden w-full max-w-full" style={{ wordBreak: 'break-all', overflowWrap: 'break-word' }}>
                   {JSON.stringify(jsonBlock, null, 2)}
                 </pre>
-                <Button
-                  onClick={() => {
-                    // Insert the entire AI response payload (narrative + JSON), minus hidden thinking
-                    onInsertClick?.(buildInsertPayload);
-                  }}
-                  className="w-full bg-[#20e28f] hover:bg-[#1db876] text-black font-semibold py-2 px-3 rounded"
-                >
-                  ✅ Insert into Editor
-                </Button>
+                {canInsert ? (
+                  <Button
+                    onClick={() => {
+                      // Insert the entire AI response payload (narrative + JSON), minus hidden thinking
+                      onInsertClick?.(buildInsertPayload);
+                    }}
+                    className="w-full bg-[#20e28f] hover:bg-[#1db876] text-black font-semibold py-2 px-3 rounded"
+                  >
+                    ✅ Insert into Editor
+                  </Button>
+                ) : (
+                  <div className="w-full bg-gray-600 text-gray-400 font-semibold py-2 px-3 rounded text-center text-sm">
+                    Open a document to insert content
+                  </div>
+                )}
               </div>
             </details>
           )}

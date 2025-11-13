@@ -25,6 +25,7 @@ export const metadata: Metadata = {
   description,
   icons: {
     icon: [
+      { url: '/favicon.ico', type: 'image/x-icon' },
       { url: '/favicon.png', type: 'image/png' },
       // Use external hosted logo to avoid stale public asset issues
       { url: 'https://i.ibb.co/v47zTJ5P/lightlogo.png', type: 'image/png' }
