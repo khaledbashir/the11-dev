@@ -38,6 +38,7 @@ import { extractSOWStructuredJson } from "@/lib/export-utils";
 import { anythingLLM } from "@/lib/anythingllm";
 import { ROLES } from "@/lib/rateCard";
 import { calculatePricingTable } from "@/lib/pricingCalculator";
+import { THE_ARCHITECT_V4_PROMPT } from "@/lib/knowledge-base";
 import { getWorkspaceForAgent, WORKSPACE_CONFIG } from "@/lib/workspace-config";
 import { prepareSOWForNewPDF } from "@/lib/sow-pdf-utils";
 
