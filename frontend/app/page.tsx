@@ -4402,13 +4402,18 @@ Ask me questions to get business insights, such as:
           const sowKeywords = /(\bstatement of work\b|\bsow\b|\bscope\b|\bdeliverables\b|\bpricing\b|\bbudget\b|\bestimate\b|\bhours\b|\broles\b)/i;
           // Do not append per-message contracts; rely on workspace/system prompt
           console.log(`📊 [Contract Check] Message length: ${messageLength}, keywordMatch: ${sowKeywords.test(lastUserMessage)}, isDashboard: ${isDashboardMode}`);
-          const requestMessages = [
-            // Do not include a system message; AnythingLLM workspace prompt governs behavior
-            ...newMessages.map(m => ({ role: m.role, content: m.content })),
-          ];
+          // 🎯 PERFECT MIRROR: Only send the user's current message as a raw string
+          const rawUserMessage = message.trim();
+          
+          // Validate that we have a valid message
+          if (!rawUserMessage || typeof rawUserMessage !== 'string') {
+            console.error('❌ [Perfect Mirror] Invalid message - must be a non-empty string');
+            toast.error('Message must be a non-empty string');
+            return;
+          }
+
           // ✨ STREAMING MODE: Real-time response with thinking display
           const aiMessageId = `msg${Date.now() + 1}`;
-          let accumulatedContent = '';
 
           // Create initial empty AI message
           const apiCallStartTime = Date.now();
@@ -4426,25 +4431,16 @@ Ask me questions to get business insights, such as:
           // Determine thread slug based on mode
           let threadSlugToUse: string | undefined;
           if (threadSlugParam) {
-            // Always prefer explicitly provided thread slug (works for both dashboard and editor modes)
             threadSlugToUse = threadSlugParam || undefined;
-          } else if (isDashboardMode) {
-            // Dashboard fallback: no explicit thread provided
-            threadSlugToUse = undefined;
-          } else if (currentDocId) {
-            // Editor mode fallback: current document's thread
+          } else if (!isDashboardMode && currentDocId) {
             threadSlugToUse = documents.find(d => d.id === currentDocId)?.threadSlug || undefined;
           }
 
-          // 🛡️ If this is a temp thread (created for instant navigation), avoid thread API and use workspace-level chat
+          // 🛡️ If this is a temp thread, use workspace-level chat
           if (threadSlugToUse && threadSlugToUse.startsWith('temp-')) {
             console.log('ℹ️ Temp thread detected; using workspace-level chat for first message');
             threadSlugToUse = undefined;
           }
-
-          // Smart mode selection for Master Dashboard: use 'chat' for greetings/non-analytic prompts
-          // Always use 'chat' mode to ensure messages persist to thread history
-          const resolvedMode = 'chat';
 
           const response = await fetch(streamEndpoint, {
             method: "POST",
@@ -4453,14 +4449,10 @@ Ask me questions to get business insights, such as:
             },
             signal: controller.signal, // 🛑 Allow cancellation of this request
             body: JSON.stringify({
-              model: effectiveAgent.model,
-              workspace: workspaceSlug,
+              workspaceSlug: workspaceSlug,
               threadSlug: threadSlugToUse,
-              // Prefer query for dashboard analytics; fallback to chat for casual greetings
-              mode: resolvedMode,
-              attachments: attachments || [], // Include file attachments from sidebar
-              // Perfect-mirror behavior: forward the user's messages as-is.
-              messages: requestMessages,
+              // Perfect-mirror behavior: forward only the user's raw message
+              message: rawUserMessage,
             }),
           });
 

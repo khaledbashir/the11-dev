@@ -1,60 +1,8 @@
 import { NextRequest } from 'next/server';
-import { AnythingLLMService } from '@/lib/anythingllm';
 
 // Prefer secure server-side env vars; fallback to NEXT_PUBLIC for flexibility in current deployments
 const ANYTHINGLLM_URL = process.env.ANYTHINGLLM_URL || process.env.NEXT_PUBLIC_ANYTHINGLLM_URL;
 const ANYTHINGLLM_API_KEY = process.env.ANYTHINGLLM_API_KEY || process.env.NEXT_PUBLIC_ANYTHINGLLM_API_KEY;
-
-/**
- * Fetch live analytics data for the Analytics Assistant
- * This ensures the AI always has access to current database information
- */
-async function getLiveAnalyticsData(): Promise<string> {
-  try {
-    // Use internal API call (server-to-server)
-    // In Docker: use NEXT_PUBLIC_BASE_URL, in dev: localhost
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const response = await fetch(`${baseUrl}/api/data/analytics-summary`, {
-      cache: 'no-store',
-    });
-    
-    if (!response.ok) {
-      console.error('❌ [Analytics] Failed to fetch:', response.status);
-      return '[Analytics data temporarily unavailable]';
-    }
-
-    const data = await response.json();
-    
-    // Format the data in a way the AI can easily parse
-    return `
-[LIVE DATABASE SNAPSHOT - ${new Date().toLocaleString()}]
-
-OVERVIEW:
-- Total SOWs: ${data.overview.total_sows}
-- Total Investment Value: $${data.overview.total_investment.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-- Average SOW Value: $${data.overview.average_investment.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-- Unique Clients: ${data.overview.unique_clients}
-
-STATUS BREAKDOWN:
-${Object.entries(data.status_breakdown || {}).map(([status, count]) => `- ${status}: ${count}`).join('\n')}
-
-TOP 5 CLIENTS BY VALUE:
-${data.top_clients.map((c: any, i: number) => 
-  `${i + 1}. ${c.client_name}: ${c.sow_count} SOW${c.sow_count > 1 ? 's' : ''}, $${c.total_value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} total`
-).join('\n')}
-
-ALL CLIENTS (sorted by value):
-${data.all_clients.map((c: any) => 
-  `- ${c.client_name}: ${c.sow_count} SOW${c.sow_count > 1 ? 's' : ''}, $${c.total_value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} total, avg $${c.avg_value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`
-).join('\n')}
-
-[END LIVE DATA]
-`;
-  } catch (error: any) {
-    console.error('❌ [Analytics] Exception:', error);
-    return '[Analytics data temporarily unavailable - database error]';
-  }
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -65,188 +13,55 @@ export async function POST(request: NextRequest) {
         { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
-    // ============================================================================
-    // CRITICAL DEBUG: INCOMING /stream-chat PAYLOAD
-    // ============================================================================
+
+    console.log('🔄 [Perfect Mirror] Processing new request...');
+
+    // 🎯 PERFECT MIRROR: Strict Input Validation
     const requestBody = await request.json();
-    // Sanitize messages by removing any injected system prompts
-    const sanitizedForLog = {
-      ...requestBody,
-      messages: Array.isArray(requestBody.messages)
-        ? requestBody.messages.filter((m: any) => m && m.role !== 'system')
-        : requestBody.messages,
-    };
-    const removedSystems = Array.isArray(requestBody.messages)
-      ? requestBody.messages.filter((m: any) => m && m.role === 'system').length
-      : 0;
-    
-    console.log('//////////////////////////////////////////////////');
-    console.log('// CRITICAL DEBUG: INCOMING /stream-chat PAYLOAD //');
-    console.log('//////////////////////////////////////////////////');
-    console.log('FULL REQUEST BODY (sanitized: system messages removed from log):');
-    console.log(JSON.stringify(sanitizedForLog, null, 2));
-    console.log('');
-    if (removedSystems > 0) {
-      console.log(`WARN: Detected and ignored ${removedSystems} system message(s) in incoming payload.`);
-    }
-    console.log('KEY FIELDS:');
-    console.log('  workspace:', sanitizedForLog.workspace);
-    console.log('  workspaceSlug:', sanitizedForLog.workspaceSlug);
-    console.log('  threadSlug:', sanitizedForLog.threadSlug);
-    console.log('  mode:', sanitizedForLog.mode);
-    console.log('  model:', sanitizedForLog.model);
-    console.log('  messages.length:', sanitizedForLog.messages?.length);
-    if (sanitizedForLog.messages && sanitizedForLog.messages.length > 0) {
-      console.log('  messages[0].role:', sanitizedForLog.messages[0].role);
-      console.log('  messages[0].content (first 200 chars):', sanitizedForLog.messages[0].content?.substring(0, 200));
-      console.log('  messages[messages.length-1].role:', sanitizedForLog.messages[sanitizedForLog.messages.length - 1].role);
-      console.log('  messages[messages.length-1].content (first 200 chars):', sanitizedForLog.messages[sanitizedForLog.messages.length - 1].content?.substring(0, 200));
-    }
-    console.log('//////////////////////////////////////////////////');
-    // ============================================================================
-    
-  const body = requestBody;
-  let { messages, workspaceSlug, workspace, threadSlug, mode = 'chat', model } = body;
-    // Guard: strip any system messages from actual processing
-    if (Array.isArray(messages)) {
-      messages = messages.filter((m: any) => m && m.role !== 'system');
-    }
-    
-    // Use 'workspace' if provided, otherwise fall back to 'workspaceSlug'
-    const effectiveWorkspaceSlug = workspace || workspaceSlug;
-    
-    console.log('');
-    console.log('=== WORKSPACE RESOLUTION ===');
-    console.log('workspace param:', workspace);
-    console.log('workspaceSlug param:', workspaceSlug);
-    console.log('effectiveWorkspaceSlug:', effectiveWorkspaceSlug);
-    console.log('');
-    
-    if (!effectiveWorkspaceSlug) {
-      const errorMsg = 'No workspace specified. Must provide workspace or workspaceSlug parameter.';
+    const { workspaceSlug, threadSlug, message } = requestBody;
+
+    // Validate required fields
+    if (!workspaceSlug || typeof workspaceSlug !== 'string') {
       return new Response(
-        JSON.stringify({ error: errorMsg }),
+        JSON.stringify({ error: 'workspaceSlug is required and must be a string' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      const errorMsg = 'No messages provided. Must provide messages array.';
+    if (!message || typeof message !== 'string' || message.trim() === '') {
       return new Response(
-        JSON.stringify({ error: errorMsg }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-    
-  // Get the last user message
-  const lastMessage = messages[messages.length - 1];
-    if (!lastMessage || lastMessage.role !== 'user') {
-      const errorMsg = 'No user message provided. Last message must be from user.';
-      return new Response(
-        JSON.stringify({ error: errorMsg }),
+        JSON.stringify({ error: 'message is required and must be a non-empty string' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    // 🔧 CRITICAL FIX: Include system message in the request for SOW generation
-    // The workspace prompt might not be properly configured, so we need to ensure
-    // the system instructions are included in the messages array
-    let messageToSend: string = typeof lastMessage.content === 'string' ? lastMessage.content : '';
-    
-    if (!messageToSend || typeof messageToSend !== 'string') {
-      const errorMsg = 'Message content must be a non-empty string.';
-      return new Response(
-        JSON.stringify({ error: errorMsg }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // 🔧 CRITICAL FIX: Use OpenAI-compatible endpoint for SOW generation
-    // The workspace chat endpoint doesn't properly handle system messages
-    let endpoint: string;
-    if (effectiveWorkspaceSlug === 'generate') {
-      // Use OpenAI-compatible endpoint for SOW generation to ensure system prompt is included
-      endpoint = `${ANYTHINGLLM_URL}/api/v1/openai/chat/completions`;
-      console.log('🔧 Using OpenAI-compatible endpoint for SOW generation');
-    } else if (threadSlug) {
-      // Thread-based streaming chat (saves to SOW's thread)
-      endpoint = `${ANYTHINGLLM_URL}/api/v1/workspace/${effectiveWorkspaceSlug}/thread/${threadSlug}/stream-chat`;
-    } else {
-      // Workspace-level streaming chat (legacy behavior)
-      endpoint = `${ANYTHINGLLM_URL}/api/v1/workspace/${effectiveWorkspaceSlug}/stream-chat`;
-    }
-
-    // NOTE: Runtime injection of system prompts has been removed.
-    // The AnythingLLM workspace configuration (admin) must contain the
-    // appropriate system prompt for each workspace (eg. `generate`).
-    // This route now acts as a "perfect mirror" conduit and forwards the
-    // provided `messages` array (or `message`) directly to AnythingLLM.
-
-    // 🎯 CRITICAL: For master dashboard workspace, inject live analytics data
-    // This ensures the AI has access to the SAME data the UI shows
-    const isMasterDashboard = effectiveWorkspaceSlug === 'sow-master-dashboard';
-    
-    if (isMasterDashboard) {
-      console.log('📊 [Master Dashboard] Fetching live analytics data to inject...');
-      const liveData = await getLiveAnalyticsData();
-      
-      // Prepend the live data to the user's message
-      // The AI will see this data as context for every question
-      messageToSend = `${liveData}\n\nUser Question: ${messageToSend}`;
-      
-      console.log('✅ [Master Dashboard] Live data injected into message');
-    }
-
-    // 🔧 CRITICAL FIX: Handle message content properly
-    let finalMessage = messageToSend;
-    
-    // First, check if it's a JSON object with prompt field
-    try {
-      const parsed = JSON.parse(messageToSend);
-      if (parsed && typeof parsed === 'object' && parsed.prompt) {
-        finalMessage = parsed.prompt;
-        console.log('📝 Extracted prompt from JSON:', finalMessage.substring(0, 200));
+    // Validate message is plain string (no JSON objects)
+    const rawMessage = message.trim();
+    if (rawMessage.startsWith('{') && rawMessage.endsWith('}')) {
+      try {
+        JSON.parse(rawMessage);
+        return new Response(
+          JSON.stringify({ error: 'message must be plain text, not JSON' }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+      } catch {
+        // Not JSON, continue
       }
-    } catch (e) {
-      // Not JSON, use as-is
     }
-    
-    // Then, check if it's double-encoded JSON (common issue in the logs)
-    try {
-      const doubleParsed = JSON.parse(finalMessage);
-      if (doubleParsed && typeof doubleParsed === 'object' && doubleParsed.prompt) {
-        finalMessage = doubleParsed.prompt;
-        console.log('📝 Extracted prompt from double-encoded JSON:', finalMessage.substring(0, 200));
-      }
-    } catch (e) {
-      // Not double-encoded, continue with current message
-    }
-    
-    const requestStartTime = Date.now();
-    console.log('');
-    console.log('=== ABOUT TO SEND TO ANYTHINGLLM ===');
-    console.log('⏱️ Request Start Time:', new Date(requestStartTime).toISOString());
-    console.log('Endpoint:', endpoint);
-    console.log('Workspace:', effectiveWorkspaceSlug);
-    console.log('Mode:', mode);
-    console.log('ThreadSlug:', threadSlug);
-    console.log('');
-    console.log('⚠️  CRITICAL: The system prompt for this workspace is configured in AnythingLLM.');
-    console.log('⚠️  This route does NOT inject prompts - it relies on workspace configuration.');
-    console.log('⚠️  If responses are generic, check the workspace settings in AnythingLLM admin.');
-    console.log('');
-    console.log('Message to send (first 500 chars):');
-    console.log(finalMessage.substring(0, 500));
-    console.log('...');
-    console.log('=== END DEBUG ===');
-    console.log('');
-    
-    const fetchStartTime = Date.now();
-    console.log(`⏱️ [TIMING] Fetch started at ${new Date(fetchStartTime).toISOString()}`);
 
-    // 🔧 LLM provider is configured in AnythingLLM UI - no override here
-    // The workspace uses the provider/model set in AnythingLLM admin
+    console.log('✅ [Perfect Mirror] Input validation passed');
+    console.log('  workspaceSlug:', workspaceSlug);
+    console.log('  threadSlug:', threadSlug || '(none)');
+    console.log('  message (first 100 chars):', rawMessage.substring(0, 100));
 
+    // 🎯 PERFECT MIRROR: Native AnythingLLM Endpoint Selection
+    const endpoint = threadSlug
+      ? `${ANYTHINGLLM_URL}/api/v1/workspace/${workspaceSlug}/thread/${threadSlug}/stream-chat`
+      : `${ANYTHINGLLM_URL}/api/v1/workspace/${workspaceSlug}/stream-chat`;
+
+    console.log('🎯 [Perfect Mirror] Forwarding to native endpoint:', endpoint);
+
+    // 🎯 PERFECT MIRROR: Direct Forwarding with Canonical Shape
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -254,53 +69,28 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        // 🔧 CRITICAL FIX: Use OpenAI-compatible format for generate workspace
-        ...(effectiveWorkspaceSlug === 'generate' ? {
-          model: "anythingllm",
-          messages: messages, // Include system prompt in messages array
-        } : {
-          message: finalMessage,
-          mode, // 'chat' or 'query' (provided by caller)
-        }),
+        message: rawMessage,
+        mode: 'chat'
       }),
     });
 
-    const fetchEndTime = Date.now();
-    console.log(`⏱️ [TIMING] Fetch completed in ${fetchEndTime - fetchStartTime}ms`);
-
     if (!response.ok) {
       const errorText = await response.text();
-      
-      // 🔍 ENHANCED ERROR LOGGING
-      console.error('❌ ❌ ❌ ANYTHINGLLM ERROR ❌ ❌ ❌');
-      console.error('Status:', response.status, response.statusText);
-      console.error('Endpoint:', endpoint);
-      console.error('Workspace:', effectiveWorkspaceSlug);
-      console.error('Thread Slug:', threadSlug);
-      console.error('Mode:', mode);
-      console.error('Error Response:', errorText);
-      console.error('❌ ❌ ❌ END ERROR ❌ ❌ ❌');
-      
-      // Special logging for 401
-      if (response.status === 401) {
-        // Silently fail for 401 - do not expose auth details
-      }
+      console.error('❌ [Perfect Mirror] AnythingLLM API error:', response.status, errorText);
       
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: `AnythingLLM API error: ${response.statusText}`,
-          details: errorText.substring(0, 500), // Increased from 200 to 500
-          status: response.status,
-          endpoint: endpoint, // Include endpoint in error response
-          workspace: effectiveWorkspaceSlug,
-          threadSlug: threadSlug
+          details: errorText.substring(0, 500),
+          status: response.status
         }),
         { status: response.status, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
+    console.log('✅ [Perfect Mirror] Forwarding successful, establishing stream...');
+
     // Return the SSE stream directly to the client
-    // Set up proper SSE headers
     const headers = new Headers({
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache, no-transform',
@@ -311,84 +101,51 @@ export async function POST(request: NextRequest) {
     // Create a TransformStream to pass through the SSE data
     const { readable, writable } = new TransformStream();
     const writer = writable.getWriter();
-    const encoder = new TextEncoder();
 
     // Start reading from AnythingLLM stream and writing to our stream
     (async () => {
       try {
         if (!response.body) {
-          console.error('❌ [STREAM] No response body from AnythingLLM');
+          console.error('❌ [Perfect Mirror] No response body from AnythingLLM');
           await writer.close();
           return;
         }
 
-        const streamStartTime = Date.now();
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
-        let totalChunks = 0;
-        let totalBytes = 0;
-        let firstChunkTime: number | null = null;
-
-        console.log(`🌊 [STREAM] Starting to read from AnythingLLM at ${new Date(streamStartTime).toISOString()}...`);
 
         while (true) {
           const { done, value } = await reader.read();
 
           if (done) {
-            const streamEndTime = Date.now();
-            console.log(`✅ [STREAM] Complete - ${totalChunks} chunks, ${totalBytes} bytes total, took ${streamEndTime - streamStartTime}ms`);
-            if (firstChunkTime) {
-              console.log(`⏱️ [TIMING] First chunk received after ${firstChunkTime - streamStartTime}ms`);
-            }
+            console.log('✅ [Perfect Mirror] Stream completed');
             await writer.close();
             break;
           }
 
-          if (!firstChunkTime) {
-            firstChunkTime = Date.now();
-            console.log(`⏱️ [TIMING] First chunk received after ${firstChunkTime - streamStartTime}ms`);
-          }
+          buffer += decoder.decode(value, { stream: true });
 
-          totalChunks++;
-          totalBytes += value.length;
-
-          // Decode the chunk with better error handling
-          let chunk;
-          try {
-            chunk = decoder.decode(value, { stream: true });
-          } catch (decodeError) {
-            console.warn('⚠️ [STREAM] Decode error, using replacement:', decodeError);
-            chunk = decoder.decode(value, { stream: false });
-          }
-
-          // Add to buffer
-          buffer += chunk;
-
-          // Process complete SSE lines (more efficient than splitting)
+          // Process complete SSE lines
           let lineEndIndex;
           while ((lineEndIndex = buffer.indexOf('\n')) !== -1) {
             const line = buffer.substring(0, lineEndIndex);
             buffer = buffer.substring(lineEndIndex + 1);
 
             if (line.trim()) {
-              // Log first few chunks for debugging
-              if (totalChunks <= 3) {
-                console.log(`📦 [STREAM] Chunk ${totalChunks}: ${line.substring(0, 100)}...`);
-              }
-              // Forward SSE line to client immediately (no batching)
-              await writer.write(encoder.encode(line + '\n'));
+              await writer.write(new TextEncoder().encode(line + '\n'));
             }
           }
         }
       } catch (error) {
-        console.error('❌ [STREAM] Error:', error);
+        console.error('❌ [Perfect Mirror] Stream error:', error);
         await writer.abort(error);
       }
     })();
 
     return new Response(readable, { headers });
   } catch (error) {
+    console.error('❌ [Perfect Mirror] Internal server error:', error);
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
