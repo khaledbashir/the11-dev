@@ -222,9 +222,9 @@ export function StreamingThoughtAccordion({
   // If only JSON block (no narrative), just show the accordion
   if (!actualContent && jsonBlock) {
     return (
-      <div className="w-full space-y-2">
+      <div className="w-full space-y-2 overflow-x-hidden">
         <details
-          className="border border-[#20e28f] rounded-lg overflow-hidden bg-[#0a0a0a] group cursor-pointer"
+          className="border border-[#20e28f] rounded-lg overflow-hidden bg-[#0a0a0a] group cursor-pointer overflow-x-hidden"
           open={isOpen}
           onToggle={(e) => setIsOpen((e.target as HTMLDetailsElement).open)}
         >
@@ -234,8 +234,8 @@ export function StreamingThoughtAccordion({
             <span>Structured JSON</span>
             <span className="text-xs text-gray-400 ml-auto">Pricing Data</span>
           </summary>
-          <div className="px-4 py-3 bg-[#000000]/50 border-t border-[#20e28f]/30">
-            <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap break-words max-h-[400px] overflow-y-auto mb-3">
+          <div className="px-4 py-3 bg-[#000000]/50 border-t border-[#20e28f]/30 overflow-x-hidden">
+            <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap break-words max-h-[400px] overflow-y-auto overflow-x-hidden mb-3 w-full max-w-full" style={{ wordBreak: 'break-all', overflowWrap: 'break-word' }}>
               {JSON.stringify(jsonBlock, null, 2)}
             </pre>
             <Button
@@ -256,9 +256,9 @@ export function StreamingThoughtAccordion({
   // If only thinking (no narrative or JSON), show just the thinking accordion
   if (!actualContent && thinking) {
     return (
-      <div className="w-full space-y-3">
+      <div className="w-full max-w-full space-y-3 overflow-hidden">
         <details
-          className="border border-[#1b5e5e] rounded-lg overflow-hidden bg-[#0a0a0a] group cursor-pointer"
+          className="border border-[#1b5e5e] rounded-lg overflow-hidden bg-[#0a0a0a] group cursor-pointer w-full max-w-full"
           open={isOpen}
           onToggle={(e) => setIsOpen((e.target as HTMLDetailsElement).open)}
         >
@@ -290,11 +290,11 @@ export function StreamingThoughtAccordion({
 
   // If thinking + narrative (with or without JSON): render full layout
   return (
-    <div className="w-full space-y-3">
+    <div className="w-full max-w-full space-y-3 overflow-hidden">
       {/* Thinking Accordion */}
       {thinking && (
         <details
-          className="border border-[#1b5e5e] rounded-lg overflow-hidden bg-[#0a0a0a] group cursor-pointer"
+          className="border border-[#1b5e5e] rounded-lg overflow-hidden bg-[#0a0a0a] group cursor-pointer w-full max-w-full"
           open={isOpen}
           onToggle={(e) => setIsOpen((e.target as HTMLDetailsElement).open)}
         >
@@ -367,9 +367,9 @@ export function StreamingThoughtAccordion({
                   <div className="relative group">
                     <code className={`bg-[#0a0a0a] text-[#20e28f] block p-3 rounded text-xs font-mono ${
                       isJsonBlock 
-                        ? 'overflow-x-auto pr-20 mb-2 border border-[#1b5e5e]' 
+                        ? 'overflow-x-hidden overflow-y-auto max-h-[300px] pr-20 mb-2 border border-[#1b5e5e] w-full max-w-full break-words' 
                         : 'overflow-x-auto mb-2 border border-[#1b5e5e]'
-                    }`} {...props}>
+                    }`} style={isJsonBlock ? { wordBreak: 'break-all', overflowWrap: 'break-word' } : {}} {...props}>
                       {children}
                     </code>
                     {isJsonBlock && (
@@ -410,7 +410,7 @@ export function StreamingThoughtAccordion({
           {/* JSON Accordion at the bottom if present */}
           {jsonBlock && (
             <details
-              className="border border-[#20e28f] rounded-lg overflow-hidden bg-[#0a0a0a] group mt-4 cursor-pointer"
+              className="border border-[#20e28f] rounded-lg overflow-hidden bg-[#0a0a0a] group mt-4 cursor-pointer w-full max-w-full overflow-x-hidden"
               open={false}
               onToggle={(e) => setIsOpen((e.target as HTMLDetailsElement).open)}
             >
@@ -420,8 +420,8 @@ export function StreamingThoughtAccordion({
                 <span>Structured JSON - Pricing Data</span>
                 <span className="text-xs text-gray-400 ml-auto">Click to expand</span>
               </summary>
-              <div className="px-4 py-3 bg-[#000000]/50 border-t border-[#20e28f]/30 space-y-3">
-                <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap break-words max-h-[400px] overflow-y-auto">
+              <div className="px-4 py-3 bg-[#000000]/50 border-t border-[#20e28f]/30 space-y-3 overflow-x-hidden">
+                <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap break-words max-h-[400px] overflow-y-auto overflow-x-hidden w-full max-w-full" style={{ wordBreak: 'break-all', overflowWrap: 'break-word' }}>
                   {JSON.stringify(jsonBlock, null, 2)}
                 </pre>
                 <Button
