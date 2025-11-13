@@ -58,6 +58,23 @@ export function StreamingThoughtAccordion({
       hasAnalyzeBlock: content?.includes('[ANALYZE & CLASSIFY]') || false,
     });
 
+    let processedContent = content;
+
+    // 🆕 Check if content is JSON with markdownContent (for SOW responses)
+    try {
+      const parsed = JSON.parse(content);
+      if (parsed && typeof parsed === 'object' && parsed.markdownContent) {
+        console.log('✅ [Accordion] Detected SOW JSON response, using markdownContent');
+        processedContent = parsed.markdownContent;
+        // Also extract financialReasoning as thinking if present
+        if (parsed.financialReasoning) {
+          processedContent += '\n\n**Financial Reasoning:**\n' + parsed.financialReasoning;
+        }
+      }
+    } catch (e) {
+      // Not JSON, continue with normal processing
+    }
+
     // Support multiple internal thinking tag variants
     // CRITICAL: Build regex patterns correctly to match thinking tags
     const variants = [
@@ -68,7 +85,7 @@ export function StreamingThoughtAccordion({
 
     // Collect all thinking contents in order
     let extractedThinkingParts: string[] = [];
-    let cleanedContent = content;
+    let cleanedContent = processedContent;
 
     for (const v of variants) {
       // Use matchAll to get all matches at once (more reliable than regex.exec loop)
