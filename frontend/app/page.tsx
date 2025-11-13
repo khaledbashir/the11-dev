@@ -856,11 +856,139 @@ export default function Page() {
               doc.id === currentDocId ? { ...doc, threadSlug: threadSlugToUse } : doc
             ));
 
+<<<<<<< HEAD
             // CRITICAL: Persist the new thread slug to the database
             await fetch(`/api/sow/${currentDocId}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ threadSlug: threadSlugToUse }),
+=======
+        if (isDashboardMode && useAnythingLLM) {
+          // Dashboard mode routing
+          if (dashboardChatTarget === WORKSPACE_CONFIG.dashboard.slug) {
+            endpoint = '/api/anythingllm/stream-chat';
+            workspaceSlug = WORKSPACE_CONFIG.dashboard.slug;
+          } else {
+            endpoint = '/api/anythingllm/stream-chat';
+            workspaceSlug = dashboardChatTarget;
+          }
+        } else {
+          // Editor mode routing — always AnythingLLM via the SOW's workspace
+          endpoint = '/api/anythingllm/stream-chat';
+          workspaceSlug = documents.find(d => d.id === currentDocId)?.workspaceSlug;
+        }
+
+        // 🎯 USE THE SOW'S ACTUAL WORKSPACE (NOT FORCED GEN-THE-ARCHITECT)
+        // Each SOW has its thread in its client workspace (e.g., "hello", "pho", etc.)
+        // Don't force gen-the-architect - that breaks thread routing!
+        if (!isDashboardMode && useAnythingLLM && currentSOWId) {
+          const currentSOW = documents.find(d => d.id === currentSOWId);
+          if (currentSOW?.workspaceSlug) {
+            workspaceSlug = currentSOW.workspaceSlug; // Use the SOW's actual workspace
+            console.log(`🎯 [SOW Chat] Using SOW workspace: ${workspaceSlug}`);
+          }
+        }
+
+        console.log('🎯 [Chat Routing]', {
+          isDashboardMode,
+          useAnythingLLM,
+          dashboardChatTarget,
+          endpoint,
+          workspaceSlug,
+          routeType: isDashboardMode
+            ? (dashboardChatTarget === WORKSPACE_CONFIG.dashboard.slug ? 'MASTER_DASHBOARD' : 'CLIENT_WORKSPACE')
+            : 'SOW_GENERATION'
+        });
+
+        // 🌊 STREAMING SUPPORT: Use OpenAI-compatible endpoint for AnythingLLM
+        const shouldStream = useAnythingLLM;
+        // Fix: Use OpenAI-compatible endpoint instead of workspace chat endpoint
+        const streamEndpoint = endpoint.includes('/stream-chat') ? endpoint : endpoint.replace('/chat', '/stream-chat');
+
+        if (shouldStream) {
+          // Decide when to enforce SOW narrative+JSON contract
+          const lastUserMessage = newMessages[newMessages.length - 1]?.content || '';
+          const messageLength = lastUserMessage.trim().length;
+          const sowKeywords = /(\bstatement of work\b|\bsow\b|\bscope\b|\bdeliverables\b|\bpricing\b|\bbudget\b|\bestimate\b|\bhours\b|\broles\b)/i;
+          // Do not append per-message contracts; rely on workspace/system prompt
+          console.log(`📊 [Contract Check] Message length: ${messageLength}, keywordMatch: ${sowKeywords.test(lastUserMessage)}, isDashboard: ${isDashboardMode}`);
+          // 🎯 PERFECT MIRROR: Only send the user's current message as a raw string
+          const rawUserMessage = message.trim();
+          
+          // Validate that we have a valid message
+          if (!rawUserMessage || typeof rawUserMessage !== 'string') {
+            console.error('❌ [Perfect Mirror] Invalid message - must be a non-empty string');
+            toast.error('Message must be a non-empty string');
+            return;
+          }
+
+          // ✨ STREAMING MODE: Real-time response with thinking display
+          const aiMessageId = `msg${Date.now() + 1}`;
+
+          // Create initial empty AI message
+          const apiCallStartTime = Date.now();
+          console.log(`⏱️ [API] About to call streaming endpoint at ${new Date(apiCallStartTime).toISOString()}`);
+
+          const initialAIMessage: ChatMessage = {
+            id: aiMessageId,
+            role: 'assistant',
+            content: '',
+            timestamp: Date.now(),
+          };
+          
+          setChatMessages(prev => [...prev, initialAIMessage]);
+          setStreamingMessageId(aiMessageId);
+
+          // Determine thread slug based on mode
+          let threadSlugToUse: string | undefined;
+          if (threadSlugParam) {
+            threadSlugToUse = threadSlugParam || undefined;
+          } else if (!isDashboardMode && currentDocId) {
+            threadSlugToUse = documents.find(d => d.id === currentDocId)?.threadSlug || undefined;
+          }
+
+          // 🛡️ If this is a temp thread, use workspace-level chat
+          if (threadSlugToUse && threadSlugToUse.startsWith('temp-')) {
+            console.log('ℹ️ Temp thread detected; using workspace-level chat for first message');
+            threadSlugToUse = undefined;
+          }
+
+          // Initialize content accumulator for streaming responses
+          let accumulatedContent = '';
+
+          console.log('🔍 [FRONTEND DEBUG] About to send:', {
+            endpoint: streamEndpoint,
+            workspaceSlug,
+            threadSlugToUse,
+            rawUserMessage: typeof rawUserMessage + ': ' + rawUserMessage,
+            body: JSON.stringify({
+              workspaceSlug: workspaceSlug,
+              threadSlug: threadSlugToUse,
+              message: rawUserMessage,
+            })
+          });
+
+          const response = await fetch(streamEndpoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            signal: controller.signal, // 🛑 Allow cancellation of this request
+            body: JSON.stringify({
+              workspaceSlug: workspaceSlug,
+              threadSlug: threadSlugToUse,
+              // Perfect-mirror behavior: forward only the user's raw message
+              message: rawUserMessage,
+            }),
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ Stream-chat API error:', {
+              status: response.status,
+              statusText: response.statusText,
+              errorText: errorText
+>>>>>>> acc30a0 (fix: Replace placeholder THE_ARCHITECT_V6_PROMPT with working SOWcial Garden AI prompt)
             });
 
           } catch (error) {
