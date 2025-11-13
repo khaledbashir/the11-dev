@@ -179,18 +179,18 @@ export async function POST(request: NextRequest) {
     // 🔧 CRITICAL FIX: Always include system prompt for SOW generation workspace
     // This ensures proper AI instructions regardless of workspace configuration
     if (effectiveWorkspaceSlug === 'generate') {
-      // Import THE_ARCHITECT_V4_PROMPT
-      const { THE_ARCHITECT_V4_PROMPT } = await import('@/lib/knowledge-base');
+      // Import THE_ARCHITECT_V6_PROMPT (v6 placeholder is used until full v6 content provided)
+      const { THE_ARCHITECT_V6_PROMPT } = await import('@/lib/knowledge-base');
       
       // Always add system message at the beginning for generate workspace
       messages = [
-        { role: 'system', content: THE_ARCHITECT_V4_PROMPT },
+        { role: 'system', content: THE_ARCHITECT_V6_PROMPT },
         ...messages
       ];
       
-      console.log('🔧 [SYSTEM PROMPT] Added THE_ARCHITECT_V4_PROMPT to messages array');
-      console.log(`   Prompt length: ${THE_ARCHITECT_V4_PROMPT.length} characters`);
-      console.log(`   Contains "v4.1 - Self-Contained Multi-Scope": ${THE_ARCHITECT_V4_PROMPT.includes('v4.1 - Self-Contained Multi-Scope')}`);
+      console.log('🔧 [SYSTEM PROMPT] Added THE_ARCHITECT_V6_PROMPT to messages array');
+      console.log(`   Prompt length: ${THE_ARCHITECT_V6_PROMPT.length} characters`);
+      console.log(`   Contains "v6.0 (Hybrid)": ${THE_ARCHITECT_V6_PROMPT.includes('v6.0')}`);
     }
 
     // 🎯 CRITICAL: For master dashboard workspace, inject live analytics data

@@ -38,7 +38,7 @@ import { extractSOWStructuredJson } from "@/lib/export-utils";
 import { anythingLLM } from "@/lib/anythingllm";
 import { ROLES } from "@/lib/rateCard";
 import { calculatePricingTable } from "@/lib/pricingCalculator";
-import { THE_ARCHITECT_V4_PROMPT } from "@/lib/knowledge-base";
+import { THE_ARCHITECT_V6_PROMPT } from "@/lib/knowledge-base";
 import { getWorkspaceForAgent, WORKSPACE_CONFIG } from "@/lib/workspace-config";
 import { prepareSOWForNewPDF } from "@/lib/sow-pdf-utils";
 
@@ -4461,7 +4461,7 @@ Ask me questions to get business insights, such as:
               attachments: attachments || [], // Include file attachments from sidebar
               // Fix: Include system prompt in messages array for OpenAI-compatible endpoint
               messages: [
-                { role: "system", content: THE_ARCHITECT_V4_PROMPT },
+                { role: "system", content: THE_ARCHITECT_V6_PROMPT },
                 ...requestMessages
               ],
             }),

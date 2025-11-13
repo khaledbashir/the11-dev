@@ -661,3 +661,10 @@ Your JSON output MUST contain either:
 
 **IF ANY VALIDATION FAILS: DO NOT SUBMIT - FIX IT FIRST**
 `;
+
+// Placeholder for The Architect System Prompt v6.0 (Hybrid).
+// NOTE: Replace this placeholder with the validated full v6.0 prompt
+// when available. This placeholder ensures builds do not fail due to
+// missing symbol references and preserves runtime behavior until the
+// complete v6.0 content is provided.
+export const THE_ARCHITECT_V6_PROMPT = `The Architect System Prompt v6.0 (Hybrid)`;
