@@ -380,7 +380,7 @@ const transformScopesToPDFFormat = (multiScopeData: {
       description: scope.scope_description,
       items: items,
       deliverables: scope.deliverables || [],
-      assumptions: uniqueAssumptions // Use deduplicated assumptions for all scopes
+      assumptions: scope.assumptions || [] // Use scope-specific assumptions instead of deduplicated ones
     };
   });
 
@@ -4389,8 +4389,9 @@ Ask me questions to get business insights, such as:
             : 'SOW_GENERATION'
         });
 
-        // 🌊 STREAMING SUPPORT: Use stream-chat endpoint for AnythingLLM
+        // 🌊 STREAMING SUPPORT: Use OpenAI-compatible endpoint for AnythingLLM
         const shouldStream = useAnythingLLM;
+        // Fix: Use OpenAI-compatible endpoint instead of workspace chat endpoint
         const streamEndpoint = endpoint.includes('/stream-chat') ? endpoint : endpoint.replace('/chat', '/stream-chat');
 
         if (shouldStream) {
@@ -4457,7 +4458,11 @@ Ask me questions to get business insights, such as:
               // Prefer query for dashboard analytics; fallback to chat for casual greetings
               mode: resolvedMode,
               attachments: attachments || [], // Include file attachments from sidebar
-              messages: requestMessages,
+              // Fix: Include system prompt in messages array for OpenAI-compatible endpoint
+              messages: [
+                { role: "system", content: THE_ARCHITECT_V4_PROMPT },
+                ...requestMessages
+              ],
             }),
           });
 

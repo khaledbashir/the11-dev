@@ -148,10 +148,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Pass the user's message through without adding or appending extra instructions.
-    // The workspace's system prompt governs behavior; do not inject per-message rails here.
-    // EXCEPTION: For gen-the-architect workspace, inject the latest THE_ARCHITECT_V4_PROMPT
-    // to ensure it uses the most current version
+    // 🔧 CRITICAL FIX: Include system message in the request for SOW generation
+    // The workspace prompt might not be properly configured, so we need to ensure
+    // the system instructions are included in the messages array
     let messageToSend: string = typeof lastMessage.content === 'string' ? lastMessage.content : '';
     
     if (!messageToSend || typeof messageToSend !== 'string') {
@@ -162,10 +161,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ✅ REMOVED: Double prompt injection
-    // The workspace already has THE_ARCHITECT_V4_PROMPT set as its system prompt
-    // Injecting it again here wastes tokens and causes redundancy
-    // The AnythingLLM workspace will use its configured prompt automatically
+    // 🔧 CRITICAL FIX: Use OpenAI-compatible endpoint for SOW generation
+    // The workspace chat endpoint doesn't properly handle system messages
+    let endpoint: string;
+    if (effectiveWorkspaceSlug === 'generate') {
+      // Use OpenAI-compatible endpoint for SOW generation to ensure system prompt is included
+      endpoint = `${ANYTHINGLLM_URL}/api/v1/openai/chat/completions`;
+      console.log('🔧 Using OpenAI-compatible endpoint for SOW generation');
+    } else if (threadSlug) {
+      // Thread-based streaming chat (saves to SOW's thread)
+      endpoint = `${ANYTHINGLLM_URL}/api/v1/workspace/${effectiveWorkspaceSlug}/thread/${threadSlug}/stream-chat`;
+    } else {
+      // Workspace-level streaming chat (legacy behavior)
+      endpoint = `${ANYTHINGLLM_URL}/api/v1/workspace/${effectiveWorkspaceSlug}/stream-chat`;
+    }
+
+    // 🔧 CRITICAL FIX: Always include system prompt for SOW generation workspace
+    // This ensures proper AI instructions regardless of workspace configuration
+    if (effectiveWorkspaceSlug === 'generate') {
+      // Import THE_ARCHITECT_V4_PROMPT
+      const { THE_ARCHITECT_V4_PROMPT } = await import('@/lib/knowledge-base');
+      
+      // Always add system message at the beginning for generate workspace
+      messages = [
+        { role: 'system', content: THE_ARCHITECT_V4_PROMPT },
+        ...messages
+      ];
+      
+      console.log('🔧 [SYSTEM PROMPT] Added THE_ARCHITECT_V4_PROMPT to messages array');
+      console.log(`   Prompt length: ${THE_ARCHITECT_V4_PROMPT.length} characters`);
+      console.log(`   Contains "v4.1 - Self-Contained Multi-Scope": ${THE_ARCHITECT_V4_PROMPT.includes('v4.1 - Self-Contained Multi-Scope')}`);
+    }
 
     // 🎯 CRITICAL: For master dashboard workspace, inject live analytics data
     // This ensures the AI has access to the SAME data the UI shows
@@ -182,16 +208,31 @@ export async function POST(request: NextRequest) {
       console.log('✅ [Master Dashboard] Live data injected into message');
     }
 
-    // Determine the endpoint based on whether this is thread-based chat
-    let endpoint: string;
-  if (threadSlug) {
-      // Thread-based streaming chat (saves to SOW's thread)
-      endpoint = `${ANYTHINGLLM_URL}/api/v1/workspace/${effectiveWorkspaceSlug}/thread/${threadSlug}/stream-chat`;
-    } else {
-      // Workspace-level streaming chat (legacy behavior)
-      endpoint = `${ANYTHINGLLM_URL}/api/v1/workspace/${effectiveWorkspaceSlug}/stream-chat`;
+    // 🔧 CRITICAL FIX: Handle message content properly
+    let finalMessage = messageToSend;
+    
+    // First, check if it's a JSON object with prompt field
+    try {
+      const parsed = JSON.parse(messageToSend);
+      if (parsed && typeof parsed === 'object' && parsed.prompt) {
+        finalMessage = parsed.prompt;
+        console.log('📝 Extracted prompt from JSON:', finalMessage.substring(0, 200));
+      }
+    } catch (e) {
+      // Not JSON, use as-is
     }
-
+    
+    // Then, check if it's double-encoded JSON (common issue in the logs)
+    try {
+      const doubleParsed = JSON.parse(finalMessage);
+      if (doubleParsed && typeof doubleParsed === 'object' && doubleParsed.prompt) {
+        finalMessage = doubleParsed.prompt;
+        console.log('📝 Extracted prompt from double-encoded JSON:', finalMessage.substring(0, 200));
+      }
+    } catch (e) {
+      // Not double-encoded, continue with current message
+    }
+    
     const requestStartTime = Date.now();
     console.log('');
     console.log('=== ABOUT TO SEND TO ANYTHINGLLM ===');
@@ -206,22 +247,10 @@ export async function POST(request: NextRequest) {
     console.log('⚠️  If responses are generic, check the workspace settings in AnythingLLM admin.');
     console.log('');
     console.log('Message to send (first 500 chars):');
-    console.log(messageToSend.substring(0, 500));
+    console.log(finalMessage.substring(0, 500));
     console.log('...');
     console.log('=== END DEBUG ===');
     console.log('');
-    
-    // 🔧 Handle message content: if JSON, extract the prompt
-    let finalMessage = messageToSend;
-    try {
-      const parsed = JSON.parse(messageToSend);
-      if (parsed && typeof parsed === 'object' && parsed.prompt) {
-        finalMessage = parsed.prompt;
-        console.log('📝 Extracted prompt from JSON:', finalMessage.substring(0, 200));
-      }
-    } catch (e) {
-      // Not JSON, use as-is
-    }
     
     const fetchStartTime = Date.now();
     console.log(`⏱️ [TIMING] Fetch started at ${new Date(fetchStartTime).toISOString()}`);
@@ -236,8 +265,14 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        message: finalMessage,
-        mode, // 'chat' or 'query' (provided by caller)
+        // 🔧 CRITICAL FIX: Use OpenAI-compatible format for generate workspace
+        ...(effectiveWorkspaceSlug === 'generate' ? {
+          model: "anythingllm",
+          messages: messages, // Include system prompt in messages array
+        } : {
+          message: finalMessage,
+          mode, // 'chat' or 'query' (provided by caller)
+        }),
       }),
     });
 
