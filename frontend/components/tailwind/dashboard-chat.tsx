@@ -12,6 +12,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { StreamingThoughtAccordion } from "./streaming-thought-accordion";
 import { cleanSOWContent } from "@/lib/export-utils";
+import { JsonRenderer } from "./ui/json-renderer";
 
 interface ChatMessage {
   id: string;
@@ -505,7 +506,7 @@ export default function DashboardChat({
           ) : (
             (showAllMessages ? chatMessages : chatMessages.slice(-MAX_MESSAGES)).map((msg) => {
               const cleaned = cleanSOWContent(msg.content);
-              const segments = msg.role === 'assistant' ? [] : [{ type: 'text' as const, content: msg.content }];
+              const segments = msg.role === 'assistant' ? [{ type: 'text' as const, content: cleaned }] : [{ type: 'text' as const, content: msg.content }];
               return (
                 <div key={msg.id} className={`flex min-w-0 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`relative w-full max-w-[85%] min-w-0 rounded-xl px-4 py-3 break-words whitespace-pre-wrap overflow-hidden ${
@@ -523,16 +524,25 @@ export default function DashboardChat({
                       </div>
                     )}
                     <div className="space-y-3">
-                      {segments.map((seg, i) => (
+                      {segments.map((seg, i) => {
+                        // Check if content looks like JSON and should use JsonRenderer
+                        const isJsonContent = seg.content.trim().startsWith('{') || seg.content.trim().startsWith('[');
+                        
+                        return (
                         <div
                           key={i}
                           className="prose prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-1 break-words whitespace-pre-wrap prose-pre:whitespace-pre-wrap prose-pre:overflow-x-auto"
                         >
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                            {seg.content}
-                          </ReactMarkdown>
+                          {isJsonContent ? (
+                            <JsonRenderer content={seg.content} />
+                          ) : (
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {seg.content}
+                            </ReactMarkdown>
+                          )}
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                     <div className="flex items-center gap-2 mt-2 sticky bottom-0 z-10 bg-[#1b1b1e]/80 backdrop-blur-sm px-2 py-1 rounded-md border-t border-[#0E2E33]">
                       <span className="text-xs opacity-60 flex-1">{formatTimestamp(msg.timestamp)}</span>

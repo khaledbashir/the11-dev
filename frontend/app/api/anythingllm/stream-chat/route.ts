@@ -18,7 +18,13 @@ export async function POST(request: NextRequest) {
 
     // 🎯 PERFECT MIRROR: Strict Input Validation
     const requestBody = await request.json();
+    console.log('🔍 [DEBUG] Raw request body:', JSON.stringify(requestBody));
     const { workspaceSlug, threadSlug, message } = requestBody;
+    console.log('🔍 [DEBUG] Extracted values:', {
+      workspaceSlug: typeof workspaceSlug + ': ' + workspaceSlug,
+      threadSlug: typeof threadSlug + ': ' + threadSlug,
+      message: typeof message + ': ' + (typeof message === 'string' ? message.substring(0, 50) + '...' : JSON.stringify(message).substring(0, 50) + '...')
+    });
 
     // CRITICAL: Validate that message is a primitive string, reject any objects
     if (!workspaceSlug || typeof workspaceSlug !== 'string') {
@@ -53,10 +59,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // CRITICAL: Reject any JSON objects in message field
+    // CRITICAL: Reject only if the ENTIRE message is a valid JSON object or array
     const rawMessage = message.trim();
-    if (rawMessage.startsWith('{') || rawMessage.startsWith('[')) {
-      console.error('❌ [Perfect Mirror] Rejecting JSON object/array in message field:', rawMessage.substring(0, 100));
+    
+    // Check if the entire message is a valid JSON object or array
+    // We need to be more careful here - only reject if it's actually valid JSON
+    // not just text that happens to start with { or [
+    let isValidJSON = false;
+    try {
+      const parsed = JSON.parse(rawMessage);
+      // Only consider it valid JSON if it's an object or array (not strings, numbers, etc.)
+      isValidJSON = (parsed !== null && typeof parsed === 'object') || Array.isArray(parsed);
+    } catch (e) {
+      // If it can't be parsed as JSON, it's not valid JSON
+      isValidJSON = false;
+    }
+    
+    if (isValidJSON) {
+      console.error('❌ [Perfect Mirror] Rejecting valid JSON object/array in message field:', rawMessage.substring(0, 100));
       return new Response(
         JSON.stringify({ error: 'message must be plain text, not JSON objects or arrays' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }

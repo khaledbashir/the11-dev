@@ -4446,6 +4446,18 @@ Ask me questions to get business insights, such as:
           // Initialize content accumulator for streaming responses
           let accumulatedContent = '';
 
+          console.log('🔍 [FRONTEND DEBUG] About to send:', {
+            endpoint: streamEndpoint,
+            workspaceSlug,
+            threadSlugToUse,
+            rawUserMessage: typeof rawUserMessage + ': ' + rawUserMessage,
+            body: JSON.stringify({
+              workspaceSlug: workspaceSlug,
+              threadSlug: threadSlugToUse,
+              message: rawUserMessage,
+            })
+          });
+
           const response = await fetch(streamEndpoint, {
             method: "POST",
             headers: {

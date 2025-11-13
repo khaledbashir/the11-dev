@@ -14,6 +14,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { StreamingThoughtAccordion } from "./streaming-thought-accordion";
 import { cleanSOWContent } from "@/lib/export-utils";
+import { JsonRenderer } from "./ui/json-renderer";
 
 interface ChatMessage {
   id: string;
@@ -337,9 +338,7 @@ export default function WorkspaceChat({
       workspaceSlug: editorWorkspaceSlug,
     });
 
-    onSendMessage(JSON.stringify({
-      prompt: chatInput,
-    }), threadSlug, attachments);
+    onSendMessage(chatInput, threadSlug, attachments);
     setChatInput("");
     setAttachments([]);
   };
@@ -592,7 +591,7 @@ export default function WorkspaceChat({
                 (showAllMessages ? chatMessages : chatMessages.slice(-MAX_MESSAGES)).map(msg => {
               const shouldShowButton = msg.role === 'assistant';
               const cleaned = cleanSOWContent(msg.content);
-              const segments = msg.role === 'assistant' ? [] : [{ type: 'text' as const, content: msg.content }];
+              const segments = msg.role === 'assistant' ? [{ type: 'text' as const, content: cleaned }] : [{ type: 'text' as const, content: msg.content }];
               
               return (
                 <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -624,15 +623,22 @@ export default function WorkspaceChat({
                     
                     {/* Content rendering for user messages only */}
                     <div className="space-y-3">
-                      {segments.map((seg, i) => (
-                        <ReactMarkdown
-                          key={i}
-                          remarkPlugins={[remarkGfm]}
-                          className="prose prose-invert max-w-none text-sm break-words whitespace-pre-wrap prose-pre:whitespace-pre-wrap prose-pre:overflow-x-auto"
-                        >
-                          {seg.content}
-                        </ReactMarkdown>
-                      ))}
+                      {segments.map((seg, i) => {
+                        // Check if content looks like JSON and should use JsonRenderer
+                        const isJsonContent = seg.content.trim().startsWith('{') || seg.content.trim().startsWith('[');
+                        
+                        return (
+                          <div key={i} className="prose prose-invert max-w-none text-sm break-words whitespace-pre-wrap prose-pre:whitespace-pre-wrap prose-pre:overflow-x-auto">
+                            {isJsonContent ? (
+                              <JsonRenderer content={seg.content} />
+                            ) : (
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {seg.content}
+                              </ReactMarkdown>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                     
                     <div className="flex gap-2 mt-4 items-center">
