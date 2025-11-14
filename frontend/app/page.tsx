@@ -5654,9 +5654,6 @@ Ask me questions to get business insights, such as:
                         threadSlugToUse = undefined;
                     }
 
-                    // Initialize content accumulator for streaming responses
-                    let accumulatedContent = "";
-
                     console.log("🔍 [FRONTEND DEBUG] About to send:", {
                         endpoint: streamEndpoint,
                         workspaceSlug,
