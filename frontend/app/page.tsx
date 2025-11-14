@@ -6086,16 +6086,17 @@ Ask me questions to get business insights, such as:
                                 >
                                     {currentDoc ? (
                                         <div className="w-full h-full">
-                                            <TailwindAdvancedEditor
-                                                ref={editorRef}
-                                                initialContent={
-                                                    currentDoc.content
-                                                }
-                                                onUpdate={handleUpdateDoc}
-                                            />
-                                            {generatedSow && (
+                                            {generatedSow ? (
                                                 <SowDisplay
                                                     sowData={generatedSow}
+                                                />
+                                            ) : (
+                                                <TailwindAdvancedEditor
+                                                    ref={editorRef}
+                                                    initialContent={
+                                                        currentDoc.content
+                                                    }
+                                                    onUpdate={handleUpdateDoc}
                                                 />
                                             )}
                                         </div>
