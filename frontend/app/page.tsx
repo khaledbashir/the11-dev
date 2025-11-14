@@ -5584,59 +5584,201 @@ Ask me questions to get business insights, such as:
                         : "SOW_GENERATION",
                 });
 
-                // 🎯 USE GENERATE-SOW ENDPOINT FOR EDITOR MODE
+                // 🎯 USE STREAMING FOR EDITOR MODE
                 if (!isDashboardMode && useAnythingLLM) {
-                    // 🎯 GENERATE SOW USING NEW ENDPOINT
+                    // ✨ STREAMING MODE: Real-time response with thinking display
                     const aiMessageId = `msg${Date.now() + 1}`;
                     const rawUserMessage = message.trim();
 
                     console.log(
-                        "🔍 [GENERATE-SOW] Calling generate-sow endpoint",
+                        "🔍 [STREAMING SOW] Calling stream-chat endpoint for SOW generation",
                     );
+
+                    const initialAIMessage: ChatMessage = {
+                        id: aiMessageId,
+                        role: "assistant",
+                        content: "",
+                        timestamp: Date.now(),
+                    };
+
+                    setChatMessages((prev) => [...prev, initialAIMessage]);
+                    setStreamingMessageId(aiMessageId);
+
+                    // Determine thread slug based on mode
+                    let threadSlugToUse: string | undefined;
+                    if (threadSlugParam) {
+                        threadSlugToUse = threadSlugParam || undefined;
+                    } else if (!isDashboardMode && currentDocId) {
+                        threadSlugToUse =
+                            documents.find((d) => d.id === currentDocId)
+                                ?.threadSlug || undefined;
+                    }
+
+                    // 🛡️ If this is a temp thread, use workspace-level chat
+                    if (
+                        threadSlugToUse &&
+                        threadSlugToUse.startsWith("temp-")
+                    ) {
+                        console.log(
+                            "ℹ️ Temp thread detected; using workspace-level chat for first message",
+                        );
+                        threadSlugToUse = undefined;
+                    }
 
                     try {
                         const response = await fetch(
-                            "/api/anythingllm/generate-sow",
+                            "/api/anythingllm/stream-chat",
                             {
                                 method: "POST",
                                 headers: {
                                     "Content-Type": "application/json",
                                 },
+                                signal: controller.signal,
                                 body: JSON.stringify({
                                     message: rawUserMessage,
+                                    workspaceSlug: workspaceSlug || "generate",
+                                    threadSlug: threadSlugToUse,
                                 }),
                             },
                         );
 
                         if (!response.ok) {
-                            const errorResult = await response.json();
-                            throw new Error(
-                                errorResult.error || "The request failed.",
+                            const errorText = await response.text();
+                            console.error("❌ Stream-chat API error:", {
+                                status: response.status,
+                                statusText: response.statusText,
+                                errorText: errorText,
+                            });
+
+                            let errorMessage =
+                                "Sorry, there was an error generating the response.";
+
+                            try {
+                                const errorData = JSON.parse(errorText);
+                                if (errorData.error) {
+                                    errorMessage = `⚠️ ${errorData.error}`;
+                                }
+                            } catch (parseError) {
+                                errorMessage = `⚠️ Error (${response.status}): ${errorText.substring(0, 200)}`;
+                            }
+
+                            setChatMessages((prev) =>
+                                prev.map((msg) =>
+                                    msg.id === aiMessageId
+                                        ? { ...msg, content: errorMessage }
+                                        : msg,
+                                ),
                             );
+                            setStreamingMessageId(null);
+                            return;
                         }
 
-                        const sowData = await response.json();
+                        // Handle streaming response
+                        console.log("📡 Processing streaming response...");
+                        const reader = response.body?.getReader();
+                        const decoder = new TextDecoder();
+
+                        if (!reader) {
+                            console.error(
+                                "❌ No reader available for response body",
+                            );
+                            setStreamingMessageId(null);
+                            return;
+                        }
+
+                        let accumulatedContent = "";
+
+                        while (true) {
+                            const { done, value } = await reader.read();
+
+                            if (done) {
+                                console.log("✅ Streaming complete");
+                                break;
+                            }
+
+                            const chunk = decoder.decode(value, {
+                                stream: true,
+                            });
+                            const lines = chunk.split("\n");
+
+                            for (const line of lines) {
+                                if (line.startsWith("data: ")) {
+                                    const data = line.slice(6).trim();
+
+                                    if (data === "[DONE]") {
+                                        continue;
+                                    }
+
+                                    try {
+                                        const parsed = JSON.parse(data);
+                                        const content =
+                                            parsed.textResponse ||
+                                            parsed.content ||
+                                            "";
+
+                                        if (content) {
+                                            accumulatedContent += content;
+
+                                            // Update the streaming message in real-time
+                                            setChatMessages((prev) =>
+                                                prev.map((msg) =>
+                                                    msg.id === aiMessageId
+                                                        ? {
+                                                              ...msg,
+                                                              content:
+                                                                  accumulatedContent,
+                                                          }
+                                                        : msg,
+                                                ),
+                                            );
+
+                                            console.log(
+                                                "📝 Streaming update:",
+                                                content.substring(0, 50),
+                                            );
+                                        }
+                                    } catch (parseError) {
+                                        // Some lines might not be valid JSON, skip them
+                                        if (data.length > 0) {
+                                            accumulatedContent += data;
+                                            setChatMessages((prev) =>
+                                                prev.map((msg) =>
+                                                    msg.id === aiMessageId
+                                                        ? {
+                                                              ...msg,
+                                                              content:
+                                                                  accumulatedContent,
+                                                          }
+                                                        : msg,
+                                                ),
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                        }
 
                         console.log(
-                            "✅ Received structured SOW data:",
-                            sowData,
+                            "✅ Final streamed content length:",
+                            accumulatedContent.length,
                         );
-                        setGeneratedSow(sowData);
+                        setStreamingMessageId(null);
 
-                        setChatMessages((prev) =>
-                            prev.map((msg) =>
-                                msg.id === aiMessageId
-                                    ? {
-                                          ...msg,
-                                          content:
-                                              "SOW generation complete. The document is now visible in the editor.",
-                                      }
-                                    : msg,
-                            ),
-                        );
-                    } catch (sowError) {
-                        console.error("❌ SOW Generation Error:", sowError);
-                        const errorMessage = `⚠️ An error occurred during SOW generation:\n\n**Error Message:** ${sowError instanceof Error ? sowError.message : String(sowError)}`;
+                        // ⚠️ REMOVED DATABASE SAVE - AnythingLLM handles all message storage
+                    } catch (streamError) {
+                        console.error("❌ Streaming Error:", streamError);
+
+                        // Check if the error is an AbortError (request was cancelled)
+                        if (
+                            streamError instanceof Error &&
+                            streamError.name === "AbortError"
+                        ) {
+                            console.log("ℹ️ Request was cancelled");
+                            setStreamingMessageId(null);
+                            return;
+                        }
+
+                        const errorMessage = `⚠️ An error occurred during streaming:\n\n**Error Message:** ${streamError instanceof Error ? streamError.message : String(streamError)}`;
                         setChatMessages((prev) =>
                             prev.map((msg) =>
                                 msg.id === aiMessageId
@@ -5644,6 +5786,7 @@ Ask me questions to get business insights, such as:
                                     : msg,
                             ),
                         );
+                        setStreamingMessageId(null);
                     }
                 }
             } catch (error) {
