@@ -1101,6 +1101,7 @@ export default function Page() {
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null); // Track which message is streaming
   const [lastUserPrompt, setLastUserPrompt] = useState<string>(''); // 🎯 Track last user message for budget/discount extraction
+  const [generatedSow, setGeneratedSow] = useState<any>(null); // Store the generated SOW from new API
   const [showSendModal, setShowSendModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareModalData, setShareModalData] = useState<{
@@ -4458,51 +4459,35 @@ Ask me questions to get business insights, such as:
             })
           });
 
-          const response = await fetch(streamEndpoint, {
+          const response = await fetch('/api/anythingllm/generate-sow', {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
-            signal: controller.signal, // 🛑 Allow cancellation of this request
+            signal: controller.signal,
             body: JSON.stringify({
-              workspaceSlug: workspaceSlug,
-              threadSlug: threadSlugToUse,
-              // Perfect-mirror behavior: forward only the user's raw message
               message: rawUserMessage,
+              workspaceSlug: workspaceSlug || 'generate'
             }),
           });
 
           if (!response.ok) {
             const errorText = await response.text();
-            console.error('❌ Stream-chat API error:', {
+            console.error('❌ Generate-sow API error:', {
               status: response.status,
               statusText: response.statusText,
               errorText: errorText
             });
 
-            let errorMessage = "Sorry, there was an error processing your request.";
+            let errorMessage = "Sorry, there was an error generating the SOW.";
 
-            // Try to parse the error response for details
             try {
               const errorData = JSON.parse(errorText);
-              console.error('📋 Error details:', errorData);
-
-              if (errorData.details) {
-                errorMessage = `⚠️ Error: ${errorData.details}`;
-              } else if (errorData.error) {
+              if (errorData.error) {
                 errorMessage = `⚠️ ${errorData.error}`;
               }
             } catch (parseError) {
-              // If can't parse, use generic messages based on status
-              if (response.status === 400) {
-                errorMessage = `⚠️ AnythingLLM error (400): Invalid request. ${errorText.substring(0, 200)}`;
-              } else if (response.status === 401 || response.status === 403) {
-                errorMessage = "⚠️ AnythingLLM authentication failed. Please check the API key configuration.";
-              } else if (response.status === 404) {
-                errorMessage = `⚠️ AnythingLLM workspace '${workspaceSlug}' not found. Please verify it exists.`;
-              } else {
-                errorMessage = `⚠️ Error (${response.status}): ${errorText.substring(0, 200)}`;
-              }
+              errorMessage = `⚠️ Error (${response.status}): ${errorText.substring(0, 200)}`;
             }
 
             setChatMessages(prev =>
@@ -4515,345 +4500,30 @@ Ask me questions to get business insights, such as:
             return;
           }
 
-          // Read the SSE stream
-          const streamStartTime = Date.now();
-          console.log(`⏱️ [FRONTEND] Stream reading started at ${new Date(streamStartTime).toISOString()}`);
+          // Parse the JSON response directly
+          const finalSOW = await response.json();
 
-          const reader = response.body?.getReader();
-          const decoder = new TextDecoder();
+          // Console.log the final SOW object
+          console.log('✅ Final SOW received:', finalSOW);
 
-          if (!reader) {
-            console.error('❌ No response body reader available');
-            setStreamingMessageId(null);
-            return;
-          }
+          // Store the SOW in state
+          setGeneratedSow(finalSOW);
 
-          try {
-            let buffer = '';
-            let firstChunkTime: number | null = null;
-            let streamComplete = false;
+          // Update chat with success message
+          setChatMessages(prev =>
+            prev.map(msg => msg.id === aiMessageId
+              ? { ...msg, content: "SOW generated successfully. See results below." }
+              : msg
+            )
+          );
 
-            while (!streamComplete) {
-              const { done, value } = await reader.read();
+          setStreamingMessageId(null);
 
-              if (done) {
-                const streamEndTime = Date.now();
-                console.log(`✅ Stream complete - took ${streamEndTime - streamStartTime}ms`);
-                if (firstChunkTime) {
-                  console.log(`⏱️ [FRONTEND] First chunk received after ${firstChunkTime - streamStartTime}ms`);
-                }
-                streamComplete = true;
-                setStreamingMessageId(null);
-                break;
-              }
-
-              if (!firstChunkTime) {
-                firstChunkTime = Date.now();
-                console.log(`⏱️ [FRONTEND] First chunk received after ${firstChunkTime - streamStartTime}ms`);
-              }
-
-              buffer += decoder.decode(value, { stream: true });
-              const lines = buffer.split('\n');
-              buffer = lines.pop() || '';
-
-              for (const line of lines) {
-                if (!line.trim() || !line.startsWith('data: ')) continue;
-
-                try {
-                  const jsonStr = line.substring(6); // Remove 'data: ' prefix
-                  const parsed = JSON.parse(jsonStr);
-                  console.log('🔍 [SSE DEBUG] Parsed raw:', parsed);
-
-                  // 🎯 ANYTHINGLLM FORMAT: Handle both array and object formats
-                  const chunks = Array.isArray(parsed) ? parsed : [parsed];
-                  
-                  for (const data of chunks) {
-                    console.log('🔍 [SSE DEBUG] Processing chunk:', data);
-                    
-                    // 🎯 CRITICAL: Check for proper AnythingLLM stream format
-                    if (data.type === 'textResponseChunk' && data.textResponse) {
-                      console.log('📝 [SSE DEBUG] Adding chunk content:', data.textResponse.substring(0, 100));
-                      accumulatedContent += data.textResponse;
-
-                      // Update the message content in real-time
-                      setChatMessages(prev =>
-                        prev.map(msg =>
-                          msg.id === aiMessageId
-                            ? { ...msg, content: accumulatedContent }
-                            : msg
-                        )
-                      );
-                    }
-
-                    // 🎯 ANYTHINGLLM STREAM TERMINATION: Check for completion signal
-                    if (data.close === true) {
-                      console.log('✅ [SSE DEBUG] Stream completion signal received');
-                      streamComplete = true;
-                      setStreamingMessageId(null);
-                      break;
-                    }
-
-                    // Handle other content fields as fallback
-                    const content = data.textResponse || data.content || data.message || data.text || '';
-                    if (content && typeof content === 'string' && content !== data.textResponse) {
-                      console.log('📝 [SSE DEBUG] Adding fallback content:', content.substring(0, 100));
-                      accumulatedContent += content;
-                      setChatMessages(prev =>
-                        prev.map(msg =>
-                          msg.id === aiMessageId
-                            ? { ...msg, content: accumulatedContent }
-                            : msg
-                        )
-                      );
-                    }
-                  }
-                } catch (parseError) {
-                  console.error('❌ Failed to parse SSE data:', parseError, 'Line was:', line);
-                  console.error('Raw line content:', line);
-                }
-              }
-            }
-          } catch (streamError) {
-            console.error('❌ Stream reading error:', streamError);
-            setStreamingMessageId(null);
-          }
-
-          console.log('✅ Streaming complete, total content length:', accumulatedContent.length);
-
-          // Check if we got empty content and show helpful error
-          if (accumulatedContent.length === 0) {
-            console.error('❌ AI returned empty content - possible workspace/thread routing issue');
-            setChatMessages(prev =>
-              prev.map(msg =>
-                msg.id === aiMessageId
-                  ? {
-                      ...msg,
-                      content: '❌ **Generation Failed**\n\nThe AI returned empty content. This usually means:\n- The workspace routing is incorrect\n- The AI workspace is not properly configured\n- There\'s an authentication issue with AnythingLLM\n\nPlease check the console for more details and try again.',
-                      role: 'assistant'
-                    }
-                  : msg
-              )
-            );
-            return;
-          }
-
-          // 🎯 Extract work type from the accumulated AI response
-          const detectedWorkType = extractWorkType(accumulatedContent);
-
-          // Update current document with detected work type
-          if (currentDocId && detectedWorkType) {
-            setDocuments(prev =>
-              prev.map(doc =>
-                doc.id === currentDocId
-                  ? { ...doc, workType: detectedWorkType }
-                  : doc
-              )
-            );
-            console.log(`🎯 Updated document ${currentDocId} with work type: ${detectedWorkType}`);
-          }
-
-          // 🧩 Also try to capture modular Architect JSON into state for Excel engine v2
-          try {
-            const structured = extractSOWStructuredJson(accumulatedContent);
-            if (structured?.scopeItems?.length) {
-              setStructuredSow(structured);
-              console.log('✅ Captured structured SOW JSON for Excel export');
-            }
-          } catch {}
-
-          // 🚀 AUTOMATIC CONTENT INSERTION: Convert AI content and insert into editor
-          if (viewMode === 'editor' && currentDocId) {
-            console.log('🚀 Starting automatic content insertion into SOW editor...');
-            
-            try {
-              // Extract SOW structured JSON from the AI response
-              const structured = extractSOWStructuredJson(accumulatedContent);
-              let contentForEditor: any = null;
-              let docTitle = "New SOW";
-
-              if (structured?.scopeItems?.length) {
-                // Use structured data from Architect response
-                console.log(`✅ Using structured SOW data with ${structured.scopeItems.length} scope items`);
-                const suggestedRoles = buildSuggestedRolesFromArchitectSOW(structured);
-
-                // 🔒 Apply Account Management guardrail
-                const sanitized = sanitizeAccountManagementRoles(suggestedRoles);
-                let cleanedContent = accumulatedContent.replace(/\[PRICING_JSON\].*?\[\/PRICING_JSON\]/gs, '');
-                // 🧠 Strip <think> tags
-                cleanedContent = cleanedContent.replace(/<think>[\s\S]*?<\/think>/gi, '');
-
-                contentForEditor = convertMarkdownToNovelJSON(cleanedContent, sanitized);
-                docTitle = structured.title || `SOW - ${structured.client || 'Untitled Client'}`;
-              } else {
-                // Fallback: convert markdown content without structured pricing
-                console.log('⚠️ No structured data found, converting markdown content only');
-                let cleanedContent = accumulatedContent.replace(/\[PRICING_JSON\].*?\[\/PRICING_JSON\]/gs, '');
-                // 🧠 Strip <think> tags
-                cleanedContent = cleanedContent.replace(/<think>[\s\S]*?<\/think>/gi, '');
-                
-                contentForEditor = convertMarkdownToNovelJSON(cleanedContent);
-                docTitle = extractDocTitle(cleanedContent) || "New SOW";
-              }
-
-              // Update the document in state
-              setDocuments(prev =>
-                prev.map(doc =>
-                  doc.id === currentDocId
-                    ? { 
-                        ...doc, 
-                        content: contentForEditor,
-                        title: docTitle,
-                        lastModified: Date.now()
-                      }
-                    : doc
-                )
-              );
-
-              console.log('✅ Automatic content insertion complete:', contentForEditor?.content?.length || 0, 'characters');
-              toast.success('✅ Content automatically inserted into SOW editor');
-
-            } catch (error) {
-              console.error('❌ Error during automatic content insertion:', error);
-              toast.error('⚠️ Content generated but failed to insert into editor');
-            }
-          } else {
-            console.log('ℹ️ Not in editor mode or no document selected - skipping automatic insertion');
-          }
-
-          // ⚠️ REMOVED TWO-STEP AUTO-CORRECT LOGIC
-          // The AI should now return complete SOW narrative + JSON in a single response
-          // No follow-up prompt is needed if the initial prompt is clear enough
-          console.log('✅ Single-step AI generation complete - no follow-up needed');
-        } else {
-          // 📦 NON-STREAMING MODE: Standard fetch for OpenRouter
-          const lastUserMessage = newMessages[newMessages.length - 1]?.content || '';
-          const messageLength = lastUserMessage.trim().length;
-          const sowKeywords = /(\bstatement of work\b|\bsow\b|\bscope\b|\bdeliverables\b|\bpricing\b|\bbudget\b|\bestimate\b|\bhours\b|\broles\b)/i;
-          // Do not append per-message contracts; rely on workspace/system prompt
-          console.log(`📊 [Contract Check] Message length: ${messageLength}, keywordMatch: ${sowKeywords.test(lastUserMessage)}, isDashboard: ${isDashboardMode}`);
-          const requestMessages = [
-            // Do not include a system message; AnythingLLM workspace prompt governs behavior
-            ...newMessages.map(m => ({ role: m.role, content: m.content })),
-          ];
-          const response = await fetch(endpoint, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            signal: controller.signal, // 🛑 Allow cancellation of this request
-            body: JSON.stringify({
-              model: effectiveAgent.model,
-              workspace: workspaceSlug,
-              threadSlug: !isDashboardMode && currentDocId ? (documents.find(d => d.id === currentDocId)?.threadSlug || undefined) : undefined,
-              messages: requestMessages,
-            }),
-          });
-
-          console.log('📥 Response Status:', response.status, response.statusText);
-          const data = await response.json();
-
-          if (!response.ok) {
-            let errorMessage = "Sorry, there was an error processing your request.";
-
-            if (response.status === 400) {
-              errorMessage = "⚠️ OpenRouter API key not configured. Please set the OPENROUTER_API_KEY environment variable to enable AI chat functionality.";
-            } else if (response.status === 402) {
-              errorMessage = "Payment required: Please check your OpenRouter account balance or billing information.";
-            } else if (response.status === 401) {
-              errorMessage = "Authentication failed: Please check your OpenRouter API key.";
-            } else if (response.status === 429) {
-              errorMessage = "Rate limit exceeded: Please wait a moment before trying again.";
-            } else if (data.error?.message) {
-              errorMessage = `API Error: ${data.error.message}`;
-            }
-
-            const aiMessage: ChatMessage = {
-              id: `msg${Date.now() + 1}`,
-              role: 'assistant',
-              content: errorMessage,
-              timestamp: Date.now(),
-            };
-            setChatMessages(prev => [...prev, aiMessage]);
-            return;
-          }
-
-          const aiMessage: ChatMessage = {
-            id: `msg${Date.now() + 1}`,
-            role: 'assistant',
-            content: data.choices?.[0]?.message?.content || "Sorry, I couldn't generate a response.",
-            timestamp: Date.now(),
-          };
-          setChatMessages(prev => [...prev, aiMessage]);
-          console.log('✅ Non-streaming response complete');
-
-          // 🧩 Try to parse structured SOW JSON from non-streaming response
-          try {
-            const structured = extractSOWStructuredJson(aiMessage.content);
-            if (structured?.scopeItems?.length) {
-              setStructuredSow(structured);
-              console.log('✅ Captured structured SOW JSON for Excel export');
-            }
-          } catch {}
-
-          // 🚀 AUTOMATIC CONTENT INSERTION for non-streaming mode
-          if (viewMode === 'editor' && currentDocId && aiMessage.content) {
-            console.log('🚀 Starting automatic content insertion into SOW editor (non-streaming mode)...');
-            
-            try {
-              // Extract SOW structured JSON from the AI response
-              const structured = extractSOWStructuredJson(aiMessage.content);
-              let contentForEditor: any = null;
-              let docTitle = "New SOW";
-
-              if (structured?.scopeItems?.length) {
-                // Use structured data from Architect response
-                console.log(`✅ Using structured SOW data with ${structured.scopeItems.length} scope items`);
-                const suggestedRoles = buildSuggestedRolesFromArchitectSOW(structured);
-
-                // 🔒 Apply Account Management guardrail
-                const sanitized = sanitizeAccountManagementRoles(suggestedRoles);
-                let cleanedContent = aiMessage.content.replace(/\[PRICING_JSON\].*?\[\/PRICING_JSON\]/gs, '');
-                // 🧠 Strip <think> tags
-                cleanedContent = cleanedContent.replace(/<think>[\s\S]*?<\/think>/gi, '');
-
-                contentForEditor = convertMarkdownToNovelJSON(cleanedContent, sanitized);
-                docTitle = structured.title || `SOW - ${structured.client || 'Untitled Client'}`;
-              } else {
-                // Fallback: convert markdown content without structured pricing
-                console.log('⚠️ No structured data found, converting markdown content only');
-                let cleanedContent = aiMessage.content.replace(/\[PRICING_JSON\].*?\[\/PRICING_JSON\]/gs, '');
-                // 🧠 Strip <think> tags
-                cleanedContent = cleanedContent.replace(/<think>[\s\S]*?<\/think>/gi, '');
-                
-                contentForEditor = convertMarkdownToNovelJSON(cleanedContent);
-                docTitle = extractDocTitle(cleanedContent) || "New SOW";
-              }
-
-              // Update the document in state
-              setDocuments(prev =>
-                prev.map(doc =>
-                  doc.id === currentDocId
-                    ? { 
-                        ...doc, 
-                        content: contentForEditor,
-                        title: docTitle,
-                        lastModified: Date.now()
-                      }
-                    : doc
-                )
-              );
-
-              console.log('✅ Automatic content insertion complete (non-streaming):', contentForEditor?.content?.length || 0, 'characters');
-              toast.success('✅ Content automatically inserted into SOW editor');
-
-            } catch (error) {
-              console.error('❌ Error during automatic content insertion (non-streaming):', error);
-              toast.error('⚠️ Content generated but failed to insert into editor');
-            }
-          } else {
-            console.log('ℹ️ Not in editor mode or no document selected - skipping automatic insertion (non-streaming)');
-          }
-        }
+        // ⚠️ REMOVED DATABASE SAVE - AnythingLLM handles all message storage
+      } finally {
+        setIsChatLoading(false);
+        setCurrentRequestController(null); // Clean up the controller
+      }
       } catch (error) {
         console.error("❌ Chat API error:", error);
 
