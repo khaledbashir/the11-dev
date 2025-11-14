@@ -5816,14 +5816,24 @@ Ask me questions to get business insights, such as:
                     return;
                 }
 
-                // Check for rate limiting errors
-                let errorMessage =
-                    "❌ Network error: Unable to reach AI service. Please check your connection and try again.";
-                if (error instanceof Error && error.message.includes("429")) {
-                    errorMessage =
-                        "⏱️ Rate limit exceeded: Please wait a moment before trying again.";
-                    toast.error("⏱️ Rate limited - waiting before retry...");
+                // Get detailed error message with full context
+                let errorMessage = "⚠️ An error occurred:\n\n";
+                if (error instanceof Error) {
+                    errorMessage += `**Error Message:** ${error.message}\n\n`;
+                    if (error.name) {
+                        errorMessage += `**Error Type:** ${error.name}\n\n`;
+                    }
+                    if (error.stack) {
+                        errorMessage += `**Stack Trace:**\n\`\`\`\n${error.stack}\n\`\`\``;
+                    }
+                } else {
+                    errorMessage += `**Error Details:** ${JSON.stringify(error, null, 2)}`;
                 }
+
+                // Show error toast
+                toast.error(
+                    "❌ Error generating response - check chat for full details",
+                );
 
                 const errorMsg: ChatMessage = {
                     id: `msg${Date.now() + 1}`,
@@ -5831,8 +5841,7 @@ Ask me questions to get business insights, such as:
                     content: errorMessage,
                     timestamp: Date.now(),
                 };
-                const updatedMessages = [...chatMessages, errorMsg];
-                setChatMessages(updatedMessages);
+                setChatMessages((prev) => [...prev, errorMsg]);
 
                 // ⚠️ REMOVED DATABASE SAVE - AnythingLLM handles all message storage
             } finally {
