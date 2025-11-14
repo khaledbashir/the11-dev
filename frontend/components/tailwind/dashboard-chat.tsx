@@ -19,7 +19,6 @@ import remarkGfm from "remark-gfm";
 import { StreamingThoughtAccordion } from "./streaming-thought-accordion";
 import { cleanSOWContent } from "@/lib/export-utils";
 import { JsonRenderer } from "./ui/json-renderer";
-import { useStreamingChat } from "@/hooks/useStreamingChat";
 
 interface ChatMessage {
     id: string;
