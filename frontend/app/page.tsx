@@ -25,6 +25,7 @@ import { ROLES } from "@/lib/rateCard";
 import { calculatePricingTable } from "@/lib/pricingCalculator";
 import { THE_ARCHITECT_V6_PROMPT } from "@/lib/knowledge-base";
 import { prepareSOWForNewPDF } from "@/lib/sow-pdf-utils";
+import SowDisplay from "@/components/sow/SowDisplay";
 
 // Dynamically import PDF components to avoid SSR issues
 const SOWPdfExportWrapper = dynamic(
@@ -1525,6 +1526,7 @@ export default function Page() {
                       initialContent={currentDoc.content}
                       onUpdate={handleUpdateDocContent}
                     />
+                    {generatedSow && <SowDisplay sowData={generatedSow} />}
                   </div>
                 </>
               ) : (
