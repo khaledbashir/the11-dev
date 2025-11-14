@@ -41,6 +41,7 @@ import { calculatePricingTable } from "@/lib/pricingCalculator";
 // System prompts are now managed in AnythingLLM workspace configuration (no client-side injection)
 import { getWorkspaceForAgent, WORKSPACE_CONFIG } from "@/lib/workspace-config";
 import { prepareSOWForNewPDF } from "@/lib/sow-pdf-utils";
+import SowDisplay from "@/components/sow/SowDisplay";
 
 // Dynamically import PDF components to avoid SSR issues
 const SOWPdfExportWrapper = dynamic(
@@ -4723,6 +4724,7 @@ Ask me questions to get business insights, such as:
                       initialContent={currentDoc.content}
                       onUpdate={handleUpdateDoc}
                     />
+                    {generatedSow && <SowDisplay sowData={generatedSow} />}
                   </div>
                 ) : (
                   <div className="flex items-center justify-center h-full">
