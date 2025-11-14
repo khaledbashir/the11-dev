@@ -318,10 +318,164 @@ export default function Page() {
   const [aiChatOpen, setAiChatOpen] = useState(true);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isChatLoading, setIsChatLoading] = useState(false);
+<<<<<<< HEAD
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const streamingTimeoutRef = useRef<number | null>(null);
   const [lastUserPrompt, setLastUserPrompt] = useState<string>('');
   const [isGrandTotalVisible, setIsGrandTotalVisible] = useState(true);
+=======
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null); // Track which message is streaming
+  const [lastUserPrompt, setLastUserPrompt] = useState<string>(''); // 🎯 Track last user message for budget/discount extraction
+  const [generatedSow, setGeneratedSow] = useState<any>(null); // Store the generated SOW from new API
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareModalData, setShareModalData] = useState<{
+    shareLink: string;
+    documentTitle: string;
+    shareCount?: number;
+    firstShared?: string;
+    lastShared?: string;
+  } | null>(null);
+  const [showGuidedSetup, setShowGuidedSetup] = useState(false);
+  const [viewMode, setViewMode] = useState<'editor' | 'dashboard'>('dashboard'); // NEW: View mode - START WITH DASHBOARD
+  const [isGrandTotalVisible, setIsGrandTotalVisible] = useState(true); // 👁️ Toggle grand total visibility
+
+  // Workspace & SOW state (NEW) - Start empty, load from AnythingLLM
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string>('');
+  const [currentSOWId, setCurrentSOWId] = useState<string | null>(null);
+  const editorRef = useRef<any>(null);
+  // Track latest editor JSON to drive debounced auto-saves reliably
+  const [latestEditorJSON, setLatestEditorJSON] = useState<any | null>(null);
+
+  // --- Role sanitization helpers ---
+  const normalize = (s: string) => (s || '')
+    .toLowerCase()
+    .replace(/\s*-/g, '-')
+    .replace(/-\s*/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const isAccountManagementVariant = (roleName: string) => {
+    const n = normalize(roleName);
+    // Match any Account Management family variant (manager/director/etc.)
+    return /account/.test(n) && /(management|manager|director)/.test(n);
+  };
+
+  const sanitizeAccountManagementRoles = (roles: Array<{ role: string; hours?: number; description?: string; rate?: number } | string>) => {
+    if (!Array.isArray(roles) || roles.length === 0) return roles || [];
+
+    // Collect hours from any AM-like variants
+    let amHoursFromAI = 0;
+    let amDescriptionFromAI: string | undefined = undefined;
+      const nonAM = roles.filter(r => {
+        const roleName = typeof r === 'string' ? r : (r.role || '');
+        const isAM = isAccountManagementVariant(roleName);
+      if (isAM) {
+          const hrs = typeof r === 'string' ? 0 : (Number(r.hours) || 0);
+        amHoursFromAI += hrs > 0 ? hrs : 0;
+          if (!amDescriptionFromAI && typeof r !== 'string' && r.description && r.description.trim().length > 0) {
+            amDescriptionFromAI = r.description;
+        }
+      }
+      return !isAM; // drop AM variants from source list
+    });
+
+    // Ensure exactly ONE canonical AM row is appended
+    const canonicalName = 'Account Management - (Account Manager)';
+    const amDef = ROLES.find(r => r.name === canonicalName);
+    const amRate = amDef?.rate || 180;
+    const defaultHours = 8;
+    const finalHours = amHoursFromAI > 0 ? amHoursFromAI : defaultHours;
+    const finalDescription = amDescriptionFromAI || 'Client comms & governance';
+
+    // If a canonical AM already exists somehow, merge hours
+    const existingIndex = nonAM.findIndex(r => normalize(typeof r === 'string' ? r : r.role) === normalize(canonicalName));
+    if (existingIndex !== -1) {
+      const existing = nonAM[existingIndex] as any;
+      const merged = {
+        ...(typeof existing === 'string' ? { role: canonicalName } : existing),
+        role: canonicalName,
+        hours: (Number((existing as any).hours) || 0) + finalHours,
+        rate: amRate,
+        description: (existing as any).description || finalDescription,
+      };
+      (nonAM as any).splice(existingIndex, 1, merged);
+      return nonAM as any;
+    }
+
+    return [
+      ...nonAM.map(r => (typeof r === 'string' ? { role: r, hours: 0, description: '', rate: (ROLES.find(x => x.name === r)?.rate || 0) } : r)),
+      {
+        role: canonicalName,
+        description: finalDescription,
+        hours: finalHours,
+        rate: amRate,
+      },
+    ];
+  };
+
+  // --- Final price extraction helper ---
+  const extractFinalPriceTargetText = (content: any): string | null => {
+    if (!content || !Array.isArray(content.content)) return null;
+
+    // Flatten all text content
+    const flattenText = (node: any): string => {
+      if (!node) return '';
+      if (node.type === 'text') return node.text || '';
+      if (Array.isArray(node.content)) return node.content.map(flattenText).join(' ');
+      return '';
+    };
+
+    const allText = content.content.map(flattenText).join(' ').replace(/\s+/g, ' ').trim();
+    if (!allText) return null;
+
+    // Look for patterns like "Final Price: $20,000 +GST" or "Final Investment: $20,000"
+    const patterns = [
+      /(final\s*(price|investment|project\s*value)\s*[:\-]?\s*)(\$?\s*[\d,]+(?:\.\d+)?(?:\s*\+?\s*gst|\s*ex\s*gst|\s*incl\s*gst)?)/i,
+    ];
+
+    for (const re of patterns) {
+      const m = allText.match(re);
+      if (m && m[3]) {
+        // Return the value part, normalized a bit to include a $ sign if missing
+        let val = m[3].trim();
+        if (!val.startsWith('$')) {
+          const numPart = val.replace(/[^\d.,a-z\s+]/gi, '').trim();
+          val = `$${numPart}`;
+        }
+        // Normalize spacing around GST annotations
+        val = val.replace(/\s*\+\s*gst/i, ' +GST').replace(/\s*ex\s*gst/i, ' ex GST').replace(/\s*incl\s*gst/i, ' incl GST');
+        return val;
+      }
+    }
+    return null;
+  };
+
+  // 🎯 Phase 1C: Dashboard filter state (vertical/service line click-to-filter)
+  const [dashboardFilter, setDashboardFilter] = useState<{
+    type: 'vertical' | 'serviceLine' | null;
+    value: string | null;
+  }>({
+    type: null,
+    value: null,
+  });
+
+  // Workspace creation progress state (NEW)
+  const [workspaceCreationProgress, setWorkspaceCreationProgress] = useState<{
+    isOpen: boolean;
+    workspaceName: string;
+    currentStep: number;
+    completedSteps: number[];
+  }>({
+    isOpen: false,
+    workspaceName: '',
+    currentStep: 0,
+    completedSteps: [],
+  });
+
+  // Onboarding state (NEW)
+>>>>>>> 4dbeee9 (feat: Switch to non-streaming SOW generation API)
   const [showOnboarding, setShowOnboarding] = useState(false);
   const editorRef = useRef<any>(null);
   const [latestEditorJSON, setLatestEditorJSON] = useState<any | null>(null);
@@ -968,62 +1122,86 @@ export default function Page() {
             })
           });
 
-          const response = await fetch(streamEndpoint, {
+          const response = await fetch('/api/anythingllm/generate-sow', {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
-            signal: controller.signal, // 🛑 Allow cancellation of this request
+            signal: controller.signal,
             body: JSON.stringify({
-              workspaceSlug: workspaceSlug,
-              threadSlug: threadSlugToUse,
-              // Perfect-mirror behavior: forward only the user's raw message
               message: rawUserMessage,
+              workspaceSlug: workspaceSlug || 'generate'
             }),
           });
 
           if (!response.ok) {
             const errorText = await response.text();
-            console.error('❌ Stream-chat API error:', {
+            console.error('❌ Generate-sow API error:', {
               status: response.status,
               statusText: response.statusText,
               errorText: errorText
 >>>>>>> acc30a0 (fix: Replace placeholder THE_ARCHITECT_V6_PROMPT with working SOWcial Garden AI prompt)
             });
 
+<<<<<<< HEAD
           } catch (error) {
             console.error("❌ Failed to create chat thread:", error);
             toast.error("Failed to create chat thread. Please check the connection and try again.");
             // Stop execution if thread creation fails
             setIsChatLoading(false);
+=======
+            let errorMessage = "Sorry, there was an error generating the SOW.";
+
+            try {
+              const errorData = JSON.parse(errorText);
+              if (errorData.error) {
+                errorMessage = `⚠️ ${errorData.error}`;
+              }
+            } catch (parseError) {
+              errorMessage = `⚠️ Error (${response.status}): ${errorText.substring(0, 200)}`;
+            }
+
+            setChatMessages(prev =>
+              prev.map(msg => msg.id === aiMessageId
+                ? { ...msg, content: errorMessage }
+                : msg
+              )
+            );
+            setStreamingMessageId(null);
+>>>>>>> 4dbeee9 (feat: Switch to non-streaming SOW generation API)
             return;
           }
         }
 
+<<<<<<< HEAD
 <<<<<<< HEAD
         const response = await fetch(streamEndpoint, {
 =======
           // Read the SSE stream
           const streamStartTime = Date.now();
           console.log(`⏱️ [FRONTEND] Stream reading started at ${new Date(streamStartTime).toISOString()}`);
+=======
+          // Parse the JSON response directly
+          const finalSOW = await response.json();
+>>>>>>> 4dbeee9 (feat: Switch to non-streaming SOW generation API)
 
-          const reader = response.body?.getReader();
-          const decoder = new TextDecoder();
+          // Console.log the final SOW object
+          console.log('✅ Final SOW received:', finalSOW);
 
-          if (!reader) {
-            console.error('❌ No response body reader available');
-            setStreamingMessageId(null);
-            return;
-          }
+          // Store the SOW in state
+          setGeneratedSow(finalSOW);
 
-          try {
-            let buffer = '';
-            let firstChunkTime: number | null = null;
-            let streamComplete = false;
+          // Update chat with success message
+          setChatMessages(prev =>
+            prev.map(msg => msg.id === aiMessageId
+              ? { ...msg, content: "SOW generated successfully. See results below." }
+              : msg
+            )
+          );
 
-            while (!streamComplete) {
-              const { done, value } = await reader.read();
+          setStreamingMessageId(null);
 
+<<<<<<< HEAD
               if (done) {
                 const streamEndTime = Date.now();
                 console.log(`✅ Stream complete - took ${streamEndTime - streamStartTime}ms`);
@@ -1262,6 +1440,20 @@ export default function Page() {
         if (currentDocId) {
             handleInsertContent(accumulatedContent);
             toast.success("✅ Content automatically inserted into editor!");
+=======
+        // ⚠️ REMOVED DATABASE SAVE - AnythingLLM handles all message storage
+      } finally {
+        setIsChatLoading(false);
+        setCurrentRequestController(null); // Clean up the controller
+      }
+      } catch (error) {
+        console.error("❌ Chat API error:", error);
+
+        // Check if the error is an AbortError (request was cancelled)
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.log('ℹ️ Request was cancelled to prevent rate limiting');
+          return;
+>>>>>>> 4dbeee9 (feat: Switch to non-streaming SOW generation API)
         }
 
     } catch (error) {

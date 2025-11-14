@@ -363,8 +363,48 @@ Return format:
     // 6. Console.log the completedScopes array
     console.log('✅ Completed scopes:', completedScopes);
 
-    // 7. Return completedScopes array
-    return new Response(JSON.stringify(completedScopes), {
+    // Assembler step: Create final SOW structure
+    const finalSOW = {
+      projectOverview: `This comprehensive project titled "${plannerObject.projectTitle}" for ${plannerObject.client} spans ${plannerObject.timelineWeeks} weeks with a total budget of $${plannerObject.totalBudget}. The project is strategically designed to deliver exceptional results through carefully planned scopes and expert execution.`,
+      
+      projectObjectives: [
+        "Deliver high-quality results that exceed client expectations",
+        "Complete all deliverables within the agreed timeline",
+        "Maintain transparent communication throughout the project",
+        "Ensure all team members are properly trained and supported",
+        "Achieve measurable business outcomes for the client"
+      ],
+      
+      scopes: completedScopes,
+      
+      pricingSummary: {
+        currency: "AUD",
+        gst_rate: 10,
+        grand_total_pre_gst: 0,
+        gst_amount: 0,
+        grand_total: 0
+      }
+    };
+
+    // Calculate pricing summary from all scopes
+    for (const scope of completedScopes) {
+      if (scope.jsonData) {
+        finalSOW.pricingSummary.grand_total_pre_gst += scope.jsonData.scope_subtotal || 0;
+        finalSOW.pricingSummary.gst_amount += scope.jsonData.gst_amount || 0;
+      }
+    }
+    finalSOW.pricingSummary.grand_total = finalSOW.pricingSummary.grand_total_pre_gst + finalSOW.pricingSummary.gst_amount;
+
+    // Console.log the final SOW
+    console.log('✅ Final SOW assembled:', {
+      projectOverview: finalSOW.projectOverview,
+      objectivesCount: finalSOW.projectObjectives.length,
+      scopesCount: finalSOW.scopes.length,
+      pricingSummary: finalSOW.pricingSummary
+    });
+
+    // Return the final SOW object
+    return new Response(JSON.stringify(finalSOW), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
