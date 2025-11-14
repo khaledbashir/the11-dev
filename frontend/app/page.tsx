@@ -4521,10 +4521,7 @@ Ask me questions to get business insights, such as:
           setStreamingMessageId(null);
 
         // ⚠️ REMOVED DATABASE SAVE - AnythingLLM handles all message storage
-      } finally {
-        setIsChatLoading(false);
-        setCurrentRequestController(null); // Clean up the controller
-      }
+        }
       } catch (error) {
         console.error("❌ Chat API error:", error);
 
@@ -4547,7 +4544,7 @@ Ask me questions to get business insights, such as:
           content: errorMessage,
           timestamp: Date.now(),
         };
-        const updatedMessages = [...newMessages, errorMsg];
+        const updatedMessages = [...chatMessages, errorMsg];
         setChatMessages(updatedMessages);
 
         // ⚠️ REMOVED DATABASE SAVE - AnythingLLM handles all message storage
