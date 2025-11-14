@@ -209,29 +209,37 @@ export default function WorkspaceChat({
       }
 
       const data = await response.json();
+      console.log('✅ Thread creation response:', data);
+      
+      // 🎯 EXACT ANYTHINGLLM FORMAT: Handle documented response structure
       const newThreadSlug = data.thread?.slug;
       
       if (!newThreadSlug) {
         console.error('❌ No thread slug in response:', data);
+        console.error('Expected: data.thread.slug, Got:', JSON.stringify(data, null, 2));
         throw new Error('No thread slug returned from server');
       }
 
-      console.log('✅ New thread created:', newThreadSlug);
+      console.log('✅ New thread created with slug:', newThreadSlug);
       
       // Add to local state
       const newThread = {
         slug: newThreadSlug,
-        name: data.thread?.name || 'New Chat',
-        id: data.thread?.id || Date.now(),
+        name: data.thread?.name || data.name || 'New Chat',
+        id: data.thread?.id || data.id || Date.now(),
         createdAt: new Date().toISOString(),
       };
+      
+      console.log('📋 Adding thread to local state:', newThread);
       setThreads(prev => [newThread, ...prev]);
       setCurrentThreadSlug(newThreadSlug);
       
       // Notify parent
+      console.log('🔔 Notifying parent of new thread:', newThreadSlug);
       onEditorThreadChange(newThreadSlug);
       
       // Clear chat for new thread
+      console.log('🗑️ Clearing chat for new thread');
       onClearChat();
       
       return newThreadSlug;
@@ -320,27 +328,49 @@ export default function WorkspaceChat({
   const handleSendMessage = async () => {
     if (!chatInput.trim() || isLoading) return;
 
-    // 🔥 CRITICAL FIX: Auto-create thread if none exists
+    // 🎯 THREAD MANAGEMENT: Prevent race conditions and ensure single thread per user session
+    const sessionKey = `sow-thread-${editorWorkspaceSlug}`;
     let threadSlug = currentThreadSlug;
+    
+    // Check for existing thread in session storage first
+    const storedThread = sessionStorage.getItem(sessionKey);
+    if (storedThread && !threadSlug) {
+      console.log('♻️ Using stored thread from session:', storedThread);
+      threadSlug = storedThread;
+      setCurrentThreadSlug(storedThread);
+    }
+
+    // Only create thread if none exists
     if (!threadSlug) {
-      console.log('🆕 No thread exists - creating one automatically before sending message');
-      threadSlug = await handleNewThread();
-      if (!threadSlug) {
-        toast.error('Failed to create chat thread');
+      console.log('🆕 No thread exists - creating one automatically');
+      const newThreadSlug = await handleNewThread();
+      
+      if (newThreadSlug) {
+        // Store in session for future requests
+        sessionStorage.setItem(sessionKey, newThreadSlug);
+        threadSlug = newThreadSlug;
+      } else {
+        console.error('❌ Failed to create thread');
+        toast.error('Failed to create chat thread. Please try again.');
         return;
       }
     }
 
     console.log('📤 Sending message:', {
-      message: chatInput,
+      message: chatInput.substring(0, 50) + '...',
       threadSlug,
-      attachments: attachments.length,
       workspaceSlug: editorWorkspaceSlug,
+      attachments: attachments.length,
     });
 
-    onSendMessage(chatInput, threadSlug, attachments);
-    setChatInput("");
-    setAttachments([]);
+    try {
+      onSendMessage(chatInput, threadSlug, attachments);
+      setChatInput("");
+      setAttachments([]);
+    } catch (error) {
+      console.error('❌ Failed to send message:', error);
+      toast.error('Failed to send message. Please try again.');
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -595,9 +625,9 @@ export default function WorkspaceChat({
               
               return (
                 <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`relative w-full max-w-[85%] min-w-0 rounded-lg p-4 break-words whitespace-pre-wrap overflow-x-hidden ${
-                    msg.role === 'user' 
-                      ? 'bg-[#0E2E33]/30 text-white border border-[#1b5e5e]' 
+                  <div className={`relative w-full max-w-[85%] min-w-0 rounded-lg p-4 break-words whitespace-pre-wrap overflow-x-hidden max-w-full ${
+                    msg.role === 'user'
+                      ? 'bg-[#0E2E33]/30 text-white border border-[#1b5e5e]'
                       : 'bg-[#0E2E33] text-white border border-[#1b5e5e]'
                   }`}>
                     
@@ -628,13 +658,17 @@ export default function WorkspaceChat({
                         const isJsonContent = seg.content.trim().startsWith('{') || seg.content.trim().startsWith('[');
                         
                         return (
-                          <div key={i} className="prose prose-invert max-w-none text-sm break-words whitespace-pre-wrap prose-pre:whitespace-pre-wrap prose-pre:overflow-x-auto">
+                          <div key={i} className="prose prose-invert max-w-none text-sm break-words whitespace-pre-wrap prose-pre:whitespace-pre-wrap prose-pre:overflow-hidden">
                             {isJsonContent ? (
-                              <JsonRenderer content={seg.content} />
+                              <div className="overflow-hidden">
+                                <JsonRenderer content={seg.content} />
+                              </div>
                             ) : (
-                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                {seg.content}
-                              </ReactMarkdown>
+                              <div className="overflow-hidden max-w-full">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                  {seg.content}
+                                </ReactMarkdown>
+                              </div>
                             )}
                           </div>
                         );
@@ -654,25 +688,61 @@ export default function WorkspaceChat({
           {/* Sticky action bar - always visible at bottom of chat pane */}
           {(() => {
             const lastAssistant = [...chatMessages].reverse().find(m => m.role === 'assistant');
-            if (!lastAssistant) return null;
+            const isCurrentlyGenerating = !!streamingMessageId;
+            
+            if (!lastAssistant && !isCurrentlyGenerating) return null;
+            
             return (
               <div className="sticky bottom-0 left-0 right-0 z-20 mt-4">
-                <div className="flex items-center justify-between gap-3 bg-[#0E2E33]/95 backdrop-blur-md border border-[#1b5e5e] rounded-lg px-4 py-3 shadow-lg">
-                  <div className="flex items-center gap-2 text-xs text-gray-400">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    Latest AI response ready
+                <div className="flex items-center justify-between gap-3 bg-[#0E2E33]/95 backdrop-blur-md border border-[#1b5e5e] rounded-lg px-4 py-3 shadow-lg max-w-full overflow-hidden">
+                  <div className="flex items-center gap-2 text-xs min-w-0">
+                    {isCurrentlyGenerating ? (
+                      <>
+                        <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse flex-shrink-0"></div>
+                        <span className="truncate text-yellow-400 font-medium">
+                          AI is writing...
+                          <span className="ml-1 inline-flex">
+                            <span className="animate-pulse">.</span>
+                            <span className="animate-pulse" style={{ animationDelay: '0.2s' }}>.</span>
+                            <span className="animate-pulse" style={{ animationDelay: '0.4s' }}>.</span>
+                          </span>
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse flex-shrink-0"></div>
+                        <span className="truncate text-green-400">Latest AI response ready</span>
+                      </>
+                    )}
                   </div>
                     <Button
                     size="sm"
                     variant="outline"
-                    className="h-8 px-4 text-xs font-medium border-[#1CBF79] text-[#1CBF79] hover:text-white hover:bg-[#1CBF79] transition-all duration-200"
-                    title="Insert the latest AI response into your SOW editor"
-                    onClick={() => onInsertToEditor(cleanSOWContent(lastAssistant.content))}
+                    disabled={isCurrentlyGenerating}
+                    className={`h-8 px-3 text-xs font-medium transition-all duration-200 flex-shrink-0 ${
+                      isCurrentlyGenerating
+                        ? 'border-gray-600 text-gray-500 cursor-not-allowed opacity-60'
+                        : 'border-[#1CBF79] text-[#1CBF79] hover:text-white hover:bg-[#1CBF79]'
+                    }`}
+                    title={isCurrentlyGenerating ? "AI is still generating response..." : "Insert the latest AI response into your SOW editor"}
+                    onClick={() => !isCurrentlyGenerating && lastAssistant && onInsertToEditor(cleanSOWContent(lastAssistant.content))}
                   >
-                    <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                    Insert SOW
+                    {isCurrentlyGenerating ? (
+                      <div className="flex items-center">
+                        <div className="w-3 h-3 mr-1 relative">
+                          <div className="absolute inset-0 rounded-full border border-gray-500/30"></div>
+                          <div className="absolute inset-0 rounded-full border border-gray-500 border-t-transparent animate-spin"></div>
+                        </div>
+                        In Progress
+                      </div>
+                    ) : (
+                      <div className="flex items-center">
+                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Done - Insert to Editor
+                      </div>
+                    )}
                   </Button>
                 </div>
               </div>
@@ -735,19 +805,38 @@ export default function WorkspaceChat({
               />
               
               {/* Send button - full width, prominent */}
-              <Button 
-                onClick={handleSendMessage} 
-                disabled={!chatInput.trim() || isLoading} 
-                size="sm" 
-                className="w-full bg-[#15a366] hover:bg-[#10a35a] text-white h-12 font-semibold border-0 text-base"
-                title="Send message to The Architect"
+              <Button
+                onClick={handleSendMessage}
+                disabled={!chatInput.trim() || isLoading}
+                size="sm"
+                className={`w-full h-12 font-semibold border-0 text-base transition-all duration-300 ${
+                  isLoading
+                    ? 'bg-gradient-to-r from-[#15a366] to-[#10a35a] animate-pulse'
+                    : 'bg-[#15a366] hover:bg-[#10a35a]'
+                } text-white`}
+                title={isLoading ? "AI is generating response..." : "Send message to The Architect"}
               >
                 {isLoading ? (
-                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                  <div className="flex items-center">
+                    <div className="w-5 h-5 mr-2 relative">
+                      <div className="absolute inset-0 rounded-full border-2 border-white/30"></div>
+                      <div className="absolute inset-0 rounded-full border-2 border-white border-t-transparent animate-spin"></div>
+                    </div>
+                    <span className="relative">
+                      AI is writing...
+                      <span className="ml-1 inline-flex">
+                        <span className="animate-pulse">.</span>
+                        <span className="animate-pulse" style={{ animationDelay: '0.2s' }}>.</span>
+                        <span className="animate-pulse" style={{ animationDelay: '0.4s' }}>.</span>
+                      </span>
+                    </span>
+                  </div>
                 ) : (
-                  <Send className="h-5 w-5 mr-2" />
+                  <div className="flex items-center">
+                    <Send className="h-5 w-5 mr-2" />
+                    Send
+                  </div>
                 )}
-                {isLoading ? 'Generating...' : 'Send'}
               </Button>
             </div>
           </div>

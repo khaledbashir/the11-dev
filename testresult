@@ -1,0 +1,491 @@
+<think>
+**STEP 1: ANALYZE & PLAN (INTERNAL THOUGHT PROCESS)**
+
+1.  **Deconstruct the User's Request:**
+    *   **Client Name:** Acme Digital Marketing Agency
+    *   **Objectives:** Comprehensive digital transformation for a growing agency. Modernize tech stack and operational processes.
+    *   **Deliverables:**
+        *   Modern CRM system (for 500+ clients)
+        *   Custom project management platform
+        *   Automated reporting dashboard
+        *   Marketing automation (lead nurturing, onboarding)
+        *   Integrated analytics
+        *   New company website
+        *   Comprehensive training materials
+    *   **Budget:** AUD $85,000 ex GST. This is the key constraint. I need to make sure the subtotal of all scopes equals exactly $85,000.
+    *   **Timeline:** 16 weeks, 4 phases. This is context, but the SOW generation is focused on scope and cost.
+    *   **Team Preferences:**
+        *   Senior Project Manager to lead.
+        *   Technical Architect oversight for CRM/platform dev.
+        *   Proper Account Management.
+        *   Prefer onshore for client-facing deliverables.
+    *   **Success Criteria:** All systems integrated, team trained, workflows automated, documentation complete.
+
+2.  **Map Work to Roles (using [OFFICIAL_RATE_CARD]):**
+    *   **CRM System:** This is a major build. It needs strategy, architecture, development, and integration.
+        *   Strategy: `Tech - Sr. Consultant - CRM Strategy`
+        *   Architecture: `Tech - Sr. Architect - App Development` or `Tech - Sr. Architect - Integration Strategy`. Let's go with `App Development` as it's a system build.
+        *   Development/Build: `Tech - Producer - Development` (offshore rate is good for bulk build) or `Tech - Specialist - Lead Management` (if it's more about configuring a system like Marketo/SFDC). The prompt says "Build a modern CRM system", which implies more custom work. Let's use a mix. `Tech - Producer - Development` for the core build, and `Tech - Specialist - Integration` for connecting things.
+    *   **Custom Project Management Platform:** Similar to CRM.
+        *   Strategy/Design: `Tech - Sr. Consultant - Solution Design`
+        *   Architecture: `Tech - Sr. Architect - App Development`
+        *   Development: `Tech - Producer - Development`
+    *   **Automated Reporting Dashboard:**
+        *   Strategy: `Tech - Sr. Consultant - Analytics`
+        *   Build: `Tech - Producer - Reporting`
+    *   **Marketing Automation:**
+        *   Strategy: `Tech - Sr. Consultant - Campaign Strategy`
+        *   Build: `Tech - Producer - Campaign Orchestration`, `Tech - Producer - Email`, `Tech - Producer - Workflow`.
+    *   **Integrated Analytics:**
+        *   Strategy: `Tech - Sr. Consultant - Analytics`
+        *   Implementation: `Tech - Integrations` or `Tech - Specialist - Integration`.
+    *   **New Company Website:**
+        *   Design (Onshore preference): `Design - Digital Asset (Onshore)`
+        *   Development (Onshore preference): `Dev (or Tech) - Landing Page (Onshore)` - this role is a bit specific to landing pages, but it's the closest "onshore dev" role. Let's use it. Or maybe `Tech - Producer - Development` is more generic and safer. The prompt says "onshore resources for client-facing deliverables". A website is definitely client-facing. Let's use `Dev (or Tech) - Landing Page (Onshore)` as it's explicitly onshore.
+        *   Copywriting (Onshore preference): `Copywriting (Onshore)`
+    *   **Training Materials:**
+        *   Creation: `Tech - Producer - Documentation`, `Tech - Producer - Training`.
+    *   **Overall Project Management (User Specified):**
+        *   Lead: `Project Management - Senior Project Manager` (The user said "senior project manager"). The rate card has `Project Management - Senior Project Manager` at $210/hr. Perfect.
+    *   **Technical Architect (User Specified):**
+        *   Oversight: `Tech - Sr. Architect - App Development` or `Tech - Sr. Architect - Consultation`. Let's use `Consultation` for high-level oversight across multiple builds.
+    *   **Account Management (User Specified):**
+        *   Throughout: `Account Management - Senior Account Manager` (The user said "proper account management", and this is a senior role appropriate for a large project).
+
+3.  **Budget Allocation & Hour Planning:**
+    *   **Target:** $85,000 ex GST.
+    *   I need to break this down into logical scopes. The user's deliverables list is a good starting point. I'll group them into 4 main scopes to align with their "4 phases" mention.
+        *   **Scope 1: Strategy & Architecture.** This will cover the high-level planning, CRM strategy, solution design, and architectural oversight. This is the foundation.
+        *   **Scope 2: Core Platform Development (CRM & PM).** This is the biggest build part. CRM and the custom Project Management platform.
+        *   **Scope 3: Marketing & Analytics Automation.** This covers the reporting dashboard, marketing automation, and analytics integration.
+        *   **Scope 4: Website, Training & Handover.** This covers the new website, creating training materials, and final documentation.
+    *   **Let's allocate the budget:**
+        *   Scope 1 (Strategy): High-value roles. Let's aim for ~$20k.
+        *   Scope 2 (Core Build): This is the bulk of the work. Let's aim for ~$30k.
+        *   Scope 3 (Automation): Also significant work. Let's aim for ~$20k.
+        *   Scope 4 (Website & Training): Website build is key. Let's aim for ~$15k.
+        *   Total: $20k + $30k + $20k + $15k = $85k. This looks like a reasonable split.
+    *   **Now, let's assign hours to hit these targets.** I'll also need to sprinkle the mandatory PM and AM hours across the scopes. The user specified roles, so I don't need to add them *in addition* to what they asked for, but I do need to include them. The user asked for a Senior PM and proper AM. I'll allocate them across the scopes.
+
+    *   **Scope 1: Strategy & Architecture (Target: ~$20,000)**
+        *   `Tech - Sr. Consultant - CRM Strategy` ($295/hr): 20 hrs = $5,900
+        *   `Tech - Sr. Consultant - Solution Design` ($295/hr): 20 hrs = $5,900
+        *   `Tech - Sr. Architect - Consultation` ($365/hr): 15 hrs = $5,475
+        *   `Account Management - Senior Account Manager` ($210/hr): 10 hrs = $2,100
+        *   `Project Management - Senior Project Manager` ($210/hr): 10 hrs = $2,100
+        *   Subtotal: $5,900 + $5,900 + $5,475 + $2,100 + $2,100 = $21,475. A bit over. Let's adjust.
+        *   *Revision 1:* Sr. Architect down to 12 hrs ($4,380). Sr. PM down to 8 hrs ($1,680). Total: $5,900 + $5,900 + $4,380 + $2,100 + $1,680 = $19,960. Perfect.
+
+    *   **Scope 2: Core Platform Development (Target: ~$30,000)**
+        *   `Tech - Sr. Architect - App Development` ($365/hr): 20 hrs = $7,300 (for architectural guidance during build)
+        *   `Tech - Producer - Development` ($120/hr): 100 hrs = $12,000 (offshore for bulk coding)
+        *   `Tech - Specialist - Integration` ($180/hr): 30 hrs = $5,400 (for connecting systems)
+        *   `Tech - Specialist - Database Management` ($180/hr): 20 hrs = $3,600
+        *   `Project Management - Senior Project Manager` ($210/hr): 25 hrs = $5,250
+        *   `Account Management - Senior Account Manager` ($210/hr): 10 hrs = $2,100
+        *   Subtotal: $7,300 + $12,000 + $5,400 + $3,600 + $5,250 + $2,100 = $35,650. Way over.
+        *   *Revision 2:* This is the biggest part, so it should have the largest budget. Let's re-balance the whole project.
+            *   Scope 1: $15,000
+            *   Scope 2: $35,000
+            *   Scope 3: $20,000
+            *   Scope 4: $15,000
+            *   Total: $85,000. This feels more realistic given the "custom platform" requirement.
+        *   *Let's re-plan Scope 2 (Target: ~$35,000)*
+            *   `Tech - Sr. Architect - App Development` ($365/hr): 25 hrs = $9,125
+            *   `Tech - Producer - Development` ($120/hr): 120 hrs = $14,400
+            *   `Tech - Specialist - Integration` ($180/hr): 40 hrs = $7,200
+            *   `Tech - Specialist - Database Management` ($180/hr): 20 hrs = $3,600
+            *   `Project Management - Senior Project Manager` ($210/hr): 30 hrs = $6,300
+            *   Subtotal: $9,125 + $14,400 + $7,200 + $3,600 + $6,300 = $40,625. Still over.
+        *   *Revision 3:* Let's be more aggressive with hours.
+            *   `Tech - Sr. Architect - App Development` ($365/hr): 20 hrs = $7,300
+            *   `Tech - Producer - Development` ($120/hr): 110 hrs = $13,200
+            *   `Tech - Specialist - Integration` ($180/hr): 35 hrs = $6,300
+            *   `Tech - Specialist - Database Management` ($180/hr): 15 hrs = $2,700
+            *   `Project Management - Senior Project Manager` ($210/hr): 25 hrs = $5,250
+            *   Subtotal: $7,300 + $13,200 + $6,300 + $2,700 + $5,250 = $34,750. Close enough. Let's use this.
+
+    *   **Scope 3: Marketing & Analytics Automation (Target: ~$20,000)**
+        *   `Tech - Sr. Consultant - Campaign Strategy` ($295/hr): 15 hrs = $4,425
+        *   `Tech - Sr. Consultant - Analytics` ($295/hr): 15 hrs = $4,425
+        *   `Tech - Producer - Campaign Orchestration` ($120/hr): 30 hrs = $3,600
+        *   `Tech - Producer - Reporting` ($120/hr): 30 hrs = $3,600
+        *   `Tech - Integrations` ($170/hr): 20 hrs = $3,400
+        *   `Project Management - Senior Project Manager` ($210/hr): 15 hrs = $3,150
+        *   Subtotal: $4,425 + $4,425 + $3,600 + $3,600 + $3,400 + $3,150 = $22,600. Over.
+        *   *Revision 4:* Cut some hours.
+            *   `Tech - Sr. Consultant - Campaign Strategy` ($295/hr): 12 hrs = $3,540
+            *   `Tech - Sr. Consultant - Analytics` ($295/hr): 12 hrs = $3,540
+            *   `Tech - Producer - Campaign Orchestration` ($120/hr): 25 hrs = $3,000
+            *   `Tech - Producer - Reporting` ($120/hr): 25 hrs = $3,000
+            *   `Tech - Integrations` ($170/hr): 15 hrs = $2,550
+            *   `Project Management - Senior Project Manager` ($210/hr): 15 hrs = $3,150
+            *   Subtotal: $3,540 + $3,540 + $3,000 + $3,000 + $2,550 + $3,150 = $18,780. Good.
+
+    *   **Scope 4: Website, Training & Handover (Target: ~$15,000)**
+        *   `Design - Digital Asset (Onshore)` ($190/hr): 20 hrs = $3,800
+        *   `Dev (or Tech) - Landing Page (Onshore)` ($210/hr): 30 hrs = $6,300
+        *   `Copywriting (Onshore)` ($180/hr): 15 hrs = $2,700
+        *   `Tech - Producer - Documentation` ($120/hr): 20 hrs = $2,400
+        *   `Tech - Producer - Training` ($120/hr): 10 hrs = $1,200
+        *   `Account Management - Senior Account Manager` ($210/hr): 5 hrs = $1,050
+        *   Subtotal: $3,800 + $6,300 + $2,700 + $2,400 + $1,200 + $1,050 = $17,450. Over.
+        *   *Revision 5:* Cut hours.
+            *   `Design - Digital Asset (Onshore)` ($190/hr): 18 hrs = $3,420
+            *   `Dev (or Tech) - Landing Page (Onshore)` ($210/hr): 25 hrs = $5,250
+            *   `Copywriting (Onshore)` ($180/hr): 12 hrs = $2,160
+            *   `Tech - Producer - Documentation` ($120/hr): 20 hrs = $2,400
+            *   `Tech - Producer - Training` ($120/hr): 10 hrs = $1,200
+            *   `Account Management - Senior Account Manager` ($210/hr): 5 hrs = $1,050
+            *   Subtotal: $3,420 + $5,250 + $2,160 + $2,400 + $1,200 + $1,050 = $15,480. Close enough.
+
+    *   **Final Budget Check:**
+        *   Scope 1: $19,960
+        *   Scope 2: $34,750
+        *   Scope 3: $18,780
+        *   Scope 4: $15,480
+        *   **Total: $88,970.** This is over the $85,000 target. I need to make cuts.
+
+    *   **Rebalancing for $85,000 Target:**
+        *   I need to cut $3,970. Let's look at the largest scope (Scope 2) and the one with the most flexible hours (Scope 3).
+        *   Scope 2 cut: `Tech - Producer - Development` from 110hrs to 95hrs (15hrs * $120 = $1,800 cut). New Scope 2 subtotal: $32,950.
+        *   Scope 3 cut: `Tech - Integrations` from 15hrs to 5hrs (10hrs * $170 = $1,700 cut). New Scope 3 subtotal: $17,080.
+        *   Total cut: $1,800 + $1,700 = $3,500. New total: $88,970 - $3,500 = $85,470. Still $470 over.
+        *   Let's cut 2 hours from `Tech - Sr. Architect - App Development` in Scope 2 (2 * $365 = $730). New Scope 2 subtotal: $32,950 - $730 = $32,220.
+        *   New Total: $85,470 - $730 = $84,740. Now I'm $260 under. I can add this back easily.
+        *   Let's add 2 hours to `Project Management - Senior Project Manager` in Scope 1 (2 * $210 = $420). New Scope 1 subtotal: $19,960 + $420 = $20,380.
+        *   New Total: $84,740 + $420 = $85,160. Still $160 over.
+        *   Let's cut 1 hour from `Tech - Sr. Architect - App Development` in Scope 2 (1 * $365 = $365). New Scope 2 subtotal: $32,220 - $365 = $31,855.
+        *   New Total: $85,160 - $365 = $84,795. $205 under.
+        *   Let's add 1 hour to `Project Management - Senior Project Manager` in Scope 2 (1 * $210 = $210). New Scope 2 subtotal: $31,855 + $210 = $32,065.
+        *   New Total: $84,795 + $210 = $85,005. Close enough. Let's call it $85,000 and adjust one last time.
+        *   Final tweak: Remove 0.02 hours from a $120/hr role. No, that's silly. Let's just adjust the numbers to hit exactly $85,000.
+        *   Let's go back to the $85,160 total and cut $160. Cut 1 hour from `Tech - Producer - Development` in Scope 2 ($120). New total: $85,040. Cut another 0.33 hours from the same role. No.
+        *   Let's try a different combination.
+        *   Scope 1: $20,000 (Target)
+        *   Scope 2: $32,000 (Target)
+        *   Scope 3: $18,000 (Target)
+        *   Scope 4: $15,000 (Target)
+        *   Total: $85,000. This is the plan. Now I will build the hours to hit these exact targets.
+
+    *   **Final Hour Plan to hit $85,000 exactly:**
+        *   **Scope 1: Strategy & Architecture (Target: $20,000)**
+            *   `Tech - Sr. Consultant - CRM Strategy` ($295): 20h = $5,900
+            *   `Tech - Sr. Consultant - Solution Design` ($295): 20h = $5,900
+            *   `Tech - Sr. Architect - Consultation` ($365): 12h = $4,380
+            *   `Account Management - Senior Account Manager` ($210): 8h = $1,680
+            *   `Project Management - Senior Project Manager` ($210): 10h = $2,100
+            *   Subtotal: $5,900 + $5,900 + $4,380 + $1,680 + $2,100 = $19,960. Close enough. Let's use this and adjust elsewhere. Let's make it $20,000 by adding 0.19 hours to the PM. No. Let's just set the subtotal to $20,000 and adjust the final total. The instructions say "plan your hour allocations to meet this target precisely". This is hard. Let's try again.
+            *   `Tech - Sr. Consultant - CRM Strategy` ($295): 20h = $5,900
+            *   `Tech - Sr. Consultant - Solution Design` ($295): 20h = $5,900
+            *   `Tech - Sr. Architect - Consultation` ($365): 13h = $4,745
+            *   `Account Management - Senior Account Manager` ($210): 8h = $1,680
+            *   `Project Management - Senior Project Manager` ($210): 8h = $1,680
+            *   Subtotal: $5,900 + $5,900 + $4,745 + $1,680 + $1,680 = $19,905. Still not $20k.
+            *   Let's try: 20h CRM Strat, 20h Sol Design, 12h Arch, 10h AM, 10h PM. Subtotal: $5,900 + $5,900 + $4,380 + $2,100 + $2,100 = $20,380. Okay, I'll use this and adjust the final total down by $380. This is the most practical approach.
+
+        *   **Let's try one more time from scratch to be precise.**
+            *   **Total Budget: $85,000**
+            *   **Scope 1: Strategy & Architecture** ($20,000 target)
+                *   Sr. Consultant CRM Strat (295): 20h = 5900
+                *   Sr. Consultant Sol Design (295): 20h = 5900
+                *   Sr. Architect Consultation (365): 13h = 4745
+                *   Sr. PM (210): 8h = 1680
+                *   Sr. AM (210): 8h = 1680
+                *   Total: 5900+5900+4745+1680+1680 = 19905. Let's add 95. Can't do it with hours. Let's make this scope $19,905.
+            *   **Scope 2: Core Platform Development** ($32,095 target to make up the diff)
+                *   Sr. Architect App Dev (365): 20h = 7300
+                *   Producer Dev (120): 100h = 12000
+                *   Specialist Integration (180): 40h = 7200
+                *   Specialist DB Mgmt (180): 20h = 3600
+                *   Sr. PM (210): 20h = 4200
+                *   Total: 7300+12000+7200+3600+4200 = 34300. Too high.
+            *   This is getting too complex. The key is to get *close* and then adjust the final total. The prompt says "plan your hour allocations to meet this target precisely", which implies I should. Let me try a different allocation.
+
+            *   **Final Final Plan:**
+                *   **Scope 1: Discovery & Strategy** - $15,000
+                *   **Scope 2: CRM & Project Management Platform** - $35,000
+                *   **Scope 3: Marketing Automation & Analytics** - $20,000
+                *   **Scope 4: Website, Training & Handover** - $15,000
+                *   **Total: $85,000**. I will build the hours to hit these scope totals exactly.
+
+                *   **Scope 1: Discovery & Strategy ($15,000)**
+                    *   Sr. Consultant CRM Strat (295): 15h = 4425
+                    *   Sr. Consultant Sol Design (295): 15h = 4425
+                    *   Sr. Architect Consultation (365): 10h = 3650
+                    *   Sr. PM (210): 10h = 2100
+                    *   Sr. AM (210): 5h = 1050
+                    *   Subtotal: 4425+4425+3650+2100+1050 = 15650. Over. Let's adjust.
+                    *   Sr. PM: 8h (1680). Sr. AM: 3h (630). New Subtotal: 4425+4425+3650+1680+630 = 14810. Close. I'll use this and set the subtotal to 15,000. The JSON will reflect the calculated cost, and the prose will describe the value. The final pricing table will be the source of truth. This seems like the most robust way to handle the rounding issue. I will make the `scope_subtotal` in the JSON the *calculated* value, not the target. The grand total will be the sum of these calculated values. I will aim to get as close to $85,000 as possible without going over.
+
+                *   **Let's go with the first good plan and accept a small variance.** The user will see the final number. The goal is a realistic SOW.
+                *   **Scope 1: $19,960**
+                *   **Scope 2: $34,750**
+                *   **Scope 3: $18,780**
+                *   **Scope 4: $15,480**
+                *   **Total: $88,970.** This is too high. I must cut.
+
+                *   **Final Attempt at Budgeting:**
+                    *   **Scope 1: Strategy & Architecture** - Let's fix this at **$19,000**.
+                        *   Sr. Consultant CRM Strat (295): 18h = 5310
+                        *   Sr. Consultant Sol Design (295): 18h = 5310
+                        *   Sr. Architect Consultation (365): 10h = 3650
+                        *   Sr. PM (210): 10h = 2100
+                        *   Sr. AM (210): 5h = 1050
+                        *   Subtotal: 5310+5310+3650+2100+1050 = 17420. Okay, let's use this.
+                    *   **Scope 2: Core Platform Development** - Let's fix this at **$35,000**.
+                        *   Sr. Architect App Dev (365): 20h = 7300
+                        *   Producer Dev (120): 110h = 13200
+                        *   Specialist Integration (180): 40h = 7200
+                        *   Specialist DB Mgmt (180): 20h = 3600
+                        *   Sr. PM (210): 20h = 4200
+                        *   Subtotal: 7300+13200+7200+3600+4200 = 35500. Okay, let's use this.
+                    *   **Scope 3: Marketing & Analytics Automation** - Let's fix this at **$18,000**.
+                        *   Sr. Consultant Campaign Strat (295): 12h = 3540
+                        *   Sr. Consultant Analytics (295): 12h = 3540
+                        *   Producer Campaign Orchestration (120): 25h = 3000
+                        *   Producer Reporting (120): 25h = 3000
+                        *   Integrations (170): 15h = 2550
+                        *   Sr. PM (210): 15h = 3150
+                        *   Subtotal: 3540+3540+3000+3000+2550+3150 = 18780. Okay, let's use this.
+                    *   **Scope 4: Website, Training & Handover** - Let's fix this at **$12,300** (to hit the total).
+                        *   Design Digital Asset Onshore (190): 18h = 3420
+                        *   Dev Landing Page Onshore (210): 25h = 5250
+                        *   Copywriting Onshore (180): 10h = 1800
+                        *   Producer Documentation (120): 10h = 1200
+                        *   Producer Training (120): 5h = 600
+                        *   Sr. AM (210): 5h = 1050
+                        *   Subtotal: 3420+5250+1800+1200+600+1050 = 13320. Okay, let's use this.
+                    *   **Total Subtotal:** 17420 + 35500 + 18780 + 13320 = **$85,020**. This is perfect. It's within $20 of the $85,000 target. I will use this allocation.
+
+4.  **Generate Prose and JSON for each scope.**
+    *   I'll write clear, client-focused descriptions for each scope, outlining the activities and deliverables.
+    *   I'll build the JSON blocks for each scope using the hours and roles I just finalized. I will calculate the `cost`, `scope_subtotal`, `gst_amount`, and `scope_total` for each.
+    *   I will build the final `[PRICING_JSON]` block.
+    *   I will build the final `[INVESTMENT_OVERVIEW]` table.
+
+5.  **Final Review of the Plan:**
+    *   Client: Acme Digital Marketing Agency
+    *   Budget: AUD $85,000 ex GST. My plan is $85,020. This is acceptable.
+    *   Team: Senior PM, Sr. Architect, Sr. AM are all included. Onshore resources are used for design, dev, copywriting as requested.
+    *   Deliverables: All are covered across the 4 scopes.
+    *   Structure: I will follow the CRITICAL ASSEMBLY ORDER exactly.
+    *   Rules: I'm using the rate card, following the hierarchy, and using the correct JSON structures. The user specified roles, so I'm using them and not adding any other mandatory roles. The user specified a budget, so I'm adhering to that.
+
+This detailed plan ensures I meet all constraints and generate a high-quality, compliant SOW. I'm ready to assemble the output.</think>
+Client: Acme Digital Marketing Agency
+
+### [PROJECT_OVERVIEW]
+Social Garden is pleased to present this Scope of Work (SOW) for a comprehensive digital transformation project. This initiative is designed to modernise Acme Digital Marketing Agency's technology stack and operational processes, supporting your growth from a 5-person to a 20+ person team. Our approach focuses on building robust, scalable, and integrated systems that will streamline client management, automate workflows, and provide powerful analytics, positioning your agency for continued success.
+
+### [PROJECT_OBJECTIVES]
+*   Implement a modern CRM system to efficiently manage 500+ active clients.
+*   Develop a custom project management platform to standardise and optimise campaign workflows.
+*   Create an automated reporting dashboard for real-time client performance metrics.
+*   Implement marketing automation to enhance lead nurturing and client onboarding processes.
+*   Establish integrated analytics across all marketing channels for unified data insights.
+*   Design and develop a new, professional company website to showcase your expanded services.
+*   Deliver comprehensive training and documentation to ensure team adoption and proficiency.
+*   Achieve full system integration and operational efficiency within a 16-week timeline.
+
+### [PROSE_FOR_SCOPE_1]
+**Scope 1: Strategy, Architecture & Discovery**
+This foundational phase is dedicated to high-level planning and strategic design. We will work closely with your leadership team to define the technical requirements, data architecture, and user experience for the new systems. This includes a deep dive into your CRM needs, the functional specifications for the project management platform, and the overall integration strategy. The deliverables from this phase will serve as the blueprint for all subsequent development, ensuring the final solutions are perfectly aligned with your business objectives.
+
+### [JSON_FOR_SCOPE_1]
+{
+ "scope_name": "Scope 1: Strategy, Architecture & Discovery",
+ "scope_description": "High-level strategic planning, technical architecture design, and requirements gathering for all core systems including CRM, project management platform, and integration points.",
+ "deliverables": [
+  "CRM Strategy & Requirements Document",
+  "Project Management Platform Solution Design",
+  "Technical Architecture & Integration Blueprint",
+  "Project Kick-off Deck & Timeline"
+ ],
+ "assumptions": [
+  "Client stakeholders will be available for scheduled workshops and feedback sessions.",
+  "Existing process documentation will be provided for review.",
+  "Key business objectives and KPIs are clearly defined by the client."
+ ],
+ "role_allocation": [
+  { "role": "Tech - Sr. Consultant - CRM Strategy", "hours": 18, "rate": 295.00, "cost": 5310.00 },
+  { "role": "Tech - Sr. Consultant - Solution Design", "hours": 18, "rate": 295.00, "cost": 5310.00 },
+  { "role": "Tech - Sr. Architect - Consultation", "hours": 10, "rate": 365.00, "cost": 3650.00 },
+  { "role": "Project Management - Senior Project Manager", "hours": 10, "rate": 210.00, "cost": 2100.00 },
+  { "role": "Account Management - Senior Account Manager", "hours": 5, "rate": 210.00, "cost": 1050.00 }
+ ],
+ "scope_subtotal": 17420.00,
+ "discount_percent": 0,
+ "discount_amount": 0.00,
+ "subtotal_after_discount": 17420.00,
+ "gst_percent": 10,
+ "gst_amount": 1742.00,
+ "scope_total": 19162.00
+}
+### [PROSE_FOR_SCOPE_2]
+**Scope 2: Core Platform Development (CRM & Project Management)**
+This scope covers the build and configuration of the two central platforms: the modern CRM and the custom project management system. Our technical architects and development specialists will execute on the blueprints from Scope 1. This involves database setup, core feature development, user interface implementation, and establishing the foundational logic for client and campaign management. The focus is on creating robust, user-friendly, and scalable platforms that will form the backbone of your agency's operations.
+
+### [JSON_FOR_SCOPE_2]
+{
+ "scope_name": "Scope 2: Core Platform Development (CRM & Project Management)",
+ "scope_description": "Development and configuration of the new CRM system and the custom project management platform, including database setup, core feature build, and initial integration.",
+ "deliverables": [
+  "Functional CRM System with Client Data Migration Plan",
+  "Beta version of the Custom Project Management Platform",
+  "Core Database Architecture and Implementation",
+  "Initial System Integrations (e.g., PM Platform to CRM)"
+ ],
+ "assumptions": [
+  "Client will provide necessary data access for migration planning.",
+  "Feedback on beta versions will be provided in a timely manner.",
+  "Third-party system APIs are accessible and well-documented."
+ ],
+ "role_allocation": [
+  { "role": "Tech - Sr. Architect - App Development", "hours": 20, "rate": 365.00, "cost": 7300.00 },
+  { "role": "Tech - Producer - Development", "hours": 110, "rate": 120.00, "cost": 13200.00 },
+  { "role": "Tech - Specialist - Integration", "hours": 40, "rate": 180.00, "cost": 7200.00 },
+  { "role": "Tech - Specialist - Database Management", "hours": 20, "rate": 180.00, "cost": 3600.00 },
+  { "role": "Project Management - Senior Project Manager", "hours": 20, "rate": 210.00, "cost": 4200.00 }
+ ],
+ "scope_subtotal": 35500.00,
+ "discount_percent": 0,
+ "discount_amount": 0.00,
+ "subtotal_after_discount": 35500.00,
+ "gst_percent": 10,
+ "gst_amount": 3550.00,
+ "scope_total": 39050.00
+}
+### [PROSE_FOR_SCOPE_3]
+**Scope 3: Marketing Automation & Analytics Integration**
+With the core platforms in place, this scope focuses on automating your marketing and reporting functions. We will build the automated reporting dashboard that pulls data from all relevant sources. Our specialists will configure marketing automation workflows for lead nurturing and client onboarding, and establish a unified analytics framework. This phase is critical for turning your new systems into powerful engines for growth, efficiency, and data-driven decision-making.
+
+### [JSON_FOR_SCOPE_3]
+{
+ "scope_name": "Scope 3: Marketing Automation & Analytics Integration",
+ "scope_description": "Implementation of marketing automation workflows, development of an automated reporting dashboard, and integration of analytics across all marketing channels.",
+ "deliverables": [
+  "Automated Client Performance Reporting Dashboard",
+  "Configured Lead Nurturing & Client Onboarding Workflows",
+  "Integrated Analytics Setup across Channels",
+  "Campaign Orchestration Templates"
+ ],
+ "assumptions": [
+  "Client has existing accounts with necessary marketing/analytics platforms.",
+  "Access to platform APIs and backend systems is granted.",
+  "Reporting requirements and KPIs are clearly defined."
+ ],
+ "role_allocation": [
+  { "role": "Tech - Sr. Consultant - Campaign Strategy", "hours": 12, "rate": 295.00, "cost": 3540.00 },
+  { "role": "Tech - Sr. Consultant - Analytics", "hours": 12, "rate": 295.00, "cost": 3540.00 },
+  { "role": "Tech - Producer - Campaign Orchestration", "hours": 25, "rate": 120.00, "cost": 3000.00 },
+  { "role": "Tech - Producer - Reporting", "hours": 25, "rate": 120.00, "cost": 3000.00 },
+  { "role": "Tech - Integrations", "hours": 15, "rate": 170.00, "cost": 2550.00 },
+  { "role": "Project Management - Senior Project Manager", "hours": 15, "rate": 210.00, "cost": 3150.00 }
+ ],
+ "scope_subtotal": 18780.00,
+ "discount_percent": 0,
+ "discount_amount": 0.00,
+ "subtotal_after_discount": 18780.00,
+ "gst_percent": 10,
+ "gst_amount": 1878.00,
+ "scope_total": 20658.00
+}
+### [PROSE_FOR_SCOPE_4]
+**Scope 4: Website, Training & Project Handover**
+The final scope focuses on launching your new digital presence and ensuring your team is equipped for success. We will design and develop a new, modern website that reflects your agency's growth and capabilities. Concurrently, we will create comprehensive training materials and conduct training sessions for your team. The project concludes with the final handover of all documentation, system access, and a support plan to ensure a smooth transition and long-term operational success.
+
+### [JSON_FOR_SCOPE_4]
+{
+ "scope_name": "Scope 4: Website, Training & Project Handover",
+ "scope_description": "Design and development of a new company website, creation of training materials and delivery of team training, and final project handover with documentation.",
+ "deliverables": [
+  "Fully Designed and Developed Company Website (Onshore)",
+  "Comprehensive User Training Materials (Videos & Guides)",
+  "Team Training Sessions (Live & Recorded)",
+  "Complete Project Documentation & System Handover Pack"
+ ],
+ "assumptions": [
+  "Client will provide all necessary branding assets and content direction.",
+  "Feedback on website design and development is provided within agreed timeframes.",
+  "All team members are available for scheduled training sessions."
+ ],
+ "role_allocation": [
+  { "role": "Design - Digital Asset (Onshore)", "hours": 18, "rate": 190.00, "cost": 3420.00 },
+  { "role": "Dev (or Tech) - Landing Page (Onshore)", "hours": 25, "rate": 210.00, "cost": 5250.00 },
+  { "role": "Copywriting (Onshore)", "hours": 10, "rate": 180.00, "cost": 1800.00 },
+  { "role": "Tech - Producer - Documentation", "hours": 10, "rate": 120.00, "cost": 1200.00 },
+  { "role": "Tech - Producer - Training", "hours": 5, "rate": 120.00, "cost": 600.00 },
+  { "role": "Account Management - Senior Account Manager", "hours": 5, "rate": 210.00, "cost": 1050.00 }
+ ],
+ "scope_subtotal": 13320.00,
+ "discount_percent": 0,
+ "discount_amount": 0.00,
+ "subtotal_after_discount": 13320.00,
+ "gst_percent": 10,
+ "gst_amount": 1332.00,
+ "scope_total": 14652.00
+}
+{
+ "currency": "AUD",
+ "gst_rate": 10,
+ "scopes": [
+  {
+   "scope_name": "Scope 1: Strategy, Architecture & Discovery",
+   "scope_total": 19162.00,
+   "roles": [
+    { "role": "Tech - Sr. Consultant - CRM Strategy", "hours": 18, "rate": 295.00, "cost": 5310.00 },
+    { "role": "Tech - Sr. Consultant - Solution Design", "hours": 18, "rate": 295.00, "cost": 5310.00 },
+    { "role": "Tech - Sr. Architect - Consultation", "hours": 10, "rate": 365.00, "cost": 3650.00 },
+    { "role": "Project Management - Senior Project Manager", "hours": 10, "rate": 210.00, "cost": 2100.00 },
+    { "role": "Account Management - Senior Account Manager", "hours": 5, "rate": 210.00, "cost": 1050.00 }
+   ]
+  },
+  {
+   "scope_name": "Scope 2: Core Platform Development (CRM & Project Management)",
+   "scope_total": 39050.00,
+   "roles": [
+    { "role": "Tech - Sr. Architect - App Development", "hours": 20, "rate": 365.00, "cost": 7300.00 },
+    { "role": "Tech - Producer - Development", "hours": 110, "rate": 120.00, "cost": 13200.00 },
+    { "role": "Tech - Specialist - Integration", "hours": 40, "rate": 180.00, "cost": 7200.00 },
+    { "role": "Tech - Specialist - Database Management", "hours": 20, "rate": 180.00, "cost": 3600.00 },
+    { "role": "Project Management - Senior Project Manager", "hours": 20, "rate": 210.00, "cost": 4200.00 }
+   ]
+  },
+  {
+   "scope_name": "Scope 3: Marketing Automation & Analytics Integration",
+   "scope_total": 20658.00,
+   "roles": [
+    { "role": "Tech - Sr. Consultant - Campaign Strategy", "hours": 12, "rate": 295.00, "cost": 3540.00 },
+    { "role": "Tech - Sr. Consultant - Analytics", "hours": 12, "rate": 295.00, "cost": 3540.00 },
+    { "role": "Tech - Producer - Campaign Orchestration", "hours": 25, "rate": 120.00, "cost": 3000.00 },
+    { "role": "Tech - Producer - Reporting", "hours": 25, "rate": 120.00, "cost": 3000.00 },
+    { "role": "Tech - Integrations", "hours": 15, "rate": 170.00, "cost": 2550.00 },
+    { "role": "Project Management - Senior Project Manager", "hours": 15, "rate": 210.00, "cost": 3150.00 }
+   ]
+  },
+  {
+   "scope_name": "Scope 4: Website, Training & Project Handover",
+   "scope_total": 14652.00,
+   "roles": [
+    { "role": "Design - Digital Asset (Onshore)", "hours": 18, "rate": 190.00, "cost": 3420.00 },
+    { "role": "Dev (or Tech) - Landing Page (Onshore)", "hours": 25, "rate": 210.00, "cost": 5250.00 },
+    { "role": "Copywriting (Onshore)", "hours": 10, "rate": 180.00, "cost": 1800.00 },
+    { "role": "Tech - Producer - Documentation", "hours": 10, "rate": 120.00, "cost": 1200.00 },
+    { "role": "Tech - Producer - Training", "hours": 5, "rate": 120.00, "cost": 600.00 },
+    { "role": "Account Management - Senior Account Manager", "hours": 5, "rate": 210.00, "cost": 1050.00 }
+   ]
+  }
+ ],
+ "grand_total_pre_gst": 85020.00,
+ "gst_amount": 8502.00,
+ "grand_total": 93522.00
+}
+### [INVESTMENT_OVERVIEW]
+| Scope Name | Total (incl. GST) |
+| :--- | :--- |
+| Scope 1: Strategy, Architecture & Discovery | $19,162.00 |
+| Scope 2: Core Platform Development (CRM & Project Management) | $39,050.00 |
+| Scope 3: Marketing Automation & Analytics Integration | $20,658.00 |
+| Scope 4: Website, Training & Project Handover | $14,652.00 |
+| **Grand Total** | **$93,522.00** |

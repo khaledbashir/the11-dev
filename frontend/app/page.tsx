@@ -4531,8 +4531,9 @@ Ask me questions to get business insights, such as:
           try {
             let buffer = '';
             let firstChunkTime: number | null = null;
+            let streamComplete = false;
 
-            while (true) {
+            while (!streamComplete) {
               const { done, value } = await reader.read();
 
               if (done) {
@@ -4541,6 +4542,7 @@ Ask me questions to get business insights, such as:
                 if (firstChunkTime) {
                   console.log(`⏱️ [FRONTEND] First chunk received after ${firstChunkTime - streamStartTime}ms`);
                 }
+                streamComplete = true;
                 setStreamingMessageId(null);
                 break;
               }
@@ -4559,36 +4561,55 @@ Ask me questions to get business insights, such as:
 
                 try {
                   const jsonStr = line.substring(6); // Remove 'data: ' prefix
-                  const data = JSON.parse(jsonStr);
+                  const parsed = JSON.parse(jsonStr);
+                  console.log('🔍 [SSE DEBUG] Parsed raw:', parsed);
 
-                  // Handle different message types from AnythingLLM stream
-                  if (data.type === 'textResponseChunk' && data.textResponse) {
-                    // Preserve internal thinking tags; UI will collapse them via StreamingThoughtAccordion
-                    accumulatedContent += data.textResponse;
+                  // 🎯 ANYTHINGLLM FORMAT: Handle both array and object formats
+                  const chunks = Array.isArray(parsed) ? parsed : [parsed];
+                  
+                  for (const data of chunks) {
+                    console.log('🔍 [SSE DEBUG] Processing chunk:', data);
+                    
+                    // 🎯 CRITICAL: Check for proper AnythingLLM stream format
+                    if (data.type === 'textResponseChunk' && data.textResponse) {
+                      console.log('📝 [SSE DEBUG] Adding chunk content:', data.textResponse.substring(0, 100));
+                      accumulatedContent += data.textResponse;
 
-                    // Update the message content in real-time
-                    setChatMessages(prev =>
-                      prev.map(msg =>
-                        msg.id === aiMessageId
-                          ? { ...msg, content: accumulatedContent }
-                          : msg
-                      )
-                    );
-                  } else if (data.type === 'textResponse') {
-                    // Final response (fallback for non-chunked)
-                    // Preserve internal thinking tags for UI accordion
-                    let content = data.content || data.textResponse || '';
-                    accumulatedContent = content;
-                    setChatMessages(prev =>
-                      prev.map(msg =>
-                        msg.id === aiMessageId
-                          ? { ...msg, content: accumulatedContent }
-                          : msg
-                      )
-                    );
+                      // Update the message content in real-time
+                      setChatMessages(prev =>
+                        prev.map(msg =>
+                          msg.id === aiMessageId
+                            ? { ...msg, content: accumulatedContent }
+                            : msg
+                        )
+                      );
+                    }
+
+                    // 🎯 ANYTHINGLLM STREAM TERMINATION: Check for completion signal
+                    if (data.close === true) {
+                      console.log('✅ [SSE DEBUG] Stream completion signal received');
+                      streamComplete = true;
+                      setStreamingMessageId(null);
+                      break;
+                    }
+
+                    // Handle other content fields as fallback
+                    const content = data.textResponse || data.content || data.message || data.text || '';
+                    if (content && typeof content === 'string' && content !== data.textResponse) {
+                      console.log('📝 [SSE DEBUG] Adding fallback content:', content.substring(0, 100));
+                      accumulatedContent += content;
+                      setChatMessages(prev =>
+                        prev.map(msg =>
+                          msg.id === aiMessageId
+                            ? { ...msg, content: accumulatedContent }
+                            : msg
+                        )
+                      );
+                    }
                   }
                 } catch (parseError) {
-                  console.error('Failed to parse SSE data:', parseError);
+                  console.error('❌ Failed to parse SSE data:', parseError, 'Line was:', line);
+                  console.error('Raw line content:', line);
                 }
               }
             }

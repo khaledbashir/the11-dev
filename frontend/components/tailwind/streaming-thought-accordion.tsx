@@ -204,8 +204,8 @@ export const StreamingThoughtAccordion = React.memo(function StreamingThoughtAcc
     handleThinkingExtracted();
   }, [handleThinkingExtracted]);
 
-  // If no content at all, show nothing
-  if (!actualContent && !thinking && !jsonBlock) {
+  // If no content at all, show nothing (but if content exists, always show something)
+  if (!content || content.trim() === '') {
     console.log('🔍 [Accordion] No content to display - returning null');
     return null;
   }
@@ -266,11 +266,11 @@ export const StreamingThoughtAccordion = React.memo(function StreamingThoughtAcc
             <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180 flex-shrink-0" />
             <span className="text-yellow-400">🧠</span>
             <span>
-              {isStreaming ? "AI Thinking..." : "AI Reasoning"}
+              {isStreaming ? "AI is thinking..." : "AI Reasoning"}
               {isStreaming && <span className="ml-2 inline-flex gap-1">
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"></span>
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" style={{ animationDelay: "0.2s" }}></span>
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" style={{ animationDelay: "0.4s" }}></span>
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-yellow-400 animate-bounce"></span>
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-yellow-400 animate-bounce" style={{ animationDelay: "0.15s" }}></span>
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-yellow-400 animate-bounce" style={{ animationDelay: "0.3s" }}></span>
               </span>}
             </span>
             <span className="text-xs text-gray-400 ml-auto">Transparency Mode</span>
@@ -302,11 +302,11 @@ export const StreamingThoughtAccordion = React.memo(function StreamingThoughtAcc
             <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180 flex-shrink-0" />
             <span className="text-yellow-400">🧠</span>
             <span>
-              {isStreaming ? "AI Thinking..." : "AI Reasoning"}
+              {isStreaming ? "AI is thinking..." : "AI Reasoning"}
               {isStreaming && <span className="ml-2 inline-flex gap-1">
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"></span>
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" style={{ animationDelay: "0.2s" }}></span>
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" style={{ animationDelay: "0.4s" }}></span>
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-yellow-400 animate-bounce"></span>
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-yellow-400 animate-bounce" style={{ animationDelay: "0.15s" }}></span>
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-yellow-400 animate-bounce" style={{ animationDelay: "0.3s" }}></span>
               </span>}
             </span>
             <span className="text-xs text-gray-400 ml-auto">Transparency Mode</span>
@@ -364,13 +364,15 @@ export const StreamingThoughtAccordion = React.memo(function StreamingThoughtAcc
                 return isInline ? (
                   <code className="bg-[#0a0a0a] text-[#20e28f] px-2 py-1 rounded text-xs font-mono" {...props}>{children}</code>
                 ) : (
-                  <div className="relative group">
-                    <code className={`bg-[#0a0a0a] text-[#20e28f] block p-3 rounded text-xs font-mono ${
-                      isJsonBlock 
-                        ? 'overflow-x-auto pr-20 mb-2 border border-[#1b5e5e]' 
-                        : 'overflow-x-auto mb-2 border border-[#1b5e5e]'
+                  <div className="relative group max-w-full">
+                    <code className={`bg-[#0a0a0a] text-[#20e28f] block p-3 rounded text-xs font-mono max-w-full ${
+                      isJsonBlock
+                        ? 'overflow-hidden mb-2 border border-[#1b5e5e]'
+                        : 'overflow-hidden mb-2 border border-[#1b5e5e]'
                     }`} {...props}>
-                      {children}
+                      <div className="overflow-x-auto max-w-full scrollbar-thin scrollbar-thumb-[#1b5e5e] scrollbar-track-transparent">
+                        {children}
+                      </div>
                     </code>
                     {isJsonBlock && (
                       <Button
@@ -379,7 +381,7 @@ export const StreamingThoughtAccordion = React.memo(function StreamingThoughtAcc
                           const jsonContent = String(children).trim();
                           onInsertClick?.(jsonContent);
                         }}
-                        className="absolute top-2 right-2 bg-[#20e28f] hover:bg-[#1db876] text-black text-xs font-semibold py-1.5 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                        className="absolute top-2 right-2 bg-[#20e28f] hover:bg-[#1db876] text-black text-xs font-semibold py-1.5 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 flex-shrink-0"
                         size="sm"
                       >
                         📋 Insert
