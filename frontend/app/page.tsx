@@ -314,17 +314,10 @@ export default function Page() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [currentDocId, setCurrentDocId] = useState<string | null>(null);
-  const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [aiChatOpen, setAiChatOpen] = useState(true);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isChatLoading, setIsChatLoading] = useState(false);
-<<<<<<< HEAD
-  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
-  const streamingTimeoutRef = useRef<number | null>(null);
-  const [lastUserPrompt, setLastUserPrompt] = useState<string>('');
-  const [isGrandTotalVisible, setIsGrandTotalVisible] = useState(true);
-=======
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null); // Track which message is streaming
   const [lastUserPrompt, setLastUserPrompt] = useState<string>(''); // 🎯 Track last user message for budget/discount extraction
   const [generatedSow, setGeneratedSow] = useState<any>(null); // Store the generated SOW from new API
@@ -476,10 +469,7 @@ export default function Page() {
   });
 
   // Onboarding state (NEW)
->>>>>>> 4dbeee9 (feat: Switch to non-streaming SOW generation API)
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const editorRef = useRef<any>(null);
-  const [latestEditorJSON, setLatestEditorJSON] = useState<any | null>(null);
   const [structuredSow, setStructuredSow] = useState<ArchitectSOW | null>(null);
   const [multiScopePricingData, setMultiScopePricingData] = useState<any | null>(null);
   const [showNewPDFModal, setShowNewPDFModal] = useState(false);
@@ -1011,13 +1001,13 @@ export default function Page() {
               doc.id === currentDocId ? { ...doc, threadSlug: threadSlugToUse } : doc
             ));
 
-<<<<<<< HEAD
-            // CRITICAL: Persist the new thread slug to the database
-            await fetch(`/api/sow/${currentDocId}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ threadSlug: threadSlugToUse }),
-=======
+        const isDashboardMode = viewMode === 'dashboard';
+        const useAnythingLLM = true;
+        let dashboardChatTarget = '';
+        const WORKSPACE_CONFIG = { dashboard: { slug: 'dashboard' } };
+        let endpoint = '';
+        let workspaceSlug = '';
+
         if (isDashboardMode && useAnythingLLM) {
           // Dashboard mode routing
           if (dashboardChatTarget === WORKSPACE_CONFIG.dashboard.slug) {
@@ -1123,6 +1113,7 @@ export default function Page() {
             })
           });
 
+          try {
           const response = await fetch('/api/anythingllm/generate-sow', {
             method: "POST",
             headers: {
@@ -1141,16 +1132,13 @@ export default function Page() {
               status: response.status,
               statusText: response.statusText,
               errorText: errorText
->>>>>>> acc30a0 (fix: Replace placeholder THE_ARCHITECT_V6_PROMPT with working SOWcial Garden AI prompt)
             });
 
-<<<<<<< HEAD
           } catch (error) {
             console.error("❌ Failed to create chat thread:", error);
             toast.error("Failed to create chat thread. Please check the connection and try again.");
             // Stop execution if thread creation fails
             setIsChatLoading(false);
-=======
             let errorMessage = "Sorry, there was an error generating the SOW.";
 
             try {
@@ -1169,22 +1157,16 @@ export default function Page() {
               )
             );
             setStreamingMessageId(null);
->>>>>>> 4dbeee9 (feat: Switch to non-streaming SOW generation API)
             return;
           }
         }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
         const response = await fetch(streamEndpoint, {
-=======
           // Read the SSE stream
           const streamStartTime = Date.now();
           console.log(`⏱️ [FRONTEND] Stream reading started at ${new Date(streamStartTime).toISOString()}`);
-=======
           // Parse the JSON response directly
           const finalSOW = await response.json();
->>>>>>> 4dbeee9 (feat: Switch to non-streaming SOW generation API)
 
           // Console.log the final SOW object
           console.log('✅ Final SOW received:', finalSOW);
@@ -1202,7 +1184,6 @@ export default function Page() {
 
           setStreamingMessageId(null);
 
-<<<<<<< HEAD
               if (done) {
                 const streamEndTime = Date.now();
                 console.log(`✅ Stream complete - took ${streamEndTime - streamStartTime}ms`);
@@ -1403,7 +1384,6 @@ export default function Page() {
             ...newMessages.map(m => ({ role: m.role, content: m.content })),
           ];
           const response = await fetch(endpoint, {
->>>>>>> 49d32ff (Implement robust SOW generation API with Planner and Writer steps)
             method: "POST",
             headers: { "Content-Type": "application/json" },
             signal: controller.signal,
@@ -1441,7 +1421,6 @@ export default function Page() {
         if (currentDocId) {
             handleInsertContent(accumulatedContent);
             toast.success("✅ Content automatically inserted into editor!");
-=======
         // ⚠️ REMOVED DATABASE SAVE - AnythingLLM handles all message storage
       } finally {
         setIsChatLoading(false);
@@ -1454,7 +1433,6 @@ export default function Page() {
         if (error instanceof Error && error.name === 'AbortError') {
           console.log('ℹ️ Request was cancelled to prevent rate limiting');
           return;
->>>>>>> 4dbeee9 (feat: Switch to non-streaming SOW generation API)
         }
 
     } catch (error) {
