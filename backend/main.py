@@ -1,18 +1,19 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, RedirectResponse
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import weasyprint
-from jinja2 import Template
-from markupsafe import Markup
-import time
 import base64
 import os
+import time
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
+import weasyprint
 from dotenv import load_dotenv
-from services.google_sheets_generator import create_sow_sheet
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, RedirectResponse
+from jinja2 import Template
+from markupsafe import Markup
+from pydantic import BaseModel
 from services.google_oauth_handler import get_oauth_handler
+from services.google_sheets_generator import create_sow_sheet
 
 # Load environment variables from .env file
 load_dotenv()
@@ -24,18 +25,26 @@ app = FastAPI(title="Social Garden PDF & Sheets Service")
 # For local dev, add "http://localhost:3000" to the list
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Allow all origins
+    allow_origins=["*"],  # Allow all origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+
 class PDFRequest(BaseModel):
     html_content: str
     filename: str = "document"
-    show_pricing_summary: bool = True  # 🎯 Smart PDF Export: flag to control pricing summary visibility
-    content: Optional[Dict[str, Any]] = None  # TipTap JSON content for enforcement checks
-    final_investment_target_text: Optional[str] = None  # 🎯 Authoritative final price to display in PDF
+    show_pricing_summary: bool = (
+        True  # 🎯 Smart PDF Export: flag to control pricing summary visibility
+    )
+    content: Optional[Dict[str, Any]] = (
+        None  # TipTap JSON content for enforcement checks
+    )
+    final_investment_target_text: Optional[str] = (
+        None  # 🎯 Authoritative final price to display in PDF
+    )
+
 
 class SheetRequest(BaseModel):
     client_name: str
@@ -47,6 +56,12 @@ class SheetRequest(BaseModel):
     pricing: Optional[list] = None
     assumptions: Optional[str] = ""
     timeline: Optional[str] = ""
+
+
+class ExcelRequest(BaseModel):
+    sowData: dict
+    filename: str
+
 
 # HTML template - Clean template with only logo and footer
 SOW_TEMPLATE = """
@@ -365,6 +380,7 @@ hr {
 }
 """
 
+
 @app.post("/generate-pdf")
 async def generate_pdf(request: PDFRequest):
     try:
@@ -381,30 +397,51 @@ async def generate_pdf(request: PDFRequest):
         # 🎯 When final_investment_target_text is provided, strip computed summary sections
         if request.final_investment_target_text:
             import re
+
             html_content = re.sub(
-                r'<h4[^>]*>\s*Summary\s*</h4>\s*<table[^>]*>.*?</table>\s*(<p[^>]*>.*?</p>)?',
-                '',
+                r"<h4[^>]*>\s*Summary\s*</h4>\s*<table[^>]*>.*?</table>\s*(<p[^>]*>.*?</p>)?",
+                "",
                 html_content,
-                flags=re.IGNORECASE | re.DOTALL
+                flags=re.IGNORECASE | re.DOTALL,
             )
-            print("✅ Stripped computed summary section from HTML (final_investment_target_text provided)")
+            print(
+                "✅ Stripped computed summary section from HTML (final_investment_target_text provided)"
+            )
 
         # Defensive redaction: remove any explicit timeline phrasing that uses weeks/months
         # This enforces the negative constraint at render-time in case the model or frontend included it.
         try:
             import re
-            timeline_pattern = re.compile(r"\b(week|weeks|month|months|day|days)\b", flags=re.IGNORECASE)
+
+            timeline_pattern = re.compile(
+                r"\b(week|weeks|month|months|day|days)\b", flags=re.IGNORECASE
+            )
+
             # Only redact within headings and list items to avoid false positives in prose
             def redact_timelines(html: str) -> str:
                 # Remove lines that look like timeline bullets (e.g., 'Phase 1: 3-4 Weeks')
-                redacted = re.sub(r"<h[1-6][^>]*>[^<]*(?:timeline|timelines)[^<]*</h[1-6]>", "<h4>TIMELINE REDACTED</h4>", html, flags=re.IGNORECASE)
-                redacted = re.sub(r"<li[^>]*>[^<]*\\d+[^<]*(?:week|weeks|month|months|day|days)[^<]*</li>", "<li><em>Timeline removed</em></li>", redacted, flags=re.IGNORECASE)
+                redacted = re.sub(
+                    r"<h[1-6][^>]*>[^<]*(?:timeline|timelines)[^<]*</h[1-6]>",
+                    "<h4>TIMELINE REDACTED</h4>",
+                    html,
+                    flags=re.IGNORECASE,
+                )
+                redacted = re.sub(
+                    r"<li[^>]*>[^<]*\\d+[^<]*(?:week|weeks|month|months|day|days)[^<]*</li>",
+                    "<li><em>Timeline removed</em></li>",
+                    redacted,
+                    flags=re.IGNORECASE,
+                )
                 # Also redact inline durations like '3-4 weeks' or '4 weeks'
-                redacted = timeline_pattern.sub(lambda m: '<span class="redacted">[REDACTED]</span>', redacted)
+                redacted = timeline_pattern.sub(
+                    lambda m: '<span class="redacted">[REDACTED]</span>', redacted
+                )
                 return redacted
 
             html_content = redact_timelines(html_content)
-            print("✅ Applied timeline redaction to HTML content to enforce negative constraints")
+            print(
+                "✅ Applied timeline redaction to HTML content to enforce negative constraints"
+            )
         except Exception as _e:
             print("⚠️ Timeline redaction failed:", _e)
 
@@ -413,21 +450,26 @@ async def generate_pdf(request: PDFRequest):
         logo_path = Path(__file__).parent / "social-garden-logo-dark-new.png"
         if logo_path.exists():
             with open(logo_path, "rb") as logo_file:
-                logo_base64 = base64.b64encode(logo_file.read()).decode('utf-8')
+                logo_base64 = base64.b64encode(logo_file.read()).decode("utf-8")
             print(f"✅ Logo loaded successfully from {logo_path}")
         else:
             print(f"⚠️ Logo file not found at {logo_path}")
 
         # Render the HTML template with Jinja2
         if isinstance(html_content, str):
-            html_content = html_content.replace('\x00', '')
+            html_content = html_content.replace("\x00", "")
         # If show_pricing_summary is False, attempt to auto-detect pricing scopes and insert an Investment Overview
         try:
             if not request.show_pricing_summary:
                 # Simple heuristic: look for monetary values in the HTML and scope headings
                 import re
+
                 money_matches = re.findall(r"\$\s?[0-9,]+(?:\.[0-9]{2})?", html_content)
-                scope_heads = re.findall(r"<h[1-6][^>]*>([^<]{3,200}?)</h[1-6]>", html_content, flags=re.IGNORECASE)
+                scope_heads = re.findall(
+                    r"<h[1-6][^>]*>([^<]{3,200}?)</h[1-6]>",
+                    html_content,
+                    flags=re.IGNORECASE,
+                )
                 if money_matches and scope_heads:
                     # Build a minimal Investment Overview table from first few detected scopes/matches
                     try:
@@ -435,17 +477,27 @@ async def generate_pdf(request: PDFRequest):
                         # Pair up scope headings and monetary matches where possible
                         for i, amount in enumerate(money_matches[: len(scope_heads)]):
                             title = scope_heads[i]
-                            overview_rows.append(f"<tr><td>{title}</td><td class=\"num\">{amount}</td></tr>")
+                            overview_rows.append(
+                                f'<tr><td>{title}</td><td class="num">{amount}</td></tr>'
+                            )
 
                         investment_table = (
                             "<h4>Investment Overview</h4>"
-                            "<table class=\"summary-table\"><thead><tr><th>Scope</th><th>Cost</th></tr></thead><tbody>"
+                            '<table class="summary-table"><thead><tr><th>Scope</th><th>Cost</th></tr></thead><tbody>'
                             + "".join(overview_rows)
                             + "</tbody></table>"
                         )
                         # Prepend the investment_table after the first heading in the document
-                        html_content = re.sub(r"(<h1[^>]*>.*?</h1>)", r"\1" + investment_table, html_content, count=1, flags=re.IGNORECASE | re.DOTALL)
-                        print("✅ Auto-inserted Investment Overview table into HTML because pricing info was detected but show_pricing_summary was False")
+                        html_content = re.sub(
+                            r"(<h1[^>]*>.*?</h1>)",
+                            r"\1" + investment_table,
+                            html_content,
+                            count=1,
+                            flags=re.IGNORECASE | re.DOTALL,
+                        )
+                        print(
+                            "✅ Auto-inserted Investment Overview table into HTML because pricing info was detected but show_pricing_summary was False"
+                        )
                     except Exception as _e:
                         print("⚠️ Failed to auto-insert investment overview:", _e)
         except Exception as _e:
@@ -473,60 +525,63 @@ async def generate_pdf(request: PDFRequest):
         pdf_bytes = html_doc.write_pdf()
 
         # Write to file
-        with open(pdf_path, 'wb') as f:
+        with open(pdf_path, "wb") as f:
             f.write(pdf_bytes)
 
         # Return PDF file
         return FileResponse(
-            pdf_path,
-            media_type='application/pdf',
-            filename=f"{request.filename}.pdf"
+            pdf_path, media_type="application/pdf", filename=f"{request.filename}.pdf"
         )
 
     except Exception as e:
         import traceback
+
         error_detail = f"PDF generation failed: {str(e)}\n{traceback.format_exc()}"
         print(error_detail)  # Log to console
         # Dump a short debug HTML file for inspection when errors occur
         try:
-            debug_dir = Path('/tmp/pdf_debug')
+            debug_dir = Path("/tmp/pdf_debug")
             debug_dir.mkdir(exist_ok=True)
             debug_file = debug_dir / f"debug_{int(time.time())}.html"
-            with open(debug_file, 'w', encoding='utf-8') as fh:
+            with open(debug_file, "w", encoding="utf-8") as fh:
                 fh.write(full_html[:200000])
             print(f"✅ Wrote debug HTML to: {debug_file}")
         except Exception as _e:
-            print('⚠️ Failed to write debug HTML file:', _e)
+            print("⚠️ Failed to write debug HTML file:", _e)
         raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
+
 
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "service": "Social Garden PDF Service"}
+
 
 @app.post("/create-sheet")
 async def create_sheet(request: SheetRequest):
     """Create a formatted Google Sheet from SOW data"""
     try:
         sow_data = {
-            'overview': request.overview,
-            'deliverables': request.deliverables,
-            'outcomes': request.outcomes,
-            'phases': request.phases,
-            'pricing': request.pricing or [],
-            'assumptions': request.assumptions,
-            'timeline': request.timeline
+            "overview": request.overview,
+            "deliverables": request.deliverables,
+            "outcomes": request.outcomes,
+            "phases": request.phases,
+            "pricing": request.pricing or [],
+            "assumptions": request.assumptions,
+            "timeline": request.timeline,
         }
-        
+
         result = create_sow_sheet(request.client_name, request.service_name, sow_data)
         return result
-        
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         import traceback
+
         error_detail = f"Sheet creation failed: {str(e)}\n{traceback.format_exc()}"
         print(error_detail)
         raise HTTPException(status_code=500, detail=f"Sheet creation failed: {str(e)}")
+
 
 @app.get("/oauth/authorize")
 async def oauth_authorize():
@@ -534,15 +589,14 @@ async def oauth_authorize():
     try:
         oauth_handler = get_oauth_handler()
         auth_url, state = oauth_handler.get_authorization_url()
-        return {
-            'auth_url': auth_url,
-            'state': state
-        }
+        return {"auth_url": auth_url, "state": state}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 class OAuthTokenRequest(BaseModel):
     code: str
+
 
 @app.post("/oauth/token")
 async def oauth_token(request: OAuthTokenRequest):
@@ -550,18 +604,21 @@ async def oauth_token(request: OAuthTokenRequest):
     try:
         oauth_handler = get_oauth_handler()
         token_dict = oauth_handler.exchange_code_for_token(request.code)
-        
+
         # Encode token for safe transmission
         encoded_token = oauth_handler.encode_token(token_dict)
-        
+
         return {
-            'token': encoded_token,
-            'access_token': token_dict.get('access_token'),
-            'expires_in': token_dict.get('expires_in')
+            "token": encoded_token,
+            "access_token": token_dict.get("access_token"),
+            "expires_in": token_dict.get("expires_in"),
         }
     except Exception as e:
         print(f"ERROR exchanging token: {str(e)}")
-        raise HTTPException(status_code=400, detail=f"Failed to get access token: {str(e)}")
+        raise HTTPException(
+            status_code=400, detail=f"Failed to get access token: {str(e)}"
+        )
+
 
 class SheetRequestOAuth(BaseModel):
     client_name: str
@@ -575,11 +632,13 @@ class SheetRequestOAuth(BaseModel):
     timeline: Optional[str] = ""
     access_token: str
 
+
 class SOWItem(BaseModel):
     description: str
     role: str
     hours: float
     cost: float
+
 
 class SOWScope(BaseModel):
     id: int
@@ -588,6 +647,7 @@ class SOWScope(BaseModel):
     items: list[SOWItem]
     deliverables: list[str]
     assumptions: list[str]
+
 
 class ProfessionalPDFRequest(BaseModel):
     company: dict
@@ -602,54 +662,64 @@ class ProfessionalPDFRequest(BaseModel):
     generatedDate: str
     discount: Optional[float] = 0
 
+
 @app.post("/generate-professional-pdf")
 async def generate_professional_pdf(request: ProfessionalPDFRequest):
     try:
         print("=== DEBUG: Professional PDF Generation Request ===")
-        
+
         # Load and encode the Social Garden logo
         logo_base64 = ""
         logo_path = Path(__file__).parent / "social-garden-logo-dark-new.png"
         if logo_path.exists():
             with open(logo_path, "rb") as logo_file:
-                logo_base64 = base64.b64encode(logo_file.read()).decode('utf-8')
-        
+                logo_base64 = base64.b64encode(logo_file.read()).decode("utf-8")
+
         # Load the template
         template_path = Path(__file__).parent / "multiscope_template.html"
         with open(template_path, "r") as f:
             template_str = f.read()
-        
+
         template = Template(template_str)
-        
+
         # Calculate financial totals in Python instead of Jinja2
         subtotal = 0.0
         scope_totals = []
-        
+
         for scope in request.scopes:
             scope_total = sum(item.cost for item in scope.items)
-            scope_totals.append({
-                'title': scope.title,
-                'description': scope.description,
-                'deliverables': scope.deliverables if hasattr(scope, 'deliverables') else [],
-                'assumptions': scope.assumptions if hasattr(scope, 'assumptions') else [],
-                'total': scope_total,
-                'items': [item.dict() if hasattr(item, 'dict') else item for item in scope.items]
-            })
+            scope_totals.append(
+                {
+                    "title": scope.title,
+                    "description": scope.description,
+                    "deliverables": scope.deliverables
+                    if hasattr(scope, "deliverables")
+                    else [],
+                    "assumptions": scope.assumptions
+                    if hasattr(scope, "assumptions")
+                    else [],
+                    "total": scope_total,
+                    "items": [
+                        item.dict() if hasattr(item, "dict") else item
+                        for item in scope.items
+                    ],
+                }
+            )
             subtotal += scope_total
-        
+
         discount_amount = 0.0
         if request.discount and request.discount > 0:
             discount_amount = subtotal * (request.discount / 100)
-        
+
         total_after_discount = subtotal - discount_amount
-        
+
         # Calculate GST on the post-discount amount (correct logic)
         gst_amount = 0.0
         if request.gstApplicable:
             gst_amount = total_after_discount * 0.10  # 10% GST
-        
+
         final_total = total_after_discount + gst_amount
-        
+
         # Render the HTML with calculated values
         full_html = template.render(
             css_content=DEFAULT_CSS,
@@ -671,31 +741,35 @@ async def generate_professional_pdf(request: ProfessionalPDFRequest):
             currency=lambda x: f"${x:,.2f}",
             generatedDate=request.generatedDate,
             gstApplicable=request.gstApplicable,
-            currency_symbol=request.currency
+            currency_symbol=request.currency,
         )
-        
+
         # Generate PDF
         html_doc = weasyprint.HTML(string=full_html)
         pdf_bytes = html_doc.write_pdf()
-        
+
         output_dir = Path("/tmp/pdfs")
         output_dir.mkdir(exist_ok=True)
         pdf_path = output_dir / f"{request.projectTitle.replace(' ', '_')}.pdf"
-        
-        with open(pdf_path, 'wb') as f:
+
+        with open(pdf_path, "wb") as f:
             f.write(pdf_bytes)
-            
+
         return FileResponse(
             pdf_path,
-            media_type='application/pdf',
-            filename=f"{request.projectTitle}.pdf"
+            media_type="application/pdf",
+            filename=f"{request.projectTitle}.pdf",
         )
-        
+
     except Exception as e:
         import traceback
-        error_detail = f"Professional PDF generation failed: {str(e)}\n{traceback.format_exc()}"
+
+        error_detail = (
+            f"Professional PDF generation failed: {str(e)}\n{traceback.format_exc()}"
+        )
         print(error_detail)
         raise HTTPException(status_code=500, detail=error_detail)
+
 
 @app.post("/create-sheet-oauth")
 async def create_sheet_oauth(request: SheetRequestOAuth):
@@ -703,28 +777,152 @@ async def create_sheet_oauth(request: SheetRequestOAuth):
     try:
         if not request.access_token:
             raise ValueError("access_token is required")
-        
+
         sow_data = {
-            'overview': request.overview,
-            'deliverables': request.deliverables,
-            'outcomes': request.outcomes,
-            'phases': request.phases,
-            'pricing': request.pricing or [],
-            'assumptions': request.assumptions,
-            'timeline': request.timeline
+            "overview": request.overview,
+            "deliverables": request.deliverables,
+            "outcomes": request.outcomes,
+            "phases": request.phases,
+            "pricing": request.pricing or [],
+            "assumptions": request.assumptions,
+            "timeline": request.timeline,
         }
-        
-        result = create_sow_sheet(request.client_name, request.service_name, sow_data, access_token=request.access_token)
+
+        result = create_sow_sheet(
+            request.client_name,
+            request.service_name,
+            sow_data,
+            access_token=request.access_token,
+        )
         return result
-        
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         import traceback
+
         error_detail = f"Sheet creation failed: {str(e)}\n{traceback.format_exc()}"
         print(error_detail)
         raise HTTPException(status_code=500, detail=f"Sheet creation failed: {str(e)}")
 
+
+@app.post("/export-excel")
+async def export_excel(request: ExcelRequest):
+    """Export SOW data to Excel format"""
+    try:
+        import io
+
+        import xlsxwriter
+
+        # Create a workbook and add worksheets
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output)
+
+        # Extract data from request
+        sow_data = request.sowData
+        filename = request.filename
+
+        # Get pricing data
+        pricing_rows = sow_data.get("pricingRows", [])
+
+        # Create summary sheet
+        summary_ws = workbook.add_worksheet("SOW Summary")
+
+        # Add headers
+        summary_ws.write("A1", "Social Garden - Statement of Work")
+        summary_ws.write("A2", sow_data.get("title", "Statement of Work"))
+        summary_ws.write("A3", "")
+
+        # Add pricing table if available
+        if pricing_rows:
+            summary_ws.write("A4", "Role")
+            summary_ws.write("B4", "Hours")
+            summary_ws.write("C4", "Rate (AUD)")
+            summary_ws.write("D4", "Total (AUD)")
+
+            row = 5
+            subtotal = 0
+
+            for item in pricing_rows:
+                summary_ws.write(f"A{row}", item.get("role", ""))
+                summary_ws.write(f"B{row}", item.get("hours", 0))
+                summary_ws.write(f"C{row}", item.get("rate", 0))
+
+                # Calculate total if not provided
+                total = item.get("total", item.get("hours", 0) * item.get("rate", 0))
+                summary_ws.write(f"D{row}", total)
+
+                subtotal += total
+                row += 1
+
+            # Add totals
+            summary_ws.write(f"A{row}", "Total Hours")
+            summary_ws.write(f"B{row}", f"=SUM(B5:B{row - 1})")
+            summary_ws.write(f"C{row}", "")
+            summary_ws.write(f"D{row}", f"=SUM(D5:D{row - 1})")
+
+            # Calculate discount and GST
+            discount_percent = sow_data.get("discount", {}).get("value", 0)
+            discount_type = sow_data.get("discount", {}).get("type", "percentage")
+
+            if discount_type == "percentage":
+                discount_amount = subtotal * (discount_percent / 100)
+            else:
+                discount_amount = discount_percent
+
+            grand_total_pre_gst = subtotal - discount_amount
+            gst_amount = grand_total_pre_gst * 0.1
+            grand_total = grand_total_pre_gst + gst_amount
+
+            # Add financial summary
+            row += 2
+            summary_ws.write(f"A{row}", "Subtotal (excl. GST)")
+            summary_ws.write(f"D{row}", subtotal)
+
+            if discount_amount > 0:
+                row += 1
+                summary_ws.write(f"A{row}", f"Discount ({discount_type})")
+                summary_ws.write(f"D{row}", -discount_amount)
+
+            row += 1
+            summary_ws.write(f"A{row}", "Grand Total (excl. GST)")
+            summary_ws.write(f"D{row}", grand_total_pre_gst)
+
+            row += 1
+            summary_ws.write(f"A{row}", "GST (10%)")
+            summary_ws.write(f"D{row}", gst_amount)
+
+            row += 1
+            summary_ws.write(f"A{row}", "Total Inc. GST")
+            summary_ws.write(f"D{row}", grand_total)
+
+        # Set column widths
+        summary_ws.set_column("A:D", 20)
+
+        # Close workbook
+        workbook.close()
+
+        # Prepare output
+        output.seek(0)
+
+        # Return Excel file
+        from fastapi.responses import StreamingResponse
+
+        return StreamingResponse(
+            io.BytesIO(output.read()),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
+        )
+
+    except Exception as e:
+        import traceback
+
+        error_detail = f"Excel export failed: {str(e)}\n{traceback.format_exc()}"
+        print(error_detail)
+        raise HTTPException(status_code=500, detail=f"Excel export failed: {str(e)}")
+
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)
