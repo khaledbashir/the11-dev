@@ -1,0 +1,10 @@
+# Exclude backend and other directories from frontend build
+backend/
+database/
+logs/
+scripts/
+templates/
+.env
+.env.local
+.env.*.local
+*.md
