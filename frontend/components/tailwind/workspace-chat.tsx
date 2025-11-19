@@ -64,6 +64,8 @@ interface WorkspaceChatProps {
     isLoading?: boolean;
     onInsertToEditor: (content: string) => void;
     streamingMessageId?: string | null;
+    streamingThinking?: string; // PHASE 2: Real CoT content
+    streamingContent?: string; // PHASE 2: Final SOW content
     editorWorkspaceSlug: string; // Workspace slug for currently open SOW
     editorThreadSlug?: string | null; // Current thread for the open SOW
     onEditorThreadChange: (slug: string | null) => void;
@@ -87,6 +89,8 @@ export default function WorkspaceChat({
     isLoading = false,
     onInsertToEditor,
     streamingMessageId,
+    streamingThinking = "", // PHASE 2: Real CoT content
+    streamingContent = "", // PHASE 2: Final SOW content
     editorWorkspaceSlug,
     editorThreadSlug,
     onEditorThreadChange,
@@ -1187,32 +1191,37 @@ export default function WorkspaceChat({
                         })
                     )}
                     
-                    {/* 🎯 Thinking UI - Show when AI is generating */}
-                    {isLoading && (
+                    {/* 🎯 PHASE 2: Real Chain-of-Thought UI - Show actual AI reasoning */}
+                    {isLoading && (streamingThinking || !streamingContent) && (
                         <div className="flex gap-3 justify-start">
                             <div className="relative w-full max-w-[85%] min-w-0 rounded-lg p-4 bg-[#0E2E33] text-white border border-[#1b5e5e]">
                                 <div className="space-y-3">
-                                    {/* Thinking Accordion */}
+                                    {/* Thinking Accordion - Real CoT Content */}
                                     <div className="bg-[#0e0f0f] border border-[#1b5e5e] rounded-lg overflow-hidden">
                                         <div className="px-4 py-3 bg-[#0E2E33] border-b border-[#1b5e5e]">
                                             <div className="flex items-center gap-2">
                                                 <Loader2 className="h-4 w-4 animate-spin text-[#1CBF79]" />
-                                                <span className="text-sm font-medium text-white">AI is thinking...</span>
+                                                <span className="text-sm font-medium text-white">
+                                                    {streamingThinking ? "AI Reasoning..." : "AI is thinking..."}
+                                                </span>
                                             </div>
                                         </div>
-                                        <div className="px-4 py-3 space-y-2">
-                                            <div className="flex items-center gap-2 text-xs text-gray-400">
-                                                <div className="w-1.5 h-1.5 bg-[#1CBF79] rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></div>
-                                                <span>Analyzing your request...</span>
-                                            </div>
-                                            <div className="flex items-center gap-2 text-xs text-gray-400">
-                                                <div className="w-1.5 h-1.5 bg-[#1CBF79] rounded-full animate-pulse" style={{ animationDelay: '200ms' }}></div>
-                                                <span>Checking rate card and budget...</span>
-                                            </div>
-                                            <div className="flex items-center gap-2 text-xs text-gray-400">
-                                                <div className="w-1.5 h-1.5 bg-[#1CBF79] rounded-full animate-pulse" style={{ animationDelay: '400ms' }}></div>
-                                                <span>Drafting SOW content...</span>
-                                            </div>
+                                        <div className="px-4 py-3">
+                                            {streamingThinking ? (
+                                                // PHASE 2: Display real thinking content
+                                                <div className="text-xs text-gray-300 whitespace-pre-wrap font-mono leading-relaxed max-h-[300px] overflow-y-auto">
+                                                    {streamingThinking}
+                                                    <span className="animate-pulse text-gray-500 ml-1">_</span>
+                                                </div>
+                                            ) : (
+                                                // Fallback: Show placeholder while waiting for first chunk
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center gap-2 text-xs text-gray-400">
+                                                        <div className="w-1.5 h-1.5 bg-[#1CBF79] rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></div>
+                                                        <span>Initializing reasoning...</span>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

@@ -40,6 +40,8 @@ export function useChatManager({
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
     const [isChatLoading, setIsChatLoading] = useState(false);
     const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+    const [streamingThinking, setStreamingThinking] = useState<string>(""); // PHASE 2: Real CoT content
+    const [streamingContent, setStreamingContent] = useState<string>(""); // PHASE 2: Final SOW content
     const [lastUserPrompt, setLastUserPrompt] = useState<string>("");
     const [userPromptDiscount, setUserPromptDiscount] = useState<number>(0);
     const [multiScopePricingData, setMultiScopePricingData] = useState<any | null>(null);
@@ -330,60 +332,170 @@ export function useChatManager({
                 hasCurrentDoc: !!currentDoc,
             });
             
-            const response = await anythingLLM.chatWithThread(
-                workspace,
-                threadSlug,
-                message,
-                "chat"
-            );
-
-            if (!response) {
-                log("❌ [Chat] No response from AnythingLLM (null/undefined)");
-                toast.error("Failed to get response from AI. Please check your connection and try again.");
-                setIsChatLoading(false);
-                currentRequestControllerRef.current = null;
-                return;
-            }
-
-            // Extract content from AnythingLLM response (can be textResponse, response, or content)
-            const responseContent = response?.textResponse || response?.response || response?.content || "";
+            // PHASE 2: Use streaming for real-time CoT display
+            const assistantMessageId = `msg${Date.now()}-assistant`;
+            setStreamingMessageId(assistantMessageId);
+            setStreamingThinking(""); // Reset thinking content
+            setStreamingContent(""); // Reset final content
             
-            log("📥 [Chat] AnythingLLM response received:", {
-                hasResponse: !!response,
-                hasTextResponse: !!response?.textResponse,
-                hasResponseField: !!response?.response,
-                hasContent: !!response?.content,
-                contentLength: responseContent.length,
-                contentPreview: responseContent.substring(0, 100),
-                fullResponseKeys: response ? Object.keys(response) : [],
-            });
-
-            if (!responseContent || !responseContent.trim()) {
-                log("⚠️ [Chat] Empty or whitespace-only response from AnythingLLM");
-                toast.error("Received empty response from AI. The AI may not have generated any content. Please try rephrasing your request.");
-                setIsChatLoading(false);
-                currentRequestControllerRef.current = null;
-                return;
-            }
-
-            // Append assistant response
+            // Create placeholder assistant message
             const assistantMessage: ChatMessage = {
-                id: `msg${Date.now()}-assistant`,
+                id: assistantMessageId,
                 role: "assistant",
-                content: responseContent,
+                content: "", // Will be populated by streaming
                 timestamp: Date.now(),
             };
             setChatMessages((prev) => [...prev, assistantMessage]);
 
-            // Optionally auto-insert content from assistant message
-            const hasMarker = assistantMessage.content && assistantMessage.content.includes("*** Insert into editor:");
-            const hasJSON = assistantMessage.content && assistantMessage.content.includes("```json");
+            // PHASE 2: Stream parsing logic
+            let accumulatedText = "";
+            let thinkingContent = "";
+            let finalContent = "";
+            let hasReachedStructuredOutput = false;
             
-            if (!isDashboardMode && (hasMarker || hasJSON)) {
-                let contentToInsert = assistantMessage.content;
+            // Detection patterns for structured output (Stage B/C)
+            const structuredMarkers = [
+                /^Client:\s*\[/i, // "Client: [Client Name]"
+                /\[PROJECT_OVERVIEW\]/i,
+                /\[PROSE_FOR_SCOPE_\d+\]/i,
+                /\[JSON_FOR_SCOPE_\d+\]/i,
+                /\[INVESTMENT_OVERVIEW\]/i,
+                /```json/i, // JSON code block
+            ];
+
+            try {
+                await anythingLLM.streamChatWithThread(
+                    workspace,
+                    threadSlug,
+                    message,
+                    (chunk: string) => {
+                        try {
+                            // Parse SSE chunk
+                            let data: any = null;
+                            if (chunk.startsWith("data: ")) {
+                                const jsonStr = chunk.slice(6).trim();
+                                if (jsonStr === "[DONE]") return;
+                                try {
+                                    data = JSON.parse(jsonStr);
+                                } catch (e) {
+                                    // Not JSON, skip
+                                    return;
+                                }
+                            } else {
+                                try {
+                                    data = JSON.parse(chunk);
+                                } catch (e) {
+                                    // Not JSON, skip
+                                    return;
+                                }
+                            }
+
+                            // Extract text from chunk
+                            const chunkText = data?.textResponse || data?.text || data?.content || "";
+                            if (!chunkText) return;
+
+                            accumulatedText += chunkText;
+
+                            // PHASE 2: Detect transition from thinking (Stage A) to structured output (Stage B/C)
+                            if (!hasReachedStructuredOutput) {
+                                // Check if we've hit a structured marker
+                                const hasMarker = structuredMarkers.some((pattern) =>
+                                    pattern.test(accumulatedText)
+                                );
+
+                                if (hasMarker) {
+                                    // Split accumulated text at the marker
+                                    let splitIndex = accumulatedText.length;
+                                    for (const pattern of structuredMarkers) {
+                                        const match = accumulatedText.match(pattern);
+                                        if (match && match.index !== undefined) {
+                                            splitIndex = Math.min(splitIndex, match.index);
+                                        }
+                                    }
+
+                                    thinkingContent = accumulatedText.substring(0, splitIndex).trim();
+                                    finalContent = accumulatedText.substring(splitIndex);
+                                    hasReachedStructuredOutput = true;
+
+                                    log("🎯 [PHASE 2] Transition detected: Thinking → Structured Output", {
+                                        thinkingLength: thinkingContent.length,
+                                        finalLength: finalContent.length,
+                                    });
+
+                                    // Update thinking accordion with final thinking content
+                                    setStreamingThinking(thinkingContent);
+                                } else {
+                                    // Still in thinking phase - accumulate thinking content
+                                    thinkingContent = accumulatedText;
+                                    setStreamingThinking(thinkingContent);
+                                }
+                            } else {
+                                // Already in structured output phase - accumulate final content
+                                finalContent += chunkText;
+                            }
+
+                            // Update message content (combines thinking + final for display)
+                            const displayContent = hasReachedStructuredOutput
+                                ? thinkingContent + "\n\n" + finalContent
+                                : thinkingContent;
+
+                            setChatMessages((prev) =>
+                                prev.map((msg) =>
+                                    msg.id === assistantMessageId
+                                        ? { ...msg, content: displayContent }
+                                        : msg
+                                )
+                            );
+
+                            // Update streaming content for final SOW assembly
+                            if (hasReachedStructuredOutput) {
+                                setStreamingContent(finalContent);
+                            }
+                        } catch (parseError) {
+                            log("⚠️ [Stream] Parse error:", parseError);
+                        }
+                    },
+                    "chat"
+                );
+
+                // Streaming complete
+                log("✅ [PHASE 2] Streaming complete", {
+                    totalLength: accumulatedText.length,
+                    thinkingLength: thinkingContent.length,
+                    finalLength: finalContent.length,
+                    hasStructuredOutput: hasReachedStructuredOutput,
+                });
+
+                // Finalize message content
+                const finalMessageContent = hasReachedStructuredOutput
+                    ? thinkingContent + "\n\n" + finalContent
+                    : thinkingContent || accumulatedText;
+
+                setChatMessages((prev) =>
+                    prev.map((msg) =>
+                        msg.id === assistantMessageId
+                            ? { ...msg, content: finalMessageContent }
+                            : msg
+                    )
+                );
+
+                // Clear streaming state
+                setStreamingMessageId(null);
+                setStreamingThinking("");
+                setStreamingContent("");
+
+                // Use final content for auto-insert logic
+                const responseContent = finalMessageContent;
+
+                // Optionally auto-insert content from assistant message
+                const hasMarker = responseContent && responseContent.includes("*** Insert into editor:");
+                const hasJSON = responseContent && responseContent.includes("```json");
+                
+                if (!isDashboardMode && (hasMarker || hasJSON)) {
+                    let contentToInsert = responseContent;
                 
                 if (hasMarker) {
-                     contentToInsert = assistantMessage.content.replace(/\*\*\* Insert into editor:\s*/, '');
+                     contentToInsert = responseContent.replace(/\*\*\* Insert into editor:\s*/, '');
                 }
                 
                 // Process content through conversion logic
@@ -544,6 +656,8 @@ export function useChatManager({
         chatMessages,
         isChatLoading,
         streamingMessageId,
+        streamingThinking, // PHASE 2: Real CoT content for UI display
+        streamingContent, // PHASE 2: Final SOW content (after structured output)
         lastUserPrompt,
         userPromptDiscount,
         setUserPromptDiscount,

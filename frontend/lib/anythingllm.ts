@@ -244,9 +244,14 @@ export class AnythingLLMService {
     /**
      * Create a new AnythingLLM workspace with the Architect system prompt
      * This creates a unique workspace for each client/workspace name
+     * PHASE 1: Implements complete workspace mirroring from source workspace
+     * 
+     * @param workspaceName - Name of the workspace to create
+     * @param sourceWorkspaceSlug - Source workspace to copy LLM settings from (defaults to "generate")
      */
     async createWorkspaceWithPrompt(
         workspaceName: string,
+        sourceWorkspaceSlug: string = "generate",
     ): Promise<{ id: string; slug: string }> {
         // Generate slug from workspace name
         const slug = workspaceName
@@ -266,6 +271,8 @@ export class AnythingLLMService {
                 );
                 // Ensure prompt is set (idempotent)
                 await this.setArchitectPrompt(existing.slug);
+                // Ensure settings are synced with source (in case source was updated)
+                await this.copyWorkspaceSettings(sourceWorkspaceSlug, existing.slug);
                 return { id: existing.id, slug: existing.slug };
             }
 
@@ -295,10 +302,31 @@ export class AnythingLLMService {
                 `✅ Workspace created: ${data.workspace.slug} (${data.workspace.name})`,
             );
 
-            // Set the Architect system prompt
-            await this.setArchitectPrompt(data.workspace.slug);
+            // 🔄 PHASE 1: Mirror complete configuration from source workspace
+            // This includes: System Prompt (with Rate Card), LLM Provider/Model, Temperature, History
+            // NOTE: We do NOT call setArchitectPrompt() here - the prompt is copied from source
+            console.log(
+                `🔄 PHASE 1: Mirroring complete configuration from source workspace: ${sourceWorkspaceSlug}`,
+            );
+            const settingsCopied = await this.copyWorkspaceSettings(
+                sourceWorkspaceSlug,
+                data.workspace.slug,
+            );
+            if (!settingsCopied) {
+                console.warn(
+                    `⚠️ Failed to copy settings from ${sourceWorkspaceSlug}. Falling back to setArchitectPrompt().`,
+                );
+                // Fallback: Set prompt manually if mirroring failed
+                await this.setArchitectPrompt(data.workspace.slug);
+            } else {
+                console.log(
+                    `✅ Workspace configuration successfully mirrored from ${sourceWorkspaceSlug}`,
+                );
+            }
 
             // Embed the official Rate Card (Critical for SOW generation)
+            // Note: This may be redundant if the prompt already includes the Rate Card,
+            // but it ensures the Rate Card is available in the RAG knowledge base
             await this.embedRateCardDocument(data.workspace.slug);
 
             return { id: data.workspace.id, slug: data.workspace.slug };
@@ -1966,6 +1994,211 @@ When asked for analytics, provide clear, actionable insights with specific numbe
             return !!dashboardOk;
         } catch (e) {
             console.error("❌ Error syncing updated SOW in workspaces:", e);
+            return false;
+        }
+    }
+
+    /**
+     * Get system-wide LLM configuration (Provider and Model)
+     * Fetches from GET /v1/system endpoint
+     */
+    async getSystemSettings(): Promise<{
+        chatProvider?: string;
+        chatModel?: string;
+        [key: string]: any;
+    } | null> {
+        try {
+            const response = await fetch(`${this.baseUrl}/api/v1/system`, {
+                method: "GET",
+                headers: this.getHeaders(),
+            });
+
+            if (!response.ok) {
+                console.warn(`⚠️ Failed to fetch system settings: ${response.statusText}`);
+                return null;
+            }
+
+            const data = await response.json();
+            const settings = {
+                chatProvider: data.chatProvider || data.LLMProvider || data.llmProvider,
+                chatModel: data.chatModel || data.LLMModel || data.llmModel,
+            };
+
+            console.log(`✅ Retrieved system settings:`, {
+                provider: settings.chatProvider,
+                model: settings.chatModel,
+            });
+
+            return settings;
+        } catch (error) {
+            console.error(`❌ Error getting system settings:`, error);
+            return null;
+        }
+    }
+
+    /**
+     * Get workspace settings from a source workspace
+     * Returns LLM provider, model, temperature, history, and other configuration
+     * PHASE 1: Fetches from GET /v1/workspace/{slug} endpoint
+     */
+    async getWorkspaceSettings(workspaceSlug: string): Promise<{
+        llmProvider?: string;
+        llmModel?: string;
+        openAiTemp?: number;
+        openAiHistory?: number;
+        openAiPrompt?: string;
+        openAiMaxTokens?: number;
+        [key: string]: any;
+    } | null> {
+        try {
+            const workspace = await this.getWorkspaceDetails(workspaceSlug);
+            if (!workspace) {
+                console.warn(`⚠️ Workspace not found: ${workspaceSlug}`);
+                return null;
+            }
+
+            const settings = {
+                llmProvider: workspace.llmProvider || workspace.provider,
+                llmModel: workspace.llmModel || workspace.model,
+                openAiTemp: workspace.openAiTemp || workspace.temperature,
+                openAiHistory: workspace.openAiHistory || workspace.history,
+                openAiPrompt: workspace.openAiPrompt || workspace.prompt,
+                openAiMaxTokens: workspace.openAiMaxTokens || workspace.maxTokens,
+            };
+
+            console.log(`✅ Retrieved workspace settings from ${workspaceSlug}:`, {
+                provider: settings.llmProvider,
+                model: settings.llmModel,
+                temperature: settings.openAiTemp,
+                history: settings.openAiHistory,
+                promptLength: settings.openAiPrompt?.length || 0,
+            });
+
+            return settings;
+        } catch (error) {
+            console.error(`❌ Error getting workspace settings from ${workspaceSlug}:`, error);
+            return null;
+        }
+    }
+
+    /**
+     * Copy workspace settings from source to target workspace
+     * PHASE 1: Combines workspace settings + system settings for complete mirroring
+     * This ensures new workspaces inherit the exact LLM configuration
+     */
+    async copyWorkspaceSettings(
+        sourceWorkspaceSlug: string,
+        targetWorkspaceSlug: string,
+    ): Promise<boolean> {
+        try {
+            console.log(
+                `🔄 PHASE 1: Copying workspace settings from ${sourceWorkspaceSlug} to ${targetWorkspaceSlug}`,
+            );
+
+            // Step 1: Fetch source workspace settings (includes prompt, temp, history)
+            const sourceSettings = await this.getWorkspaceSettings(sourceWorkspaceSlug);
+            if (!sourceSettings) {
+                console.warn(
+                    `⚠️ Could not retrieve settings from source workspace: ${sourceWorkspaceSlug}`,
+                );
+                return false;
+            }
+
+            // Step 2: Fetch system-wide settings (includes provider and model)
+            const systemSettings = await this.getSystemSettings();
+
+            // Step 3: Build complete update payload combining both sources
+            const updatePayload: any = {};
+
+            // CRITICAL: Copy the System Prompt (includes Rate Card and HIERARCHY OF INSTRUCTIONS)
+            if (sourceSettings.openAiPrompt) {
+                updatePayload.openAiPrompt = sourceSettings.openAiPrompt;
+                console.log(
+                    `✅ Including System Prompt (${sourceSettings.openAiPrompt.length} chars) with Rate Card`,
+                );
+            }
+
+            // Copy workspace-specific LLM parameters
+            if (sourceSettings.openAiTemp !== undefined) {
+                updatePayload.openAiTemp = sourceSettings.openAiTemp;
+            }
+            if (sourceSettings.openAiHistory !== undefined) {
+                updatePayload.openAiHistory = sourceSettings.openAiHistory;
+            }
+            if (sourceSettings.openAiMaxTokens !== undefined) {
+                updatePayload.openAiMaxTokens = sourceSettings.openAiMaxTokens;
+            }
+
+            // CRITICAL: Use system-wide provider and model (ensures correct LLM backend)
+            if (systemSettings?.chatProvider) {
+                updatePayload.chatProvider = systemSettings.chatProvider;
+            }
+            if (systemSettings?.chatModel) {
+                updatePayload.chatModel = systemSettings.chatModel;
+            }
+
+            // Fallback to workspace-specific provider/model if system settings unavailable
+            if (!updatePayload.chatProvider && sourceSettings.llmProvider) {
+                updatePayload.chatProvider = sourceSettings.llmProvider;
+            }
+            if (!updatePayload.chatModel && sourceSettings.llmModel) {
+                updatePayload.chatModel = sourceSettings.llmModel;
+            }
+
+            if (Object.keys(updatePayload).length === 0) {
+                console.warn(`⚠️ No settings to copy from ${sourceWorkspaceSlug}`);
+                return false;
+            }
+
+            console.log(`📋 Update payload:`, {
+                hasPrompt: !!updatePayload.openAiPrompt,
+                provider: updatePayload.chatProvider,
+                model: updatePayload.chatModel,
+                temp: updatePayload.openAiTemp,
+                history: updatePayload.openAiHistory,
+            });
+
+            // Step 4: Apply all settings to target workspace
+            const response = await fetch(
+                `${this.baseUrl}/api/v1/workspace/${targetWorkspaceSlug}/update`,
+                {
+                    method: "POST",
+                    headers: this.getHeaders(),
+                    body: JSON.stringify(updatePayload),
+                },
+            );
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error(
+                    `❌ Failed to copy workspace settings (${response.status}):`,
+                    errorText,
+                );
+                return false;
+            }
+
+            console.log(
+                `✅ Successfully mirrored all settings from ${sourceWorkspaceSlug} to ${targetWorkspaceSlug}`,
+            );
+            console.log(
+                `   ✓ System Prompt (with Rate Card) transferred`,
+            );
+            console.log(
+                `   ✓ LLM Provider: ${updatePayload.chatProvider || 'N/A'}`,
+            );
+            console.log(
+                `   ✓ LLM Model: ${updatePayload.chatModel || 'N/A'}`,
+            );
+            console.log(
+                `   ✓ Temperature: ${updatePayload.openAiTemp || 'N/A'}`,
+            );
+            console.log(
+                `   ✓ History: ${updatePayload.openAiHistory || 'N/A'}`,
+            );
+
+            return true;
+        } catch (error) {
+            console.error(`❌ Error copying workspace settings:`, error);
             return false;
         }
     }

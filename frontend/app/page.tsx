@@ -109,6 +109,8 @@ export default function Page() {
         setChatMessages,
         isChatLoading,
         streamingMessageId,
+        streamingThinking, // PHASE 2: Real CoT content
+        streamingContent, // PHASE 2: Final SOW content
         lastUserPrompt,
         userPromptDiscount,
         setUserPromptDiscount,
@@ -2262,6 +2264,8 @@ export default function Page() {
                             onSendMessage={handleSendMessage}
                             isLoading={isChatLoading}
                             streamingMessageId={streamingMessageId}
+                            streamingThinking={streamingThinking} // PHASE 2: Real CoT content
+                            streamingContent={streamingContent} // PHASE 2: Final SOW content
                             onInsertToEditor={handleInsertContent}
                             editorWorkspaceSlug={currentDoc?.workspaceSlug || ""}
                             editorThreadSlug={currentDoc?.threadSlug}
