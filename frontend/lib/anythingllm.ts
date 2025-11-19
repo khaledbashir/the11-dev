@@ -894,8 +894,10 @@ Metadata:
             );
 
             if (!workspaceEmbedResponse.ok) {
+                const errorText = await workspaceEmbedResponse.text();
+                console.error(`❌ Embedding failed: ${workspaceEmbedResponse.status} ${errorText}`);
                 throw new Error(
-                    `Failed to embed document in workspace: ${workspaceEmbedResponse.statusText}`,
+                    `Failed to embed document in workspace: ${workspaceEmbedResponse.status} ${errorText}`,
                 );
             }
 

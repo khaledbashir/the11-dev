@@ -1080,7 +1080,7 @@ export default function Page() {
             setCurrentSOWId(sowId);
             setViewMode("editor");
 
-            // Add document to local state
+            // Add document to local state IMMEDIATELY to prevent "Document not found" errors
             const newDoc: Document = {
                 id: sowId,
                 title: sowTitle,
