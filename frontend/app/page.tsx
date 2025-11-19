@@ -1032,6 +1032,28 @@ export default function Page() {
             const thread = await anythingLLM.createThread(workspace.slug);
             console.log("✅ Thread created:", thread.slug);
 
+            // 🔍 VERIFICATION: Confirm system prompt is loaded in workspace
+            try {
+                const workspaceDetails = await anythingLLM.getWorkspaceDetails(workspace.slug);
+                if (workspaceDetails?.openAiPrompt) {
+                    const promptLength = workspaceDetails.openAiPrompt.length;
+                    const hasArchitectPrompt = workspaceDetails.openAiPrompt.includes("The Architect") || 
+                                               workspaceDetails.openAiPrompt.includes("Archie");
+                    console.log(`✅ System Prompt Verification:`, {
+                        promptLength,
+                        hasArchitectPrompt,
+                        preview: workspaceDetails.openAiPrompt.substring(0, 100) + "..."
+                    });
+                    if (!hasArchitectPrompt) {
+                        console.warn("⚠️ System prompt may not be the expected Architect prompt");
+                    }
+                } else {
+                    console.warn("⚠️ System prompt not found in workspace details");
+                }
+            } catch (error) {
+                console.warn("⚠️ Could not verify system prompt:", error);
+            }
+
             // Update SOW with thread info
             await fetch(`/api/sow/${sowId}`, {
                 method: "PUT",
@@ -1052,18 +1074,47 @@ export default function Page() {
             // 📊 STEP 4: Embed SOW in workspace and master dashboard
             console.log("📊 Embedding SOW in workspaces...");
             const sowContent = JSON.stringify(defaultEditorContent);
-            await anythingLLM.embedSOWInBothWorkspaces(
+            const embedSuccess = await anythingLLM.embedSOWInBothWorkspaces(
                 sowTitle,
                 sowContent,
                 workspaceName,
             );
-            console.log("✅ SOW embedded in workspaces");
+            
+            if (!embedSuccess) {
+                throw new Error("Failed to embed SOW in workspaces");
+            }
+            
+            console.log("✅ SOW embedded in workspaces - awaiting confirmation...");
+            
+            // 🔍 VERIFICATION: Wait for embedding to be confirmed (retry logic)
+            // This ensures the backend has fully processed the link before we proceed
+            let embeddingConfirmed = false;
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    // Small delay to allow backend processing
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    
+                    // Verify workspace has the document (optional check - can be removed if too slow)
+                    const workspaceDetails = await anythingLLM.getWorkspaceDetails(workspace.slug);
+                    if (workspaceDetails?.documents && workspaceDetails.documents.length > 0) {
+                        embeddingConfirmed = true;
+                        console.log(`✅ Embedding confirmed on attempt ${attempt + 1}`);
+                        break;
+                    }
+                } catch (error) {
+                    console.warn(`⚠️ Embedding verification attempt ${attempt + 1} failed:`, error);
+                }
+            }
+            
+            if (!embeddingConfirmed) {
+                console.warn("⚠️ Could not verify embedding, but proceeding anyway (may be a timing issue)");
+            }
 
             // Mark all steps complete
             setWorkspaceCreationProgress((prev) => ({
                 ...prev,
                 completedSteps: [0, 1, 2, 3],
-                currentStep: 4,
+                currentStep: 4, // Success state
             }));
 
             // Create SOW object for local state
@@ -1101,14 +1152,15 @@ export default function Page() {
                 `✅ Created workspace "${workspaceName}" with blank SOW ready to edit!`,
             );
 
+            // Show success state for 1.0s before closing modal and redirecting
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
             // Close progress modal and auto-select the new SOW
-            setTimeout(() => {
-                setWorkspaceCreationProgress((prev) => ({
-                    ...prev,
-                    isOpen: false,
-                }));
-                handleSelectDoc(sowId);
-            }, 500);
+            setWorkspaceCreationProgress((prev) => ({
+                ...prev,
+                isOpen: false,
+            }));
+            handleSelectDoc(sowId);
         } catch (error) {
             console.error("❌ Error creating workspace:", error);
             toast.error("Failed to create workspace. Please try again.");

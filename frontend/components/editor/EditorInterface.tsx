@@ -104,7 +104,7 @@ const EditorInterface = forwardRef(
                     if (node.type.name === "heading") {
                         return "Heading";
                     }
-                    return "Start writing...";
+                    return "Waiting for inputs... Upload a Brief PDF or ask me to generate an SOW.";
                 },
             }),
             CharacterCount,

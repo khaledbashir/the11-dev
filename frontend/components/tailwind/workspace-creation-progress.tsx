@@ -66,7 +66,7 @@ export default function WorkspaceCreationProgress({
               <div className="pt-1">
                 {step.completed ? (
                   <div className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/50">
-                    <Check className="w-4 h-4 text-emerald-400" />
+                    <Check className="w-4 h-4" style={{ color: '#00D084' }} />
                   </div>
                 ) : step.loading ? (
                   <div className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/30 border border-emerald-500/60 animate-pulse">
@@ -84,11 +84,12 @@ export default function WorkspaceCreationProgress({
                 <p
                   className={`text-sm font-medium transition-colors ${
                     step.completed
-                      ? "text-emerald-400"
+                      ? "text-white"
                       : step.loading
                         ? "text-white font-semibold"
                         : "text-gray-400"
                   }`}
+                  style={step.completed ? { color: '#00D084' } : undefined}
                 >
                   {step.label}
                 </p>
@@ -101,7 +102,7 @@ export default function WorkspaceCreationProgress({
                   </p>
                 )}
                 {step.completed && (
-                  <p className="text-xs text-emerald-400/80 mt-1">✓ Complete</p>
+                  <p className="text-xs mt-1" style={{ color: '#00D084' }}>✓ Complete</p>
                 )}
               </div>
 
@@ -132,9 +133,15 @@ export default function WorkspaceCreationProgress({
         </div>
 
         {/* Footer message */}
-        <p className="text-xs text-gray-400 text-center pb-2 font-light">
-          🌱 This usually takes 30-60 seconds...
-        </p>
+        {completedSteps.length === 4 && currentStep === 4 ? (
+          <p className="text-xs text-center pb-2 font-semibold" style={{ color: '#00D084' }}>
+            ✅ Workspace Ready!
+          </p>
+        ) : (
+          <p className="text-xs text-gray-400 text-center pb-2 font-light">
+            🌱 This usually takes 30-60 seconds...
+          </p>
+        )}
       </DialogContent>
     </Dialog>
   );
