@@ -1320,15 +1320,20 @@ export default function Page() {
                 try {
                     console.log("🔄 [Background] Starting heavy operations...");
 
-                    // Get or create master workspace
-                    const master =
-                        await anythingLLM.getMasterSOWWorkspace(sowName);
+                    // 🎯 DATA ISOLATION FIX: Use Client Workspace, NOT Master SOW Workspace
+                    const targetWorkspace = workspaces.find(w => w.id === workspaceId);
+                    const targetSlug = targetWorkspace?.workspace_slug || targetWorkspace?.slug;
+                    
+                    if (!targetSlug) {
+                        throw new Error(`Target workspace slug not found for ID: ${workspaceId}`);
+                    }
+
                     console.log(
-                        `🔄 [Background] Master workspace ready: ${master.slug}`,
+                        `🔄 [Background] Using client workspace: ${targetSlug}`,
                     );
 
-                    // Create actual thread in AnythingLLM
-                    const thread = await anythingLLM.createThread(master.slug);
+                    // Create actual thread in AnythingLLM (Client Workspace)
+                    const thread = await anythingLLM.createThread(targetSlug);
                     if (!thread) {
                         console.error(
                             "❌ [Background] Failed to create thread in AnythingLLM",
@@ -1351,7 +1356,7 @@ export default function Page() {
                             client_name: "",
                             client_email: "",
                             total_investment: 0,
-                            workspace_slug: master.slug,
+                            workspace_slug: targetSlug, // Use client workspace slug
                             folder_id: workspaceId,
                         }),
                     });
@@ -2242,6 +2247,7 @@ export default function Page() {
                                 setCreateWorkspaceDialogOpen(true);
                             }}
                             onOpenOnboarding={() => setShowOnboarding(true)}
+                            workspaceCount={workspaces.length}
                         />
                     ))}
                 </>

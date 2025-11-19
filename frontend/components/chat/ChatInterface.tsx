@@ -12,6 +12,9 @@ import {
     Settings,
     History,
     Loader2,
+    ChevronDown,
+    ChevronRight,
+    CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { ChatMessage } from "@/types";
@@ -34,6 +37,81 @@ import {
 import { ScrollArea } from "@/components/tailwind/ui/scroll-area";
 import { Badge } from "@/components/tailwind/ui/badge";
 import { handleDocumentUploadAndPin } from "@/lib/document-pinning";
+
+const MessageContent = ({ content }: { content: string }) => {
+    const [expandedJSON, setExpandedJSON] = useState<Record<number, boolean>>({});
+
+    // Hide the "Insert into editor" marker for display
+    // We perform a non-destructive check first
+    const hasMarker = content.includes("*** Insert into editor:");
+    const hasJSON = content.includes("```json");
+    
+    // If content was auto-inserted, hide JSON blocks and show success badge instead
+    const shouldHideJSON = hasMarker && hasJSON;
+    
+    let displayContent = content.replace(/\*\*\* Insert into editor:[\s\S]*/, "").trim();
+    
+    // If auto-inserted, remove JSON blocks from display
+    if (shouldHideJSON) {
+        displayContent = displayContent.replace(/```json[\s\S]*?```/g, "").trim();
+    }
+    
+    // Split by JSON blocks (only if not hidden)
+    const parts = shouldHideJSON ? [displayContent] : displayContent.split(/(```json[\s\S]*?```)/g);
+
+    return (
+        <div className="whitespace-pre-wrap text-sm leading-relaxed">
+            {shouldHideJSON ? (
+                // Show clean content without JSON when auto-inserted
+                <>
+                    <div>{displayContent}</div>
+                    <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 border border-green-200 rounded-md text-xs text-green-700">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        <span className="font-medium">Pricing & Scope Updated</span>
+                    </div>
+                </>
+            ) : (
+                // Show normal content with collapsible JSON blocks
+                <>
+                    {parts.map((part, index) => {
+                        if (part.startsWith("```json")) {
+                            const isExpanded = expandedJSON[index];
+                            // Extract JSON content for display
+                            const jsonContent = part.replace(/```json\s*|\s*```/g, "");
+                            
+                            return (
+                                <div key={index} className="my-2 border rounded-md overflow-hidden bg-gray-50 w-full">
+                                    <button 
+                                        onClick={() => setExpandedJSON(prev => ({...prev, [index]: !isExpanded}))}
+                                        className="w-full flex items-center justify-between p-2 bg-gray-100 hover:bg-gray-200 text-xs font-mono text-gray-600 transition-colors"
+                                    >
+                                        <span className="flex items-center font-semibold">
+                                            {isExpanded ? <ChevronDown className="h-3 w-3 mr-1" /> : <ChevronRight className="h-3 w-3 mr-1" />}
+                                            Generated SOW Data (JSON)
+                                        </span>
+                                        <span className="text-[10px] uppercase opacity-70">{isExpanded ? "Hide" : "Show"}</span>
+                                    </button>
+                                    {isExpanded && (
+                                        <div className="p-2 overflow-x-auto bg-white">
+                                            <pre className="text-xs font-mono text-gray-800 whitespace-pre">{jsonContent}</pre>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        }
+                        return <span key={index}>{part}</span>;
+                    })}
+                    {hasMarker && (
+                        <div className="mt-2 text-xs text-green-600 italic flex items-center border-t pt-2">
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            Content automatically inserted into editor
+                        </div>
+                    )}
+                </>
+            )}
+        </div>
+    );
+};
 
 const ChatInterface = ({
     workspaceSlug,
@@ -428,8 +506,8 @@ const ChatInterface = ({
                                             : "bg-gray-100 text-gray-900"
                                     }`}
                                 >
-                                    <div className="whitespace-pre-wrap">
-                                        {message.content}
+                                    <div className="w-full">
+                                        <MessageContent content={message.content} />
                                     </div>
                                     {message.role === "assistant" && (
                                         <div className="flex items-center space-x-1 mt-2 text-gray-500">
