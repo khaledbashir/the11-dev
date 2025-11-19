@@ -634,6 +634,62 @@ export default function SidebarNav({
         </div>
 
 
+        {/* Reset All Button - Dangerous Action */}
+        <div className="px-4 pb-3">
+          <button
+            onClick={async () => {
+              if (
+                !confirm(
+                  "⚠️ DANGER: This will delete ALL workspaces and SOWs!\n\nThis action cannot be undone. Are you absolutely sure?",
+                )
+              ) {
+                return;
+              }
+
+              if (
+                !confirm(
+                  "🚨 FINAL WARNING: This will permanently delete:\n\n- All workspaces\n- All SOWs\n- All AnythingLLM workspaces\n\nType 'RESET' to confirm:",
+                )
+              ) {
+                return;
+              }
+
+              try {
+                const response = await fetch("/api/admin/reset-all", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    confirm: "RESET_ALL_DATA",
+                  }),
+                });
+
+                if (response.ok) {
+                  const result = await response.json();
+                  toast.success(
+                    `✅ Reset complete! Deleted ${result.results.folders_deleted} workspaces and ${result.results.sows_before} SOWs`,
+                  );
+                  // Reload the page to show clean state
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 1500);
+                } else {
+                  const error = await response.json();
+                  toast.error(`❌ Reset failed: ${error.error || "Unknown error"}`);
+                }
+              } catch (error) {
+                toast.error(`❌ Reset failed: ${error}`);
+              }
+            }}
+            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-red-900/60 hover:bg-red-800/80 text-red-300 hover:text-red-200 text-xs font-semibold rounded-lg transition-colors border border-red-800/50"
+            title="Reset all data - DANGEROUS!"
+          >
+            <Trash2 className="w-4 h-4" />
+            Reset All Data
+          </button>
+        </div>
+
         {/* Requirements link hidden per request */}
       </div>
 
